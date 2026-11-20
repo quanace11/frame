@@ -127,6 +127,7 @@ input[type=range]{width:110px;accent-color:var(--accent);height:28px}
 #focusBar{position:absolute;right:10px;top:10px;display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:5px;box-shadow:0 6px 20px #0008;z-index:6}
 #focusBar button{border:0;background:var(--panel2);color:var(--text);border-radius:10px;min-width:44px;height:44px;font-size:16px;cursor:pointer;padding:0 10px}
 #focusBar button.on{background:var(--accent);color:var(--accent-ink)}
+body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:not([data-tool=brush]):not([data-tool=eraser]) #symBtn{display:none}
 #tl.collapsed #strip{display:none}
 /* Collapsible regions: each one folds into a small floating button on the stage */
 #app.hide-rail #rail,#app.hide-top #top,#app.hide-tl #tl{display:none}
@@ -194,6 +195,7 @@ input[type=range]{width:110px;accent-color:var(--accent);height:28px}
 #tl{grid-area:tl;background:var(--panel);border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px;padding:8px 10px}
 #tlBar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
 #durIn{width:70px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 8px;text-align:right}
+body:not([data-tool=fill]) #gapBtn{display:none}
 #strip{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 6px;scroll-behavior:smooth;touch-action:pan-x}
 .fr{flex:none;position:relative;border:2px solid transparent;border-radius:8px;cursor:pointer;background:#fff;overflow:hidden}
 .fr canvas{display:block}
@@ -201,6 +203,9 @@ input[type=range]{width:110px;accent-color:var(--accent);height:28px}
 .fr.playing{border-color:#4cd964}
 .fr .idx{position:absolute;left:3px;top:3px;background:#000b;color:#fff;font-size:10px;padding:1px 5px;border-radius:6px}
 .fr .dur{position:absolute;right:3px;bottom:3px;background:#000b;color:#fff;font-size:10px;padding:1px 5px;border-radius:6px}
+.fr .wave{position:absolute;left:0;right:0;bottom:0;width:100%;height:18px;pointer-events:none}
+.fr .sfxb{position:absolute;right:3px;top:18px;font-size:10px;background:#000b;padding:0 3px;border-radius:6px}
+.fr.hasw .dur,.fr.hasw .shared{bottom:21px}
 .fr .shared{position:absolute;left:3px;bottom:3px;width:8px;height:8px;border-radius:50%}
 .addfr{flex:none;border:2px dashed var(--line);border-radius:8px;background:transparent;color:var(--muted);font-size:26px;cursor:pointer}
 .tbtn{border:1px solid var(--line);background:var(--panel2);border-radius:10px;padding:7px 11px;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:13px}
@@ -262,10 +267,12 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
     <button class="tool" id="redoBtn" title="Làm lại (chạm 3 ngón)">
       <svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>Làm lại</button>
     <div class="rail-sep"></div>
-    <button class="tool" id="onionBtn" title="Onion skin">
+    <button class="tool" id="onionBtn" title="Onion skin: chạm để bật/tắt, giữ để chọn số frame trước/sau">
       <svg viewBox="0 0 24 24"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6" stroke-dasharray="2.5 2"/></svg>Onion</button>
     <button class="tool" id="fitBtn" title="Vừa khung">
       <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Vừa khung</button>
+    <button class="tool" id="safeBtn" title="Vùng an toàn Shorts/TikTok: chỗ bị chữ, nút like, mô tả che khi đăng (Z). Bấm lần nữa để thêm lưới 1/3">
+      <svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="2"/><rect x="8" y="6" width="7" height="10" stroke-dasharray="2 1.5"/></svg>An toàn</button>
     <button class="tool" id="rotBtn" title="Xoay khung vẽ 90° (hoặc xoay bằng 2 ngón)">
       <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></svg>Xoay 90°</button>
     <button class="tool" id="focusBtn" title="Ẩn công cụ để vẽ toàn màn hình">
@@ -284,11 +291,15 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <span class="lbl">Độ đậm</span><input type="range" id="opIn" min="5" max="100" step="1"><span class="val" id="opVal"></span>
     </div>
     <button class="chip small" id="brushBtn" title="Chọn loại bút, kiểu tẩy, độ chống run tay"><span id="brushName">Bút tròn</span> ▾</button>
+    <button class="chip small" id="shapeBtn" title="Vẽ hình nhanh: đường thẳng, chữ nhật, hình tròn. Mẹo: vẽ tự do rồi giữ yên bút một chút cũng tự thành đường thẳng / hình tròn">✏ Tự do</button>
+    <button class="chip small" id="symBtn" title="Vẽ đối xứng: nét vẽ bên này tự hiện ở bên kia (mặt, thân nhân vật)">⇋ Đối xứng</button>
+    <button class="chip small" id="clipBtn" title="Chỉ vẽ lên chỗ đã có nét/màu ở lớp đang chọn: tô bóng, đổi màu nét mà không lem ra ngoài">🔒 Vẽ trong vùng</button>
     <button class="chip small" id="pressBtn" title="Nét thay đổi theo lực nhấn bút">Lực nhấn</button>
     <button class="chip small" id="snapBtn" title="Hút nét: vẽ lệch sẽ tự kéo vào nét cũ gần nhất (nét frame này, frame trước khi bật Onion, ảnh mờ)">🧲 Hút nét</button>
     <div class="grp" id="palette">
       <button id="curColor" title="Bảng màu đầy đủ: chọn màu tuỳ ý, mã màu, màu vừa dùng"></button>
       <button class="chip small" id="dropBtn" hidden title="Dò màu: chạm vào bất kỳ chỗ nào trên hình để lấy đúng màu đó, rồi đổ màu (máy tính: giữ Alt + bấm)">💧 Dò màu</button>
+      <button class="chip small" id="gapBtn" title="Tự bịt khe hở nhỏ trên nét khi đổ màu, để màu không tràn ra ngoài">Bịt khe: Nhỏ</button>
     </div>
     <div class="grp">
       <div class="layer" id="layerBg"><button class="name" data-layer="bg">Nền</button><button class="eye" data-eye="bg" title="Ẩn/hiện">👁</button></div>
@@ -308,7 +319,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <div class="layer" id="layerRef"><button class="name" id="refEditBtn" title="Chỉnh vị trí/cỡ/độ mờ ảnh mờ">Ảnh mờ</button><button class="eye" id="refEye" title="Ẩn/hiện">👁</button></div>
     </div>
     <span class="spacer"></span>
-    <button class="chip small on" id="wizBtn" title="Trợ lý làm video từng bước">🚀 Làm nhanh</button><button class="chip small" id="assetBtn" title="Kho hình: hiệu ứng động (choáng, đánh nhau, chữ âm thanh), mắt, miệng, tay">🎨 Kho hình</button>
+    <button class="chip small on" id="wizBtn" title="Trợ lý làm video từng bước">🚀 Làm nhanh</button><button class="chip small" id="aiCharBtn" title="AI tạo nhân vật hoạt hình từ ảnh chụp (Google Gemini, dùng key của bạn)">🤖 AI nhân vật</button><button class="chip small" id="assetBtn" title="Kho hình: hiệu ứng động (choáng, đánh nhau, chữ âm thanh), mắt, miệng, tay">🎨 Kho hình</button>
     <button class="chip small" id="projBtn" title="Danh sách dự án">📁 Dự án</button><span id="saveState"></span>
     <button class="chip small hidebtn" id="topHide" title="Thu gọn thanh này thành 1 nút nhỏ để vùng vẽ rộng hơn" aria-label="Thu gọn thanh trên">▴</button>
   </header>
@@ -319,6 +330,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <span class="lbl">Cỡ</span><input type="range" id="selScale" min="10" max="300" step="1" value="100"><span class="val" id="selScaleVal">100%</span>
       <span class="lbl">Xoay</span><input type="range" id="selRot" min="-180" max="180" step="1" value="0"><span class="val" id="selRotVal">0°</span>
       <button class="chip small" id="selFlip">Lật ngang</button>
+      <button class="chip small" id="selCopy" title="Chép vùng chọn để dán sang frame khác (giữ đúng vị trí, cỡ, góc xoay)">📋 Chép</button>
       <button class="chip small" id="selStamp" title="In một bản tại chỗ, vẫn giữ vùng chọn để kéo tiếp">Nhân bản</button>
       <button class="chip small" id="selVec" title="Biến nét pixel trong vùng chọn thành nét vector sửa được, giữ nguyên vị trí">→ Nét vector</button>
       <button class="chip small" id="selDelete">Xoá vùng</button>
@@ -426,6 +438,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
         <div class="mrow" data-tab="frames"><span class="lbl"><b>Frame giữa:</b> chèn</span><input type="number" id="ppTweenN" value="3" min="1" max="24" style="width:52px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">frame chuyển tiếp tới frame sau</span><button class="chip small on" id="ppTweenBtn">Tạo frame giữa</button></div>
         <div class="mrow" data-tab="frames"><span class="lbl"><b>Mẫu nhanh:</b></span><span id="ppPresets" class="mrow"></span></div>
         <div class="mrow" data-tab="frames" style="flex-wrap:wrap"><span class="lbl"><b>Cử chỉ:</b></span><span id="ppGests" class="mrow" style="flex-wrap:wrap;gap:4px"></span><label class="lbl" title="Làm bằng tay bên kia"><input type="checkbox" id="gestMir"> Tay kia</label></div>
+        <div class="mrow" data-tab="frames"><span class="lbl"><b>Tự động:</b></span><button class="chip small" id="ppBlinkBtn" title="Nhân vật tự chớp mắt mỗi vài giây trên mọi frame, không thêm frame (cần mảnh vai trò Mắt)">👁 Chớp mắt tự động</button><span class="lbl" id="ppBlinkInfo"></span></div>
         <div class="mrow" data-tab="frames"><span class="lbl">Hướng</span><button class="chip small" data-ppdir="-1">◀</button><button class="chip small" data-ppdir="1">▶</button>
           <span class="lbl">Số frame</span><input type="number" id="ppPN" value="8" min="2" max="24" style="width:52px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px">
           <span class="lbl">Mỗi frame</span><input type="number" id="ppPDur" value="0.1" step="0.02" min="0.03" max="2" style="width:60px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">s</span>
@@ -435,7 +448,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
     <div id="fxbar" hidden>
       <div class="mrow"><b>✨ Chữ, camera & âm thanh</b><span class="lbl">(cho frame đang xem)</span><span style="flex:1"></span><button class="chip small on" id="fxExport2">🎬 Xuất video</button><button class="chip small" id="fxMini">▾ Thu gọn</button><button class="chip small pclose" data-close="fx" title="Đóng bảng (công cụ vẫn bật)">✕</button></div>
       <div class="mrow tabs" data-tabs="fx"><button class="tabb" data-t="text">🔤 Chữ</button><button class="tabb" data-t="cam">🎥 Camera</button><button class="tabb" data-t="audio">🎵 Âm thanh</button></div>
-      <div class="mrow" data-tab="text"><span class="lbl"><b>Chữ:</b></span><button class="chip small on" id="fxAddTxt">＋ Thêm chữ</button>
+      <div class="mrow" data-tab="text"><span class="lbl"><b>Chữ:</b></span><button class="chip small on" id="fxAddTxt">＋ Thêm chữ</button><button class="chip small" id="fxQuickSub" title="Dán lời thoại, app tự chia thành phụ đề và đặt theo giọng nói (hoặc chia đều)">📝 Phụ đề nhanh</button>
         <button class="chip small" data-fxs="comic">Truyện tranh</button><button class="chip small" data-fxs="bubble">Bóng thoại</button><button class="chip small" data-fxs="shout">Hét to 💥</button><button class="chip small" data-fxs="caption">Phụ đề</button>
         <button class="chip small" id="fxEditTxt">✎ Sửa</button><span class="lbl">Cỡ</span><input type="range" id="fxSize" min="30" max="300"><span class="lbl">Xoay</span><input type="range" id="fxRot" min="-45" max="45">
         <button class="chip small" id="fxColorTxt" title="Đổi màu chữ thành màu đang chọn ở thanh trên">Màu</button>
@@ -466,6 +479,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <button class="tbtn primary" id="playBtn"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></svg><span>Phát</span></button>
       <button class="tbtn on" id="loopBtn" title="Lặp lại">Lặp</button>
       <button class="tbtn" id="videoBtn" title="Xuất video có tiếng, chữ, camera">🎬 Video</button>
+      <button class="tbtn" id="gifBtn" title="Xuất GIF động, chuỗi ảnh PNG hoặc ảnh frame đang xem">🖼 GIF/PNG</button>
       <span class="lbl" style="margin-left:6px">Thời lượng frame</span>
       <input type="number" id="durIn" min="0.02" max="30" step="0.05"><span class="lbl">giây</span>
       <span id="durChips" class="grp"></span>
@@ -473,8 +487,10 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <span class="spacer" style="flex:1"></span>
       <button class="tbtn" id="moveL" title="Dời frame sang trái">◀</button>
       <button class="tbtn" id="moveR" title="Dời frame sang phải">▶</button>
+      <button class="tbtn" id="pasteBtn" hidden title="Dán hình đã chép vào frame này hoặc nhiều frame liền nhau">📋 Dán</button>
       <button class="tbtn" id="dupBtn">Nhân bản frame</button>
       <button class="tbtn" id="addBtn">+ Frame trống</button>
+      <button class="tbtn" id="loopRangeBtn" title="Lặp lại một đoạn frame (chu kỳ đi bộ, chớp mắt, vẫy tay…) hoặc cho chạy đi rồi chạy về">🔁 Lặp đoạn</button>
       <button class="tbtn" id="delBtn" style="color:var(--danger)">Xoá</button>
       <button class="tbtn" id="delAllBtn" style="color:var(--danger)" title="Xoá toàn bộ frame">Xoá hết</button>
       <span id="totalLbl"></span>
@@ -592,11 +608,32 @@ const scrToDoc = (px, py) => scrToDocWith(px, py, vs, vr, vtx, vty);
 function setViewAnchor(dx, dy, px, py) { const c = Math.cos(vr) * vs, s2 = Math.sin(vr) * vs; vtx = px - (c * dx - s2 * dy); vty = py - (s2 * dx + c * dy); }
 function fitView(resetRot) {
   if (resetRot) vr = 0;
-  const m = 18 * DPR, ac = Math.abs(Math.cos(vr)), as = Math.abs(Math.sin(vr)), bw = ac * W + as * H, bh = as * W + ac * H;
-  fitS = Math.min((view.width - 2 * m) / bw, (view.height - 2 * m) / bh);
+  const m = 18 * DPR, ac = Math.abs(Math.cos(vr)), as = Math.abs(Math.sin(vr)), bw = ac * W + as * H, bh = as * W + ac * H, band = freeBand();
+  fitS = Math.min((view.width - 2 * m) / bw, (band.h - 2 * m) / bh);
   if (!(fitS > 0)) fitS = 0.1;
-  vs = fitS; setViewAnchor(W / 2, H / 2, view.width / 2, view.height / 2);
+  vs = fitS; setViewAnchor(W / 2, H / 2, view.width / 2, band.y + band.h / 2);
+  lastFit = [vs, vtx, vty, vr];
   requestRender();
+}
+// Floating panels (Ghép, Chữ & FX, xương, chuyển động) sit over the bottom of the stage and the vector bar over the top.
+// "Vừa khung" fits the frame into the part they leave free, and while the view is still the fitted one it refits by itself
+// whenever a panel opens, closes, folds or changes height, so the character's legs are never hidden behind a panel.
+const FIT_BOTTOM = ['#ppbar', '#fxbar', '#rigbar', '#motionbar'], FIT_TOP = ['#vecbar'];
+let lastFit = null, refitT = null;
+function freeBand() {
+  const sr = stage.getBoundingClientRect(); let top = 0, bot = 0;
+  const vis = sel => { const el = document.querySelector(sel); if (!el || el.hidden || !el.offsetParent) return null; const r = el.getBoundingClientRect(); return r.height > 0 && r.width > 0 ? r : null; };
+  for (const sel of FIT_BOTTOM) { const r = vis(sel); if (r && r.top > sr.top + sr.height * 0.25) bot = Math.max(bot, sr.bottom - r.top + 4); }
+  for (const sel of FIT_TOP) { const r = vis(sel); if (r && r.bottom < sr.top + sr.height * 0.5) top = Math.max(top, r.bottom - sr.top + 4); }
+  const minH = sr.height * 0.42;   // never shrink the drawing below this; past it the panel may overlap a little
+  if (sr.height - top - bot < minH) { const k = Math.max(0, sr.height - minH) / Math.max(1, top + bot); top *= k; bot *= k; }
+  return { y: top * DPR, h: Math.max(1, (sr.height - top - bot) * DPR) };
+}
+const viewIsFitted = () => lastFit && Math.abs(lastFit[0] - vs) < 1e-6 && Math.abs(lastFit[1] - vtx) < 0.5 && Math.abs(lastFit[2] - vty) < 0.5 && lastFit[3] === vr;
+function refitSoon() { clearTimeout(refitT); refitT = setTimeout(() => { if (viewIsFitted() && !playing) fitView(); }, 60); }
+{
+  const ro = new ResizeObserver(refitSoon), mo = new MutationObserver(refitSoon);
+  for (const sel of [...FIT_BOTTOM, ...FIT_TOP]) { const el = document.querySelector(sel); if (el) { ro.observe(el); mo.observe(el, { attributes: true, attributeFilter: ['hidden', 'class', 'style'] }); } }
 }
 function rotateView90() { vr = (Math.round(vr / (Math.PI / 2)) + 1) % 4 * (Math.PI / 2); fitView(); toast('Xoay khung ' + Math.round(vr / DEG) + '° — bấm Vừa khung để thẳng lại', 1800); }
 function requestRender() { if (!rq) { rq = true; requestAnimationFrame(render); } }
@@ -609,6 +646,28 @@ function setupWorkCanvases() {
   tintCache.clear();
 }
 const tintCache = new Map();
+SETTINGS_KEYS.push('onionPrev', 'onionNext'); S.onionPrev = 1; S.onionNext = 1;
+// onion frames: [index, colour, alpha], farthest first so the nearest frame draws on top; alpha fades with distance
+function onionList() {
+  const L = [], P = S.onionPrev ?? 1, N = S.onionNext ?? 1;
+  for (let d = Math.max(P, N); d >= 1; d--) {
+    const a = S.onionAlpha * Math.pow(0.6, d - 1);
+    if (d <= P && S.cur - d >= 0) L.push([S.cur - d, d === 1 ? '#ff3b5c' : '#ff8a3b', a]);
+    if (d <= N && S.cur + d < S.frames.length) L.push([S.cur + d, d === 1 ? '#2f7bff' : '#26b8c9', a]);
+  }
+  return L;
+}
+function onionDialog() {
+  const chips = (k) => [0, 1, 2, 3, 4].map(n => `<button class="chip small ${(S[k] ?? 1) === n ? 'on' : ''}" data-ok="${k}" data-n="${n}">${n}</button>`).join('');
+  modal({ title: 'Onion skin', html: `<p class="lbl">Hiện mờ các frame bên cạnh để vẽ chuyển động đều tay. Đỏ/cam = frame trước, xanh = frame sau, càng xa càng mờ.</p>
+<div class="set-row"><span>Số frame trước</span><span class="grp">${chips('onionPrev')}</span></div>
+<div class="set-row"><span>Số frame sau</span><span class="grp">${chips('onionNext')}</span></div>
+<div class="set-row"><span>Độ mờ</span><input type="range" id="onA" min="5" max="70" value="${Math.round(S.onionAlpha * 100)}"></div>`,
+    buttons: [{ label: 'Xong', value: null, primary: true }], onOpen: ov => {
+      ov.querySelectorAll('[data-ok]').forEach(b => b.addEventListener('click', () => { S[b.dataset.ok] = +b.dataset.n; S.onion = true; ov.querySelectorAll(`[data-ok=${b.dataset.ok}]`).forEach(x => x.classList.toggle('on', x === b)); updateToggles(); saveSettings(); requestRender(); }));
+      ov.querySelector('#onA').addEventListener('input', e => { S.onionAlpha = e.target.value / 100; saveSettings(); requestRender(); });
+    } });
+}
 function onionTint(f, col) {
   let e = tintCache.get(f.id);
   if (e && e.ver === f.ver && e.col === col) return e.c;
@@ -621,8 +680,8 @@ function onionTint(f, col) {
   x.globalCompositeOperation = 'source-in'; x.fillStyle = col; x.fillRect(0, 0, c.width, c.height);
   x.globalCompositeOperation = 'source-over';
   tintCache.set(f.id, { ver: f.ver, col, c });
-  if (tintCache.size > 4) {
-    const keep = new Set([S.frames[S.cur - 1], S.frames[S.cur + 1]].filter(Boolean).map(f => f.id));
+  if (tintCache.size > 2 + (S.onionPrev | 0) + (S.onionNext | 0)) {
+    const keep = new Set(onionList().map(([i]) => S.frames[i]).filter(Boolean).map(f => f.id));
     for (const k of tintCache.keys()) if (!keep.has(k)) tintCache.delete(k);
   }
   return c;
@@ -643,6 +702,7 @@ function render() {
   { const deg = Math.round(((vr / DEG) % 360 + 360) % 360); $('#zoomLbl').textContent = Math.round(vs / fitS * 100) + '%' + (deg ? ` · ${deg}°` : ''); }
   if (playing) {
     if (playCanvas) { c.save(); c.beginPath(); c.rect(0, 0, W, H); c.clip(); const now = performance.now(); drawFrameFx(c, playIdx, playCanvas, (now - playT0) / 1000, (now - playFT0) / 1000); c.restore(); }
+    if (S.safe) drawSafeZone(c, 1 / vs * DPR);
     requestRender(); return;
   }
   const f = curFrame(); if (!f) return;
@@ -661,10 +721,9 @@ function render() {
     }
   }
   if (S.onion) {
-    const pairs = [[S.cur - 1, '#ff3b5c'], [S.cur + 1, '#2f7bff']];
-    for (const [i, col] of pairs) {
+    for (const [i, col, a] of onionList()) {
       const of = S.frames[i];
-      if (of && of.canvas) { c.globalAlpha = S.onionAlpha; c.drawImage(onionTint(of, col), 0, 0, W, H); c.globalAlpha = 1; }
+      if (of && of.canvas) { c.globalAlpha = a; c.drawImage(onionTint(of, col), 0, 0, W, H); c.globalAlpha = 1; }
       else if (of && !of.canvas) ensureLoaded(of).then(requestRender);
     }
   }
@@ -673,12 +732,14 @@ function render() {
   if (S.showChar && f.canvas) c.drawImage(stroke && stroke.cv === f.canvas ? work : f.canvas, 0, 0);
   if (floating && floating.t.type === 'char') drawFloating(c);
   if (stroke) drawStrokePred(c);
+  if (S.sym && (S.tool === 'brush' || S.tool === 'eraser')) { const q = 1 / vs * DPR; c.save(); c.setLineDash([10 * q, 8 * q]); c.lineWidth = 1.5 * q; c.strokeStyle = 'rgba(125,107,255,.85)'; c.beginPath(); if (S.sym !== 2) { c.moveTo(W / 2, 0); c.lineTo(W / 2, H); } if (S.sym !== 1) { c.moveTo(0, H / 2); c.lineTo(W, H / 2); } c.stroke(); c.restore(); }
   const px = 1 / vs * DPR;
   if (S.pp && S.showPP && !ppSetup) drawPuppet(c, f.pp, f.lip);
   if (S.showVec) renderVec(c, rig && rig.pv ? { vec: rig.pv } : rig ? { vec: f.vec } : motion && motion.pv ? { vec: motion.pv } : f, px);
   if (rig) renderRig(c, px);
   renderPP(c, f, px);
   if (f.texts && f.texts.length) drawTexts(c, f, S.tool === 'fx' ? fxSel : null);
+  if (S.safe) drawSafeZone(c, px);
   if (S.tool === 'fx') {
     const cam = camAt(S.cur), z = Math.max(1, cam.z), hw = W / (2 * z), hh = H / (2 * z), cx = clamp(cam.x, hw, W - hw), cy = clamp(cam.y, hh, H - hh);
     if (z > 1.001) { c.save(); c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.rect(0, 0, W, H); c.rect(cx - hw, cy - hh, hw * 2, hh * 2); c.fill('evenodd'); c.restore(); }
@@ -702,6 +763,42 @@ function render() {
     c.strokeRect(-floating.c.width / 2, -floating.c.height / 2, floating.c.width, floating.c.height);
     c.restore(); c.setLineDash([]);
   }
+}
+
+/* ========= Shorts safe zone (only on screen, never exported) ========= */
+// Where YouTube Shorts / TikTok cover the video with their own UI. Fractions of the frame for 9:16.
+SETTINGS_KEYS.push('safe'); S.safe = 0;
+const SAFE_916 = { l: 0.055, r: 0.15, t: 0.08, b: 0.22 };
+function safeRect() {
+  if (H > W * 1.4) { const z = SAFE_916; return { x: W * z.l, y: H * z.t, w: W * (1 - z.l - z.r), h: H * (1 - z.t - z.b), tall: true }; }
+  return { x: W * 0.05, y: H * 0.05, w: W * 0.9, h: H * 0.9, tall: false };
+}
+function drawSafeZone(c, px) {
+  const r = safeRect();
+  c.save();
+  c.fillStyle = 'rgba(255,40,90,.13)'; c.beginPath(); c.rect(0, 0, W, H); c.rect(r.x, r.y, r.w, r.h); c.fill('evenodd');
+  c.setLineDash([12 * px, 8 * px]); c.lineWidth = 2.5 * px; c.strokeStyle = 'rgba(255,40,90,.9)'; c.strokeRect(r.x, r.y, r.w, r.h); c.setLineDash([]);
+  if (r.tall) {
+    const fs = Math.max(13 * px, W * 0.022); c.font = `600 ${fs}px system-ui,sans-serif`; c.fillStyle = 'rgba(200,20,70,.85)'; c.textBaseline = 'middle';
+    c.textAlign = 'center'; c.fillText('Thanh tìm kiếm / tiêu đề', W / 2, r.y / 2);
+    c.fillText('Tên kênh · mô tả · nhạc', (r.x + r.x + r.w) / 2, r.y + r.h + (H - r.y - r.h) * 0.45);
+    c.save(); c.translate(r.x + r.w + (W - r.x - r.w) / 2, H * 0.62); c.rotate(-Math.PI / 2); c.fillText('Nút thích · bình luận · chia sẻ', 0, 0); c.restore();
+    // like/comment/share buttons hint
+    c.fillStyle = 'rgba(255,40,90,.25)'; const bx = r.x + r.w + (W - r.x - r.w) / 2, br = Math.min((W - r.x - r.w) * 0.32, W * 0.04);
+    for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(bx, H * 0.48 + i * br * 3.2, br, 0, Math.PI * 2); c.fill(); }
+  }
+  if (S.safe === 2) {
+    c.strokeStyle = 'rgba(40,140,255,.7)'; c.lineWidth = 1.5 * px; c.beginPath();
+    for (let i = 1; i < 3; i++) { c.moveTo(W * i / 3, 0); c.lineTo(W * i / 3, H); c.moveTo(0, H * i / 3); c.lineTo(W, H * i / 3); }
+    c.stroke();
+    c.strokeStyle = 'rgba(40,140,255,.9)'; c.beginPath(); c.moveTo(W / 2 - 18 * px, H / 2); c.lineTo(W / 2 + 18 * px, H / 2); c.moveTo(W / 2, H / 2 - 18 * px); c.lineTo(W / 2, H / 2 + 18 * px); c.stroke();
+  }
+  c.restore();
+}
+$('#safeBtn').addEventListener('click', () => cycleSafe());
+function cycleSafe() {
+  S.safe = ((S.safe || 0) + 1) % 3; updateToggles(); saveSettings(); requestRender();
+  toast(['Đã tắt vùng an toàn', 'Vùng hồng sẽ bị chữ và nút của Shorts/TikTok che: đặt mặt nhân vật và chữ quan trọng trong khung', 'Thêm lưới 1/3 + tâm khung để bố cục'][S.safe], 3000);
 }
 
 /* ========= Strokes ========= */
@@ -852,26 +949,84 @@ function growDirty(x, y, r) {
   d[0] = Math.min(d[0], x - r); d[1] = Math.min(d[1], y - r); d[2] = Math.max(d[2], x + r); d[3] = Math.max(d[3], y + r);
   b[0] = Math.min(b[0], x - r); b[1] = Math.min(b[1], y - r); b[2] = Math.max(b[2], x + r); b[3] = Math.max(b[3], y + r);
 }
+// symmetry: a second brush engine draws the mirrored stroke into the same layer
+const symPt = p => S.sym === 2 ? { ...p, y: H - p.y } : S.sym === 3 ? { ...p, x: W - p.x, y: H - p.y } : { ...p, x: W - p.x };
+function strokeEngines() {
+  const st = stroke, o = { brush: st.B, color: S.color, size: S.size, pressure: S.pressure, smooth: st.shape ? 0 : S.smooth, erase: st.erase, dirty: growDirty };
+  st.eng = makeBrushEngine(sctx, o); st.eng2 = S.sym ? makeBrushEngine(sctx, o) : null;
+}
+function strokeFeed(p, t) { stroke.eng.add(p, t); if (stroke.eng2) stroke.eng2.add(symPt(p), t); }
 function strokeBegin(p, t) {
   snapPrepare(); p = snapPoint(p);
   const o = activeObj(), erase = S.tool === 'eraser', B = brushOf(S.tool);
   const isCol = S.layer === 'col' && o.kind === 'char';
+  t = t != null ? t : performance.now();
   stroke = { t: targetOf(o), o, cv: isCol ? colOf(o, true) : o.canvas, col: isCol, erase, B, pred: null,
-    bbox: [Infinity, Infinity, -Infinity, -Infinity], dirty: [0, 0, W, H], full: true, opacity: erase ? 1 : S.opacity * (B.alpha || 1) };
+    bbox: [Infinity, Infinity, -Infinity, -Infinity], dirty: [0, 0, W, H], full: true, opacity: erase ? 1 : S.opacity * (B.alpha || 1),
+    raw: [{ ...p, t }], shape: !erase && S.shapeMode ? S.shapeMode : null, hold: { x: p.x, y: p.y }, clip: !erase && !!S.clipIn };
   sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.globalCompositeOperation = 'source-over'; sctx.globalAlpha = 1; sctx.clearRect(0, 0, W, H);
-  stroke.eng = makeBrushEngine(sctx, { brush: B, color: S.color, size: S.size, pressure: S.pressure, smooth: S.smooth, erase, dirty: growDirty });
-  stroke.eng.add(p, t != null ? t : performance.now());
+  strokeEngines(); strokeFeed(p, t);
   if (!erase) addRecentColor(S.color);
   requestRender();
 }
 function strokePoint(raw, t) {
-  raw = snapPoint(raw);
-  stroke.eng.add(raw, t != null ? t : performance.now());
+  raw = snapPoint(raw); t = t != null ? t : performance.now();
+  const st = stroke; st.raw.push({ ...raw, t });
+  if (st.shape) { if (!st.locked) { st.end = raw; shapeRedraw(); } }
+  else {
+    strokeFeed(raw, t);
+    // QuickShape: holding the pen still for a moment turns the freehand stroke into a line / ellipse
+    if (!st.erase && Math.hypot(raw.x - st.hold.x, raw.y - st.hold.y) > 5 / (vs / DPR)) { st.hold = { x: raw.x, y: raw.y }; clearTimeout(st.holdT); st.holdT = setTimeout(() => quickShape(st), 550); }
+  }
   requestRender();
+}
+// rebuild the stroke as a clean shape from its start point to st.end (or the fitted ellipse box)
+function shapePts(st) {
+  const a = st.raw[0], b = st.end || st.raw[st.raw.length - 1], P = [];
+  const pr = st.raw.reduce((s, q) => s + (q.p || 0.5), 0) / st.raw.length;
+  const line = (x0, y0, x1, y1) => { const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 4)); for (let i = P.length ? 1 : 0; i <= n; i++) P.push({ x: x0 + (x1 - x0) * i / n, y: y0 + (y1 - y0) * i / n, p: pr }); };
+  if (st.shape === 'line') line(a.x, a.y, b.x, b.y);
+  else if (st.shape === 'rect') { line(a.x, a.y, b.x, a.y); line(b.x, a.y, b.x, b.y); line(b.x, b.y, a.x, b.y); line(a.x, b.y, a.x, a.y); }
+  else {
+    const bx = st.box || { cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, rx: Math.abs(b.x - a.x) / 2, ry: Math.abs(b.y - a.y) / 2 };
+    const n = Math.max(24, Math.ceil(Math.PI * (bx.rx + bx.ry) / 4)), a0 = bx.a0 || 0;
+    for (let i = 0; i <= n + 1; i++) { const t = a0 + i / n * Math.PI * 2; P.push({ x: bx.cx + Math.cos(t) * bx.rx, y: bx.cy + Math.sin(t) * bx.ry, p: pr }); }
+  }
+  return P;
+}
+function shapeRedraw() {
+  const st = stroke;
+  sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.globalCompositeOperation = 'source-over'; sctx.globalAlpha = 1; sctx.clearRect(0, 0, W, H);
+  st.dirty = [0, 0, W, H]; strokeEngines();
+  let t = st.raw[0].t; for (const q of shapePts(st)) strokeFeed(q, t += 8);
+  st.eng.end(); if (st.eng2) st.eng2.end(); st.shapeDone = true;
+}
+// drawing helpers for the brush: quick shapes, symmetry, draw-inside (lock alpha); remembered in settings
+SETTINGS_KEYS.push('shapeMode', 'sym', 'clipIn'); S.shapeMode = ''; S.sym = 0; S.clipIn = false;
+const SHAPES = [['', '✏ Tự do'], ['line', '╱ Thẳng'], ['rect', '▭ Chữ nhật'], ['ellipse', '◯ Tròn']], SYMS = ['⇋ Đối xứng', '⇋ Đối xứng: trái–phải', '⇋ Đối xứng: trên–dưới', '⇋ Đối xứng: 4 góc'];
+function syncShapeBtns() { const sh = SHAPES.find(x => x[0] === (S.shapeMode || '')) || SHAPES[0]; $('#shapeBtn').textContent = sh[1]; $('#shapeBtn').classList.toggle('on', !!S.shapeMode); $('#symBtn').textContent = SYMS[S.sym | 0]; $('#symBtn').classList.toggle('on', !!S.sym); $('#clipBtn').classList.toggle('on', !!S.clipIn); }
+setTimeout(syncShapeBtns, 0);   // after loadSettings()
+$('#shapeBtn').addEventListener('click', () => { const i = SHAPES.findIndex(x => x[0] === (S.shapeMode || '')); S.shapeMode = SHAPES[(i + 1) % SHAPES.length][0]; syncShapeBtns(); saveSettings(); if (S.shapeMode) toast('Kéo từ điểm đầu tới điểm cuối để vẽ ' + SHAPES.find(x => x[0] === S.shapeMode)[1].slice(2).toLowerCase(), 2200); });
+$('#symBtn').addEventListener('click', () => { S.sym = ((S.sym | 0) + 1) % 4; syncShapeBtns(); saveSettings(); requestRender(); });
+$('#clipBtn').addEventListener('click', () => { S.clipIn = !S.clipIn; syncShapeBtns(); saveSettings(); toast(S.clipIn ? 'Nét mới chỉ hiện trên chỗ đã vẽ ở lớp này (tô bóng, đổi màu nét)' : 'Vẽ bình thường', 2500); });
+let quickShapeHint = false;
+function quickShape(st) {
+  if (stroke !== st || st.shape || st.raw.length < 6) return;
+  const R = st.raw, a = R[0], b = R[R.length - 1]; let len = 0, x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let i = 1; i < R.length; i++) len += Math.hypot(R[i].x - R[i - 1].x, R[i].y - R[i - 1].y);
+  for (const q of R) { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y); }
+  if (len < 30) return;
+  const chord = Math.hypot(b.x - a.x, b.y - a.y);
+  if (chord < len * 0.22 && x1 - x0 > 12 && y1 - y0 > 12) { st.shape = 'ellipse'; st.box = { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, rx: (x1 - x0) / 2, ry: (y1 - y0) / 2, a0: Math.atan2((a.y - (y0 + y1) / 2) / ((y1 - y0) / 2), (a.x - (x0 + x1) / 2) / ((x1 - x0) / 2)) }; }
+  else if (chord > len * 0.6) st.shape = 'line';
+  else return;
+  st.end = { x: b.x, y: b.y }; shapeRedraw(); requestRender();
+  if (!quickShapeHint) { quickShapeHint = true; toast(st.shape === 'line' ? 'Đã nắn thành đường thẳng — kéo tiếp để chỉnh đầu nét' : 'Đã nắn thành hình tròn', 2200); }
+  if (st.shape === 'ellipse') st.locked = true;
 }
 // predicted pointer positions: drawn on screen only (never saved) to hide input latency
 function drawStrokePred(c) {
-  const st = stroke; if (!st || !st.pred || !st.pred.length || st.erase) return;
+  const st = stroke; if (!st || !st.pred || !st.pred.length || st.erase || st.shape || st.eng2 || st.clip) return;
   const B = st.B, pts = st.eng.E.pts, n = pts.length;
   if (B.kind !== 'line' || B.grain || (B.alpha || 1) < 1 || S.smooth > 0.35 || n < 2) return;
   const a = pts[n - 2], b = pts[n - 1];
@@ -900,7 +1055,7 @@ function buildWork() {
   wctx.globalCompositeOperation = 'source-over'; wctx.globalAlpha = 1; wctx.clearRect(x, y, w, h);
   wctx.drawImage(cv, 0, 0);
   if (stroke.erase) { wctx.globalCompositeOperation = 'destination-out'; wctx.drawImage(L, 0, 0); }
-  else { wctx.globalAlpha = stroke.opacity; wctx.drawImage(L, 0, 0); }
+  else { if (stroke.clip) wctx.globalCompositeOperation = 'source-atop'; wctx.globalAlpha = stroke.opacity; wctx.drawImage(L, 0, 0); }
   wctx.restore();
 }
 function rectFromBox(b, pad = 0) {
@@ -910,13 +1065,15 @@ function rectFromBox(b, pad = 0) {
 }
 function strokeEnd() {
   if (!stroke) return;
-  stroke.eng.end();
+  clearTimeout(stroke.holdT);
+  if (stroke.shape && !stroke.shapeDone) shapeRedraw();
+  if (!stroke.shapeDone) { stroke.eng.end(); if (stroke.eng2) stroke.eng2.end(); }
   const o = stroke.o, rect = rectFromBox(stroke.bbox, 2);
   if (rect && o.canvas && stroke.cv) {
     const lc = stroke.cv.getContext('2d'), L = strokeLayer(rect);
     const before = lc.getImageData(...rect);
     lc.save(); lc.beginPath(); lc.rect(...rect); lc.clip();
-    lc.globalCompositeOperation = stroke.erase ? 'destination-out' : 'source-over'; lc.globalAlpha = stroke.erase ? 1 : stroke.opacity;
+    lc.globalCompositeOperation = stroke.erase ? 'destination-out' : stroke.clip ? 'source-atop' : 'source-over'; lc.globalAlpha = stroke.erase ? 1 : stroke.opacity;
     lc.drawImage(L, 0, 0); lc.restore();
     const after = lc.getImageData(...rect);
     pushEntry(pixEntry(o, rect, before, after, stroke.col)); if (stroke.col) o.colVer++;
@@ -949,6 +1106,23 @@ function lineWalls(f) {           // 1 where a line is (pixel lines of Nhân v�
   }
   return walls;
 }
+// gap closing for the fill tool: radius in px per level (Tắt / Nhỏ / Vừa / Lớn), remembered in settings
+SETTINGS_KEYS.push('fillGap'); S.fillGap = 1;
+const GAP_R = [0, 3, 6, 11], GAP_N = ['Tắt', 'Nhỏ', 'Vừa', 'Lớn'];
+function syncFillBtns() { $('#gapBtn').textContent = 'Bịt khe: ' + GAP_N[S.fillGap | 0]; $('#gapBtn').classList.toggle('on', !!S.fillGap); }
+setTimeout(syncFillBtns, 0);   // after loadSettings()
+$('#gapBtn').addEventListener('click', () => { S.fillGap = ((S.fillGap | 0) + 1) % 4; syncFillBtns(); saveSettings(); toast(S.fillGap ? `Bịt khe hở tới ~${Math.round(GAP_R[S.fillGap] * 1.6)}px khi đổ màu` : 'Tắt bịt khe: màu chỉ dừng ở nét kín', 2200); });
+// chamfer distance (in px) from every pixel to the nearest line pixel, capped at cap
+function wallDist(walls, cap) {
+  const d = new Uint16Array(W * H), C = cap * 3 + 3;
+  for (let i = 0; i < d.length; i++) d[i] = walls[i] ? 0 : C;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x; let v = d[i]; if (!v) continue;
+    if (x > 0 && d[i - 1] + 3 < v) v = d[i - 1] + 3; if (y > 0) { if (d[i - W] + 3 < v) v = d[i - W] + 3; if (x > 0 && d[i - W - 1] + 4 < v) v = d[i - W - 1] + 4; if (x < W - 1 && d[i - W + 1] + 4 < v) v = d[i - W + 1] + 4; } d[i] = v; }
+  for (let y = H - 1; y >= 0; y--) for (let x = W - 1; x >= 0; x--) { const i = y * W + x; let v = d[i]; if (!v) continue;
+    if (x < W - 1 && d[i + 1] + 3 < v) v = d[i + 1] + 3; if (y < H - 1) { if (d[i + W] + 3 < v) v = d[i + W] + 3; if (x < W - 1 && d[i + W + 1] + 4 < v) v = d[i + W + 1] + 4; if (x > 0 && d[i + W - 1] + 4 < v) v = d[i + W - 1] + 4; } d[i] = v; }
+  for (let i = 0; i < d.length; i++) d[i] = d[i] / 3;
+  return d;
+}
 /* Fill into the frame's colour layer. The area is bounded by lines only; the colour also runs under the lines up to their
    middle (split with the neighbouring area), so erasing a line later leaves the colour exactly where it was — no gap, no spreading. */
 function fillColLayer(f, p) {
@@ -956,24 +1130,36 @@ function fillColLayer(f, p) {
   const x0 = Math.floor(p.x), y0 = Math.floor(p.y);
   const walls = lineWalls(f);
   if (walls[y0 * W + x0]) { toast('Chạm vào bên trong vùng, không phải lên nét'); return; }
+  // gap closing: flood inside thickened lines (small holes in the outline get sealed), then grow back up to the real lines
+  const gr = GAP_R[S.fillGap | 0] || 0, dist = gr ? wallDist(walls, gr + 1) : null;
+  let fw = walls;
+  if (gr) { fw = new Uint8Array(W * H); for (let i = 0; i < fw.length; i++) fw[i] = dist[i] <= gr ? 1 : 0; if (fw[y0 * W + x0]) fw = walls; }
   const mask = new Uint8Array(W * H);
   let minX = x0, maxX = x0, minY = y0, maxY = y0;
   const stack = [x0, y0];
   while (stack.length) {
     const sy = stack.pop(), sx = stack.pop(), row = sy * W;
-    if (mask[row + sx] || walls[row + sx]) continue;
+    if (mask[row + sx] || fw[row + sx]) continue;
     let l = sx, r = sx;
-    while (l > 0 && !mask[row + l - 1] && !walls[row + l - 1]) l--;
-    while (r < W - 1 && !mask[row + r + 1] && !walls[row + r + 1]) r++;
+    while (l > 0 && !mask[row + l - 1] && !fw[row + l - 1]) l--;
+    while (r < W - 1 && !mask[row + r + 1] && !fw[row + r + 1]) r++;
     for (let k = l; k <= r; k++) mask[row + k] = 1;
     if (l < minX) minX = l; if (r > maxX) maxX = r; if (sy < minY) minY = sy; if (sy > maxY) maxY = sy;
     for (const ny of [sy - 1, sy + 1]) {
       if (ny < 0 || ny >= H) continue;
       const nrow = ny * W; let inSeg = false;
       for (let k = l; k <= r; k++) {
-        const ok = !mask[nrow + k] && !walls[nrow + k];
+        const ok = !mask[nrow + k] && !fw[nrow + k];
         if (ok && !inSeg) { stack.push(k, ny); inSeg = true; } else if (!ok) inSeg = false;
       }
+    }
+  }
+  if (fw !== walls) {   // grow back through non-line pixels by up to gr steps (stays behind the sealed gap)
+    let cur = []; for (let y = minY; y <= maxY; y++) for (let x = minX; x <= maxX; x++) { const i = y * W + x; if (mask[i]) cur.push(i); }
+    for (let k = 0; k < gr && cur.length; k++) {
+      const nx = [];
+      for (const i of cur) { const x = i % W; for (const j of [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, i - W, i + W]) { if (j < 0 || j >= W * H || mask[j] || walls[j]) continue; mask[j] = 1; nx.push(j); const jx = j % W, jy = (j - jx) / W; if (jx < minX) minX = jx; if (jx > maxX) maxX = jx; if (jy < minY) minY = jy; if (jy > maxY) maxY = jy; } }
+      cur = nx;
     }
   }
   // run under the lines: BFS through line pixels from this area (da) and from every other area (db); keep pixels nearer to us
@@ -1188,6 +1374,57 @@ function showSelbar() {
 }
 function hideSelbar() { $('#selbar').hidden = true; }
 
+/* ===== copy / paste a selection across frames ===== */
+let selClip = null;
+const cloneCv = c => { if (!c) return null; const k = makeCanvas(c.width, c.height); k.getContext('2d').drawImage(c, 0, 0); return k; };
+function copyFloating() {
+  if (!floating || !floating.c) return;
+  const f = floating; selClip = { c: cloneCv(f.c), cc: cloneCv(f.cc), cx: f.cx, cy: f.cy, scale: f.scale, rot: f.rot, flip: f.flip };
+  $('#pasteBtn').hidden = false; toast('Đã chép — sang frame khác bấm 📋 Dán (ở thanh frame)', 2500);
+}
+function drawClip(ctx, img) { const q = selClip; ctx.save(); ctx.translate(q.cx, q.cy); ctx.rotate(q.rot); ctx.scale(q.scale * q.flip, q.scale); ctx.drawImage(img, -img.width / 2, -img.height / 2); ctx.restore(); }
+function pasteHere() {
+  if (!selClip) return;
+  if (S.layer !== 'char') setLayer('char');
+  if (S.tool !== 'lasso') setTool('lasso');
+  commitFloating();
+  const o = activeObj(); if (!o || !o.canvas) return;
+  const snap = makeCanvas(); snap.getContext('2d').drawImage(o.canvas, 0, 0);
+  const q = selClip;
+  floating = { t: targetOf(o), o, c: cloneCv(q.c), cx: q.cx, cy: q.cy, scale: q.scale, rot: q.rot, flip: q.flip, snap, dirty: null };
+  if (q.cc) { const cv = colOf(o, true); Object.assign(floating, { cc: cloneCv(q.cc), csnap: cloneCv(cv) }); }
+  showSelbar(); requestRender();
+}
+async function pasteToFrames(n) {
+  if (!selClip) return;
+  commitFloating();
+  const i0 = S.cur, i1 = Math.min(S.frames.length - 1, i0 + n - 1), entries = [];
+  const box = (() => { const q = selClip, w = q.c.width / 2 * q.scale, h = q.c.height / 2 * q.scale, cs = Math.cos(q.rot), sn = Math.sin(q.rot), b = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const [x, y] of [[-w, -h], [w, -h], [w, h], [-w, h]]) { const X = q.cx + x * cs - y * sn, Y = q.cy + x * sn + y * cs; b[0] = Math.min(b[0], X); b[1] = Math.min(b[1], Y); b[2] = Math.max(b[2], X); b[3] = Math.max(b[3], Y); } return b; })();
+  const rect = rectFromBox(box, 2); if (!rect) return;
+  const pm = progress('Đang dán…');
+  try {
+    for (let i = i0; i <= i1; i++) {
+      const f = S.frames[i]; await ensureLoaded(f);
+      const lx = f.canvas.getContext('2d'), before = lx.getImageData(...rect); drawClip(lx, selClip.c); entries.push(pixEntry(f, rect, before, lx.getImageData(...rect)));
+      if (selClip.cc) { const kx = colOf(f, true).getContext('2d'), cb = kx.getImageData(...rect); drawClip(kx, selClip.cc); entries.push(pixEntry(f, rect, cb, kx.getImageData(...rect), true)); f.colVer++; }
+      markEdited(f);
+    }
+    pushEntry({ multi: entries });
+  } finally { pm.close(); }
+  requestRender(); toast(`Đã dán vào ${i1 - i0 + 1} frame (frame ${i0 + 1}–${i1 + 1}) — hoàn tác 1 lần để bỏ`, 3000);
+}
+async function pasteDialog() {
+  if (!selClip) { toast('Chọn vùng bằng công cụ Chọn vùng rồi bấm 📋 Chép trước'); return; }
+  const left = S.frames.length - S.cur; let inp = null;
+  const v = await modal({ title: '📋 Dán hình đã chép', html: `<p class="lbl">Hình được dán đúng vị trí lúc chép. Dán vào nhiều frame hợp cho đạo cụ, vật đứng yên, chữ…</p>
+<div class="set-row"><span>Dán vào frame này và các frame sau, tổng số</span><input type="number" id="pasteN" min="1" max="${left}" value="${Math.min(left, 5)}" style="width:80px"></div>`,
+    buttons: [{ label: 'Huỷ', value: null }, { label: 'Dán nhiều frame', value: 'many' }, { label: 'Dán & chỉnh tay', value: 'one', primary: true }],
+    onOpen: ov => { inp = ov.querySelector('#pasteN'); inp.addEventListener('keydown', e => e.stopPropagation()); } });
+  const n = clamp(parseInt(inp && inp.value) || 1, 1, left);
+  if (v === 'one') pasteHere(); else if (v === 'many') await pasteToFrames(n);
+}
+
 /* ========= Undo ========= */
 const undoStack = [], redoStack = [];
 let undoBytes = 0;
@@ -1225,6 +1462,7 @@ async function applyEntry(e, key) {
   if (e.partpix) { const pt = ppPart(e.pid); if (!pt) return null; const h = e.vi ? pt.alts && pt.alts[e.vi - 1] : pt; if (!h || h.c.width !== e[key].width || h.c.height !== e[key].height) return null; h.c.getContext('2d').putImageData(e[key], 0, 0); encodeHolder(h); S.frames.forEach(fr => { fr.ver++; queueThumbFor(fr); }); scheduleSave(); ppSyncBar(); requestRender(); return null; }
   const o = objByTarget(e.t); if (!o) return null;
   if (e.fxe) { fxSetState(o, e[key]); o.ver++; fxSyncBar(); requestRender(); return o; }
+  if (e.lipe) { o.lip = e[key] ? JSON.parse(e[key]) : null; o.ver++; queueThumbFor(o); scheduleSave(); requestRender(); if (typeof ppBlinkInfo === 'function') ppBlinkInfo(); return o; }
   if (e.ppose) { ppSetState(o, e[key]); markEdited(o); ppRetween(); ppSyncBar(); updateFrameUI(); return o; }
   if (e.vec) { o.vec = cloneVec(e[key]); vsel.clear(); updVecBar(); }
   else { await ensureLoaded(o); const cv = e.col ? colOf(o, true) : o.canvas; if (e.col) o.colVer++; cv.getContext('2d').putImageData(e[key], e.rect[0], e.rect[1]); }
@@ -1283,7 +1521,8 @@ function buildStrip() {
     const idx = document.createElement('span'); idx.className = 'idx'; idx.textContent = i + 1;
     const dur = document.createElement('span'); dur.className = 'dur'; dur.textContent = fmtDur(f.dur);
     const sh = document.createElement('span'); sh.className = 'shared'; sh.style.background = BG_COLORS[bgOrder.indexOf(f.bgId) % BG_COLORS.length]; sh.title = 'Màu chấm = nhóm nền';
-    el.append(idx, dur, sh);
+    const wv = document.createElement('canvas'); wv.className = 'wave'; wv.hidden = true;
+    el.append(wv, idx, dur, sh);
     if (S.pp) { const kk = document.createElement('span'); kk.className = 'key' + (ppIsKey(f) ? '' : ' auto'); kk.textContent = ppIsKey(f) ? '🔑' : '∿'; el.append(kk); }
     el.addEventListener('click', () => { if (playing) stopPlay(); selectFrame(i); });
     strip.append(el); f.el = el;
@@ -1292,7 +1531,7 @@ function buildStrip() {
   const [tw, th] = thumbSize(); add.style.width = Math.max(tw, 44) + 'px'; add.style.height = (th + 4) + 'px';
   add.title = 'Nhân bản frame hiện tại'; add.addEventListener('click', dupFrame);
   strip.append(add);
-  updateFrameUI();
+  waveKey = ''; updateFrameUI();
 }
 function fmtDur(ms) { const s = ms / 1000; return (s >= 1 ? s.toFixed(s % 1 ? 1 : 0) : s.toFixed(2).replace(/0$/, '')) + 's'; }
 function updateFrameUI() {
@@ -1305,6 +1544,7 @@ function updateFrameUI() {
   $('#dockTlLbl').textContent = `Frame ${S.cur + 1}/${S.frames.length}`;
   const shared = S.frames.filter(g => g.bgId === f.bgId).length;
   $('#bgInfo').textContent = shared > 1 ? `Nền dùng chung ${shared} frame` : 'Nền riêng';
+  updateWaves();
   $('#moveL').disabled = S.cur === 0; $('#moveR').disabled = S.cur === S.frames.length - 1;
   const el = f.el; if (el) { const r = el.getBoundingClientRect(), sr = strip.getBoundingClientRect(); if (r.left < sr.left || r.right > sr.right) strip.scrollLeft += r.left - sr.left - sr.width / 2 + r.width / 2; }
 }
@@ -1331,6 +1571,49 @@ async function dupFrame() {
   f.canvas.getContext('2d').drawImage(src.canvas, 0, 0); copyCol(f, src); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(src.vec); f.pp = ppClone(src.pp); f.texts = JSON.parse(JSON.stringify(src.texts || []));
   S.frames.splice(S.cur + 1, 0, f); loaded.push(f);
   await drawThumb(f); buildStrip(); await selectFrame(S.cur + 1); scheduleSave(); evictSoon();
+}
+// repeat frames a..b (0-based) after b: 'loop' = a..b again, 'pingpong' = b-1..a (there and back); undo = one step
+async function repeatRange(a, b, times, mode) {
+  if (playing) stopPlay(); commitFloating();
+  const src = S.frames.slice(a, b + 1); if (!src.length) return 0;
+  let seq = [];
+  for (let k = 0; k < times; k++) seq = seq.concat(mode === 'pingpong' ? (k % 2 === 0 ? src.slice(0, -1).reverse() : src.slice(1)) : src);
+  if (!seq.length) return 0;
+  const pm = progress('Đang lặp đoạn…'), added = [];
+  try {
+    for (let k = 0; k < seq.length; k++) {
+      const s0 = seq[k]; await ensureLoaded(s0);
+      const f = newFrameObj(s0.bgId); f.dur = s0.dur;
+      f.canvas.getContext('2d').drawImage(s0.canvas, 0, 0); copyCol(f, s0); f.ver = 1; f.pngVer = 0;
+      f.vec = cloneVec(s0.vec); f.pp = ppClone(s0.pp); f.ppKey = s0.ppKey; f.ppEase = s0.ppEase; f.lip = s0.lip ? JSON.parse(JSON.stringify(s0.lip)) : null;
+      f.texts = JSON.parse(JSON.stringify(s0.texts || [])); f.cam = s0.cam ? { ...s0.cam } : null; f.shake = s0.shake || 0; f.flash = !!s0.flash;
+      added.push(f); loaded.push(f);
+      if (k % 10 === 9) { pm.set(`Đang lặp đoạn ${k + 1}/${seq.length}…`); await new Promise(r => setTimeout(r, 0)); await evictSoon(); }
+    }
+    const f0 = S.frames[b]; S.frames.splice(b + 1, 0, ...added);
+    pushEntry({ t: targetOf(f0), add: { frames: added, index: b + 1, dur0: f0.dur, dur1: f0.dur }, bytes: 0 });
+    for (const f of added) await drawThumb(f);
+  } finally { pm.close(); }
+  tintCache.clear(); ppRetween(); buildStrip(); await selectFrame(b + 1); scheduleSave(); evictSoon(); updUndoBtns();
+  return added.length;
+}
+async function repeatRangeDialog() {
+  const n = S.frames.length, num = (id, v, mx) => `<input type="number" id="${id}" min="1" max="${mx}" value="${v}" style="width:72px">`;
+  if (n < 2) { toast('Cần ít nhất 2 frame để lặp đoạn — vẽ thêm frame trước'); return; }
+  let el = {};
+  const v = await modal({ title: '🔁 Lặp đoạn frame', html: `<p class="lbl">Vẽ một chu kỳ (vd. 1 bước đi, 1 lần chớp mắt) rồi lặp lại, không cần vẽ lại. Frame mới được thêm ngay sau đoạn.</p>
+<div class="set-row"><span>Từ frame</span>${num('lrA', Math.max(1, S.cur), n)}</div>
+<div class="set-row"><span>Đến frame</span>${num('lrB', S.cur + 1, n)}</div>
+<div class="set-row"><span>Số lần thêm</span>${num('lrN', 2, 50)}</div>`,
+    buttons: [{ label: 'Huỷ', value: null }, { label: '↔ Đi rồi về', value: 'pingpong' }, { label: '🔁 Lặp lại', value: 'loop', primary: true }],
+    onOpen: ov => { ov.querySelectorAll('input').forEach(i => { el[i.id] = i; i.addEventListener('keydown', e => e.stopPropagation()); }); } });
+  if (!v) return;
+  let a = clamp((parseInt(el.lrA.value) || 1) - 1, 0, n - 1), b = clamp((parseInt(el.lrB.value) || 1) - 1, 0, n - 1); if (a > b) [a, b] = [b, a];
+  const times = clamp(parseInt(el.lrN.value) || 1, 1, 50);
+  if (v === 'pingpong' && b - a < 1) { toast('Đi rồi về cần đoạn ít nhất 2 frame'); return; }
+  if ((b - a + 1) * times > 600) { toast('Nhiều quá (tối đa 600 frame mỗi lần)'); return; }
+  const c = await repeatRange(a, b, times, v);
+  toast(`Đã thêm ${c} frame sau frame ${b + 1} — hoàn tác 1 lần để bỏ`, 3000);
 }
 async function delFrame() {
   if (playing) stopPlay();
@@ -1373,12 +1656,71 @@ function setDur(ms, all) {
   updateFrameUI(); scheduleSave();
 }
 
+/* ===== voice / music waveform under the frame thumbnails: time poses to the words without guessing ===== */
+const peakCache = new WeakMap(); let waveKey = '';
+const PEAK_HZ = 100;
+function audioPeaks(ab) {
+  if (!ab) return null;
+  const c = peakCache.get(ab); if (c) return c.peaks || null;
+  const ent = {}; peakCache.set(ab, ent);
+  (async () => {
+    try {
+      const ac = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100, 44100), b = await ac.decodeAudioData(ab.slice(0));
+      const n = Math.ceil(b.duration * PEAK_HZ), out = new Float32Array(n), step = b.sampleRate / PEAK_HZ, chs = [];
+      for (let k = 0; k < b.numberOfChannels; k++) chs.push(b.getChannelData(k));
+      let mx = 1e-6;
+      for (let i = 0; i < n; i++) { let m = 0; const a0 = Math.floor(i * step), a1 = Math.min(b.length, Math.floor((i + 1) * step)); for (const d of chs) for (let j = a0; j < a1; j += 4) { const v = Math.abs(d[j]); if (v > m) m = v; } out[i] = m; if (m > mx) mx = m; }
+      for (let i = 0; i < n; i++) out[i] = Math.min(1, out[i] / mx * 1.15);
+      ent.peaks = out; waveKey = ''; updateWaves();
+    } catch (e) { ent.peaks = null; }
+  })();
+  return null;
+}
+function updateWaves() {
+  const A = S.audio || {}, vp = A.voice ? audioPeaks(A.voice.buf) : null, mp = A.music ? audioPeaks(A.music.buf) : null;
+  const vi = A.voice ? Math.max(0, S.frames.findIndex(f => f.id === A.voice.frameId)) : 0;
+  const sfxAt = new Set((A.sfx || []).map(x => x.frameId));
+  const key = (vp ? 'v' + vi : '') + (mp ? 'm' : '') + '|' + [...sfxAt].join(',') + '|' + S.frames.map(f => f.dur).join(',') + '|' + S.frames.length;
+  if (key === waveKey) return; waveKey = key;
+  const T = frameStartTimes(), v0 = T[vi] || 0;
+  S.frames.forEach((f, i) => {
+    const el = f.el; if (!el) return;
+    const cv = el.querySelector('.wave'); if (!cv) return;
+    let sb = el.querySelector('.sfxb'); if (sfxAt.has(f.id)) { if (!sb) { sb = document.createElement('span'); sb.className = 'sfxb'; sb.textContent = '🔊'; el.append(sb); } } else if (sb) sb.remove();
+    el.classList.toggle('hasw', !!(vp || mp));
+    if (!vp && !mp) { cv.hidden = true; return; }
+    const w = f.thumb ? f.thumb.width : 54, h = 18; cv.hidden = false;
+    if (cv.width !== w * 2) { cv.width = w * 2; cv.height = h * 2; }
+    const x = cv.getContext('2d'); x.setTransform(2, 0, 0, 2, 0, 0); x.clearRect(0, 0, w, h);
+    x.fillStyle = 'rgba(0,0,0,.45)'; x.fillRect(0, 0, w, h);
+    const draw = (pk, t0, col) => {
+      const t1 = t0 + f.dur / 1000; if (t1 <= 0 || t0 >= pk.length / PEAK_HZ) return;
+      x.fillStyle = col;
+      for (let px = 0; px < w; px++) {
+        const a = Math.floor((t0 + (t1 - t0) * px / w) * PEAK_HZ), b = Math.max(a + 1, Math.floor((t0 + (t1 - t0) * (px + 1) / w) * PEAK_HZ));
+        let m = 0; for (let j = Math.max(0, a); j < Math.min(pk.length, b); j++) if (pk[j] > m) m = pk[j];
+        if (m > 0.01) { const hh = Math.max(1, m * (h - 2)); x.fillRect(px, (h - hh) / 2, 1, hh); }
+      }
+    };
+    if (mp) draw(mp, T[i], 'rgba(120,190,255,.6)');
+    if (vp) draw(vp, T[i] - v0, '#ffb21e');
+    if (vp && i === vi) { x.fillStyle = '#ff3b9a'; x.fillRect(0, 0, 2, h); }
+  });
+}
+
 /* ========= Playback ========= */
 let playIdx = 0, playTimer = null, playT0 = 0, playFT0 = 0, playAC = null, playStopAudio = () => {};
 const hasAudio = () => !!(S.audio && (S.audio.music || S.audio.voice || (S.audio.sfx || []).length));
 async function playAudioFrom(i) { playStopAudio(); playStopAudio = () => {}; if (!hasAudio()) return; try { if (!playAC) playAC = new (window.AudioContext || window.webkitAudioContext)(); const T = frameStartTimes(); playStopAudio = await scheduleAudio(playAC, playAC.destination, T[i], T[T.length - 1]); } catch (e) { console.error(e); } }
+// Playback renders every frame to a small canvas first. Keep that cache inside a memory budget (lower
+// resolution for long films) and free it a while after playback stops, so RAM doesn't grow forever.
+const PLAY_BUDGET = (navigator.deviceMemory && navigator.deviceMemory <= 4 ? 120 : 260) * 1e6;
+let playFreeT = null;
+function freePlayCache(except) { for (const f of S.frames) if (f.play && f !== except) { f.play.width = 0; f.play.height = 0; f.play = null; f.playKey = ''; } }
+function playCacheSize(n) { let ph = Math.min(900, Math.max(320, Math.round(H * vs))); const perPx = 4 * n * W / H; if (ph * ph * perPx > PLAY_BUDGET) ph = Math.max(200, Math.floor(Math.sqrt(PLAY_BUDGET / perPx))); return ph; }
 async function buildPlayCache() {
-  const ph = Math.min(900, Math.max(320, Math.round(H * vs))), k = ph / H, pw = Math.round(W * k);
+  clearTimeout(playFreeT);
+  const ph = playCacheSize(S.frames.length), k = ph / H, pw = Math.round(W * k);
   for (let i = 0; i < S.frames.length; i++) {
     const f = S.frames[i], bg = bgOf(f);
     const key = f.ver + ':' + (bg ? bg.id + '.' + bg.ver : '') + ':' + pw + ':' + (S.bgVideo ? 'v' : '');
@@ -1417,6 +1759,7 @@ function step() {
 }
 function stopPlay() {
   playing = false; clearTimeout(playTimer); playCanvas = null; if (bgVid.el) { bgVid.el.pause(); bgVid.el.muted = true; setTimeout(() => bgVideoSync(true), 0); } playStopAudio(); playStopAudio = () => {}; if (playAC) { try { playAC.close(); } catch (e) {} playAC = null; }
+  clearTimeout(playFreeT); playFreeT = setTimeout(() => { if (!playing) freePlayCache(); }, 45000);
   $('#playBtn span').textContent = 'Phát'; $('#playHint').hidden = true;
   S.frames.forEach(g => g.el && g.el.classList.remove('playing'));
   requestRender();
@@ -2247,6 +2590,7 @@ function ppImg(p, q) {
 function ppAlphaH(h) { if (!h.alpha && h.c) { const d = h.c.getContext('2d').getImageData(0, 0, h.c.width, h.c.height).data, a = new Uint8Array(h.c.width * h.c.height); for (let i = 0; i < a.length; i++) a[i] = d[i * 4 + 3]; h.alpha = a; } return h.alpha; }
 function drawPuppet(ctx, pose, lip) {
   if (!S.pp || !S.pp.parts.length) return;
+  if (lip && lip.eb) { pose = { ...(pose || {}) }; for (const id in lip.eb) { const ep = ppPart(id), a = lip.eb[id]; if (!ep || !a) continue; const q = pose[id] = { ...(pose[id] || {}) }; if (ep.alts && ep.alts.length) { const L = ep.alts.length; if (a >= 1) q.v = L; else if (L >= 2) q.v = 1; } else q.sy = (q.sy == null ? 1 : q.sy) * (1 - 0.9 * a); } }
   if (lip && lip.pid) { const mp = ppPart(lip.pid); if (mp) { const q = { ...((pose && pose[mp.id]) || {}) }; if (mp.alts && mp.alts.length) { const v = Math.round(lip.lv * mp.alts.length); if (v) q.v = v; else delete q.v; } else q.sy = (q.sy == null ? 1 : q.sy) * (1 + 0.8 * lip.lv); pose = { ...(pose || {}), [mp.id]: q }; } }
   const M = ppMats(pose);
   for (const p of [...S.pp.parts].sort((a, b) => a.z - b.z)) {
@@ -2276,7 +2620,68 @@ function ppFitJoints(src, pts) {
     for (let y = Math.round(t0); y < t0 + 0.1 * hg; y += 2) for (let x = 0; x < W; x += 2) if (op(x, y)) { sx += x; c++; mn = Math.min(mn, x); mx = Math.max(mx, x); }
     if (c > 20 && mx - mn < 0.35 * hg) { const dx = sx / c - J.root.x; for (const k of ['head', 'neck', 'chest', 'root', 'shL', 'shR', 'hpL', 'hpR']) J[k].x += dx; }
   }
+  // image-aware axis, neck and shoulders: the bounding-box centre is off when feet are spread or one arm sticks out,
+  // and arms hanging beside the body put the generic shoulders out in the air
+  var armsDown = false, headFit = false;
+  {
+    const A = new Float32Array(W * H); for (let i = 0; i < A.length; i++) A[i] = d[i * 4 + 3] > 100 ? 1 : 0;
+    const hd = cariFindHead(A, W, H);
+    if (hd && hd.neck < hd.bot - 0.3 * (hd.bot - hd.top)) {
+      const H0 = hd.bot - hd.top;
+      const rowRun = (y, x0) => {   // opaque run on row y that contains (or is nearest to) x0
+        y = Math.round(y); let x = Math.round(x0);
+        if (!op(x, y)) { let f = null; for (let k = 1; k < 0.1 * H0 && f == null; k++) { if (op(x - k, y)) f = x - k; else if (op(x + k, y)) f = x + k; } if (f == null) return null; x = f; }
+        let a = x, b = x; while (op(a - 1, y)) a--; while (op(b + 1, y)) b++; return [a, b];
+      };
+      const nr = rowRun(hd.neck, hd.cx), nw = nr ? nr[1] - nr[0] : 0.05 * H0, neckX = nr ? (nr[0] + nr[1]) / 2 : hd.cx;
+      let yc = hd.neck + 0.03 * H0;
+      for (let y = hd.neck; y < hd.neck + 0.15 * H0; y++) { const r = rowRun(y, neckX); if (r && r[1] - r[0] > nw * 1.8) { yc = y; break; } }
+      headFit = true; J.head = { x: Math.abs(hd.cx - neckX) > 0.03 * H0 ? J.head.x : hd.cx, y: hd.top }; J.neck = { x: (J.head.x + neckX) / 2, y: hd.neck }; J.chest = { x: neckX, y: yc };   // a raised arm beside the head pulls hd.cx sideways
+      const ys = yc + 0.04 * H0, sr = rowRun(ys, neckX);
+      if (sr && sr[1] - sr[0] < 0.42 * H0 && sr[1] - sr[0] > nw * 1.5) {   // arms down: shoulders sit just inside the torso's top corners
+        const inset = Math.min(0.04 * H0, (sr[1] - sr[0]) * 0.15);
+        J.shL = { x: sr[0] + inset, y: ys }; J.shR = { x: sr[1] - inset, y: ys };
+        J.root.x = (sr[0] + sr[1]) / 2; armsDown = true;
+        // the arm is the outermost thing on its rows: take the first run from the outside (the centre of a run that
+        // also holds the shirt would put the elbow inside the body when the arm touches it)
+        const outerRun = (y, sgn) => { y = Math.round(y); let x = sgn < 0 ? 0 : W - 1; while (x >= 0 && x < W && !op(x, y)) x -= sgn; if (x < 0 || x >= W) return null; const a = x; while (op(x - sgn, y)) x -= sgn; return [Math.min(a, x), Math.max(a, x)]; };
+        for (const sd of ['L', 'R']) {
+          const sgn = sd === 'L' ? -1 : 1, sh = J['sh' + sd], ha = J['ha' + sd];
+          for (const [jt, y] of [['ha' + sd, ha.y], ['el' + sd, (sh.y + ha.y) / 2]]) {
+            const r = outerRun(y, sgn); if (!r) continue;
+            const x = r[1] - r[0] < 0.07 * H0 ? (r[0] + r[1]) / 2 : (sgn < 0 ? r[0] + 0.022 * H0 : r[1] - 0.022 * H0);
+            J[jt] = { x, y };
+          }
+        }
+      }
+    }
+  }
   const top = J.head.y, hgt = Math.max(J.ftL.y, J.ftR.y) - top, cx = J.root.x;
+  // legs: follow each foot's run of pixels upward until the two runs join (the crotch). Works when legs are apart at an angle
+  // and when the hands hang next to the thighs (a straight scan at the centre line fails there)
+  {
+    const runAt = (y, x) => { let a = x, b = x; while (op(a - 1, y)) a--; while (op(b + 1, y)) b++; return [a, b]; };
+    const near = (y, x, R) => { x = Math.round(x); for (let k = 0; k < R; k++) { if (op(x - k, y)) return runAt(y, x - k); if (op(x + k, y)) return runAt(y, x + k); } return null; };
+    const follow = (y, p) => { const m = Math.round((p[0] + p[1]) / 2); if (op(m, y)) return runAt(y, m); for (let x = p[0] - 2; x <= p[1] + 2; x++) if (op(x, y)) return runAt(y, x); return null; };
+    let y = Math.round(Math.max(J.ftL.y, J.ftR.y) - 0.03 * hgt), rL = near(y, J.ftL.x, 0.06 * hgt), rR = near(y, J.ftR.x, 0.06 * hgt);
+    if (rL && rR && rL[1] < rR[0]) {
+      const wL = [], wR = []; let cr = null;
+      for (; y > top + 0.35 * hgt; y--) {
+        const nL = follow(y, rL), nR = follow(y, rR); if (!nL || !nR) break;
+        if (nL[0] === nR[0]) { cr = y; break; }
+        wL.push(nL[1] - nL[0]); wR.push(nR[1] - nR[0]); rL = nL; rR = nR;
+      }
+      if (cr != null && wL.length > 0.1 * hgt) {
+        const thigh = w => { const a = w.slice(Math.floor(w.length * 0.6)).sort((p, q) => p - q); return a[Math.floor(a.length * 0.3)] || 0.06 * hgt; };
+        const hy = cr - 0.02 * hgt, lx = rL[1] - thigh(wL) * 0.5, rx = rR[0] + thigh(wR) * 0.5;
+        J.hpL = { x: lx, y: hy }; J.hpR = { x: rx, y: hy }; J.root = { x: (lx + rx) / 2, y: hy - 0.02 * hgt };
+        J.knL = { x: (lx + J.ftL.x) / 2, y: (hy + J.ftL.y) / 2 }; J.knR = { x: (rx + J.ftR.x) / 2, y: (hy + J.ftR.y) / 2 };
+        if (J.chest.y > J.root.y - 0.1 * hgt) J.chest.y = J.root.y - 0.25 * hgt;
+      }
+      else rL = null;
+      if (rL) return ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit);
+    }
+  }
   let crotch = null;
   for (let y = Math.round(top + 0.42 * hgt); y < top + 0.85 * hgt; y += 2) {
     if (op(cx, y) || op(cx - 3, y) || op(cx + 3, y)) continue;
@@ -2292,7 +2697,11 @@ function ppFitJoints(src, pts) {
       if (J.chest.y > J.root.y - 0.1 * hgt) J.chest.y = J.root.y - 0.25 * hgt;
     }
   }
-  { // neck = narrowest row under the head; the torso starts where the body gets wide again
+  return ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit);
+}
+/** shared end of joint fitting: neck/torso line, hands & feet from the drawing's shape, then centre the limb joints */
+function ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit) {
+  if (!headFit) { // neck = narrowest row under the head; the torso starts where the body gets wide again
     const runW = y => { const x0 = Math.round(cx); if (!op(x0, y)) return 0; let a = x0, b = x0; while (op(a - 1, y) && x0 - a < W) a--; while (op(b + 1, y) && b - x0 < W) b++; return b - a; };
     let ny = null, nw = Infinity; for (let y = Math.round(top + 0.1 * hgt); y < top + 0.33 * hgt; y += 2) { const w = runW(y); if (w < nw) { nw = w; ny = y; } }
     if (ny != null) for (let y = ny; y < top + 0.42 * hgt; y += 2) if (runW(y) > Math.max(nw * 1.6, nw + 0.04 * hgt)) {
@@ -2300,8 +2709,22 @@ function ppFitJoints(src, pts) {
       break;
     }
   }
+  // arms already placed against the body (arms-down front view) keep their joints; ppFitLimbs still finds the feet
+  // (a side whose hand ppFitLimbs finds raised above that elbow is a raised arm: the shape-based fit wins there)
+  const keep = armsDown ? ['shL', 'elL', 'haL', 'shR', 'elR', 'haR'].map(k => [k, J[k]]) : null, skip = {};
   try { ppFitLimbs(src, J); } catch (e) { console.warn(e); }
-  // centre limb joints inside the limb (scan across the limb at each joint)
+  if (keep) {
+    const K = Object.fromEntries(keep);
+    for (const sd of ['L', 'R']) {
+      if (J['ha' + sd].y < K['el' + sd].y) continue;
+      for (const k of ['sh', 'el', 'ha']) J[k + sd] = K[k + sd];
+      skip[sd] = true; if (J._out) delete J._out[sd];
+    }
+  }
+  return ppCentreLimbs(J, op, hgt, skip);
+}
+/** centre limb joints inside the limb (scan across the limb at each joint) */
+function ppCentreLimbs(J, op, hgt, skipArms) {   // skipArms: { L: true } = leave that arm's joints as placed
   const runMid = (x0, y0, horiz, range) => {   // horiz=true: scan a column (limb runs horizontally) ; else scan a row
     const at = t => horiz ? op(x0, t) : op(t, y0), c0 = horiz ? y0 : x0;
     let hit = null; for (let k = 0; k < range; k++) { if (at(c0 + k)) { hit = c0 + k; break; } if (at(c0 - k)) { hit = c0 - k; break; } }
@@ -2310,10 +2733,11 @@ function ppFitJoints(src, pts) {
   const rng = Math.round(0.1 * hgt);
   for (const sd of ['L', 'R']) {
     const sh = J['sh' + sd], el = J['el' + sd], ha = J['ha' + sd], sgn = sd === 'L' ? -1 : 1;
+    for (const k of ['kn' + sd, 'ft' + sd]) { const jt = J[k]; const m = runMid(jt.x, jt.y - (k[0] === 'f' ? 0.02 * hgt : 0), false, rng); if (m != null) jt.x = m; }
+    if (skipArms && skipArms[sd]) continue;
     const horiz = Math.abs(ha.x - sh.x) > Math.abs(ha.y - sh.y);
     if (!(J._out && J._out[sd])) for (const [jt, xoff] of [[el, 0], [ha, -sgn * 0.02 * hgt]]) { const m = runMid(jt.x + (horiz ? xoff : 0), jt.y, horiz, rng); if (m != null) { if (horiz) jt.y = m; else jt.x = m; } }
     if (horiz) { const m = runMid(sh.x + sgn * 0.03 * hgt, sh.y, true, rng); if (m != null) sh.y = m; }
-    for (const k of ['kn' + sd, 'ft' + sd]) { const jt = J[k]; const m = runMid(jt.x, jt.y - (k[0] === 'f' ? 0.02 * hgt : 0), false, rng); if (m != null) jt.x = m; }
   }
   delete J._out; return J;
 }
@@ -2326,7 +2750,7 @@ function ppStartSetup(img) {
   for (let y = 0; y < H; y += 4) for (let xx = 0; xx < W; xx += 4) if (d[(y * W + xx) * 4 + 3] > 100) pts.push({ x: xx, y });
   if (pts.length < 20) { toast('Ảnh trống sau khi xoá nền'); return; }
   const J = ppFitJoints(src, pts);
-  ppSetup = { src, J, split: false };
+  ppSetup = { src, J, split: true };   // 2 segments per limb by default: knees and elbows bend when walking
   setTool('puppet', true);
   ppSyncBar(); requestRender();
   toast('Kéo các chấm cho khớp với vai, khuỷu, hông, gối… rồi bấm Cắt tự động', 4000);
@@ -2587,6 +3011,16 @@ async function ppAutoCut(whole) {
     for (let t = 0.3; t <= 0.71; t += 0.1) { const x = Math.round(a.x + (b.x - a.x) * t), y = Math.round(a.y + (b.y - a.y) * t); if (x >= 0 && y >= 0 && x < W && y < H && bin[y * W + x]) vals.push(dt[y * W + x]); }
     vals.sort((p, q) => p - q); hw[j] = vals.length ? vals[vals.length >> 1] : 0.03 * hgt0;
   }
+  // where an arm/leg merges into the body the distance transform is huge; the forearm/shin width is a better guess
+  for (const sd of ['L', 'R']) { if (hw['ha' + sd]) hw['el' + sd] = Math.min(hw['el' + sd], hw['ha' + sd] * 1.4); if (hw['ft' + sd]) hw['kn' + sd] = Math.min(hw['kn' + sd], hw['ft' + sd] * 1.6); }
+  // arms hanging down (front view) are drawn OVER the body, and the body gets the area behind them filled in,
+  // so swinging an arm does not leave a hole in the shirt
+  const front = new Set();
+  if (!whole) for (const sd of ['L', 'R']) {
+    const gi = gIndex['arm' + sd]; if (gi == null) continue;
+    const sh = J['sh' + sd], ha = J['ha' + sd], L = Math.hypot(ha.x - sh.x, ha.y - sh.y) || 1;
+    if ((ha.y - sh.y) / L > 0.6) { front.add(gi); groups[gi].z = 12; const fi = gIndex['fore' + sd]; if (fi != null) { front.add(fi); groups[fi].z = 11; } }
+  }
   const capR = groups.map(g => { if (whole || !g.parent) return 0; return Math.max(10, Math.min(0.08 * hgt0, (hw[g.tip] || 0.025 * hgt0) * 1.3)); });
   // descendants of each group (for joint fill: the child and everything hanging off it)
   const desc = groups.map((g, gi) => { const s = new Set([gi]); let grew = true; while (grew) { grew = false; groups.forEach((h, hi) => { if (h.parent && s.has(gIndex[h.parent]) && !s.has(hi)) { s.add(hi); grew = true; } }); } return s; });
@@ -2616,25 +3050,52 @@ async function ppAutoCut(whole) {
           if (ppFillMode !== 'off' && dist <= R && along < 0) { hPar[k] = 1; anyP = true; }
           else if (g.role !== 'head' && along >= 0 && along < capR[gi] * 0.6 && dist > capR[gi]) trim[gi].add(i);   // square corners of the limb end: hand them to the parent
         }
-        else { if (solid) kPar[k] = 1; if (dist <= capR[gi]) { hChild[k] = 1; anyC = true; } }
+        else if (l === par) { if (solid) kPar[k] = 1; if (dist <= capR[gi]) { hChild[k] = 1; anyC = true; } }   // only the parent's own pixels (an arm next to the body must not paint over the shirt)
       }
       if (anyP && kPar.some(v => v)) {
         const res = await fillCrop(rgba, cw, ch, kPar, hPar, mode);
         for (let k = 0; k < hPar.length; k++) if (hPar[k]) { const x = k % cw, y = (k / cw) | 0; extra[par].set((cy0 + y) * W + cx0 + x, [res[k * 4], res[k * 4 + 1], res[k * 4 + 2]]); }
       }
-      if (anyC && kChild.some(v => v)) {
+      if (anyC && !(front.has(gi) && g.parent === 'torso') && kChild.some(v => v)) {
         const res = diffuseFill(rgba, cw, ch, kChild);
         for (let k = 0; k < hChild.length; k++) if (hChild[k]) { const x = k % cw, y = (k / cw) | 0; capCol[gi].set((cy0 + y) * W + cx0 + x, [res[k * 4], res[k * 4 + 1], res[k * 4 + 2]]); }
       }
     }
   }
   groups.forEach((g, gi) => { if (!g.parent) return; const par = gIndex[g.parent]; for (const i of trim[gi]) if (!extra[par].has(i)) extra[par].set(i, [d[i * 4], d[i * 4 + 1], d[i * 4 + 2]]); });
+  const tor = gIndex.torso;
+  const legG = new Set(['legL', 'legR', 'shinL', 'shinR'].map(r => gIndex[r]).filter(v => v != null));
+  if ((front.size || legG.size) && tor != null && !whole) {
+    pm.set('Đang vá phần thân sau tay, chân…');
+    const hole = []; let hx0 = W, hy0 = H, hx1 = -1, hy1 = -1;
+    const shR = Math.round(0.07 * hgt0), nearSh = (x, y) => ['L', 'R'].some(sd => front.has(gIndex['arm' + sd]) && Math.hypot(x - J['sh' + sd].x, y - J['sh' + sd].y) < shR);   // the round of the shoulder
+    // the body's left/right edge on each row (arms: also look a little up and down, so a sleeve that covers the whole row is still inside)
+    const rMn = new Int32Array(H).fill(W), rMx = new Int32Array(H).fill(-1);
+    for (let y = by0; y <= by1; y++) for (let xx = bx0; xx <= bx1; xx++) if (label[y * W + xx] === tor) { if (xx < rMn[y]) rMn[y] = xx; rMx[y] = xx; }
+    const vr = Math.round(0.06 * hgt0);
+    for (let y = by0; y <= by1; y++) {
+      if (rMx[y] < 0) continue;
+      let amn = rMn[y], amx = rMx[y];
+      for (let k = Math.max(by0, y - vr); k <= Math.min(by1, y + vr); k++) if (rMx[k] >= 0) { amn = Math.min(amn, rMn[k]); amx = Math.max(amx, rMx[k]); }
+      const mn = rMn[y], mx = rMx[y];
+      for (let xx = Math.max(bx0, amn - shR); xx <= Math.min(bx1, amx + shR); xx++) { const i = y * W + xx, l = label[i]; if (bin[i] && !extra[tor].has(i) && ((front.has(l) && ((xx > amn && xx < amx) || nearSh(xx, y))) || (legG.has(l) && xx > mn && xx < mx))) { hole.push(i); if (xx < hx0) hx0 = xx; if (xx > hx1) hx1 = xx; if (y < hy0) hy0 = y; if (y > hy1) hy1 = y; } }
+    }
+    if (hole.length) {
+      const P = 12; hx0 = Math.max(0, hx0 - P); hy0 = Math.max(0, hy0 - P); hx1 = Math.min(W - 1, hx1 + P); hy1 = Math.min(H - 1, hy1 + P);
+      const cw = hx1 - hx0 + 1, ch = hy1 - hy0 + 1, rgba = new Uint8ClampedArray(cw * ch * 4), kn = new Uint8Array(cw * ch), ho = new Uint8Array(cw * ch);
+      for (let y = 0; y < ch; y++) for (let xx = 0; xx < cw; xx++) { const i = (hy0 + y) * W + hx0 + xx, k = y * cw + xx; rgba.set(d.subarray(i * 4, i * 4 + 4), k * 4); if (label[i] === tor && d[i * 4 + 3] > 200) kn[k] = 1; }
+      for (const i of hole) ho[(((i / W) | 0) - hy0) * cw + (i % W) - hx0] = 1;
+      const res = await fillCrop(rgba, cw, ch, kn, ho, ppFillMode === 'ai' ? 'ai' : 'fast');
+      for (const i of hole) { const k = ((((i / W) | 0) - hy0) * cw + (i % W) - hx0) * 4; extra[tor].set(i, [res[k], res[k + 1], res[k + 2]]); }
+    }
+  }
   const parts = [], idOf = {};
   groups.forEach(g => idOf[g.role] = newId());
   for (let gi = 0; gi < groups.length; gi++) {
     const g = groups[gi], pv = J[g.pivot], cR = capR[gi], ex = extra[gi], cc = capCol[gi], tr = trim[gi];
     let x0 = W, y0 = H, x1 = -1, y1 = -1;
-    const isCap = i => cR && bin[i] && Math.hypot(i % W - pv.x, ((i / W) | 0) - pv.y) <= cR;
+    const parI = g.parent ? gIndex[g.parent] : -1;
+    const isCap = i => cR && bin[i] && (label[i] === parI || label[i] === gi) && Math.hypot(i % W - pv.x, ((i / W) | 0) - pv.y) <= cR;
     const inPart = i => (label[i] === gi && !tr.has(i)) || isCap(i) || ex.has(i);
     for (let y = by0; y <= by1; y++) for (let xx = bx0; xx <= bx1; xx++) { const i = y * W + xx; if (inPart(i)) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
     if (x1 < 0) continue;
@@ -2834,7 +3295,7 @@ function ppPresetPose(type, k, n, base, hgt) {
     case 'shake': add('head', 'r', 10 * Math.sin(2 * ph)); break;
     case 'breathe': mul('torso', 'sy', 1 + 0.015 * s); add('head', 'dy', -0.006 * hgt * s); add('armL', 'r', 2 * s); add('armR', 'r', -2 * s); break;
     case 'talk': { const mp = ppByRole('mouth'), open = (1 - Math.cos(2 * ph)) / 2; if (mp && mp.alts && mp.alts.length) { const q = P[mp.id] = P[mp.id] || {}; q.v = Math.round(open * mp.alts.length) || undefined; } else mul('mouth', 'sy', 1 + 0.7 * open); break; }
-    case 'blink': { const pulse = Math.exp(-Math.pow((ph - Math.PI) / 0.5, 2)), ep = ppByRole('eyes'); if (ep && ep.alts && ep.alts.length) { const q = P[ep.id] = P[ep.id] || {}; q.v = pulse > 0.5 ? 1 : undefined; } else mul('eyes', 'sy', 1 - 0.9 * pulse); break; }
+    case 'blink': { const pulse = Math.exp(-Math.pow((ph - Math.PI) / 0.5, 2)), ep = ppByRole('eyes'); if (ep && ep.alts && ep.alts.length) { const q = P[ep.id] = P[ep.id] || {}; q.v = pulse > 0.5 ? ep.alts.length : pulse > 0.2 && ep.alts.length >= 2 ? 1 : undefined; } else mul('eyes', 'sy', 1 - 0.9 * pulse); break; }
   }
   return P;
 }
@@ -2848,6 +3309,52 @@ async function ppMakePreset() {
   const poses = []; for (let k = 1; k < n; k++) poses.push(ppPresetPose(ppPreset, k, n, f0.pp, hgt));
   const c = await ppInsertFrames(poses, dur); f0.dur = dur; updateFrameUI();
   toast(`Đã tạo ${c} frame ${PP_PRESETS[ppPreset][0].toLowerCase()} — chỉnh tay từng frame nếu cần`, 3500);
+}
+/* --- auto blink: closes the eyes for ~0.1-0.2s every few seconds on every frame, without adding frames.
+   Stored as an overlay in f.lip.eb = {eyesPartId: 0..1} so it survives in-betweening and is saved with lip sync. --- */
+const BLINK_GAP = { calm: [3.2, 5.5], normal: [2.2, 4], often: [1.3, 2.5] };
+function blinkRand(seed) { let x = 0; for (const ch of String(seed)) x = (x * 31 + ch.charCodeAt(0)) | 0; return () => { x = (x * 1103515245 + 12345) | 0; return ((x >>> 8) & 0xffff) / 0x10000; }; }
+function blinkPlan(eyeIds, gap) {
+  const T = frameStartTimes(), n = S.frames.length, end = T[n], plan = S.frames.map(() => ({}));
+  const at = t => { let i = 0; while (i < n - 1 && T[i + 1] <= t) i++; return i; };
+  for (const id of eyeIds) {
+    const rnd = blinkRand(id); let t = 0.6 + rnd() * (gap[0] - 0.4);
+    while (t < end - 0.05) {
+      const i = at(t); plan[i][id] = 1;
+      // short frames: half-closed on the frames around it so the blink reads smoothly
+      if (S.frames[i].dur <= 85) { for (const j of [i - 1, i + 1]) if (j >= 0 && j < n && !plan[j][id]) plan[j][id] = 0.5; }
+      t += gap[0] + rnd() * (gap[1] - gap[0]);
+    }
+  }
+  return plan;
+}
+function ppEyeParts() { return S.pp ? S.pp.parts.filter(p => p.role === 'eyes') : []; }
+function ppHasBlink() { return S.frames.some(f => f.lip && f.lip.eb); }
+function ppBlinkInfo() { const el = document.getElementById('ppBlinkInfo'); if (!el) return; const c = S.frames.filter(f => f.lip && f.lip.eb && Object.values(f.lip.eb).some(a => a >= 1)).length; el.textContent = c ? `đang bật: ${c} lần nhắm mắt` : ''; const b = document.getElementById('ppBlinkBtn'); if (b) b.classList.toggle('on', !!c); }
+function ppSetBlink(plan) {
+  const multi = [];
+  S.frames.forEach((f, i) => {
+    const before = f.lip ? JSON.stringify(f.lip) : null, l = { ...(f.lip || {}) }; delete l.eb;
+    const eb = plan && plan[i]; if (eb && Object.keys(eb).length) l.eb = eb;
+    const lip = Object.keys(l).length ? l : null, after = lip ? JSON.stringify(lip) : null;
+    if (before === after) return;
+    f.lip = lip; f.ver++; queueThumbFor(f); multi.push({ t: targetOf(f), lipe: true, before, after, bytes: 64 });
+  });
+  if (multi.length) { pushEntry({ multi }); scheduleSave(); requestRender(); }
+  ppBlinkInfo(); return multi.length;
+}
+async function ppAutoBlink() {
+  const eyes = ppEyeParts();
+  if (!eyes.length) { toast('Chưa có mảnh vai trò "Mắt": chọn mảnh Đầu → 🎨 Kho mắt/miệng/tay → gắn mắt, hoặc ✂ Khoanh tách mắt rồi đặt Vai trò Mắt', 6000); return; }
+  const has = ppHasBlink(), T = frameStartTimes(), len = T[S.frames.length];
+  if (len < 1.2) toast('Phim mới dài ' + len.toFixed(1) + 's, chớp mắt sẽ rõ hơn khi phim dài từ 2s', 3500);
+  const v = await modal({ title: '👁 Chớp mắt tự động', html: `<p>Nhân vật sẽ tự nhắm mắt khoảng 0.1–0.2 giây, cách nhau vài giây, trên toàn bộ ${S.frames.length} frame (${len.toFixed(1)}s). Không thêm frame, sửa tư thế sau vẫn giữ.</p><p class="lbl">${eyes.some(p => p.alts && p.alts.length) ? 'Mắt có hình thay thế: dùng hình cuối làm mắt nhắm (bộ chớp mắt trong Kho hình: mở → lim dim → nhắm).' : 'Mắt chưa có hình nhắm: app sẽ ép dẹt mắt lại. Gắn bộ mắt trong Kho hình để đẹp hơn.'}</p>`,
+    buttons: [...(has ? [{ label: 'Bỏ chớp mắt', value: 'off' }] : []), { label: 'Ít chớp', value: 'calm' }, { label: 'Vừa', value: 'normal', primary: true }, { label: 'Hay chớp', value: 'often' }] });
+  if (!v) return;
+  if (v === 'off') { ppSetBlink(null); toast('Đã bỏ chớp mắt tự động'); return; }
+  ppSetBlink(blinkPlan(eyes.map(p => p.id), BLINK_GAP[v]));
+  const c = S.frames.filter(f => f.lip && f.lip.eb && Object.values(f.lip.eb).some(a => a >= 1)).length;
+  toast(c ? `Đã thêm ${c} lần chớp mắt — bấm Phát để xem` : 'Phim ngắn quá nên chưa có lần chớp nào', 3500);
 }
 async function ppBake() {
   const f = curFrame(); if (!S.pp) return; await ensureLoaded(f);
@@ -2867,7 +3374,7 @@ function updPanelPill() {
 }
 function hidePanel(t) { panelHidden[t] = true; saveSettings(); updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
 function showPanel() { panelHidden[S.tool] = false; saveSettings(); updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
-function ppSyncBar() {
+function ppSyncBar() { ppBlinkInfo();
   const bar = $('#ppbar'), show = S.tool === 'puppet' && (!panelHidden.puppet || !!ppSetup);
   bar.hidden = !show; updPanelPill(); if (!show) return;
   $('#ppSetupSec').hidden = !ppSetup; $('#ppPoseSec').hidden = !!ppSetup || !S.pp;
@@ -2993,6 +3500,7 @@ $('#ppFlipChar').addEventListener('click', ppFlipChar);
 Object.entries(PP_PRESETS).forEach(([k, v]) => { const b = document.createElement('button'); b.className = 'chip small'; b.dataset.ppp = k; b.textContent = v[0]; b.addEventListener('click', () => { ppPreset = k; $('#ppPN').value = v[1]; $('#ppPDur').value = v[2]; ppSyncBar(); }); $('#ppPresets').append(b); });
 document.querySelectorAll('[data-ppdir]').forEach(b => b.addEventListener('click', () => { ppDir = +b.dataset.ppdir; ppSyncBar(); }));
 $('#ppPresetGo').addEventListener('click', ppMakePreset);
+$('#ppBlinkBtn').addEventListener('click', ppAutoBlink);
 $('#ppBake').addEventListener('click', ppBake);
 $('#projBtn').addEventListener('click', projectsDialog);
 $('#wizBtn').addEventListener('click', wizard);
@@ -3395,6 +3903,7 @@ function setFocus(on) {
 }
 $('#focusBtn').addEventListener('click', () => setFocus(true));
 $('#assetBtn').addEventListener('click', () => assetDialog());
+$('#aiCharBtn').addEventListener('click', () => aiCharDialog());
 $('#ppAssetBtn').addEventListener('click', () => { const s = ppPart(ppSel); assetDialog(s && s.asset ? s.asset.cat : (s && s.role === 'head' ? 'face' : /fore|arm/.test(s && s.role || '') ? 'hand' : 'eyes')); });
 Object.entries(GESTURES).forEach(([k, v]) => { const b = document.createElement('button'); b.className = 'chip small'; b.textContent = v[0]; b.title = 'Tạo các frame cử chỉ từ tư thế frame này'; b.addEventListener('click', () => ppGesture(k)); $('#ppGests').append(b); });
 $('#gestMir').addEventListener('change', e => { gestMirror = e.target.checked; });
@@ -3560,7 +4069,7 @@ async function openProject(id) {
   if (id === curProjId) return;
   if (saveT) { clearTimeout(saveT); await saveProject(); }
   const pm = progress('Đang mở dự án…');
-  try { const p = await idbGet('project:' + id); if (!p) throw new Error('Không tìm thấy dự án'); setCurProj(id); await loadProjectData(p); S.projName = p.name || S.projName; updateProjLabel(); }
+  try { const p = await idbGet('project:' + id); if (!p) throw new Error('Không tìm thấy dự án'); await resolveProjectRefs(p, id); setCurProj(id); await loadProjectData(p); S.projName = p.name || S.projName; updateProjLabel(); }
   catch (e) { toast('Không mở được: ' + e.message, 3000); }
   pm.close();
 }
@@ -3580,10 +4089,10 @@ async function projectsDialog() {
         if (act === 'open') { close(); await openProject(id); }
         else if (act === 'ren') { let v = null; await modal({ title: 'Đổi tên dự án', html: `<input id="pnIn" value="${(item.name || '').replace(/"/g, '&quot;')}" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text)">`, buttons: [{ label: 'Huỷ', value: null }, { label: 'Lưu', primary: true, action: () => { v = document.getElementById('pnIn').value.trim(); } }] });
           if (v) { if (id === curProjId) { S.projName = v.slice(0, 60); updateProjLabel(); await saveProject(); } else { const p = await idbGet('project:' + id); if (p) { p.name = v.slice(0, 60); await idbPut('project:' + id, p); } const L = await projIndex(); const it = L.find(x => x.id === id); if (it) { it.name = v.slice(0, 60); await idbPut('projects', L); } } close(); projectsDialog(); } }
-        else if (act === 'dup') { const p = await idbGet('project:' + id); if (!p) return; const nid = newId(); p.name = (p.name || 'Dự án') + ' (bản sao)'; await idbPut('project:' + nid, p); const L = await projIndex(); L.push({ ...item, id: nid, name: p.name, updated: Date.now() }); await idbPut('projects', L); close(); projectsDialog(); }
+        else if (act === 'dup') { const p = await idbGet('project:' + id); if (!p) return; const nid = newId(); p.name = (p.name || 'Dự án') + ' (bản sao)'; await copyProjectBlobs(id, nid, p); await idbPut('project:' + nid, p); const L = await projIndex(); L.push({ ...item, id: nid, name: p.name, updated: Date.now() }); await idbPut('projects', L); close(); projectsDialog(); }
         else if (act === 'del') {
           const ok = await modal({ title: `Xoá dự án "${item.name}"?`, html: '<p>Không hoàn tác được.</p>', buttons: [{ label: 'Huỷ', value: false }, { label: 'Xoá', value: true, cls: 'danger' }] });
-          if (!ok) return; await idbDel('project:' + id); const L = (await projIndex()).filter(x => x.id !== id); await idbPut('projects', L);
+          if (!ok) return; await idbDel('project:' + id); try { await deleteProjectBlobs(id); } catch (e) { console.error(e); } const L = (await projIndex()).filter(x => x.id !== id); await idbPut('projects', L);
           if (id === curProjId) { close(); if (L.length) { curProjId = null; await openProject(L.sort((a, b) => b.updated - a.updated)[0].id); } else await createProject(1080, 1920); }
           else { close(); projectsDialog(); }
         }
@@ -3645,7 +4154,7 @@ function camApply(ctx, cam, shakePx, tsec, seed) {
   let sx = 0, sy = 0; if (shakePx) { sx = shakePx * Math.sin(tsec * 71 + seed * 13.1) * Math.cos(tsec * 37); sy = shakePx * Math.cos(tsec * 59 + seed * 7.7) * Math.sin(tsec * 43); }
   ctx.translate(W / 2 + sx, H / 2 + sy); ctx.scale(z, z); ctx.translate(-cx, -cy);
 }
-function fxSyncBar() {
+function fxSyncBar() { updateWaves();
   const bar = $('#fxbar'), show = S.tool === 'fx' && !panelHidden.fx; bar.hidden = !show; updPanelPill(); if (!show) return;
   const f = curFrame(), t = (f.texts || []).find(x => x.id === fxSel);
   ['#fxEditTxt', '#fxSize', '#fxRot', '#fxDelTxt', '#fxKeep', '#fxColorTxt'].forEach(id => $(id).disabled = !t);
@@ -3673,6 +4182,67 @@ async function fxAddText() {
   const str = await fxAskText(''); if (!str) return;
   const cam = camAt(S.cur), t = { id: newId(), str, x: cam.x, y: cam.y - H / (cam.z * 5), size: fxNewStyle === 'caption' ? 64 : 110, color: '#ffe14d', style: fxNewStyle, rot: fxNewStyle === 'comic' ? -6 : 0 };
   fxEdit(f => { f.texts = f.texts || []; f.texts.push(t); }); fxSel = t.id; fxSyncBar();
+}
+/* --- quick subtitles: paste the script, lines are timed to the voice track (or spread evenly) --- */
+// speech segments [start, end] in seconds from the voice's RMS envelope (gaps < 0.25 s merged)
+async function voiceSegments(ab) {
+  const ac = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100, 44100), b = await ac.decodeAudioData(ab.slice(0));
+  const d = b.getChannelData(0), hop = Math.round(b.sampleRate / 100), n = Math.floor(d.length / hop), env = new Float32Array(n);
+  let mx = 1e-6; for (let i = 0; i < n; i++) { let e = 0; for (let j = i * hop; j < (i + 1) * hop; j += 2) e += d[j] * d[j]; env[i] = Math.sqrt(e / (hop / 2)); if (env[i] > mx) mx = env[i]; }
+  const th = mx * 0.12, seg = []; let st = -1;
+  for (let i = 0; i <= n; i++) { const on = i < n && env[i] > th; if (on && st < 0) st = i; if (!on && st >= 0) { seg.push([st / 100, i / 100]); st = -1; } }
+  const out = []; for (const g of seg) { const L = out[out.length - 1]; if (L && g[0] - L[1] < 0.25) L[1] = g[1]; else out.push([...g]); }
+  return { segs: out.filter(g => g[1] - g[0] > 0.06), dur: b.duration };
+}
+// share the speech time between the lines by length; move each cut into the nearest pause when one is close
+function timeLines(lines, segs) {
+  const tot = segs.reduce((a, g) => a + g[1] - g[0], 0), w = lines.map(l => Math.max(3, l.replace(/\s+/g, '').length)), W0 = w.reduce((a, b) => a + b, 0);
+  const at = sp => { for (const g of segs) { const L = g[1] - g[0]; if (sp <= L) return g[0] + sp; sp -= L; } return segs[segs.length - 1][1]; };
+  const cuts = [segs[0][0]]; let acc = 0;
+  for (let i = 0; i < lines.length - 1; i++) {
+    acc += w[i] / W0 * tot; let t = at(acc);
+    let best = null; for (let k = 0; k < segs.length - 1; k++) { const gm = (segs[k][1] + segs[k + 1][0]) / 2; if (Math.abs(gm - t) < 0.6 && (!best || Math.abs(gm - t) < Math.abs(best - t))) best = gm; }
+    if (best != null && best > cuts[cuts.length - 1] + 0.2) t = best; cuts.push(Math.max(t, cuts[cuts.length - 1] + 0.2));
+  }
+  cuts.push(segs[segs.length - 1][1] + 0.3);
+  return lines.map((l, i) => [cuts[i], cuts[i + 1]]);
+}
+function wrapSub(str, size) {
+  const c = makeCanvas(8, 8).getContext('2d'); c.font = fxFont('caption').replace('{s}', size);
+  const maxW = W * 0.78, out = []; let cur = '';
+  for (const word of str.split(/\s+/)) { const t = cur ? cur + ' ' + word : word; if (c.measureText(t).width > maxW && cur) { out.push(cur); cur = word; } else cur = t; }
+  if (cur) out.push(cur); return out.join('\n');
+}
+async function quickSubtitles() {
+  const A = S.audio || {}, hasV = !!A.voice; let txt = null, mode = null;
+  const v = await modal({ title: '📝 Phụ đề nhanh', html: `<p class="lbl">Dán lời thoại, <b>mỗi dòng là một câu phụ đề</b>. ${hasV ? 'App nghe giọng đã thêm để đặt từng câu đúng lúc nói.' : 'Chưa có giọng lồng tiếng: phụ đề được chia đều từ frame đang xem tới cuối.'} Chạy lại sẽ thay bộ phụ đề cũ.</p>
+<textarea id="qsIn" rows="7" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:17px" placeholder="Xin chào mọi người!&#10;Hôm nay mình kể chuyện này…"></textarea>`,
+    buttons: [{ label: 'Huỷ', value: null }, ...(hasV ? [{ label: 'Chia đều', value: 'even', action: () => { txt = document.getElementById('qsIn').value; } }] : []), { label: hasV ? '🗣 Theo giọng' : 'Tạo phụ đề', value: hasV ? 'voice' : 'even', primary: true, action: () => { txt = document.getElementById('qsIn').value; } }],
+    onOpen: ov => { const ta = ov.querySelector('#qsIn'); ta.addEventListener('keydown', e => e.stopPropagation()); setTimeout(() => ta.focus(), 50); } });
+  mode = v; if (!mode || !txt) return;
+  const lines = txt.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 300); if (!lines.length) return;
+  const T = frameStartTimes(), n = S.frames.length; let spans, t0;
+  if (mode === 'voice') {
+    const pm = progress('Đang nghe giọng…');
+    try {
+      const vi = Math.max(0, S.frames.findIndex(f => f.id === A.voice.frameId)); t0 = T[vi];
+      const { segs } = await voiceSegments(A.voice.buf);
+      if (!segs.length) { pm.close(); toast('Không nghe thấy tiếng nói trong file giọng'); return; }
+      spans = timeLines(lines, segs);
+    } finally { pm.close(); }
+  } else { t0 = T[S.cur]; const L = T[n] - t0, wts = lines.map(l => Math.max(3, l.length)), tw = wts.reduce((a, b) => a + b, 0); let a = 0; spans = lines.map((l, i) => { const s0 = a; a += wts[i] / tw * L; return [s0, a]; }); }
+  const size = 62, ids = lines.map(() => newId()), entries = [];
+  for (let i = 0; i < n; i++) {
+    const f = S.frames[i], mid = (T[i] + T[i + 1]) / 2 - t0, k = spans.findIndex(sp => mid >= sp[0] && mid < sp[1]);
+    const had = (f.texts || []).some(t => t.sub); if (k < 0 && !had) continue;
+    const before = fxState(f); f.texts = (f.texts || []).filter(t => !t.sub);
+    if (k >= 0) { f.texts.push({ id: ids[k], str: wrapSub(lines[k], size), x: W / 2, y: H * 0.7, size, color: '#ffffff', style: 'caption', rot: 0, sub: true }); }
+    entries.push({ t: targetOf(f), fxe: true, before, after: fxState(f), bytes: 400 }); f.ver++; queueThumbFor(f);
+  }
+  if (entries.length) pushEntry({ multi: entries });
+  const end = t0 + spans[spans.length - 1][1];
+  scheduleSave(); fxSyncBar(); requestRender(); updUndoBtns();
+  toast(end > T[n] + 0.3 ? `Đã đặt ${lines.length} câu — phim ngắn hơn lời thoại ${(end - T[n]).toFixed(1)}s, thêm frame để hiện hết` : `Đã đặt ${lines.length} câu phụ đề — hoàn tác 1 lần để bỏ`, 3500);
 }
 /* --- sound effects (synthesised, no copyright) --- */
 const SFX = {
@@ -3752,7 +4322,7 @@ async function fxLipSync() {
   const lv = S.frames.map((f, i) => { const a = T[i] - T[vi], b = T[i + 1] - T[vi]; return b <= 0 || a >= dur ? null : rms(Math.max(0, a), Math.min(dur, b)); });
   const mx = Math.max(0.0001, ...lv.filter(v => v != null));
   let count = 0;
-  S.frames.forEach((f, i) => { const v = lv[i]; const n2 = v == null ? null : v / mx; const nv = n2 == null ? null : n2 < 0.12 ? 0 : n2 < 0.45 ? 0.5 : 1; const old = JSON.stringify(f.lip || null); f.lip = nv == null ? null : { pid: mouth.id, lv: nv }; if (JSON.stringify(f.lip) !== old) { f.ver++; queueThumbFor(f); count++; } });
+  S.frames.forEach((f, i) => { const v = lv[i]; const n2 = v == null ? null : v / mx; const nv = n2 == null ? null : n2 < 0.12 ? 0 : n2 < 0.45 ? 0.5 : 1; const old = JSON.stringify(f.lip || null); const eb = f.lip && f.lip.eb; f.lip = nv == null ? (eb ? { eb } : null) : eb ? { pid: mouth.id, lv: nv, eb } : { pid: mouth.id, lv: nv }; if (JSON.stringify(f.lip) !== old) { f.ver++; queueThumbFor(f); count++; } });
   scheduleSave(); requestRender(); fxSyncBar();
   toast(`Đã nhép miệng theo giọng trên ${lv.filter(v => v != null).length} frame${mouth.alts && mouth.alts.length ? '' : ' (thêm hình miệng há cho mảnh Miệng để đẹp hơn)'}`, 4000);
 }
@@ -3772,6 +4342,127 @@ function drawFrameFx(ctx, i, baseImg, tsec, tInFrame, vid) {
   ctx.drawImage(baseImg, 0, 0, W, H); ctx.restore();
   drawTexts(ctx, f, null);
   if (f.flash) { const a = Math.max(0, 0.9 * (1 - tInFrame / Math.max(0.05, f.dur / 1000))); ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(0, 0, W, H); }
+}
+/* --- GIF / PNG export (no sound): sticker loops, previews, frames for other editors --- */
+// median-cut palette (≤256 colours) on a 15-bit histogram; cartoons have flat colours so no dithering
+function gifPalette(d) {
+  const hist = new Uint32Array(32768);
+  for (let i = 0; i < d.length; i += 4) hist[((d[i] >> 3) << 10) | ((d[i + 1] >> 3) << 5) | (d[i + 2] >> 3)]++;
+  const bins = []; for (let k = 0; k < 32768; k++) if (hist[k]) bins.push(k);
+  const ch = (k, c) => c === 0 ? k >> 10 : c === 1 ? (k >> 5) & 31 : k & 31;
+  const mk = list => { let lo = [31, 31, 31], hi = [0, 0, 0], n = 0; for (const k of list) { for (let c = 0; c < 3; c++) { const v = ch(k, c); if (v < lo[c]) lo[c] = v; if (v > hi[c]) hi[c] = v; } n += hist[k]; } return { list, lo, hi, n }; };
+  const boxes = [mk(bins)];
+  while (boxes.length < 256) {
+    let bi = -1, bs = 0;
+    boxes.forEach((b, i) => { if (b.list.length < 2) return; const r = Math.max(b.hi[0] - b.lo[0], b.hi[1] - b.lo[1], b.hi[2] - b.lo[2]); const sc = r * Math.sqrt(b.n); if (sc > bs) { bs = sc; bi = i; } });
+    if (bi < 0) break;
+    const b = boxes[bi], r = [0, 1, 2].map(c => b.hi[c] - b.lo[c]), c = r.indexOf(Math.max(...r));
+    b.list.sort((x, y) => ch(x, c) - ch(y, c));
+    let acc = 0, cut = 1; for (let i = 0; i < b.list.length - 1; i++) { acc += hist[b.list[i]]; if (acc >= b.n / 2) { cut = i + 1; break; } }
+    boxes.splice(bi, 1, mk(b.list.slice(0, cut)), mk(b.list.slice(cut)));
+  }
+  const pal = new Uint8Array(768), lut = new Uint8Array(32768);
+  boxes.forEach((b, i) => {
+    let r = 0, g = 0, bl = 0; for (const k of b.list) { const w = hist[k]; r += ((k >> 10) * 8 + 4) * w; g += (((k >> 5) & 31) * 8 + 4) * w; bl += ((k & 31) * 8 + 4) * w; }
+    pal[i * 3] = Math.round(r / b.n); pal[i * 3 + 1] = Math.round(g / b.n); pal[i * 3 + 2] = Math.round(bl / b.n);
+    for (const k of b.list) lut[k] = i;
+  });
+  return { pal, lut };
+}
+function gifLzw(idx, out) {
+  const MIN = 8, CLEAR = 256, EOI = 257, table = new Int16Array(4096 * 256).fill(-1);
+  let size = MIN + 1, next = EOI + 1, cur = 0, nb = 0, blk = [];
+  const flush = () => { if (blk.length) { out.push(new Uint8Array([blk.length, ...blk])); blk = []; } };
+  const emit = c => { cur |= c << nb; nb += size; while (nb >= 8) { blk.push(cur & 255); cur >>>= 8; nb -= 8; if (blk.length === 255) flush(); } };
+  out.push(new Uint8Array([MIN]));
+  emit(CLEAR); let pre = idx[0];
+  for (let i = 1; i < idx.length; i++) {
+    const k = idx[i], key = pre * 256 + k, v = table[key];
+    if (v >= 0) { pre = v; continue; }
+    emit(pre);
+    if (next === 4096) { emit(CLEAR); table.fill(-1); next = EOI + 1; size = MIN + 1; }
+    else { if (next >= (1 << size)) size++; table[key] = next++; }
+    pre = k;
+  }
+  emit(pre); emit(EOI); if (nb > 0) { blk.push(cur & 255); if (blk.length === 255) flush(); }
+  flush(); out.push(new Uint8Array([0]));
+}
+function gifEncoder(w, h) {
+  const out = [], u16 = v => [v & 255, (v >> 8) & 255];
+  out.push(new Uint8Array([...'GIF89a'].map(c => c.charCodeAt(0)).concat(u16(w), u16(h), [0, 0, 0])));
+  out.push(new Uint8Array([0x21, 0xFF, 11, ...[...'NETSCAPE2.0'].map(c => c.charCodeAt(0)), 3, 1, 0, 0, 0]));   // loop forever
+  return {
+    add(d, delayCs) {
+      const { pal, lut } = gifPalette(d), n = w * h, idx = new Uint8Array(n);
+      for (let i = 0, j = 0; i < n; i++, j += 4) idx[i] = lut[((d[j] >> 3) << 10) | ((d[j + 1] >> 3) << 5) | (d[j + 2] >> 3)];
+      out.push(new Uint8Array([0x21, 0xF9, 4, 0x04, ...u16(Math.max(2, Math.round(delayCs))), 0, 0]));
+      out.push(new Uint8Array([0x2C, 0, 0, 0, 0, ...u16(w), ...u16(h), 0x87]), pal);
+      gifLzw(idx, out);
+    },
+    finish() { out.push(new Uint8Array([0x3B])); return new Blob(out, { type: 'image/gif' }); }
+  };
+}
+// one finished frame (background, colour, lines, puppet, vector, camera, texts, flash) drawn into ctx at W×H
+async function renderFinalFrame(ctx, i, base) {
+  const f = S.frames[i]; await ensureLoaded(f); const bg = bgOf(f); if (bg) await ensureLoaded(bg);
+  const bx = base.getContext('2d'); drawFrameBase(bx, f, bg);
+  if (S.bgVideo && bgVid.ready) { const v = bgVid.el; try { v.currentTime = bgVideoTimeAt(i); await new Promise(r => { v.onseeked = r; setTimeout(r, 600); }); } catch (e) {} }
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.restore();
+  drawFrameFx(ctx, i, base, frameStartTimes()[i], 0);
+}
+async function exportImagesDialog() {
+  if (playing) stopPlay(); if (stroke) strokeEnd(); commitFloating();
+  const n = S.frames.length, secs = (frameStartTimes()[n]).toFixed(1);
+  const v = await modal({ title: '🖼 Xuất GIF / ảnh PNG', html: `<p class="lbl">Không có tiếng. Có chữ, camera, hiệu ứng như video. ${n} frame · ${secs}s.</p>
+<div class="set-row"><span>GIF động — cỡ chiều ngang</span><span class="grp"><button class="chip small" data-gw="320">320</button><button class="chip small on" data-gw="480">480</button><button class="chip small" data-gw="720">720</button></span></div>`,
+    buttons: [{ label: 'Huỷ', value: null }, { label: '🖼 Ảnh frame này (PNG)', value: 'one' }, { label: '🗂 Mọi frame (ZIP PNG)', value: 'seq' }, { label: '🎞 GIF động', value: 'gif', primary: true }],
+    onOpen: ov => ov.querySelectorAll('[data-gw]').forEach(b => b.addEventListener('click', () => { ov.querySelectorAll('[data-gw]').forEach(x => x.classList.toggle('on', x === b)); exportGifW = +b.dataset.gw; })) });
+  if (v === 'gif') return exportGif(exportGifW);
+  if (v === 'seq') return exportPngSeq();
+  if (v === 'one') return exportPngOne();
+}
+let exportGifW = 480, exportBusy = false;
+async function exportGif(gw) {
+  if (exportBusy) return; exportBusy = true;
+  const k = Math.min(1, gw / W), w = Math.round(W * k) & ~1, h = Math.round(H * k) & ~1;
+  const big = makeCanvas(), bctx = big.getContext('2d'), base = makeCanvas(), small = makeCanvas(w, h), sx = small.getContext('2d', { willReadFrequently: true });
+  const enc = gifEncoder(w, h), pm = progress('Đang tạo GIF…');
+  try {
+    for (let i = 0; i < S.frames.length; i++) {
+      pm.set(`Đang tạo GIF ${i + 1}/${S.frames.length}…`); await new Promise(r => setTimeout(r, 0));
+      await renderFinalFrame(bctx, i, base);
+      sx.imageSmoothingQuality = 'high'; sx.drawImage(big, 0, 0, w, h);
+      enc.add(sx.getImageData(0, 0, w, h).data, S.frames[i].dur / 10);
+      evictSoon();
+    }
+    const blob = enc.finish(); pm.close();
+    await deliverFile(blob, `frame-studio-${stamp()}.gif`);
+    toast(`GIF ${w}×${h} · ${(blob.size / 1e6).toFixed(1)} MB`, 3000);
+  } catch (e) { pm.close(); console.error(e); toast('Không tạo được GIF: ' + e.message, 4000); }
+  finally { big.width = base.width = small.width = 0; exportBusy = false; }
+}
+async function exportPngSeq() {
+  if (exportBusy) return; exportBusy = true;
+  const big = makeCanvas(), bctx = big.getContext('2d'), base = makeCanvas(), files = [], pm = progress('Đang xuất ảnh…'), enc = new TextEncoder();
+  try {
+    let list = 'frame\tthoi_luong_ms\n';
+    for (let i = 0; i < S.frames.length; i++) {
+      pm.set(`Đang xuất ảnh ${i + 1}/${S.frames.length}…`); await new Promise(r => setTimeout(r, 0));
+      await renderFinalFrame(bctx, i, base);
+      const name = `frame_${String(i + 1).padStart(4, '0')}.png`;
+      files.push({ name, data: new Uint8Array(await (await toBlob(big)).arrayBuffer()) }); list += `${name}\t${S.frames[i].dur}\n`;
+      evictSoon();
+    }
+    files.push({ name: 'thoi-luong.txt', data: enc.encode(list) });
+    const blob = makeZip(files); pm.close();
+    await deliverFile(blob, `frame-studio-png-${stamp()}.zip`);
+  } catch (e) { pm.close(); console.error(e); toast('Không xuất được: ' + e.message, 4000); }
+  finally { big.width = base.width = 0; exportBusy = false; }
+}
+async function exportPngOne() {
+  const big = makeCanvas(), base = makeCanvas();
+  await renderFinalFrame(big.getContext('2d'), S.cur, base);
+  await deliverFile(await toBlob(big), `frame-${S.cur + 1}-${stamp()}.png`); big.width = base.width = 0;
 }
 /* --- video export (MediaRecorder, real time) --- */
 async function exportVideo() {
@@ -4252,6 +4943,7 @@ function setTool(t) {
   if (t !== 'fx') fxCamPick = false;
   updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); updBrushBtn(); requestRender();
   document.querySelectorAll('.tool[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
+  document.body.dataset.tool = t;
   $('#dropBtn').hidden = !(t === 'fill' || t === 'pick'); $('#dropBtn').classList.toggle('on', t === 'pick');
 }
 function setLayer(l) {
@@ -4266,7 +4958,7 @@ function setColor(c) {
   saveSettings();
 }
 function updateToggles() {
-  $('#onionBtn').classList.toggle('on', S.onion);
+  $('#onionBtn').classList.toggle('on', S.onion); $('#safeBtn').classList.toggle('on', !!S.safe);
   $('#pressBtn').classList.toggle('on', S.pressure); $('#snapBtn').classList.toggle('on', S.snap);
   $('#loopBtn').classList.toggle('on', S.loop);
   $('#layerBg').classList.toggle('hidden', !S.showBg); $('#layerChar').classList.toggle('hidden', !S.showChar); $('#layerCol').classList.toggle('hidden', !S.showCol); $('[data-eye=col]').textContent = S.showCol ? '👁' : '🚫'; $('#layerVec').classList.toggle('hidden', !S.showVec);
@@ -4282,7 +4974,12 @@ $('#sizeIn').addEventListener('input', e => { S.size = +e.target.value; $('#size
 $('#opIn').addEventListener('input', e => { S.opacity = e.target.value / 100; $('#opVal').textContent = e.target.value + '%'; saveSettings(); });
 $('#pressBtn').addEventListener('click', () => { S.pressure = !S.pressure; updateToggles(); saveSettings(); });
 $('#snapBtn').addEventListener('click', () => { S.snap = !S.snap; snapField = null; updateToggles(); saveSettings(); toast(S.snap ? `Hút nét: BẬT (bán kính ${S.snapR}px — chỉnh trong Menu)` : 'Hút nét: TẮT'); });
-$('#onionBtn').addEventListener('click', () => { S.onion = !S.onion; updateToggles(); saveSettings(); requestRender(); });
+let onionLP = null, onionLPFired = false;
+$('#onionBtn').addEventListener('pointerdown', () => { onionLPFired = false; clearTimeout(onionLP); onionLP = setTimeout(() => { onionLPFired = true; onionDialog(); }, 550); });
+['pointerup', 'pointerleave', 'pointercancel'].forEach(t => $('#onionBtn').addEventListener(t, () => clearTimeout(onionLP)));
+$('#onionBtn').addEventListener('contextmenu', e => { e.preventDefault(); if (!onionLPFired) { onionLPFired = true; onionDialog(); } });
+let onionHint = false;
+$('#onionBtn').addEventListener('click', () => { if (onionLPFired) { onionLPFired = false; return; } S.onion = !S.onion; updateToggles(); saveSettings(); requestRender(); if (S.onion && !onionHint) { onionHint = true; toast('Giữ nút Onion để chọn số frame trước/sau', 2200); } });
 $('#loopBtn').addEventListener('click', () => { S.loop = !S.loop; updateToggles(); saveSettings(); });
 $('#fitBtn').addEventListener('click', () => fitView(true));
 $('#rotBtn').addEventListener('click', rotateView90);
@@ -4292,11 +4989,14 @@ $('#redoBtn').addEventListener('click', redo);
 $('#playBtn').addEventListener('click', startPlay);
 $('#addBtn').addEventListener('click', addFrame);
 $('#dupBtn').addEventListener('click', dupFrame);
+$('#loopRangeBtn').addEventListener('click', repeatRangeDialog);
 $('#delBtn').addEventListener('click', delFrame);
 $('#delAllBtn').addEventListener('click', deleteAllFrames);
 $('#videoBtn').addEventListener('click', exportVideo);
+$('#gifBtn').addEventListener('click', exportImagesDialog);
 $('#fxExport').addEventListener('click', exportVideo);
 $('#fxMini').addEventListener('click', () => { const b = $('#fxbar'); b.classList.toggle('mini'); $('#fxMini').textContent = b.classList.contains('mini') ? '▴ Mở rộng' : '▾ Thu gọn'; });
+$('#fxQuickSub').addEventListener('click', quickSubtitles);
 $('#fxAddTxt').addEventListener('click', fxAddText);
 document.querySelectorAll('[data-fxs]').forEach(b => b.addEventListener('click', () => { const f = curFrame(), t = (f.texts || []).find(x => x.id === fxSel); if (t) fxEdit(() => { t.style = b.dataset.fxs; }); else { fxNewStyle = b.dataset.fxs; fxSyncBar(); } }));
 $('#fxEditTxt').addEventListener('click', async () => { const f = curFrame(), t = (f.texts || []).find(x => x.id === fxSel); if (!t) return; const v = await fxAskText(t.str); if (v) fxEdit(() => { t.str = v; }); });
@@ -4318,7 +5018,7 @@ pickAudio($('#musicFile'), 'music'); pickAudio($('#voiceFile'), 'voice');
 $('#fxMusicPick').addEventListener('click', () => $('#musicFile').click());
 $('#fxVoicePick').addEventListener('click', () => $('#voiceFile').click());
 $('#fxMusicDel').addEventListener('click', () => { if (S.audio) { S.audio.music = null; fxSyncBar(); scheduleSave(); } });
-$('#fxVoiceDel').addEventListener('click', () => { if (S.audio) { S.audio.voice = null; S.frames.forEach(f => { if (f.lip) { f.lip = null; f.ver++; } }); fxSyncBar(); scheduleSave(); requestRender(); } });
+$('#fxVoiceDel').addEventListener('click', () => { if (S.audio) { S.audio.voice = null; S.frames.forEach(f => { if (f.lip && f.lip.pid) { f.lip = f.lip.eb ? { eb: f.lip.eb } : null; f.ver++; } }); fxSyncBar(); scheduleSave(); requestRender(); } });
 $('#fxMusicVol').addEventListener('change', e => { if (S.audio && S.audio.music) { S.audio.music.vol = e.target.value / 100; scheduleSave(); } });
 $('#fxLip').addEventListener('click', fxLipSync);
 $('#moveL').addEventListener('click', () => moveFrame(-1));
@@ -4336,6 +5036,8 @@ $('#selScale').addEventListener('input', e => { if (!floating) return; floating.
 $('#selRot').addEventListener('input', e => { if (!floating) return; floating.rot = e.target.value * Math.PI / 180; $('#selRotVal').textContent = e.target.value + '°'; requestRender(); });
 $('#selFlip').addEventListener('click', () => { if (floating) { floating.flip *= -1; requestRender(); } });
 $('#selStamp').addEventListener('click', stampFloating);
+$('#selCopy').addEventListener('click', copyFloating);
+$('#pasteBtn').addEventListener('click', pasteDialog);
 $('#selVec').addEventListener('click', () => convertPixelsToVector(true));
 $('#selDelete').addEventListener('click', () => { if (floating) { floating.c = null; floating.cc = null; commitFloating(); toast('Đã xoá vùng chọn'); } });
 $('#selCancel').addEventListener('click', () => { cancelFloating(); updUndoBtns(); });
@@ -4358,6 +5060,7 @@ document.addEventListener('keydown', e => {
   else if (k === 'escape' && motion) motionClose();
   else if (k === 'escape' && floating) cancelFloating();
   else if (k === 'o') $('#onionBtn').click();
+  else if (k === 'z') cycleSafe();
   else if (k === 'f') setFocus(!S.focus);
   else if (k === 'r') rotateView90();
 });
@@ -4591,33 +5294,78 @@ function idbOpen() {
 }
 async function idbPut(k, v) { const db = await idbOpen(); return new Promise((res, rej) => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(v, k); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error); }); }
 async function idbGet(k) { const db = await idbOpen(); return new Promise((res, rej) => { const tx = db.transaction('kv', 'readonly'); const r = tx.objectStore('kv').get(k); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
-function setSaveState(t) { const el = $('#saveState'); el.textContent = t || (storageOk ? '✓ Đã lưu' : '⚠ Chưa lưu được, hãy Xuất ZIP'); el.title = storageOk ? 'Bài được tự lưu trên máy này' : 'Trình duyệt không cho lưu: hãy Xuất ZIP để giữ bài'; }
-function scheduleSave() { clearTimeout(saveT); $('#saveState').textContent = 'Chưa lưu…'; saveT = setTimeout(saveProject, 1500); }
+function setSaveState(t) { const el = $('#saveState'); el.textContent = t || (storageOk ? '✓ Đã lưu' : '⚠ Chưa lưu được'); el.title = storageOk ? 'Bài được tự lưu trên máy này' : 'Chưa lưu được, app sẽ thử lại. Nên Xuất ZIP để giữ bài'; }
+// Big data (frame PNGs, audio, background video) lives in its own keys "blob:<project>:<name>" and is only
+// rewritten when it changed. The project record keeps { ref: key } in its place, so an autosave after a
+// stroke writes one PNG + a small JSON record instead of the whole project.
+let savedBlobs = new Map(), savedBlobsProj = null, saveFails = 0, saveRetryT = null, saveWarned = false;
+const blobPrefix = id => 'blob:' + id + ':';
+const blobRange = id => IDBKeyRange.bound(blobPrefix(id), blobPrefix(id) + '￿');
+function scheduleSave() { clearTimeout(saveT); $('#saveState').textContent = 'Chưa lưu…'; saveT = setTimeout(autoSave, 1500); }
+function autoSave() { if (stroke || playing) { saveT = setTimeout(autoSave, 1500); return; } saveT = null; saveProject(); }
+async function idbBlobPut(rec, recKey, blobs, pid, gc) {
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('kv', 'readwrite'), st = tx.objectStore('kv');
+    for (const [k, v] of blobs) st.put(v, k);
+    st.put(rec, recKey);
+    if (gc) { const r = st.getAllKeys(blobRange(pid)); r.onsuccess = () => { for (const k of r.result) if (!gc.has(k)) { st.delete(k); savedBlobs.delete(k); } }; }
+    tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error || new Error('abort'));
+  });
+}
+async function resolveRef(v) { if (v && typeof v === 'object' && typeof v.ref === 'string') { const b = await idbGet(v.ref); if (b) savedBlobs.set(v.ref, b); return b || null; } return v; }
+async function resolveProjectRefs(p, pid) {
+  savedBlobs = new Map(); savedBlobsProj = pid;
+  for (const b of p.bgs || []) b.png = await resolveRef(b.png);
+  for (const f of p.frames || []) { f.png = await resolveRef(f.png); f.col = await resolveRef(f.col); }
+  if (p.audio) for (const k of ['music', 'voice']) if (p.audio[k]) p.audio[k].buf = await resolveRef(p.audio[k].buf);
+  if (p.bgVideo) p.bgVideo.buf = await resolveRef(p.bgVideo.buf);
+  return p;
+}
+async function copyProjectBlobs(fromId, toId, rec) {
+  const db = await idbOpen();
+  const keys = await new Promise((res, rej) => { const r = db.transaction('kv', 'readonly').objectStore('kv').getAllKeys(blobRange(fromId)); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+  for (const k of keys) { const v = await idbGet(k); await idbPut(blobPrefix(toId) + k.slice(blobPrefix(fromId).length), v); }
+  const fix = o => { if (!o || typeof o !== 'object') return; if (typeof o.ref === 'string' && o.ref.startsWith(blobPrefix(fromId))) o.ref = blobPrefix(toId) + o.ref.slice(blobPrefix(fromId).length); else for (const k in o) if (k !== 'buf' || !(o[k] instanceof ArrayBuffer)) fix(o[k]); };
+  fix(rec); return rec;
+}
+async function deleteProjectBlobs(id) { const db = await idbOpen(); return new Promise((res, rej) => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').delete(blobRange(id)); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); }); }
 async function saveProject() {
-  if (!storageOk) { setSaveState(); return; }
   if (saving) { saveAgain = true; return; }
-  saving = true; $('#saveState').textContent = 'Đang lưu…';
+  saving = true; clearTimeout(saveRetryT); $('#saveState').textContent = 'Đang lưu…';
   try {
     for (const o of [...S.bgs, ...S.frames]) await ensurePng(o);
+    if (!curProjId) setCurProj(newId());
+    const pid = curProjId;
+    if (savedBlobsProj !== pid) { savedBlobs = new Map(); savedBlobsProj = pid; }
+    const dirty = [], live = new Set();
+    const ref = (name, buf) => { if (!buf) return null; const k = blobPrefix(pid) + name; live.add(k); if (savedBlobs.get(k) !== buf) dirty.push([k, buf]); return { ref: k }; };
+    const A = S.audio, slim = a => a ? { ...a, buf: ref('m:' + (a === A.music ? 'music' : 'voice'), a.buf) } : null;
     const data = {
-      v: 1, W, H, cur: S.cur,
-      bgs: S.bgs.map(b => ({ id: b.id, png: b.png })),
+      v: 2, W, H, cur: S.cur,
+      bgs: S.bgs.map(b => ({ id: b.id, png: ref('b:' + b.id, b.png) })),
       name: S.projName || 'Dự án', poses: S.poses || [],
-      frames: S.frames.map(f => ({ id: f.id, dur: f.dur, bgId: f.bgId, png: f.png, col: f.colPng || null, vec: f.vec, pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null })),
-      audio: S.audio || null, bgVideo: S.bgVideo || null,
+      frames: S.frames.map(f => ({ id: f.id, dur: f.dur, bgId: f.bgId, png: ref('f:' + f.id, f.png), col: ref('c:' + f.id, f.colPng), vec: f.vec, pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null })),
+      audio: A ? { ...A, music: slim(A.music), voice: slim(A.voice) } : null,
+      bgVideo: S.bgVideo ? { ...S.bgVideo, buf: ref('m:video', S.bgVideo.buf) } : null,
       pp: S.pp ? { parts: S.pp.parts.map(p => ({ id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null, png: p.png, alts: (p.alts || []).map(a => ({ png: a.png, dx: a.dx || 0, dy: a.dy || 0 })) })) } : null,
       rig: S.rig || null,
       ref: REF.c && REF.png ? { png: REF.png, cx: REF.cx, cy: REF.cy, scale: REF.scale, rot: REF.rot, opacity: REF.opacity, show: REF.show } : null
     };
-    if (!curProjId) setCurProj(newId());
-    await idbPut('project:' + curProjId, data);
+    await idbBlobPut(data, 'project:' + pid, dirty, pid, live);
+    for (const [k, v] of dirty) savedBlobs.set(k, v);
     try {
       const L = await projIndex(), th = S.frames[0] && S.frames[0].thumb ? S.frames[0].thumb.toDataURL('image/jpeg', 0.7) : '';
-      const it = L.find(x => x.id === curProjId), rec = { id: curProjId, name: data.name, updated: Date.now(), frames: S.frames.length, thumb: th };
+      const it = L.find(x => x.id === pid), rec = { id: pid, name: data.name, updated: Date.now(), frames: S.frames.length, thumb: th };
       if (it) Object.assign(it, rec); else L.push(rec); await idbPut('projects', L);
     } catch (e) { console.error(e); }
-    setSaveState();
-  } catch (e) { console.error(e); storageOk = false; setSaveState(); }
+    storageOk = true; saveFails = 0; saveWarned = false; setSaveState();
+  } catch (e) {
+    // never give up for good: a full disk or a busy tab can recover, so retry with a growing delay
+    console.error(e); storageOk = false; setSaveState();
+    saveFails++; clearTimeout(saveRetryT); saveRetryT = setTimeout(saveProject, Math.min(60000, 3000 * 2 ** (saveFails - 1)));
+    if (!saveWarned) { saveWarned = true; toast('⚠ Chưa lưu được vào máy (có thể máy hết dung lượng). App sẽ tự thử lại — nên Xuất ZIP để giữ bài.', 5000); }
+  }
   saving = false;
   if (saveAgain) { saveAgain = false; saveProject(); }
 }
@@ -4939,7 +5687,7 @@ function inkAlpha(img, detail) {
   return a;
 }
 /** Background removal by border colour flood fill (good for flat cartoon backgrounds). Returns alpha 0..1 */
-function colorBgAlpha(img, tol) {
+function colorBgAlpha(img, tol, holesOut) {
   const w = img.width, h = img.height, d = img.data, n = w * h;
   const bins = new Map();
   const borderIdx = [];
@@ -4957,7 +5705,26 @@ function colorBgAlpha(img, tol) {
     for (const j of nb) if (j >= 0 && j < n && !bg[j] && isBg(j)) { bg[j] = 1; stack.push(j); }
   }
   const a = new Float32Array(n); for (let i = 0; i < n; i++) a[i] = bg[i] ? 0 : 1;
+  if (holesOut) {   // background-coloured areas closed in by the figure (gap between an arm and the body, eye whites, white logos…)
+    const seen = new Uint8Array(n), minA = Math.max(30, n * 0.0002);
+    for (let s0 = 0; s0 < n; s0++) {
+      if (bg[s0] || seen[s0] || !isBg(s0)) continue;
+      const comp = [s0]; seen[s0] = 1;
+      for (let q = 0; q < comp.length; q++) { const i = comp[q], x = i % w; for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w]) if (j >= 0 && j < n && !seen[j] && !bg[j] && isBg(j)) { seen[j] = 1; comp.push(j); } }
+      if (comp.length >= minA) holesOut.push(comp);
+    }
+  }
   return boxBlur(a, w, h, 1);
+}
+/** true when the image border is mostly one flat colour (drawn character on a plain background) */
+function flatBorder(img) {
+  const w = img.width, h = img.height, d = img.data, idx = [];
+  for (let x = 0; x < w; x += 2) idx.push(x, (h - 1) * w + x);
+  for (let y = 0; y < h; y += 2) idx.push(y * w, y * w + w - 1);
+  const bins = new Map(); for (const i of idx) { const k = (d[i * 4] >> 4) << 8 | (d[i * 4 + 1] >> 4) << 4 | (d[i * 4 + 2] >> 4); bins.set(k, (bins.get(k) || 0) + 1); }
+  const [k] = [...bins.entries()].sort((a, b) => b[1] - a[1])[0], c = [((k >> 8) & 15) * 16 + 8, ((k >> 4) & 15) * 16 + 8, (k & 15) * 16 + 8];
+  let ok = 0; for (const i of idx) if (Math.abs(d[i * 4] - c[0]) + Math.abs(d[i * 4 + 1] - c[1]) + Math.abs(d[i * 4 + 2] - c[2]) < 50) ok++;
+  return ok / idx.length > 0.85;
 }
 /* AI background removal (u2netp, runs locally in the browser) */
 let ortSession = null, ortLoading = null;
@@ -5024,6 +5791,7 @@ function cariFindHead(a, w, h) {
     if (s < best) { best = s; neck = y; }
   }
   if (best > 0.85) neck = bot;                        // no clear neck (face close-up): the whole cut-out is the head
+  else { const lim = sm[neck] * 1.15; while (neck > y0 && sm[neck - 1] <= lim) neck--; }   // a long neck: cut just under the chin, not at the shoulders
   const cs = []; let hw = 0;
   for (let y = top; y < neck; y++) if (xs[y] >= 0) { cs.push(xs[y]); if (sm[y] > hw) hw = sm[y]; }
   cs.sort((p, q) => p - q);
@@ -5072,6 +5840,11 @@ function cariQuant(rgb, a, n, k, mix) {
 /** Cartoon colouring + inner ink lines. style: 'flat' | 'soft' | 'bw'; detail 0..100 */
 function cariToon(img, a, style, detail) {
   const w = img.width, h = img.height, n = w * h, s = img.data;
+  if (style === 'orig') {   // already a drawing: keep its own colours and lines
+    const out = makeCanvas(w, h), x = out.getContext('2d'), im = x.createImageData(w, h);
+    im.data.set(s); for (let i = 0; i < n; i++) im.data[i * 4 + 3] = Math.round(a[i] * s[i * 4 + 3]);
+    x.putImageData(im, 0, 0); return out;
+  }
   let rgb = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) { rgb[i * 3] = s[i * 4]; rgb[i * 3 + 1] = s[i * 4 + 1]; rgb[i * 3 + 2] = s[i * 4 + 2]; }
   rgb = cariBilateral(rgb, a, w, h, 2, 38); rgb = cariBilateral(rgb, a, w, h, 2, 30);
@@ -5156,6 +5929,238 @@ function cariTrim(c, pad) {
   const o = makeCanvas(x1 - x0 + 1, y1 - y0 + 1); o.getContext('2d').drawImage(c, -x0, -y0); return o;
 }
 
+/* ========= AI character generator: photo → cartoon character (Google Gemini, the user's own key) ========= */
+// The key is typed by the user and kept ONLY in this device's localStorage (never in projects, ZIPs or the repo).
+const AI_KEY_LS = 'fs-gemini-key', AI_MODEL_LS = 'fs-gemini-model', AI_PROMPT_LS = 'fs-ai-prompt', AI_LIB_KEY = 'ai-chars', AI_REF_KEY = 'ai-style-ref';
+const AI_DEFAULT_MODEL = 'gemini-2.5-flash-image';
+const AI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/';
+const AI_DEFAULT_PROMPT = 'Redraw the person in photo 2 in the exact style of image 1: thin dark-brown outline, flat colors with soft shading, big head, long thin neck, skinny body and limbs, big round eyes, full body, standing, white background. Keep their hair, face shape and outfit.';
+// always added: no logos (trademark risk) + a pose that the quick-make cutter handles well
+const AI_FIXED_PROMPT = 'Do not draw any logos, team crests, brand marks, sponsor text or numbers on the clothes; keep the clothing plain. Face the viewer, arms hanging slightly away from the body so every limb is clearly separated. Draw only this one character, no other objects, no text.';
+const lsGet = k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
+const lsSet = (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) {} };
+const aiKey = () => lsGet(AI_KEY_LS).trim();
+const aiModel = () => lsGet(AI_MODEL_LS).trim() || AI_DEFAULT_MODEL;
+const aiPrompt = () => lsGet(AI_PROMPT_LS).trim() || AI_DEFAULT_PROMPT;
+const escHtml = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// Built-in style reference, drawn in code (an original character, no real person): thin dark-brown outline,
+// flat colours + soft shading, big head, long thin neck, skinny limbs, big round eyes, white background.
+function aiStyleRefCanvas() {
+  const c = makeCanvas(600, 900), x = c.getContext('2d'), OL = '#4a2a16';
+  x.fillStyle = '#fff'; x.fillRect(0, 0, 600, 900); x.lineJoin = x.lineCap = 'round';
+  const part = (build, fill, shade = 0.16) => {
+    const p = new Path2D(); build(p);
+    x.fillStyle = fill; x.fill(p);
+    const b = { x0: 0, x1: 600 }; x.save(); x.clip(p);       // soft shading: darker towards the right side
+    const g = x.createLinearGradient(b.x0, 0, b.x1, 0); g.addColorStop(0.45, 'rgba(70,35,10,0)'); g.addColorStop(0.75, `rgba(70,35,10,${shade})`);
+    x.fillStyle = g; x.fillRect(0, 0, 600, 900); x.restore();
+    x.strokeStyle = OL; x.lineWidth = 3.5; x.stroke(p);
+  };
+  const limb = (p, ax, ay, bx, by, w) => { const a = Math.atan2(by - ay, bx - ax), nx = -Math.sin(a) * w / 2, ny = Math.cos(a) * w / 2;
+    p.moveTo(ax + nx, ay + ny); p.lineTo(bx + nx, by + ny); p.arc(bx, by, w / 2, a + Math.PI / 2, a - Math.PI / 2, true); p.lineTo(ax - nx, ay - ny); p.arc(ax, ay, w / 2, a - Math.PI / 2, a + Math.PI / 2, true); p.closePath(); };
+  const SKIN = '#f2c49b', SHIRT = '#3fa7d6', SHORTS = '#2f3e66', SHOE = '#e0533d', HAIR = '#5a3420';
+  // legs + socks + shoes
+  for (const [ax, bx] of [[272, 262], [328, 338]]) {
+    part(p => limb(p, ax, 690, bx, 800, 20), SKIN);
+    part(p => limb(p, bx, 792, bx, 832, 22), '#ffffff', 0.1);
+    part(p => p.ellipse(bx + (bx < 300 ? -10 : 10), 846, 34, 16, 0, 0, Math.PI * 2), SHOE);
+  }
+  // arms (hang a little away from the body) + hands
+  part(p => limb(p, 228, 500, 186, 676, 22), SKIN); part(p => p.arc(182, 690, 19, 0, Math.PI * 2), SKIN);
+  part(p => limb(p, 372, 500, 414, 676, 22), SKIN); part(p => p.arc(418, 690, 19, 0, Math.PI * 2), SKIN);
+  // shorts
+  part(p => { p.moveTo(244, 625); p.lineTo(356, 625); p.lineTo(368, 702); p.lineTo(306, 706); p.lineTo(300, 676); p.lineTo(294, 706); p.lineTo(232, 702); p.closePath(); }, SHORTS);
+  // t-shirt with short sleeves
+  part(p => { p.moveTo(262, 470); p.quadraticCurveTo(300, 488, 338, 470); p.lineTo(384, 490); p.lineTo(404, 548); p.lineTo(372, 560); p.lineTo(360, 532);
+    p.lineTo(358, 640); p.lineTo(242, 640); p.lineTo(240, 532); p.lineTo(228, 560); p.lineTo(196, 548); p.lineTo(216, 490); p.closePath(); }, SHIRT);
+  // long thin neck
+  part(p => { p.moveTo(287, 380); p.lineTo(313, 380); p.lineTo(315, 476); p.quadraticCurveTo(300, 484, 285, 476); p.closePath(); }, SKIN, 0.22);
+  // ears, head, hair
+  part(p => p.ellipse(150, 250, 26, 36, 0, 0, Math.PI * 2), SKIN); part(p => p.ellipse(450, 250, 26, 36, 0, 0, Math.PI * 2), SKIN);
+  part(p => p.ellipse(300, 235, 150, 160, 0, 0, Math.PI * 2), SKIN);
+  part(p => { p.moveTo(148, 230); p.bezierCurveTo(130, 90, 230, 50, 300, 58); p.bezierCurveTo(390, 52, 470, 100, 452, 232);
+    p.quadraticCurveTo(440, 170, 400, 150); p.quadraticCurveTo(360, 185, 300, 160); p.quadraticCurveTo(250, 190, 205, 150); p.quadraticCurveTo(165, 175, 148, 230); p.closePath(); }, HAIR, 0.2);
+  // big round eyes with highlights
+  for (const ex of [245, 355]) {
+    part(p => p.arc(ex, 255, 40, 0, Math.PI * 2), '#ffffff', 0.06);
+    x.fillStyle = '#3a2214'; x.beginPath(); x.arc(ex + 4, 260, 21, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#fff'; x.beginPath(); x.arc(ex - 4, 250, 8, 0, Math.PI * 2); x.fill(); x.beginPath(); x.arc(ex + 12, 270, 3.5, 0, Math.PI * 2); x.fill();
+    x.strokeStyle = OL; x.lineWidth = 5; x.beginPath(); x.arc(ex, 255, 52, Math.PI * 1.22, Math.PI * 1.7); x.stroke();   // eyebrow
+  }
+  // nose, smile, cheeks
+  x.strokeStyle = OL; x.lineWidth = 3.5; x.beginPath(); x.moveTo(300, 290); x.quadraticCurveTo(290, 315, 306, 318); x.stroke();
+  part(p => { p.moveTo(262, 340); p.quadraticCurveTo(300, 380, 338, 340); p.quadraticCurveTo(300, 352, 262, 340); p.closePath(); }, '#b8433a', 0.05);
+  x.fillStyle = 'rgba(240,120,110,.35)'; for (const cx of [205, 395]) { x.beginPath(); x.ellipse(cx, 318, 24, 13, 0, 0, Math.PI * 2); x.fill(); }
+  return c;
+}
+
+const blobToB64 = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = () => rej(r.error); r.readAsDataURL(b); });
+const canvasBlob = (c, type = 'image/png', q) => new Promise(res => c.toBlob(res, type, q));
+async function aiPrepImage(src, max = 1024) {   // src: Blob or canvas → {mime, data(base64)}, downscaled to keep the request small
+  let bmp = src instanceof Blob ? await createImageBitmap(src) : src;
+  const k = Math.min(1, max / Math.max(bmp.width, bmp.height)), c = makeCanvas(Math.max(1, Math.round(bmp.width * k)), Math.max(1, Math.round(bmp.height * k))), x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.imageSmoothingQuality = 'high'; x.drawImage(bmp, 0, 0, c.width, c.height);
+  if (bmp.close) bmp.close();
+  return { mime: 'image/jpeg', data: await blobToB64(await canvasBlob(c, 'image/jpeg', 0.9)) };
+}
+
+// Turn any Gemini failure into a clear Vietnamese message.
+function aiErrMsg(status, j) {
+  const e = (j && j.error) || {}, msg = String(e.message || ''), st = String(e.status || ''),
+    reasons = (e.details || []).map(d => d && d.reason).filter(Boolean).join(' ');
+  const err = m => Object.assign(new Error(m), { aiStatus: status, raw: msg });
+  if (/API_KEY_INVALID|API key not valid|API_KEY_/i.test(reasons + ' ' + msg)) return err('🔑 Key Gemini không đúng. Mở 🔑 Key Gemini, dán lại key (lấy ở aistudio.google.com/apikey) rồi thử lại.');
+  if (status === 429 || st === 'RESOURCE_EXHAUSTED') return err('⏳ Hết lượt dùng (quota) của key này. Chờ một lúc (thường 1 phút, hoặc sang ngày mới) rồi thử lại. Nếu luôn báo lỗi này: model tạo ảnh có thể cần bật thanh toán (billing) trong Google AI Studio.');
+  if (status === 401 || status === 403 || st === 'PERMISSION_DENIED' || st === 'UNAUTHENTICATED') return err('🔒 Key này không được dùng Gemini API (chưa bật API, bị giới hạn, hoặc khu vực chưa hỗ trợ). Kiểm tra key trong Google AI Studio.');
+  if (status === 404 || st === 'NOT_FOUND') return err(`❓ Không tìm thấy model "${aiModel()}". Mở 🔑 Key Gemini và đổi tên model (mặc định: ${AI_DEFAULT_MODEL}).`);
+  if (status >= 500 || st === 'UNAVAILABLE') return err('🌧 Máy chủ Google đang bận. Thử lại sau ít phút.');
+  if (status === 400) return err('⚠️ Google không nhận yêu cầu: ' + (msg || 'ảnh hoặc câu lệnh không hợp lệ') + '. Thử ảnh khác (JPG/PNG).');
+  return err(`⚠️ Lỗi từ Google (${status || 'không rõ'}): ${msg || 'không có chi tiết'}`);
+}
+
+// One call to Gemini. Image 1 = style reference, photo 2 = the person. Returns a PNG/JPEG Blob.
+async function geminiGenerate({ key, model, prompt, refImg, photoImg, signal, fetchFn = fetch }) {
+  const mk = withCfg => ({
+    contents: [{ role: 'user', parts: [
+      { text: 'Image 1 (style reference):' }, { inline_data: { mime_type: refImg.mime, data: refImg.data } },
+      { text: 'Photo 2 (the person to redraw):' }, { inline_data: { mime_type: photoImg.mime, data: photoImg.data } },
+      { text: prompt } ] }],
+    generationConfig: Object.assign({ responseModalities: ['TEXT', 'IMAGE'] }, withCfg ? { imageConfig: { aspectRatio: '3:4' } } : {})
+  });
+  const call = async withCfg => {
+    let r;
+    try { r = await fetchFn(AI_ENDPOINT + encodeURIComponent(model) + ':generateContent', { method: 'POST', signal,
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify(mk(withCfg)) }); }
+    catch (e) { if ((signal && signal.aborted) || e.name === 'AbortError') throw e; throw Object.assign(new Error('📶 Không kết nối được Google. Kiểm tra mạng (cần có Internet để dùng AI) rồi thử lại.'), { aiStatus: 0 }); }
+    let j = null; try { j = await r.json(); } catch (e) {}
+    return { r, j };
+  };
+  let { r, j } = await call(true);
+  // older image models may not know imageConfig → try once more without it
+  if (r.status === 400 && /imageConfig|aspect_?ratio|image_config/i.test(JSON.stringify(j || {}))) ({ r, j } = await call(false));
+  if (!r.ok) throw aiErrMsg(r.status, j);
+  const pf = j && j.promptFeedback, cand = (j && j.candidates || [])[0];
+  const parts = (cand && cand.content && cand.content.parts) || [];
+  const img = parts.map(p => p.inlineData || p.inline_data).find(d => d && d.data);
+  if (img) { const bin = atob(img.data), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type: img.mimeType || img.mime_type || 'image/png' }); }
+  const why = (pf && pf.blockReason) || (cand && cand.finishReason) || '';
+  if (/SAFETY|PROHIBITED|BLOCK|RECITATION|SPII/i.test(why)) throw Object.assign(new Error('🚫 AI từ chối vẽ ảnh này (lý do an toàn nội dung: ' + why + '). Thử một ảnh khác: một người, mặc đồ bình thường, rõ mặt.'), { aiStatus: 200 });
+  const said = parts.map(p => p.text).filter(Boolean).join(' ').slice(0, 200);
+  throw Object.assign(new Error('🤔 AI không trả về hình' + (said ? ': “' + said + '”' : '') + '. Bấm Tạo lại để thử lần nữa.'), { aiStatus: 200 });
+}
+
+// library of generated characters (IndexedDB, this device only)
+async function aiLib() { try { return (await idbGet(AI_LIB_KEY)) || []; } catch (e) { return []; } }
+async function aiLibAdd(blob) { const L = await aiLib(); L.unshift({ id: 'ai' + Date.now().toString(36), t: Date.now(), png: blob }); L.length = Math.min(L.length, 40); await idbPut(AI_LIB_KEY, L); return L[0]; }
+async function aiLibDel(id) { await idbPut(AI_LIB_KEY, (await aiLib()).filter(e => e.id !== id)); }
+async function aiQuickCut(blob) {   // hand the character to the quick-make cutter (Nhân vật ghép)
+  let bmp; try { bmp = await createImageBitmap(blob); } catch (e) { toast('Không đọc được hình'); return; }
+  if (playing) stopPlay(); wizImport = true; openImport(bmp);
+}
+
+function aiKeyDialog() {
+  return modal({ title: '🔑 Key Gemini (AI tạo nhân vật)', html: `
+<p style="margin-top:0">Dán key Gemini API của bạn. Lấy miễn phí ở <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent)">aistudio.google.com/apikey</a>.</p>
+<p class="lbl" style="font-size:13px">🔒 Key chỉ lưu trên máy này (trong trình duyệt). Không nằm trong dự án, file ZIP hay video xuất ra. Đừng gửi key cho ai.</p>
+<div style="display:flex;gap:6px;align-items:center"><input id="aiKeyIn" type="password" autocomplete="off" spellcheck="false" placeholder="AIza…" value="${escHtml(aiKey())}" style="flex:1;min-height:44px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:16px"><button class="btn" id="aiKeyEye" style="min-width:44px">👁</button></div>
+<div class="set-row"><span>Model tạo ảnh</span><input id="aiModelIn" type="text" spellcheck="false" value="${escHtml(aiModel())}" style="width:230px;min-height:40px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text)"></div>
+<p class="lbl" style="font-size:12px;margin:0">Để trống ô model = dùng mặc định <b>${AI_DEFAULT_MODEL}</b>.</p>
+<div class="lbl" id="aiKeyMsg" style="font-size:13px;min-height:20px;margin-top:8px"></div>`,
+    buttons: [{ label: 'Xoá key', value: 'del', cls: 'danger', action: () => { lsSet(AI_KEY_LS, ''); toast('Đã xoá key khỏi máy này'); } },
+      { label: 'Kiểm tra key', value: null, action: async () => {
+        const ov = document.querySelector('#aiKeyIn').closest('.ov'), m = ov.querySelector('#aiKeyMsg'), k = ov.querySelector('#aiKeyIn').value.trim(), md = ov.querySelector('#aiModelIn').value.trim() || AI_DEFAULT_MODEL;
+        if (!k) { m.textContent = 'Chưa dán key.'; return false; }
+        m.textContent = 'Đang kiểm tra…';
+        try { const r = await fetch(AI_ENDPOINT + encodeURIComponent(md), { headers: { 'x-goog-api-key': k } }); let j = null; try { j = await r.json(); } catch (e) {}
+          m.textContent = r.ok ? '✅ Key dùng được với model ' + md + '.' : aiErrMsg(r.status, j).message; }
+        catch (e) { m.textContent = '📶 Không kết nối được Google. Kiểm tra mạng.'; }
+        return false; } },
+      { label: 'Lưu', value: 'save', primary: true, action: () => {
+        const ov = document.querySelector('#aiKeyIn').closest('.ov');
+        lsSet(AI_KEY_LS, ov.querySelector('#aiKeyIn').value.trim()); const md = ov.querySelector('#aiModelIn').value.trim(); lsSet(AI_MODEL_LS, md === AI_DEFAULT_MODEL ? '' : md);
+        toast(aiKey() ? 'Đã lưu key trên máy này' : 'Chưa có key'); } }],
+    onOpen: ov => { ov.querySelector('#aiKeyEye').addEventListener('click', () => { const i = ov.querySelector('#aiKeyIn'); i.type = i.type === 'password' ? 'text' : 'password'; }); }
+  });
+}
+
+async function aiCharDialog() {
+  if (playing) stopPlay();
+  const st = { photo: null, photoUrl: '', refBlob: null, refUrl: '', ctl: null, result: null, resultUrl: '', urls: [] };
+  try { st.refBlob = (await idbGet(AI_REF_KEY)) || null; } catch (e) {}
+  const url = b => { const u = URL.createObjectURL(b); st.urls.push(u); return u; };
+  const builtinRefUrl = aiStyleRefCanvas().toDataURL('image/png');
+  const box = 'width:110px;height:140px;border-radius:10px;border:1px dashed var(--line);background:#fff;object-fit:contain;display:block';
+  const html = `
+<p style="margin-top:0">Chọn ảnh chụp 1 người → AI vẽ lại thành nhân vật hoạt hình (đầu to, cổ dài, tay chân mảnh, mắt tròn) → lưu vào <b>Nhân vật AI</b> bên dưới → bấm <b>✂ Cắt mảnh</b> để làm động.</p>
+<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start">
+  <div><div class="lbl" style="font-size:13px;margin-bottom:4px">1. Ảnh người thật</div><img id="aiPhotoPv" alt="" style="${box}"><button class="btn primary" id="aiPhotoBtn" style="margin-top:6px;width:110px">📷 Chọn ảnh</button></div>
+  <div><div class="lbl" style="font-size:13px;margin-bottom:4px">2. Ảnh mẫu phong cách</div><img id="aiRefPv" alt="" style="${box}"><div style="display:flex;gap:4px;margin-top:6px"><button class="btn" id="aiRefBtn" title="Dùng ảnh mẫu của bạn" style="min-width:52px">🖼 Đổi</button><button class="btn" id="aiRefReset" title="Dùng ảnh mẫu có sẵn của app" style="min-width:52px">↺</button></div></div>
+  <div style="flex:1;min-width:220px"><div class="lbl" style="font-size:13px;margin-bottom:4px">3. Kết quả</div><div style="position:relative"><img id="aiResPv" alt="" style="${box};width:100%;max-width:240px;height:240px"><div id="aiBusy" class="lbl" hidden style="position:absolute;inset:0;max-width:240px;display:flex;align-items:center;justify-content:center;text-align:center;background:rgba(0,0,0,.55);color:#fff;border-radius:10px;padding:8px;font-size:13px"></div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button class="btn primary" id="aiGoBtn">✨ Tạo nhân vật</button><button class="btn" id="aiCutBtn" disabled style="border-color:#ff3b9a">✂ Cắt mảnh</button></div></div>
+</div>
+<div id="aiErr" role="alert" style="display:none;margin-top:10px;padding:10px;border-radius:10px;background:rgba(255,84,104,.14);border:1px solid var(--danger);font-size:14px;line-height:1.4"></div>
+<details style="margin-top:10px"><summary class="lbl" style="cursor:pointer;min-height:32px">✏️ Câu lệnh gửi AI (tiếng Anh, sửa được)</summary>
+  <textarea id="aiPromptIn" rows="4" style="width:100%;box-sizing:border-box;padding:8px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:14px">${escHtml(aiPrompt())}</textarea>
+  <p class="lbl" style="font-size:12px;margin:4px 0">Luôn thêm: không vẽ logo/chữ trên áo (tránh vi phạm thương hiệu), tay hơi dang để dễ cắt mảnh. <button class="btn" id="aiPromptReset" style="min-height:32px;padding:2px 8px">↺ Câu mặc định</button></p></details>
+<div class="set-row" style="margin-top:6px"><span id="aiKeyState" class="lbl" style="font-size:13px"></span><button class="btn" id="aiKeyBtn">🔑 Key Gemini</button></div>
+<p class="lbl" style="font-size:12px;margin:4px 0 0">Ảnh được gửi tới Google Gemini bằng key của bạn để vẽ lại. Chỉ dùng ảnh của bạn hoặc của người đã đồng ý.</p>
+<h4 style="margin:12px 0 6px">🗂 Nhân vật AI đã tạo</h4><div id="aiLib" style="display:flex;gap:8px;flex-wrap:wrap"></div>`;
+  modal({ title: '🤖 AI tạo nhân vật từ ảnh', html, buttons: [{ label: 'Đóng', value: null }], dismissable: false, onOpen: (ov, close) => {
+    ov.querySelector('.dlg').classList.add('wide');
+    const q = s => ov.querySelector(s), errBox = q('#aiErr');
+    const showErr = m => { errBox.textContent = m || ''; errBox.style.display = m ? 'block' : 'none'; };
+    const keyState = () => { q('#aiKeyState').textContent = aiKey() ? '🔑 Đã có key trên máy này ✓' : '🔑 Chưa có key Gemini — bấm nút bên phải để dán key'; };
+    const refShow = () => { q('#aiRefPv').src = st.refBlob ? url(st.refBlob) : builtinRefUrl; q('#aiRefReset').disabled = !st.refBlob; };
+    const pick = () => new Promise(res => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.onchange = () => res(i.files[0] || null); i.click(); });
+    const libShow = async () => {
+      const L = await aiLib(), el = q('#aiLib'); el.innerHTML = '';
+      if (!L.length) { el.innerHTML = '<span class="lbl" style="font-size:13px">Chưa có nhân vật nào.</span>'; return; }
+      for (const e of L) {
+        const d = document.createElement('div'); d.className = 'ai-item'; d.dataset.id = e.id;
+        d.style.cssText = 'display:flex;flex-direction:column;gap:4px;align-items:center';
+        d.innerHTML = `<img alt="" src="${url(e.png)}" style="width:84px;height:112px;object-fit:contain;background:#fff;border-radius:8px;border:1px solid var(--line)"><div style="display:flex;gap:4px"><button class="btn" data-a="cut" title="Cắt mảnh để làm động" style="min-width:44px">✂</button><button class="btn" data-a="del" title="Xoá" style="min-width:44px;color:var(--danger)">🗑</button></div>`;
+        d.querySelector('[data-a=cut]').addEventListener('click', () => { close(null); aiQuickCut(e.png); });
+        d.querySelector('[data-a=del]').addEventListener('click', async () => { await aiLibDel(e.id); libShow(); });
+        el.append(d);
+      }
+    };
+    keyState(); refShow(); libShow();
+    q('#aiPhotoBtn').addEventListener('click', async () => { const f = await pick(); if (!f) return; st.photo = f; q('#aiPhotoPv').src = url(f); showErr(''); });
+    q('#aiRefBtn').addEventListener('click', async () => { const f = await pick(); if (!f) return; st.refBlob = f; try { await idbPut(AI_REF_KEY, f); } catch (e) {} refShow(); toast('Đã dùng ảnh mẫu của bạn'); });
+    q('#aiRefReset').addEventListener('click', async () => { st.refBlob = null; try { await idbDel(AI_REF_KEY); } catch (e) {} refShow(); toast('Dùng lại ảnh mẫu có sẵn'); });
+    q('#aiPromptReset').addEventListener('click', () => { q('#aiPromptIn').value = AI_DEFAULT_PROMPT; lsSet(AI_PROMPT_LS, ''); });
+    q('#aiPromptIn').addEventListener('change', e => { const v = e.target.value.trim(); lsSet(AI_PROMPT_LS, v && v !== AI_DEFAULT_PROMPT ? v : ''); });
+    q('#aiKeyBtn').addEventListener('click', async () => { ov.style.display = 'none'; await aiKeyDialog(); ov.style.display = ''; keyState(); });
+    q('#aiCutBtn').addEventListener('click', () => { if (!st.result) return; close(null); aiQuickCut(st.result); });
+    const busy = t => { const b = q('#aiBusy'); b.hidden = !t; b.textContent = t || ''; };
+    q('#aiGoBtn').addEventListener('click', async () => {
+      const go = q('#aiGoBtn');
+      if (st.ctl) { st.ctl.abort(); return; }              // second tap = cancel
+      showErr('');
+      if (!aiKey()) { showErr('🔑 Chưa có key Gemini. Bấm 🔑 Key Gemini để dán key của bạn.'); return; }
+      if (!st.photo) { showErr('📷 Chọn ảnh người thật trước (bước 1).'); return; }
+      st.ctl = new AbortController(); const timer = setTimeout(() => st.ctl && st.ctl.abort('timeout'), 120000);
+      go.textContent = '✕ Huỷ'; busy('🎨 AI đang vẽ… (thường 10–40 giây)');
+      try {
+        const refImg = await aiPrepImage(st.refBlob || aiStyleRefCanvas(), 768), photoImg = await aiPrepImage(st.photo, 1024);
+        const prompt = (q('#aiPromptIn').value.trim() || AI_DEFAULT_PROMPT) + ' ' + AI_FIXED_PROMPT;
+        const blob = await geminiGenerate({ key: aiKey(), model: aiModel(), prompt, refImg, photoImg, signal: st.ctl.signal });
+        st.result = blob; q('#aiResPv').src = url(blob); q('#aiCutBtn').disabled = false;
+        await aiLibAdd(blob); libShow(); go.textContent = '🔁 Tạo lại';
+        toast('Xong! Đã lưu vào Nhân vật AI. Bấm ✂ Cắt mảnh để làm động', 3500);
+      } catch (e) {
+        go.textContent = st.result ? '🔁 Tạo lại' : '✨ Tạo nhân vật';
+        if (e.name === 'AbortError' || (st.ctl && st.ctl.signal.aborted)) showErr(st.ctl && st.ctl.signal.reason === 'timeout' ? '⌛ AI trả lời quá lâu (2 phút). Thử lại nhé.' : 'Đã huỷ.');
+        else { console.warn('AI character:', e.aiStatus, e.raw || e); showErr(e.message); }
+      } finally { clearTimeout(timer); st.ctl = null; busy(''); }
+    });
+    // free object URLs when the dialog goes away
+    const mo = new MutationObserver(() => { if (!ov.isConnected) { mo.disconnect(); if (st.ctl) st.ctl.abort(); st.urls.forEach(u => URL.revokeObjectURL(u)); } });
+    mo.observe(document.body, { childList: true });
+  } });
+}
+
 /* ========= Import dialog ========= */
 function openImport(bmp) {
   commitFloating(); setRefEdit(false);
@@ -5174,6 +6179,7 @@ function openImport(bmp) {
   };
   const resampleA = (a, w0, h0, w1, h1) => { const o = new Float32Array(w1 * h1); for (let y = 0; y < h1; y++) for (let x = 0; x < w1; x++) o[y * w1 + x] = a[Math.min(h0 - 1, Math.floor(y * h0 / h1)) * w0 + Math.min(w0 - 1, Math.floor(x * w0 / w1))]; return o; };
   const st = { mode: 'ref', lineKind: 'ink', lineOut: 'vec', vecRes: null, cutMethod: 'ai', edge: 60, tol: 60, detail: 55, thick: 0, onlyChar: false, lineColor: '#111111', aiA: null, result: null, busy: false,
+    colA: null, slits: true, flat: flatBorder(srcImg),
     cari: { style: 'flat', head: 1.6, body: 0.75, bulge: 0.3, neck: 0, detail: 50, outline: 5 }, cariOut: 'float', cariC: null };
   const html = `
 <div class="imp-tabs">
@@ -5189,13 +6195,15 @@ function openImport(bmp) {
   <div class="imp-ctrl" id="impCtrl"></div>
 </div>`;
   let pv, busyEl, ctrl;
+  const flatNote = () => (st.flat && st.cutMethod === 'color' ? '<p class="imp-note">✨ Ảnh nền trơn: đã tự chọn <b>Theo màu nền</b> để giữ đúng khe giữa tay và người.</p>' : '')
+    + (st.cutMethod === 'color' ? `<div class="row"><span>Xoá khe nền kín (giữa tay và người)</span><input type="checkbox" class="switch" id="iSlits" ${st.slits ? 'checked' : ''}></div>` : '');
   const ctrls = {
     ref: () => `<p class="imp-note">Ảnh hiện mờ <b>dưới</b> các lớp để bạn vẽ đồ theo. Không xuất ra video. Chỉnh vị trí, cỡ, độ mờ sau khi bấm Dùng.</p>`,
     pp: () => `
 <div class="row"><span>Xoá nền</span><span>
   <button class="chip small ${st.cutMethod === 'ai' ? 'on' : ''}" data-cm="ai">AI tự động</button>
   <button class="chip small ${st.cutMethod === 'color' ? 'on' : ''}" data-cm="color">Theo màu nền</button>
-  <button class="chip small ${st.cutMethod === 'none' ? 'on' : ''}" data-cm="none">Ảnh đã tách nền</button></span></div>
+  <button class="chip small ${st.cutMethod === 'none' ? 'on' : ''}" data-cm="none">Ảnh đã tách nền</button></span></div>${flatNote()}
 ${st.cutMethod === 'ai' ? `<div class="row"><span>Viền mềm ↔ sắc</span><input type="range" id="iEdge" min="0" max="100" value="${st.edge}"></div>` : st.cutMethod === 'color' ? `<div class="row"><span>Độ rộng màu nền</span><input type="range" id="iTol" min="5" max="200" value="${st.tol}"></div>` : ''}
 <p class="imp-note">Dùng ảnh nhân vật <b>đứng thẳng, thấy rõ tay chân</b> (ảnh AI tạo rất hợp). Bước sau: kéo các khớp cho đúng → app cắt thành Đầu, Thân, Tay, Chân → bạn tự xoay từng mảnh quanh khớp, có Frame giữa và mẫu Đi/Chạy/Vẫy… Ảnh giữ nguyên màu, không bị méo.</p>`,
     cari: () => {
@@ -5204,8 +6212,9 @@ ${st.cutMethod === 'ai' ? `<div class="row"><span>Viền mềm ↔ sắc</span><
 <div class="row"><span>Tách người</span><span>
   <button class="chip small ${st.cutMethod === 'ai' ? 'on' : ''}" data-cm="ai">AI tự động</button>
   <button class="chip small ${st.cutMethod === 'color' ? 'on' : ''}" data-cm="color">Theo màu nền</button></span></div>
-${st.cutMethod === 'color' ? sl('iTol', 'Độ rộng màu nền', 5, 200, st.tol) : ''}
+${flatNote()}${st.cutMethod === 'color' ? sl('iTol', 'Độ rộng màu nền', 5, 200, st.tol) : ''}
 <div class="row"><span>Kiểu vẽ</span><span>
+  <button class="chip small ${c.style === 'orig' ? 'on' : ''}" data-cs="orig">Giữ màu gốc</button>
   <button class="chip small ${c.style === 'flat' ? 'on' : ''}" data-cs="flat">Màu phẳng</button>
   <button class="chip small ${c.style === 'soft' ? 'on' : ''}" data-cs="soft">Mềm mại</button>
   <button class="chip small ${c.style === 'bw' ? 'on' : ''}" data-cs="bw">Đen trắng</button></span></div>
@@ -5213,18 +6222,18 @@ ${sl('iCHead', 'Đầu to', 100, 220, Math.round(c.head * 100))}
 ${sl('iCBody', 'Cỡ thân', 50, 100, Math.round(c.body * 100))}
 ${sl('iCBulge', 'Phồng giữa mặt', 0, 70, Math.round(c.bulge * 100))}
 ${sl('iCNeck', 'Vị trí cổ (cao ↔ thấp)', -30, 30, c.neck)}
-${sl('iCDetail', 'Nét bên trong', 0, 100, c.detail)}
+${c.style === 'orig' ? '' : sl('iCDetail', 'Nét bên trong', 0, 100, c.detail)}
 ${sl('iCOut', 'Viền ngoài', 0, 12, c.outline)}
 <div class="row"><span>Đưa vào</span><span>
   <button class="chip small ${st.cariOut === 'float' ? 'on' : ''}" data-co="float">Vùng chọn (kéo đặt)</button>
   <button class="chip small ${st.cariOut === 'pp' ? 'on' : ''}" data-co="pp">🧩 Nhân vật ghép (làm động)</button></span></div>
-<p class="imp-note">Hợp nhất với ảnh <b>1 người</b>, thấy rõ đầu và vai. App tự tách người, tìm cổ, phóng to đầu, thu nhỏ thân, phồng giữa mặt rồi tô màu kiểu hoạt hình. Tất cả chạy ngay trên máy, không gửi ảnh đi đâu. Đầu bị cắt lệch thì chỉnh <b>Vị trí cổ</b>.</p>`;
+<p class="imp-note">Hợp nhất với ảnh <b>1 người</b>, thấy rõ đầu và vai. App tự tách người, tìm cổ, phóng to đầu, thu nhỏ thân, phồng giữa mặt. Ảnh chụp thì tô lại kiểu hoạt hình; tranh vẽ sẵn thì <b>Giữ màu gốc</b>. Tất cả chạy ngay trên máy, không gửi ảnh đi đâu. Đầu bị cắt lệch thì chỉnh <b>Vị trí cổ</b>.</p>`;
     },
     raw: () => `<p class="imp-note">Chèn ảnh vào lớp đang chọn (<b>${S.layer === 'bg' ? 'Nền' : 'Nhân vật'}</b>), rồi kéo, chỉnh cỡ/xoay.</p>`,
     cut: () => `
 <div class="row"><span>Cách tách</span><span>
   <button class="chip small ${st.cutMethod === 'ai' ? 'on' : ''}" data-cm="ai">AI tự động</button>
-  <button class="chip small ${st.cutMethod === 'color' ? 'on' : ''}" data-cm="color">Theo màu nền</button></span></div>
+  <button class="chip small ${st.cutMethod === 'color' ? 'on' : ''}" data-cm="color">Theo màu nền</button></span></div>${flatNote()}
 ${st.cutMethod === 'ai'
   ? `<div class="row"><span>Viền mềm ↔ sắc</span><input type="range" id="iEdge" min="0" max="100" value="${st.edge}"></div>
      <p class="imp-note">AI chạy ngay trên máy (lần đầu tải mô hình ~20 MB). Hợp với ảnh chụp người, vật thể rõ.</p>`
@@ -5256,9 +6265,34 @@ ${st.lineOut === 'vec'
   async function ensureAi() {
     if (st.aiA) return st.aiA;
     setBusy('Đang chạy AI tách nền…\n(lần đầu cần tải mô hình)');
-    try { st.aiA = await aiMask(src); } finally { setBusy(null); }
+    if (!st.aiP) st.aiP = aiMask(src).finally(() => { st.aiP = null; });   // one run shared by every caller
+    try { st.aiA = await st.aiP; } finally { setBusy(null); }
     return st.aiA;
   }
+  /** plain-background cut: flood the background colour from the edges, then let the AI decide which closed-in
+   *  background-coloured areas are really background (gap between arm and body) and which belong to the figure (white logo, eyes) */
+  async function colorCut() {
+    if (st.colA && st.colA.tol === st.tol && st.colA.slits === st.slits) return st.colA.a;
+    setBusy('Đang xử lý…'); await new Promise(r => setTimeout(r, 20));
+    const holes = [], a = colorBgAlpha(srcImg, st.tol, holes); setBusy(null);
+    if (holes.length) {
+      let m = null; try { m = await ensureAi(); } catch (e) { console.warn('AI không chạy, giữ các vùng kín', e); }
+      if (m) {
+        let cut = 0;
+        const sw = src.width;
+        for (const comp of holes) {
+          let sum = 0, x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+          for (const i of comp) { sum += m[i]; const x = i % sw, y = (i / sw) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+          const len = Math.max(x1 - x0, y1 - y0) + 1, thick = comp.length / len, mean = sum / comp.length;
+          const slit = st.slits && len / thick > 8 && len > src.height * 0.08;   // long thin gap (arm held close to the body): the AI blurs these, so trust it less
+          if (mean < 0.4 || (slit && mean < 0.98)) { for (const i of comp) a[i] = 0; cut++; }
+        }
+        if (cut) { const b = boxBlur(a, src.width, src.height, 1); for (let i = 0; i < a.length; i++) a[i] = Math.min(a[i], b[i] * 1.5); }
+      }
+    }
+    st.colA = { tol: st.tol, slits: st.slits, a }; return a;
+  }
+  if (st.flat) { st.cutMethod = 'color'; st.cari.style = 'orig'; st.cari.outline = 0; }   // a drawing already has its own outline   // drawn character on a plain background: colour flood keeps arm/leg gaps clean
   let seq = 0;
   async function recompute() {
     const my = ++seq;
@@ -5268,16 +6302,16 @@ ${st.lineOut === 'vec'
       if (st.mode === 'cut' || st.mode === 'pp') {
         let a;
         if (st.cutMethod === 'ai') a = sharpenMask(await ensureAi(), st.edge);
-        else { setBusy('Đang xử lý…'); await new Promise(r => setTimeout(r, 20)); a = colorBgAlpha(srcImg, st.tol); setBusy(null); }
+        else a = await colorCut();
         if (my !== seq) return;
         st.result = withAlpha(a); showCanvas(st.result); return;
       }
       if (st.mode === 'cari') {
-        const C = st.cariC || (st.cariC = {}), aKey = st.cutMethod + (st.cutMethod === 'color' ? st.tol : '');
+        const C = st.cariC || (st.cariC = {}), aKey = st.cutMethod + (st.cutMethod === 'color' ? st.tol + '|' + st.slits : '');
         if (C.aKey !== aKey) {
           let a;
           if (st.cutMethod === 'ai') a = sharpenMask(await ensureAi(), 70);
-          else { setBusy('Đang xử lý…'); await new Promise(r => setTimeout(r, 20)); a = colorBgAlpha(srcImg, st.tol); setBusy(null); }
+          else a = await colorCut();
           if (my !== seq) return;
           const k = Math.min(1, 800 / Math.max(src.width, src.height)), ww = Math.round(src.width * k), hh = Math.round(src.height * k);
           const wc = makeCanvas(ww, hh), wx = wc.getContext('2d'); wx.imageSmoothingQuality = 'high'; wx.drawImage(src, 0, 0, ww, hh);
@@ -5337,6 +6371,7 @@ ${st.lineOut === 'vec'
     const on = (id, ev, fn) => { const el = ctrl.querySelector(id); if (el) el.addEventListener(ev, fn); };
     on('#iEdge', 'input', e => { st.edge = +e.target.value; later(); });
     on('#iTol', 'input', e => { st.tol = +e.target.value; later(); });
+    on('#iSlits', 'change', e => { st.slits = e.target.checked; recompute(); });
     on('#iDetail', 'input', e => { st.detail = +e.target.value; later(); });
     on('#iThick', 'input', e => { st.thick = +e.target.value; later(); });
     on('#iOnly', 'change', e => { st.onlyChar = e.target.checked; recompute(); });
@@ -5360,7 +6395,7 @@ ${st.lineOut === 'vec'
       ov.querySelector('.dlg').classList.add('wide');
       pv = ov.querySelector('#impCv'); busyEl = ov.querySelector('#impBusy'); ctrl = ov.querySelector('#impCtrl');
       busyEl.style.whiteSpace = 'pre-line';
-      ov.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { if (st.busy) return; st.mode = b.dataset.mode; renderCtrl(); recompute(); }));
+      ov.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { st.mode = b.dataset.mode; st.result = null; renderCtrl(); recompute(); }));   // switching while busy is fine: the older run sees a newer seq and stops
       if (wizImport) { wizImport = false; st.mode = 'pp'; }
       renderCtrl(); recompute();
     } });
@@ -5436,7 +6471,7 @@ async function wizard() {
   const step = (n, title, done, desc, btns) => `<div class="wstep ${done ? 'done' : ''}"><h4>${done ? '✅' : n + '.'} ${title}</h4><div class="lbl" style="font-size:13px;line-height:1.45">${desc}</div><div class="wb">${btns}</div></div>`;
   const B = (id, label, primary) => `<button class="btn ${primary ? 'primary' : ''}" data-wz="${id}">${label}</button>`;
   const html = `<p style="margin-top:0">Làm theo 5 bước, mỗi bước bấm 1 nút. Mở lại bảng này bất cứ lúc nào bằng nút <b>🚀</b> ở thanh trên.</p><div id="wizSteps">
-  ${step(1, 'Đưa nhân vật vào', hasChar, 'Tạo ảnh nhân vật bằng AI (đứng thẳng, nhìn thẳng, tay hơi dang, nền trơn) rồi nhập vào. App tự xoá nền, tự đặt khớp — bạn chỉ cần kéo chỉnh chấm trắng rồi bấm <b>✂ Cắt tự động</b>. App tô mỗi phần một màu: chỗ nào chia sai (tay dính vào thân…) thì chọn tên phần rồi tô lại, xong bấm <b>✓ Cắt thành mảnh</b>.', B('char', '📷 Chọn ảnh nhân vật', !hasChar))}
+  ${step(1, 'Đưa nhân vật vào', hasChar, 'Tạo ảnh nhân vật bằng AI (đứng thẳng, nhìn thẳng, tay hơi dang, nền trơn) rồi nhập vào. App tự xoá nền, tự đặt khớp — bạn chỉ cần kéo chỉnh chấm trắng rồi bấm <b>✂ Cắt tự động</b>. App tô mỗi phần một màu: chỗ nào chia sai (tay dính vào thân…) thì chọn tên phần rồi tô lại, xong bấm <b>✓ Cắt thành mảnh</b>.', B('char', '📷 Chọn ảnh nhân vật', !hasChar) + B('aichar', '🤖 AI vẽ từ ảnh chụp'))}
   ${step(2, 'Cho nhân vật cử động', hasAnim, 'Chọn một hành động có sẵn — app tự tạo các frame. Muốn tự tạo dáng: dùng tab 🤸 Tạo dáng, kéo tay chân, rồi 🎞 Tạo frame giữa.', [['walk', '🚶 Đi bộ'], ['run', '🏃 Chạy'], ['wave', '👋 Vẫy tay'], ['jump', '🦘 Nhảy'], ['cheer', '🙌 Ăn mừng'], ['nod', '🙂 Gật đầu'], ['talk', '🗣 Nói']].map(([k, l]) => B('act:' + k, l)).join('') + B('pose', '🤸 Tự tạo dáng'))}
   ${step(3, 'Thêm chữ, camera, âm thanh', hasFx, 'Chữ kiểu truyện tranh, zoom vào mặt, rung khung, nhạc nền, lồng tiếng — app tự nhép miệng theo giọng.', B('text', '🔤 Thêm chữ') + B('zoom', '🎥 Zoom vào') + B('music', '🎵 Nhạc nền') + B('voice', '🎤 Lồng tiếng') + B('sfx', '🔊 Âm thanh vui'))}
   ${step(4, 'Xem lại', false, 'Bấm Phát để xem. Sửa frame nào thì chạm frame đó ở dưới.', B('play', '▶ Phát thử'))}
@@ -5446,6 +6481,7 @@ async function wizard() {
     ov.querySelectorAll('[data-wz]').forEach(b => b.addEventListener('click', async () => {
       const k = b.dataset.wz; close();
       if (k === 'char') { wizImport = true; $('#imgFile').click(); }
+      else if (k === 'aichar') aiCharDialog();
       else if (k.startsWith('act:')) {
         if (!S.pp) { toast('Làm bước 1 trước: đưa nhân vật vào'); return; }
         const a = k.slice(4); setTool('puppet'); openTab('pp', 'frames');
@@ -5475,6 +6511,7 @@ function helpHtml() {
 <li><b>Lớp Nền</b> vẽ cảnh một lần; frame nhân bản dùng chung nền. <b>Nền mới</b> = đổi cảnh; <b>Tách nền</b> = sửa nền riêng cho frame này. Chấm màu dưới frame cho biết nhóm nền.</li>
 <li><b>Lớp Nhân vật</b> là phần chuyển động, riêng từng frame.</li>
 <li><b>Nhập ảnh</b>: đặt ảnh mờ dưới để đồ theo, hoặc để AI tách nhân vật khỏi nền, hoặc tự chuyển ảnh thành nét viền rồi tô lại.</li>
+<li><b>🤖 AI nhân vật</b> (thanh trên): chọn ảnh chụp 1 người, AI (Google Gemini) vẽ lại thành nhân vật hoạt hình theo ảnh mẫu phong cách, lưu vào <b>Nhân vật AI</b>; bấm <b>✂ Cắt mảnh</b> để thành Nhân vật ghép. Cần key Gemini của bạn (Menu → 🔑 Key Gemini), key chỉ lưu trên máy này.</li>
 <li><b>🤪 Biếm hoạ</b>: Nhập ảnh → tab "Biếm hoạ". Chọn ảnh chụp 1 người, app tự tách người, phóng to đầu, thu nhỏ thân, phồng giữa mặt và tô màu kiểu hoạt hình. Chỉnh Đầu to / Cỡ thân / Vị trí cổ rồi đưa vào vùng chọn hoặc thành Nhân vật ghép để làm động.</li>
 <li><b>Lớp Nét</b> (vector): vẽ bằng Bút khi chọn lớp Nét, hoặc nhập ảnh → "Chuyển thành nét vẽ". Công cụ <b>Sửa nét</b>: chạm chọn, kéo để dời, kéo chấm để uốn, khoanh để chọn nhiều, chỉnh Xoay/Cỡ/Dày. Tẩy ở lớp Nét xoá cả nét. <b>Chốt → pixel</b> để gộp vào lớp Nhân vật.</li>
 <li><b>🎬 Tạo chuyển động</b> (trong Sửa nét): chọn nét tay/chân/miệng → chọn kiểu Vẫy, Nhép miệng, Nhún, Lắc → xem thử → Tạo. Muốn vừa vẫy tay vừa nói: tạo vẫy tay trước, quay lại frame đầu, chọn miệng, chọn "Áp lên các frame sau có sẵn".</li>
@@ -5507,9 +6544,12 @@ $('#menuBtn').addEventListener('click', () => {
   <button class="btn" data-m="projects">📁 Dự án của bạn</button>
   <button class="btn" data-m="update">🔄 Kiểm tra cập nhật</button>
   <button class="btn primary" data-m="video">🎬 Xuất video (MP4)</button>
+  <button class="btn" data-m="gif">🖼 Xuất GIF / ảnh PNG</button>
   <button class="btn primary" data-m="export">⬇ Xuất ZIP (gửi Claude)</button>
   <button class="btn" data-m="open">📂 Mở dự án từ ZIP</button>
   <button class="btn" data-m="img">🖼 Nhập ảnh (đồ theo / tách nhân vật / lấy nét)</button>
+  <button class="btn" data-m="aichar">🤖 AI tạo nhân vật từ ảnh</button>
+  <button class="btn" data-m="aikey">🔑 Key Gemini (AI)</button>
   <button class="btn" data-m="help">❓ Hướng dẫn</button>
   <button class="btn" data-m="tovec">✏️ Nét pixel lớp Nhân vật → nét vector</button>
   <button class="btn" data-m="delall" style="color:var(--danger)">🗑 Xoá hết frame</button>
@@ -5521,6 +6561,7 @@ $('#menuBtn').addEventListener('click', () => {
 <div class="set-row"><span>🧲 Bán kính hút nét (px)</span><input type="range" id="sSnapR" min="6" max="80" value="${S.snapR}"></div>
 <div class="set-row"><span>Làm mượt nét (chống run tay)</span><input type="range" id="sSmooth" min="0" max="80" value="${Math.round(S.smooth * 100)}"></div>
 <div class="set-row"><span>Độ mờ onion skin</span><input type="range" id="sOnion" min="5" max="70" value="${Math.round(S.onionAlpha * 100)}"></div>
+<div class="set-row"><span>Onion skin: số frame trước / sau</span><button class="chip small" id="sOnionN">${S.onionPrev ?? 1} / ${S.onionNext ?? 1} ▸</button></div>
 <div class="set-row"><span>Thời lượng mặc định frame mới (giây)</span><input type="number" id="sDur" min="0.02" max="10" step="0.02" value="${S.defaultDur}"></div>
 <div class="set-row"><span>Kích thước khung</span><span class="lbl">${W} × ${H}</span></div>`;
   modal({ title: 'Menu', html, buttons: [{ label: 'Đóng', value: null, primary: true }], onOpen: (ov, close) => {
@@ -5528,6 +6569,7 @@ $('#menuBtn').addEventListener('click', () => {
     ov.querySelector('#sRotG').addEventListener('change', e => { S.rotGesture = e.target.checked; saveSettings(); });
     ov.querySelector('#sSnapR').addEventListener('input', e => { S.snapR = +e.target.value; snapField = null; saveSettings(); });
     ov.querySelector('#sSmooth').addEventListener('input', e => { S.smooth = e.target.value / 100; saveSettings(); });
+    ov.querySelector('#sOnionN').addEventListener('click', () => { close(null); onionDialog(); });
     ov.querySelector('#sOnion').addEventListener('input', e => { S.onionAlpha = e.target.value / 100; saveSettings(); requestRender(); });
     ov.querySelector('#sDur').addEventListener('change', e => { const v = parseFloat(e.target.value); if (v > 0) { S.defaultDur = v; saveSettings(); } });
     ov.querySelectorAll('[data-m]').forEach(b => b.addEventListener('click', async () => {
@@ -5535,10 +6577,13 @@ $('#menuBtn').addEventListener('click', () => {
       if (m === 'wizard') wizard();
       else if (m === 'update') checkUpdate();
       else if (m === 'video') exportVideo();
+      else if (m === 'gif') exportImagesDialog();
       else if (m === 'projects') projectsDialog();
       else if (m === 'export') exportZip();
       else if (m === 'open') $('#zipFile').click();
       else if (m === 'img') $('#imgFile').click();
+      else if (m === 'aichar') aiCharDialog();
+      else if (m === 'aikey') aiKeyDialog();
       else if (m === 'help') modal({ title: 'Hướng dẫn nhanh', html: helpHtml() });
       else if (m === 'tovec') convertPixelsToVector(false);
       else if (m === 'delall') deleteAllFrames();
@@ -5565,7 +6610,7 @@ async function init() {
     if (!list.length) { const legacy = await idbGet('project'); if (legacy && legacy.frames && legacy.frames.length) { const id = newId(); legacy.name = legacy.name || 'Dự án 1'; await idbPut('project:' + id, legacy); list = [{ id, name: legacy.name, updated: Date.now(), frames: legacy.frames.length }]; await idbPut('projects', list); await idbDel('project'); } }
     let id = null; try { id = localStorage.getItem('fs-cur-proj'); } catch (e) {}
     if (!list.find(x => x.id === id)) id = list.length ? list.sort((a, b) => b.updated - a.updated)[0].id : null;
-    if (id) { p = await idbGet('project:' + id); if (p) setCurProj(id); }
+    if (id) { p = await idbGet('project:' + id); if (p) { await resolveProjectRefs(p, id); setCurProj(id); } }
   } catch (e) { storageOk = false; }
   if (p && p.frames && p.frames.length) { try { await loadProjectData(p); } catch (e) { console.error(e); S.projName = 'Dự án 1'; setCurProj(newId()); newProject(1080, 1920); } }
   else { S.projName = 'Dự án 1'; setCurProj(newId()); newProject(1080, 1920); }
@@ -5575,7 +6620,7 @@ async function init() {
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }
 /* ========= Installed app (PWA): offline + updates ========= */
-const APP_VERSION = '2026.11.20-1903';
+const APP_VERSION = '2026.11.20-1918';
 let swReg = null, swUpdating = false;
 (function setupPWA() {
   let top = false; try { top = window.top === window; } catch (e) {}

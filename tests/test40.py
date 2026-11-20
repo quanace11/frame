@@ -4,37 +4,33 @@ os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tes
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
-# compact top bar: background options sit in a "Nền ▾" menu, buttons still work, top-bar chips are tall enough to tap
-srv = subprocess.Popen(['python3','-m','http.server','8840'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+# Quick subtitles: paste lines → caption texts timed to the voice (voice.wav = 4 bursts) or spread evenly
+srv = subprocess.Popen(['python3','-m','http.server','8837'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1)
+SUBS = "S.frames.map(f=>{const t=(f.texts||[]).find(x=>x.sub); return t? t.str : '-'})"
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(executable_path=CHROME, args=['--no-sandbox'])
-        for vp in [{'width':1180,'height':820},{'width':820,'height':1180}]:
-            pg = await b.new_page(viewport=vp); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
-            await pg.goto('http://localhost:8840/index.html'); await pg.wait_for_timeout(1000)
-            await pg.click('.dlg .btns >> text=Bắt đầu vẽ'); await pg.wait_for_timeout(200)
-            h = await pg.evaluate("document.getElementById('top').getBoundingClientRect().height")
-            print(vp['width'], 'top bar height', round(h), h < (110 if vp['width'] > 1000 else 200))
-            small = await pg.evaluate("[...document.querySelectorAll('#top .chip, #top .layer')].filter(e=>e.offsetParent).map(e=>e.getBoundingClientRect().height).filter(x=>x<36).length")
-            print(vp['width'], 'no tiny chips', small == 0)
-            print(vp['width'], 'bg buttons out of the bar', await pg.evaluate("!document.getElementById('newBgBtn').offsetParent"))
-            await pg.click('#bgMenuBtn'); await pg.wait_for_timeout(100)
-            print(vp['width'], 'menu shows 3 options', await pg.evaluate("document.querySelectorAll('.pop.bgm .bgm-row > button').length") == 3,
-                  'info', await pg.inner_text('.pop.bgm .bgm-info'))
-            n0 = await pg.evaluate("new Set(S.frames.map(f=>f.bgId)).size")
-            await pg.click('#addBtn')
-            await pg.wait_for_timeout(200)
-            await pg.click('#bgMenuBtn'); await pg.wait_for_timeout(100)
-            await pg.click('.pop.bgm #newBgBtn'); await pg.wait_for_timeout(300)
-            n1 = await pg.evaluate("new Set(S.frames.map(f=>f.bgId)).size")
-            print(vp['width'], 'Nền mới works from menu', n1 > n0, 'menu closed', await pg.evaluate("!document.querySelector('.pop.bgm')"),
-                  'buttons back in holder', await pg.evaluate("document.getElementById('newBgBtn').parentElement.id") == 'bgHold')
-            # opening the menu again still works after closing by an outside tap
-            await pg.click('#bgMenuBtn'); await pg.wait_for_timeout(100); await pg.mouse.click(vp['width']//2, vp['height']//2); await pg.wait_for_timeout(100)
-            print(vp['width'], 'outside tap closes, buttons restored', await pg.evaluate("document.querySelectorAll('#bgHold > button').length") == 3)
-            print(vp['width'], 'save state short', await pg.inner_text('#saveState'))
-            await pg.screenshot(path=f"t40_{vp['width']}.png")
-            print('ERR', errs); await pg.close()
-        await b.close()
+        pg = await b.new_page(viewport={'width':1366,'height':1024}); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
+        await pg.add_init_script("document.addEventListener('DOMContentLoaded',()=>document.querySelectorAll('.tabhide').forEach(e=>e.classList.remove('tabhide')))")
+        await pg.goto('http://localhost:8837/index.html'); await pg.wait_for_timeout(1000)
+        await pg.click('.dlg .btns >> text=Bắt đầu vẽ')
+        await pg.evaluate("(async()=>{ for(let i=0;i<17;i++){ await addFrame(); } S.frames.forEach(f=>f.dur=100); buildStrip(); await selectFrame(0); })()"); await pg.wait_for_timeout(500)
+        await pg.evaluate("setTool('fx')"); await pg.wait_for_timeout(200)
+        # even split without voice
+        await pg.evaluate("quickSubtitles(); 0"); await pg.wait_for_timeout(300)
+        await pg.fill('#qsIn', 'Một\nHai\nBa'); await pg.click('.dlg .btns >> text=Tạo phụ đề'); await pg.wait_for_timeout(300)
+        ev = await pg.evaluate(SUBS); print('even', ''.join(x[0] for x in ev))
+        # with voice
+        await pg.set_input_files('#voiceFile', os.path.join(ASSETS, 'voice.wav')); await pg.wait_for_timeout(800)
+        await pg.evaluate("quickSubtitles(); 0"); await pg.wait_for_timeout(300)
+        await pg.fill('#qsIn', 'Câu một\nCâu hai\nCâu ba\nCâu tư'); await pg.click('.dlg .btns >> text=Theo giọng'); await pg.wait_for_timeout(1000)
+        sv = await pg.evaluate(SUBS); print('voice', [x[-3:] if x!='-' else '-' for x in sv])
+        print('bursts', [sv[i][-3:] for i in (1, 6, 11, 15)], 'old even subs replaced', all('Câu' in x or x=='-' for x in sv))
+        await pg.evaluate("selectFrame(6)"); await pg.wait_for_timeout(200); await pg.screenshot(path='t37_sub.png')
+        await pg.evaluate("undo()"); await pg.wait_for_timeout(200)
+        print('undo restores even subs', ''.join(x[0] for x in await pg.evaluate(SUBS)) == ''.join(x[0] for x in ev))
+        # long line wraps
+        print('wrap', await pg.evaluate("wrapSub('Hôm nay mình sẽ kể cho các bạn nghe một câu chuyện rất là dài và vui', 62).split('\\n').length") >= 2)
+        print('ERR', errs); await b.close()
 asyncio.run(main()); srv.kill()
