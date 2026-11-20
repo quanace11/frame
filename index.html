@@ -423,6 +423,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
         <div class="mrow" data-tab="frames"><span class="lbl"><b>Frame giữa:</b> chèn</span><input type="number" id="ppTweenN" value="3" min="1" max="24" style="width:52px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">frame chuyển tiếp tới frame sau</span><button class="chip small on" id="ppTweenBtn">Tạo frame giữa</button></div>
         <div class="mrow" data-tab="frames"><span class="lbl"><b>Mẫu nhanh:</b></span><span id="ppPresets" class="mrow"></span></div>
         <div class="mrow" data-tab="frames" style="flex-wrap:wrap"><span class="lbl"><b>Cử chỉ:</b></span><span id="ppGests" class="mrow" style="flex-wrap:wrap;gap:4px"></span><label class="lbl" title="Làm bằng tay bên kia"><input type="checkbox" id="gestMir"> Tay kia</label></div>
+        <div class="mrow" data-tab="frames"><span class="lbl"><b>Tự động:</b></span><button class="chip small" id="ppBlinkBtn" title="Nhân vật tự chớp mắt mỗi vài giây trên mọi frame, không thêm frame (cần mảnh vai trò Mắt)">👁 Chớp mắt tự động</button><span class="lbl" id="ppBlinkInfo"></span></div>
         <div class="mrow" data-tab="frames"><span class="lbl">Hướng</span><button class="chip small" data-ppdir="-1">◀</button><button class="chip small" data-ppdir="1">▶</button>
           <span class="lbl">Số frame</span><input type="number" id="ppPN" value="8" min="2" max="24" style="width:52px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px">
           <span class="lbl">Mỗi frame</span><input type="number" id="ppPDur" value="0.1" step="0.02" min="0.03" max="2" style="width:60px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">s</span>
@@ -1222,6 +1223,7 @@ async function applyEntry(e, key) {
   if (e.partpix) { const pt = ppPart(e.pid); if (!pt) return null; const h = e.vi ? pt.alts && pt.alts[e.vi - 1] : pt; if (!h || h.c.width !== e[key].width || h.c.height !== e[key].height) return null; h.c.getContext('2d').putImageData(e[key], 0, 0); encodeHolder(h); S.frames.forEach(fr => { fr.ver++; queueThumbFor(fr); }); scheduleSave(); ppSyncBar(); requestRender(); return null; }
   const o = objByTarget(e.t); if (!o) return null;
   if (e.fxe) { fxSetState(o, e[key]); o.ver++; fxSyncBar(); requestRender(); return o; }
+  if (e.lipe) { o.lip = e[key] ? JSON.parse(e[key]) : null; o.ver++; queueThumbFor(o); scheduleSave(); requestRender(); if (typeof ppBlinkInfo === 'function') ppBlinkInfo(); return o; }
   if (e.ppose) { ppSetState(o, e[key]); markEdited(o); ppRetween(); ppSyncBar(); updateFrameUI(); return o; }
   if (e.vec) { o.vec = cloneVec(e[key]); vsel.clear(); updVecBar(); }
   else { await ensureLoaded(o); const cv = e.col ? colOf(o, true) : o.canvas; if (e.col) o.colVer++; cv.getContext('2d').putImageData(e[key], e.rect[0], e.rect[1]); }
@@ -2244,6 +2246,7 @@ function ppImg(p, q) {
 function ppAlphaH(h) { if (!h.alpha && h.c) { const d = h.c.getContext('2d').getImageData(0, 0, h.c.width, h.c.height).data, a = new Uint8Array(h.c.width * h.c.height); for (let i = 0; i < a.length; i++) a[i] = d[i * 4 + 3]; h.alpha = a; } return h.alpha; }
 function drawPuppet(ctx, pose, lip) {
   if (!S.pp || !S.pp.parts.length) return;
+  if (lip && lip.eb) { pose = { ...(pose || {}) }; for (const id in lip.eb) { const ep = ppPart(id), a = lip.eb[id]; if (!ep || !a) continue; const q = pose[id] = { ...(pose[id] || {}) }; if (ep.alts && ep.alts.length) { const L = ep.alts.length; if (a >= 1) q.v = L; else if (L >= 2) q.v = 1; } else q.sy = (q.sy == null ? 1 : q.sy) * (1 - 0.9 * a); } }
   if (lip && lip.pid) { const mp = ppPart(lip.pid); if (mp) { const q = { ...((pose && pose[mp.id]) || {}) }; if (mp.alts && mp.alts.length) { const v = Math.round(lip.lv * mp.alts.length); if (v) q.v = v; else delete q.v; } else q.sy = (q.sy == null ? 1 : q.sy) * (1 + 0.8 * lip.lv); pose = { ...(pose || {}), [mp.id]: q }; } }
   const M = ppMats(pose);
   for (const p of [...S.pp.parts].sort((a, b) => a.z - b.z)) {
@@ -2831,7 +2834,7 @@ function ppPresetPose(type, k, n, base, hgt) {
     case 'shake': add('head', 'r', 10 * Math.sin(2 * ph)); break;
     case 'breathe': mul('torso', 'sy', 1 + 0.015 * s); add('head', 'dy', -0.006 * hgt * s); add('armL', 'r', 2 * s); add('armR', 'r', -2 * s); break;
     case 'talk': { const mp = ppByRole('mouth'), open = (1 - Math.cos(2 * ph)) / 2; if (mp && mp.alts && mp.alts.length) { const q = P[mp.id] = P[mp.id] || {}; q.v = Math.round(open * mp.alts.length) || undefined; } else mul('mouth', 'sy', 1 + 0.7 * open); break; }
-    case 'blink': { const pulse = Math.exp(-Math.pow((ph - Math.PI) / 0.5, 2)), ep = ppByRole('eyes'); if (ep && ep.alts && ep.alts.length) { const q = P[ep.id] = P[ep.id] || {}; q.v = pulse > 0.5 ? 1 : undefined; } else mul('eyes', 'sy', 1 - 0.9 * pulse); break; }
+    case 'blink': { const pulse = Math.exp(-Math.pow((ph - Math.PI) / 0.5, 2)), ep = ppByRole('eyes'); if (ep && ep.alts && ep.alts.length) { const q = P[ep.id] = P[ep.id] || {}; q.v = pulse > 0.5 ? ep.alts.length : pulse > 0.2 && ep.alts.length >= 2 ? 1 : undefined; } else mul('eyes', 'sy', 1 - 0.9 * pulse); break; }
   }
   return P;
 }
@@ -2845,6 +2848,52 @@ async function ppMakePreset() {
   const poses = []; for (let k = 1; k < n; k++) poses.push(ppPresetPose(ppPreset, k, n, f0.pp, hgt));
   const c = await ppInsertFrames(poses, dur); f0.dur = dur; updateFrameUI();
   toast(`Đã tạo ${c} frame ${PP_PRESETS[ppPreset][0].toLowerCase()} — chỉnh tay từng frame nếu cần`, 3500);
+}
+/* --- auto blink: closes the eyes for ~0.1-0.2s every few seconds on every frame, without adding frames.
+   Stored as an overlay in f.lip.eb = {eyesPartId: 0..1} so it survives in-betweening and is saved with lip sync. --- */
+const BLINK_GAP = { calm: [3.2, 5.5], normal: [2.2, 4], often: [1.3, 2.5] };
+function blinkRand(seed) { let x = 0; for (const ch of String(seed)) x = (x * 31 + ch.charCodeAt(0)) | 0; return () => { x = (x * 1103515245 + 12345) | 0; return ((x >>> 8) & 0xffff) / 0x10000; }; }
+function blinkPlan(eyeIds, gap) {
+  const T = frameStartTimes(), n = S.frames.length, end = T[n], plan = S.frames.map(() => ({}));
+  const at = t => { let i = 0; while (i < n - 1 && T[i + 1] <= t) i++; return i; };
+  for (const id of eyeIds) {
+    const rnd = blinkRand(id); let t = 0.6 + rnd() * (gap[0] - 0.4);
+    while (t < end - 0.05) {
+      const i = at(t); plan[i][id] = 1;
+      // short frames: half-closed on the frames around it so the blink reads smoothly
+      if (S.frames[i].dur <= 85) { for (const j of [i - 1, i + 1]) if (j >= 0 && j < n && !plan[j][id]) plan[j][id] = 0.5; }
+      t += gap[0] + rnd() * (gap[1] - gap[0]);
+    }
+  }
+  return plan;
+}
+function ppEyeParts() { return S.pp ? S.pp.parts.filter(p => p.role === 'eyes') : []; }
+function ppHasBlink() { return S.frames.some(f => f.lip && f.lip.eb); }
+function ppBlinkInfo() { const el = document.getElementById('ppBlinkInfo'); if (!el) return; const c = S.frames.filter(f => f.lip && f.lip.eb && Object.values(f.lip.eb).some(a => a >= 1)).length; el.textContent = c ? `đang bật: ${c} lần nhắm mắt` : ''; const b = document.getElementById('ppBlinkBtn'); if (b) b.classList.toggle('on', !!c); }
+function ppSetBlink(plan) {
+  const multi = [];
+  S.frames.forEach((f, i) => {
+    const before = f.lip ? JSON.stringify(f.lip) : null, l = { ...(f.lip || {}) }; delete l.eb;
+    const eb = plan && plan[i]; if (eb && Object.keys(eb).length) l.eb = eb;
+    const lip = Object.keys(l).length ? l : null, after = lip ? JSON.stringify(lip) : null;
+    if (before === after) return;
+    f.lip = lip; f.ver++; queueThumbFor(f); multi.push({ t: targetOf(f), lipe: true, before, after, bytes: 64 });
+  });
+  if (multi.length) { pushEntry({ multi }); scheduleSave(); requestRender(); }
+  ppBlinkInfo(); return multi.length;
+}
+async function ppAutoBlink() {
+  const eyes = ppEyeParts();
+  if (!eyes.length) { toast('Chưa có mảnh vai trò "Mắt": chọn mảnh Đầu → 🎨 Kho mắt/miệng/tay → gắn mắt, hoặc ✂ Khoanh tách mắt rồi đặt Vai trò Mắt', 6000); return; }
+  const has = ppHasBlink(), T = frameStartTimes(), len = T[S.frames.length];
+  if (len < 1.2) toast('Phim mới dài ' + len.toFixed(1) + 's, chớp mắt sẽ rõ hơn khi phim dài từ 2s', 3500);
+  const v = await modal({ title: '👁 Chớp mắt tự động', html: `<p>Nhân vật sẽ tự nhắm mắt khoảng 0.1–0.2 giây, cách nhau vài giây, trên toàn bộ ${S.frames.length} frame (${len.toFixed(1)}s). Không thêm frame, sửa tư thế sau vẫn giữ.</p><p class="lbl">${eyes.some(p => p.alts && p.alts.length) ? 'Mắt có hình thay thế: dùng hình cuối làm mắt nhắm (bộ chớp mắt trong Kho hình: mở → lim dim → nhắm).' : 'Mắt chưa có hình nhắm: app sẽ ép dẹt mắt lại. Gắn bộ mắt trong Kho hình để đẹp hơn.'}</p>`,
+    buttons: [...(has ? [{ label: 'Bỏ chớp mắt', value: 'off' }] : []), { label: 'Ít chớp', value: 'calm' }, { label: 'Vừa', value: 'normal', primary: true }, { label: 'Hay chớp', value: 'often' }] });
+  if (!v) return;
+  if (v === 'off') { ppSetBlink(null); toast('Đã bỏ chớp mắt tự động'); return; }
+  ppSetBlink(blinkPlan(eyes.map(p => p.id), BLINK_GAP[v]));
+  const c = S.frames.filter(f => f.lip && f.lip.eb && Object.values(f.lip.eb).some(a => a >= 1)).length;
+  toast(c ? `Đã thêm ${c} lần chớp mắt — bấm Phát để xem` : 'Phim ngắn quá nên chưa có lần chớp nào', 3500);
 }
 async function ppBake() {
   const f = curFrame(); if (!S.pp) return; await ensureLoaded(f);
@@ -2864,7 +2913,7 @@ function updPanelPill() {
 }
 function hidePanel(t) { panelHidden[t] = true; saveSettings(); updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
 function showPanel() { panelHidden[S.tool] = false; saveSettings(); updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
-function ppSyncBar() {
+function ppSyncBar() { ppBlinkInfo();
   const bar = $('#ppbar'), show = S.tool === 'puppet' && (!panelHidden.puppet || !!ppSetup);
   bar.hidden = !show; updPanelPill(); if (!show) return;
   $('#ppSetupSec').hidden = !ppSetup; $('#ppPoseSec').hidden = !!ppSetup || !S.pp;
@@ -2990,6 +3039,7 @@ $('#ppFlipChar').addEventListener('click', ppFlipChar);
 Object.entries(PP_PRESETS).forEach(([k, v]) => { const b = document.createElement('button'); b.className = 'chip small'; b.dataset.ppp = k; b.textContent = v[0]; b.addEventListener('click', () => { ppPreset = k; $('#ppPN').value = v[1]; $('#ppPDur').value = v[2]; ppSyncBar(); }); $('#ppPresets').append(b); });
 document.querySelectorAll('[data-ppdir]').forEach(b => b.addEventListener('click', () => { ppDir = +b.dataset.ppdir; ppSyncBar(); }));
 $('#ppPresetGo').addEventListener('click', ppMakePreset);
+$('#ppBlinkBtn').addEventListener('click', ppAutoBlink);
 $('#ppBake').addEventListener('click', ppBake);
 $('#projBtn').addEventListener('click', projectsDialog);
 $('#wizBtn').addEventListener('click', wizard);
@@ -3749,7 +3799,7 @@ async function fxLipSync() {
   const lv = S.frames.map((f, i) => { const a = T[i] - T[vi], b = T[i + 1] - T[vi]; return b <= 0 || a >= dur ? null : rms(Math.max(0, a), Math.min(dur, b)); });
   const mx = Math.max(0.0001, ...lv.filter(v => v != null));
   let count = 0;
-  S.frames.forEach((f, i) => { const v = lv[i]; const n2 = v == null ? null : v / mx; const nv = n2 == null ? null : n2 < 0.12 ? 0 : n2 < 0.45 ? 0.5 : 1; const old = JSON.stringify(f.lip || null); f.lip = nv == null ? null : { pid: mouth.id, lv: nv }; if (JSON.stringify(f.lip) !== old) { f.ver++; queueThumbFor(f); count++; } });
+  S.frames.forEach((f, i) => { const v = lv[i]; const n2 = v == null ? null : v / mx; const nv = n2 == null ? null : n2 < 0.12 ? 0 : n2 < 0.45 ? 0.5 : 1; const old = JSON.stringify(f.lip || null); const eb = f.lip && f.lip.eb; f.lip = nv == null ? (eb ? { eb } : null) : eb ? { pid: mouth.id, lv: nv, eb } : { pid: mouth.id, lv: nv }; if (JSON.stringify(f.lip) !== old) { f.ver++; queueThumbFor(f); count++; } });
   scheduleSave(); requestRender(); fxSyncBar();
   toast(`Đã nhép miệng theo giọng trên ${lv.filter(v => v != null).length} frame${mouth.alts && mouth.alts.length ? '' : ' (thêm hình miệng há cho mảnh Miệng để đẹp hơn)'}`, 4000);
 }
@@ -4315,7 +4365,7 @@ pickAudio($('#musicFile'), 'music'); pickAudio($('#voiceFile'), 'voice');
 $('#fxMusicPick').addEventListener('click', () => $('#musicFile').click());
 $('#fxVoicePick').addEventListener('click', () => $('#voiceFile').click());
 $('#fxMusicDel').addEventListener('click', () => { if (S.audio) { S.audio.music = null; fxSyncBar(); scheduleSave(); } });
-$('#fxVoiceDel').addEventListener('click', () => { if (S.audio) { S.audio.voice = null; S.frames.forEach(f => { if (f.lip) { f.lip = null; f.ver++; } }); fxSyncBar(); scheduleSave(); requestRender(); } });
+$('#fxVoiceDel').addEventListener('click', () => { if (S.audio) { S.audio.voice = null; S.frames.forEach(f => { if (f.lip && f.lip.pid) { f.lip = f.lip.eb ? { eb: f.lip.eb } : null; f.ver++; } }); fxSyncBar(); scheduleSave(); requestRender(); } });
 $('#fxMusicVol').addEventListener('change', e => { if (S.audio && S.audio.music) { S.audio.music.vol = e.target.value / 100; scheduleSave(); } });
 $('#fxLip').addEventListener('click', fxLipSync);
 $('#moveL').addEventListener('click', () => moveFrame(-1));
@@ -5557,7 +5607,7 @@ async function init() {
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }
 /* ========= Installed app (PWA): offline + updates ========= */
-const APP_VERSION = '2026.11.20-1749';
+const APP_VERSION = '2026.11.20-1859';
 let swReg = null, swUpdating = false;
 (function setupPWA() {
   let top = false; try { top = window.top === window; } catch (e) {}
