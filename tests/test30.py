@@ -4,7 +4,7 @@ os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tes
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time, base64
 from playwright.async_api import async_playwright
-srv = subprocess.Popen(['python3','-m','http.server','8830'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+srv = subprocess.Popen(['python3','-m','http.server','8828'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1)
 # Drawn full-body character on a white background, arms hanging beside the body (hands touch the shorts):
 # import -> Nhân vật ghép -> joints -> auto cut -> walk. Checks the joints, the cut and that swinging arms leave no hole in the shirt.
@@ -16,7 +16,7 @@ async def main():
         b = await p.chromium.launch(executable_path=CHROME, args=['--no-sandbox'])
         pg = await b.new_page(viewport={'width':1280,'height':900}); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
         await pg.add_init_script("new MutationObserver(()=>document.querySelectorAll('.tabhide').forEach(e=>e.classList.remove('tabhide'))).observe(document,{subtree:true,attributes:true,childList:true,attributeFilter:['class']})")
-        await pg.goto('http://localhost:8830/index.html'); await pg.wait_for_timeout(800); await pg.click('text=Bắt đầu vẽ')
+        await pg.goto('http://localhost:8828/index.html'); await pg.wait_for_timeout(800); await pg.click('text=Bắt đầu vẽ')
         await pg.set_input_files('#imgFile', os.path.join(ASSETS, 'drawn_char.png')); await pg.wait_for_timeout(400)
         await pg.click('[data-mode=cari]'); await pg.wait_for_timeout(300)
         print('cari on drawing: keeps own colours', await pg.evaluate("document.querySelector('[data-cs].on').dataset.cs") == 'orig')
