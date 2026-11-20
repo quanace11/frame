@@ -5254,11 +5254,13 @@ function bgMenuPop() {
   const d = openPop(btn, `<div class="cp-lbl">Nền của frame này: <b class="bgm-info"></b></div>
     <div class="bgm-row" data-k="newBgBtn"><span>Cho frame này nền trống riêng, dùng khi sang cảnh mới</span></div>
     <div class="bgm-row" data-k="splitBgBtn"><span>Sửa nền ở frame này mà không đổi các frame khác</span></div>
-    <div class="bgm-row" data-k="bgVidBtn"><span>Dùng một đoạn video làm nền phía sau nhân vật</span></div>`, 'bgm');
+    <div class="bgm-row" data-k="bgVidBtn"><span>Dùng một đoạn video làm nền phía sau nhân vật</span></div>
+    <div class="bgm-row"><button class="chip small on bgm-scene">🏞 Nền vẽ sẵn</button><span>Phòng, lớp học, phố, công viên, biển… chạm là có cảnh</span></div>`, 'bgm');
   const hold = $('#bgHold'), info = $('#bgInfo');
   d.querySelector('.bgm-info').textContent = info.textContent;
-  d.querySelectorAll('.bgm-row').forEach(r => r.prepend($('#' + r.dataset.k)));
-  d._onClose = () => d.querySelectorAll('.bgm-row > button').forEach(b => hold.insertBefore(b, info));
+  d.querySelectorAll('.bgm-row[data-k]').forEach(r => r.prepend($('#' + r.dataset.k)));
+  d.querySelector('.bgm-scene').addEventListener('click', () => { closePop(); sceneDialog(); });
+  d._onClose = () => d.querySelectorAll('.bgm-row[data-k] > button').forEach(b => hold.insertBefore(b, info));
   d.addEventListener('click', e => { if (e.target.closest('.bgm-row > button')) setTimeout(closePop, 0); });
 }
 $('#bgMenuBtn').addEventListener('click', bgMenuPop);
@@ -6753,7 +6755,7 @@ async function init() {
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }
 /* ========= Installed app (PWA): offline + updates ========= */
-const APP_VERSION = '2026.11.20-1934';
+const APP_VERSION = '2026.11.20-2044';
 let swReg = null, swUpdating = false;
 (function setupPWA() {
   let top = false; try { top = window.top === window; } catch (e) {}
