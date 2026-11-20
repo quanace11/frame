@@ -194,6 +194,9 @@ body:not([data-tool=fill]) #gapBtn{display:none}
 .fr.playing{border-color:#4cd964}
 .fr .idx{position:absolute;left:3px;top:3px;background:#000b;color:#fff;font-size:10px;padding:1px 5px;border-radius:6px}
 .fr .dur{position:absolute;right:3px;bottom:3px;background:#000b;color:#fff;font-size:10px;padding:1px 5px;border-radius:6px}
+.fr .wave{position:absolute;left:0;right:0;bottom:0;width:100%;height:18px;pointer-events:none}
+.fr .sfxb{position:absolute;right:3px;top:18px;font-size:10px;background:#000b;padding:0 3px;border-radius:6px}
+.fr.hasw .dur,.fr.hasw .shared{bottom:21px}
 .fr .shared{position:absolute;left:3px;bottom:3px;width:8px;height:8px;border-radius:50%}
 .addfr{flex:none;border:2px dashed var(--line);border-radius:8px;background:transparent;color:var(--muted);font-size:26px;cursor:pointer}
 .tbtn{border:1px solid var(--line);background:var(--panel2);border-radius:10px;padding:7px 11px;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:13px}
@@ -1483,7 +1486,8 @@ function buildStrip() {
     const idx = document.createElement('span'); idx.className = 'idx'; idx.textContent = i + 1;
     const dur = document.createElement('span'); dur.className = 'dur'; dur.textContent = fmtDur(f.dur);
     const sh = document.createElement('span'); sh.className = 'shared'; sh.style.background = BG_COLORS[bgOrder.indexOf(f.bgId) % BG_COLORS.length]; sh.title = 'Màu chấm = nhóm nền';
-    el.append(idx, dur, sh);
+    const wv = document.createElement('canvas'); wv.className = 'wave'; wv.hidden = true;
+    el.append(wv, idx, dur, sh);
     if (S.pp) { const kk = document.createElement('span'); kk.className = 'key' + (ppIsKey(f) ? '' : ' auto'); kk.textContent = ppIsKey(f) ? '🔑' : '∿'; el.append(kk); }
     el.addEventListener('click', () => { if (playing) stopPlay(); selectFrame(i); });
     strip.append(el); f.el = el;
@@ -1492,7 +1496,7 @@ function buildStrip() {
   const [tw, th] = thumbSize(); add.style.width = Math.max(tw, 44) + 'px'; add.style.height = (th + 4) + 'px';
   add.title = 'Nhân bản frame hiện tại'; add.addEventListener('click', dupFrame);
   strip.append(add);
-  updateFrameUI();
+  waveKey = ''; updateFrameUI();
 }
 function fmtDur(ms) { const s = ms / 1000; return (s >= 1 ? s.toFixed(s % 1 ? 1 : 0) : s.toFixed(2).replace(/0$/, '')) + 's'; }
 function updateFrameUI() {
@@ -1505,6 +1509,7 @@ function updateFrameUI() {
   $('#dockTlLbl').textContent = `Frame ${S.cur + 1}/${S.frames.length}`;
   const shared = S.frames.filter(g => g.bgId === f.bgId).length;
   $('#bgInfo').textContent = shared > 1 ? `Nền dùng chung ${shared} frame` : 'Nền riêng';
+  updateWaves();
   $('#moveL').disabled = S.cur === 0; $('#moveR').disabled = S.cur === S.frames.length - 1;
   const el = f.el; if (el) { const r = el.getBoundingClientRect(), sr = strip.getBoundingClientRect(); if (r.left < sr.left || r.right > sr.right) strip.scrollLeft += r.left - sr.left - sr.width / 2 + r.width / 2; }
 }
@@ -1571,6 +1576,58 @@ function setDur(ms, all) {
   ms = clamp(Math.round(ms), 20, 30000);
   if (all) S.frames.forEach(f => f.dur = ms); else curFrame().dur = ms;
   updateFrameUI(); scheduleSave();
+}
+
+/* ===== voice / music waveform under the frame thumbnails: time poses to the words without guessing ===== */
+const peakCache = new WeakMap(); let waveKey = '';
+const PEAK_HZ = 100;
+function audioPeaks(ab) {
+  if (!ab) return null;
+  const c = peakCache.get(ab); if (c) return c.peaks || null;
+  const ent = {}; peakCache.set(ab, ent);
+  (async () => {
+    try {
+      const ac = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100, 44100), b = await ac.decodeAudioData(ab.slice(0));
+      const n = Math.ceil(b.duration * PEAK_HZ), out = new Float32Array(n), step = b.sampleRate / PEAK_HZ, chs = [];
+      for (let k = 0; k < b.numberOfChannels; k++) chs.push(b.getChannelData(k));
+      let mx = 1e-6;
+      for (let i = 0; i < n; i++) { let m = 0; const a0 = Math.floor(i * step), a1 = Math.min(b.length, Math.floor((i + 1) * step)); for (const d of chs) for (let j = a0; j < a1; j += 4) { const v = Math.abs(d[j]); if (v > m) m = v; } out[i] = m; if (m > mx) mx = m; }
+      for (let i = 0; i < n; i++) out[i] = Math.min(1, out[i] / mx * 1.15);
+      ent.peaks = out; waveKey = ''; updateWaves();
+    } catch (e) { ent.peaks = null; }
+  })();
+  return null;
+}
+function updateWaves() {
+  const A = S.audio || {}, vp = A.voice ? audioPeaks(A.voice.buf) : null, mp = A.music ? audioPeaks(A.music.buf) : null;
+  const vi = A.voice ? Math.max(0, S.frames.findIndex(f => f.id === A.voice.frameId)) : 0;
+  const sfxAt = new Set((A.sfx || []).map(x => x.frameId));
+  const key = (vp ? 'v' + vi : '') + (mp ? 'm' : '') + '|' + [...sfxAt].join(',') + '|' + S.frames.map(f => f.dur).join(',') + '|' + S.frames.length;
+  if (key === waveKey) return; waveKey = key;
+  const T = frameStartTimes(), v0 = T[vi] || 0;
+  S.frames.forEach((f, i) => {
+    const el = f.el; if (!el) return;
+    const cv = el.querySelector('.wave'); if (!cv) return;
+    let sb = el.querySelector('.sfxb'); if (sfxAt.has(f.id)) { if (!sb) { sb = document.createElement('span'); sb.className = 'sfxb'; sb.textContent = '🔊'; el.append(sb); } } else if (sb) sb.remove();
+    el.classList.toggle('hasw', !!(vp || mp));
+    if (!vp && !mp) { cv.hidden = true; return; }
+    const w = f.thumb ? f.thumb.width : 54, h = 18; cv.hidden = false;
+    if (cv.width !== w * 2) { cv.width = w * 2; cv.height = h * 2; }
+    const x = cv.getContext('2d'); x.setTransform(2, 0, 0, 2, 0, 0); x.clearRect(0, 0, w, h);
+    x.fillStyle = 'rgba(0,0,0,.45)'; x.fillRect(0, 0, w, h);
+    const draw = (pk, t0, col) => {
+      const t1 = t0 + f.dur / 1000; if (t1 <= 0 || t0 >= pk.length / PEAK_HZ) return;
+      x.fillStyle = col;
+      for (let px = 0; px < w; px++) {
+        const a = Math.floor((t0 + (t1 - t0) * px / w) * PEAK_HZ), b = Math.max(a + 1, Math.floor((t0 + (t1 - t0) * (px + 1) / w) * PEAK_HZ));
+        let m = 0; for (let j = Math.max(0, a); j < Math.min(pk.length, b); j++) if (pk[j] > m) m = pk[j];
+        if (m > 0.01) { const hh = Math.max(1, m * (h - 2)); x.fillRect(px, (h - hh) / 2, 1, hh); }
+      }
+    };
+    if (mp) draw(mp, T[i], 'rgba(120,190,255,.6)');
+    if (vp) draw(vp, T[i] - v0, '#ffb21e');
+    if (vp && i === vi) { x.fillStyle = '#ff3b9a'; x.fillRect(0, 0, 2, h); }
+  });
 }
 
 /* ========= Playback ========= */
@@ -3971,7 +4028,7 @@ function camApply(ctx, cam, shakePx, tsec, seed) {
   let sx = 0, sy = 0; if (shakePx) { sx = shakePx * Math.sin(tsec * 71 + seed * 13.1) * Math.cos(tsec * 37); sy = shakePx * Math.cos(tsec * 59 + seed * 7.7) * Math.sin(tsec * 43); }
   ctx.translate(W / 2 + sx, H / 2 + sy); ctx.scale(z, z); ctx.translate(-cx, -cy);
 }
-function fxSyncBar() {
+function fxSyncBar() { updateWaves();
   const bar = $('#fxbar'), show = S.tool === 'fx' && !panelHidden.fx; bar.hidden = !show; updPanelPill(); if (!show) return;
   const f = curFrame(), t = (f.texts || []).find(x => x.id === fxSel);
   ['#fxEditTxt', '#fxSize', '#fxRot', '#fxDelTxt', '#fxKeep', '#fxColorTxt'].forEach(id => $(id).disabled = !t);
