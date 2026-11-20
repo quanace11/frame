@@ -18,7 +18,7 @@ async def main():
         await pg.set_input_files('#imgFile',os.path.join(ASSETS,'mit.png')); await pg.wait_for_timeout(400)
         await pg.click('[data-mode=pp]'); await pg.click('[data-cm=color]'); await pg.wait_for_timeout(1200)
         await pg.click('.dlg .btns >> text=Dùng'); await pg.wait_for_timeout(500)
-        await pg.click('#ppCutAuto'); await pg.wait_for_function('S.pp && S.pp.parts.length', timeout=60000)
+        await pg.click('#ppCutAuto'); await pg.click('#ppLabCut'); await pg.wait_for_function('S.pp && S.pp.parts.length', timeout=60000)
         await pg.click('#dupBtn'); await pg.wait_for_timeout(300)
         print('before', await pg.evaluate('({ref:!!REF.c, pp:S.pp&&S.pp.parts.length, frames:S.frames.length})'))
         await pg.click('#delAllBtn'); await pg.click('.dlg .btns >> text=Xoá hết'); await pg.wait_for_timeout(600)
