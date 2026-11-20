@@ -30,6 +30,7 @@ async def main():
         # arm drawn against the body (viewer-left) is found from its outline; the raised arm (viewer-right) from its tip
         print('arm L x', round(J['shL']['x']), round(J['elL']['x']), round(J['haL']['x']), 'hand y', round(J['haL']['y']))
         print('arm R hand', round(J['haR']['x']), round(J['haR']['y']), 'head x', round(J['head']['x']))
+        print('raised arm R found above the shoulder', J['haR']['y'] < J['shR']['y'], 'head on the centre line', abs(J['head']['x'] - J['root']['x']) < 30)
         await pg.click('#ppCutAuto'); await pg.wait_for_selector('#ppLabSec:not([hidden])')
         print('stage', await pg.evaluate('ppSetup.stage'), 'chips', await pg.locator('#ppLabParts [data-plp]').count())
         # sleeve of the left arm: doc x 330..400, y 780..1080 -> should mostly be armL (6)
