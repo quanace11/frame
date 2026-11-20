@@ -233,6 +233,19 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
   input[type=range]{width:80px}
   .tool{width:50px;min-height:48px;font-size:10px}
 }
+/* Landscape tablet: the 9:16 canvas is limited by HEIGHT, so give height back to it — the tool rail runs the full height
+   (2 columns when short, so Menu is never cut off) and the frame bar keeps its buttons on one scrolling row. */
+@media (orientation:landscape){
+  #app{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"rail top" "rail stage" "rail tl"}
+  #tl,#top,#tlBar{min-width:0}
+}
+@media (orientation:landscape) and (max-height:900px){
+  #rail{display:grid;width:118px;grid-template-columns:repeat(2,52px);grid-auto-rows:min-content;align-content:start;gap:3px;padding:6px 5px}
+  #rail .tool{width:52px} #rail .rail-sep{grid-column:1/-1}
+  #tlBar{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;padding-bottom:1px;-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent)} #tlBar::-webkit-scrollbar{display:none}
+  #tlBar > *{flex:none}
+  #strip{align-items:flex-start} #strip .addfr{height:66px!important}
+}
 </style>
 </head>
 <body>
@@ -1457,6 +1470,19 @@ async function applyEntry(e, key) {
     tintCache.clear(); ppRetween(); buildStrip(); scheduleSave(); evictSoon();
     return f0;
   }
+  if (e.del) {
+    const D = e.del;
+    if (key === 'before') {
+      if (D.bg && !S.bgs.includes(D.bg)) { S.bgs.push(D.bg); await ensureLoaded(D.bg); }
+      S.frames.splice(Math.min(D.index, S.frames.length), 0, D.f); S.cur = S.frames.indexOf(D.f);
+    } else {
+      const i = S.frames.indexOf(D.f); if (i < 0 || S.frames.length < 2) return null;
+      await removeFrameAt(i); S.cur = Math.min(i, S.frames.length - 1);
+    }
+    tintCache.clear(); ppRetween(); buildStrip(); await selectFrame(S.cur); scheduleSave();
+    return null;
+  }
+  if (e.wipe) { await wipeSwap(e.wipe[key === 'before' ? 'old' : 'neu'], e.wipe[key === 'before' ? 'neu' : 'old']); return null; }
   if (e.multi) { let o = null; const list = key === 'before' ? [...e.multi].reverse() : e.multi; for (const x of list) o = (await applyEntry(x, key)) || o; return o; }
   if (e.partpix) { const pt = ppPart(e.pid); if (!pt) return null; const h = e.vi ? pt.alts && pt.alts[e.vi - 1] : pt; if (!h || h.c.width !== e[key].width || h.c.height !== e[key].height) return null; h.c.getContext('2d').putImageData(e[key], 0, 0); encodeHolder(h); S.frames.forEach(fr => { fr.ver++; queueThumbFor(fr); }); scheduleSave(); ppSyncBar(); requestRender(); return null; }
   const o = objByTarget(e.t); if (!o) return null;
@@ -1467,7 +1493,7 @@ async function applyEntry(e, key) {
   else { await ensureLoaded(o); const cv = e.col ? colOf(o, true) : o.canvas; if (e.col) o.colVer++; cv.getContext('2d').putImageData(e[key], e.rect[0], e.rect[1]); }
   markEdited(o); return o;
 }
-const entryAlive = e => e.partpix ? !!ppPart(e.pid) : e.add ? true : e.multi ? e.multi.some(entryAlive) : !!objByTarget(e.t);
+const entryAlive = e => e.partpix ? !!ppPart(e.pid) : e.add || e.del || e.wipe ? true : e.multi ? e.multi.some(entryAlive) : !!objByTarget(e.t);
 async function applyHistory(from, to, key) {
   if (stroke || action) return;
   if (ppSetup && ppSetup.stage === 'paint') { ppLabHistory(key === 'before'); return; }
@@ -1614,19 +1640,33 @@ async function repeatRangeDialog() {
   const c = await repeatRange(a, b, times, v);
   toast(`Đã thêm ${c} frame sau frame ${b + 1} — hoàn tác 1 lần để bỏ`, 3000);
 }
+// Park a frame/background out of the project but keep it restorable for undo: PNG in memory, canvas freed.
+async function parkObj(o) {
+  await ensurePng(o);
+  if (o.canvas) { o.canvas.width = 0; o.canvas = null; }
+  if (o.col) { o.col.width = 0; o.col = null; }
+  if (o.play) { o.play.width = 0; o.play = null; o.playKey = ''; }
+  const li = loaded.indexOf(o); if (li >= 0) loaded.splice(li, 1);
+}
+// Take frame i out of the film (undoable). Returns { f, index, bg } where bg is set if its background was only used by it.
+async function removeFrameAt(i) {
+  const f = S.frames[i];
+  const bg = S.frames.filter(g => g.bgId === f.bgId).length === 1 ? bgOf(f) : null;
+  await parkObj(f);
+  if (bg) await parkObj(bg);
+  S.frames.splice(i, 1);
+  if (bg) S.bgs = S.bgs.filter(b => b !== bg);
+  return { f, index: i, bg };
+}
 async function delFrame() {
   if (playing) stopPlay();
   if (S.frames.length === 1) { toast('Không xoá được frame cuối cùng'); return; }
-  const ok = await modal({ title: `Xoá frame ${S.cur + 1}?`, html: '<p>Frame này sẽ bị xoá và không hoàn tác được.</p>',
-    buttons: [{ label: 'Huỷ', value: false }, { label: 'Xoá', value: true, cls: 'danger' }] });
-  if (!ok) return;
-  commitFloating();
-  const [f] = S.frames.splice(S.cur, 1);
-  const li = loaded.indexOf(f); if (li >= 0) loaded.splice(li, 1);
-  freeFrame(f);
-  gcBgs();
+  if (stroke) strokeEnd(); commitFloating(); motionClose(); rigClose();
+  const n = S.cur + 1, D = await removeFrameAt(S.cur);
+  pushEntry({ del: D, t: targetOf(D.f), bytes: (D.f.png ? D.f.png.byteLength : 0) + (D.f.colPng ? D.f.colPng.byteLength : 0) + (D.bg && D.bg.png ? D.bg.png.byteLength : 0) });
   S.cur = Math.min(S.cur, S.frames.length - 1);
   ppRetween(); buildStrip(); await selectFrame(S.cur); scheduleSave();
+  toast(`Đã xoá frame ${n} — bấm ↶ Hoàn tác để lấy lại`, 2500);
 }
 function moveFrame(d) {
   const j = S.cur + d; if (j < 0 || j >= S.frames.length) return;
@@ -4720,23 +4760,44 @@ async function convertPixelsToVector(fromFloating) {
   toast(`Đã chuyển thành ${strokes.length} nét vector — dùng Sửa nét để chỉnh`, 3500);
 }
 /* ========= Delete all frames ========= */
+// Everything "Xoá hết" removes, so one undo brings it all back.
+async function wipeSnap() {
+  for (const o of [...S.frames, ...S.bgs]) { if (o.canvas || o.loading) await ensureLoaded(o); await parkObj(o); }
+  return { frames: S.frames, bgs: S.bgs, cur: S.cur, pp: S.pp, rig: S.rig, ref: { ...REF }, bgVideo: S.bgVideo };
+}
+// Store the current state into `into` (parked) and bring back `from`.
+async function wipeSwap(from, into) {
+  if (playing) stopPlay(); commitFloating(); motionClose(); rigClose();
+  Object.assign(into, await wipeSnap());
+  ppSetup = null; ppSel = null; ppCutMode = false; ppPatchMode = false; vsel.clear();
+  if (S.tool === 'puppet' || S.tool === 'vedit') setTool('brush');
+  S.frames = from.frames; S.bgs = from.bgs; S.pp = from.pp; S.rig = from.rig; S.bgVideo = from.bgVideo; bgVideoSetup();
+  Object.assign(REF, from.ref); refEdit = false; updateRefUI();
+  loaded.length = 0; tintCache.clear();
+  for (const b of S.bgs) await ensureLoaded(b);
+  S.cur = clamp(from.cur, 0, S.frames.length - 1);
+  for (const f of S.frames) if (!f.thumb) await drawThumb(f);
+  buildStrip(); await selectFrame(S.cur); ppSyncBar(); updUndoBtns(); requestRender(); scheduleSave();
+}
 async function deleteAllFrames() {
   if (playing) stopPlay();
-  const ok = await modal({ title: `Xoá hết ${S.frames.length} frame?`, html: '<p>Xoá sạch: toàn bộ frame (nét, màu, nền), <b>ảnh mờ</b>, <b>các mảnh nhân vật ghép</b> và bộ xương. Chỉ còn 1 frame trống. <b>Không hoàn tác được.</b> Nên Xuất ZIP trước nếu muốn giữ.</p>',
+  const ok = await modal({ title: `Xoá hết ${S.frames.length} frame?`, html: '<p>Xoá sạch: toàn bộ frame (nét, màu, nền), <b>ảnh mờ</b>, <b>các mảnh nhân vật ghép</b> và bộ xương. Chỉ còn 1 frame trống.</p><p>Lỡ tay thì bấm <b>↶ Hoàn tác</b> ngay sau đó để lấy lại tất cả.</p>',
     buttons: [{ label: 'Huỷ', value: false }, { label: 'Xoá hết', value: true, cls: 'danger' }] });
   if (!ok) return;
-  commitFloating(); motionClose(); rigClose();
+  if (stroke) strokeEnd(); commitFloating(); motionClose(); rigClose();
+  const old = await wipeSnap();
   clearRef(true); updateRefUI();
   S.pp = null; ppSetup = null; ppSel = null; ppCutMode = false; ppPatchMode = false; S.rig = null; S.bgVideo = null; bgVideoSetup();
   if (S.tool === 'puppet' || S.tool === 'vedit') setTool('brush');
-  S.frames.forEach(freeFrame);
-  S.bgs.forEach(b => { if (b.canvas) b.canvas.width = 0; });
-  loaded.length = 0; undoStack.length = 0; redoStack.length = 0; undoBytes = 0; tintCache.clear();
+  // older history points at the removed frames: drop it (only "Xoá hết" itself can be undone)
+  undoStack.length = 0; redoStack.length = 0; undoBytes = 0; tintCache.clear();
   const b = newBgObj(); S.bgs = [b];
-  const f = newFrameObj(b.id); S.frames = [f]; loaded.push(f); S.cur = 0; vsel.clear();
+  const f = newFrameObj(b.id); S.frames = [f]; loaded.length = 0; loaded.push(f); S.cur = 0; vsel.clear();
+  pushEntry({ wipe: { old, neu: {} }, t: targetOf(f), bytes: old.frames.reduce((a, g) => a + (g.png ? g.png.byteLength : 0) + (g.colPng ? g.colPng.byteLength : 0), 0) });
   await drawThumb(f); buildStrip(); await selectFrame(0); updUndoBtns(); requestRender(); scheduleSave();
-  ppSyncBar(); toast('Đã xoá sạch frame, ảnh mờ và nhân vật ghép');
+  ppSyncBar(); toast('Đã xoá sạch — lỡ tay thì bấm ↶ Hoàn tác để lấy lại', 3500);
 }
+
 /* ========= Input ========= */
 const touches = new Map();
 let action = null;    // {id, touch, kind, t0, rect}
