@@ -1374,8 +1374,15 @@ function setDur(ms, all) {
 let playIdx = 0, playTimer = null, playT0 = 0, playFT0 = 0, playAC = null, playStopAudio = () => {};
 const hasAudio = () => !!(S.audio && (S.audio.music || S.audio.voice || (S.audio.sfx || []).length));
 async function playAudioFrom(i) { playStopAudio(); playStopAudio = () => {}; if (!hasAudio()) return; try { if (!playAC) playAC = new (window.AudioContext || window.webkitAudioContext)(); const T = frameStartTimes(); playStopAudio = await scheduleAudio(playAC, playAC.destination, T[i], T[T.length - 1]); } catch (e) { console.error(e); } }
+// Playback renders every frame to a small canvas first. Keep that cache inside a memory budget (lower
+// resolution for long films) and free it a while after playback stops, so RAM doesn't grow forever.
+const PLAY_BUDGET = (navigator.deviceMemory && navigator.deviceMemory <= 4 ? 120 : 260) * 1e6;
+let playFreeT = null;
+function freePlayCache(except) { for (const f of S.frames) if (f.play && f !== except) { f.play.width = 0; f.play.height = 0; f.play = null; f.playKey = ''; } }
+function playCacheSize(n) { let ph = Math.min(900, Math.max(320, Math.round(H * vs))); const perPx = 4 * n * W / H; if (ph * ph * perPx > PLAY_BUDGET) ph = Math.max(200, Math.floor(Math.sqrt(PLAY_BUDGET / perPx))); return ph; }
 async function buildPlayCache() {
-  const ph = Math.min(900, Math.max(320, Math.round(H * vs))), k = ph / H, pw = Math.round(W * k);
+  clearTimeout(playFreeT);
+  const ph = playCacheSize(S.frames.length), k = ph / H, pw = Math.round(W * k);
   for (let i = 0; i < S.frames.length; i++) {
     const f = S.frames[i], bg = bgOf(f);
     const key = f.ver + ':' + (bg ? bg.id + '.' + bg.ver : '') + ':' + pw + ':' + (S.bgVideo ? 'v' : '');
@@ -1414,6 +1421,7 @@ function step() {
 }
 function stopPlay() {
   playing = false; clearTimeout(playTimer); playCanvas = null; if (bgVid.el) { bgVid.el.pause(); bgVid.el.muted = true; setTimeout(() => bgVideoSync(true), 0); } playStopAudio(); playStopAudio = () => {}; if (playAC) { try { playAC.close(); } catch (e) {} playAC = null; }
+  clearTimeout(playFreeT); playFreeT = setTimeout(() => { if (!playing) freePlayCache(); }, 45000);
   $('#playBtn span').textContent = 'Phát'; $('#playHint').hidden = true;
   S.frames.forEach(g => g.el && g.el.classList.remove('playing'));
   requestRender();
@@ -3675,7 +3683,7 @@ async function openProject(id) {
   if (id === curProjId) return;
   if (saveT) { clearTimeout(saveT); await saveProject(); }
   const pm = progress('Đang mở dự án…');
-  try { const p = await idbGet('project:' + id); if (!p) throw new Error('Không tìm thấy dự án'); setCurProj(id); await loadProjectData(p); S.projName = p.name || S.projName; updateProjLabel(); }
+  try { const p = await idbGet('project:' + id); if (!p) throw new Error('Không tìm thấy dự án'); await resolveProjectRefs(p, id); setCurProj(id); await loadProjectData(p); S.projName = p.name || S.projName; updateProjLabel(); }
   catch (e) { toast('Không mở được: ' + e.message, 3000); }
   pm.close();
 }
@@ -3695,10 +3703,10 @@ async function projectsDialog() {
         if (act === 'open') { close(); await openProject(id); }
         else if (act === 'ren') { let v = null; await modal({ title: 'Đổi tên dự án', html: `<input id="pnIn" value="${(item.name || '').replace(/"/g, '&quot;')}" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text)">`, buttons: [{ label: 'Huỷ', value: null }, { label: 'Lưu', primary: true, action: () => { v = document.getElementById('pnIn').value.trim(); } }] });
           if (v) { if (id === curProjId) { S.projName = v.slice(0, 60); updateProjLabel(); await saveProject(); } else { const p = await idbGet('project:' + id); if (p) { p.name = v.slice(0, 60); await idbPut('project:' + id, p); } const L = await projIndex(); const it = L.find(x => x.id === id); if (it) { it.name = v.slice(0, 60); await idbPut('projects', L); } } close(); projectsDialog(); } }
-        else if (act === 'dup') { const p = await idbGet('project:' + id); if (!p) return; const nid = newId(); p.name = (p.name || 'Dự án') + ' (bản sao)'; await idbPut('project:' + nid, p); const L = await projIndex(); L.push({ ...item, id: nid, name: p.name, updated: Date.now() }); await idbPut('projects', L); close(); projectsDialog(); }
+        else if (act === 'dup') { const p = await idbGet('project:' + id); if (!p) return; const nid = newId(); p.name = (p.name || 'Dự án') + ' (bản sao)'; await copyProjectBlobs(id, nid, p); await idbPut('project:' + nid, p); const L = await projIndex(); L.push({ ...item, id: nid, name: p.name, updated: Date.now() }); await idbPut('projects', L); close(); projectsDialog(); }
         else if (act === 'del') {
           const ok = await modal({ title: `Xoá dự án "${item.name}"?`, html: '<p>Không hoàn tác được.</p>', buttons: [{ label: 'Huỷ', value: false }, { label: 'Xoá', value: true, cls: 'danger' }] });
-          if (!ok) return; await idbDel('project:' + id); const L = (await projIndex()).filter(x => x.id !== id); await idbPut('projects', L);
+          if (!ok) return; await idbDel('project:' + id); try { await deleteProjectBlobs(id); } catch (e) { console.error(e); } const L = (await projIndex()).filter(x => x.id !== id); await idbPut('projects', L);
           if (id === curProjId) { close(); if (L.length) { curProjId = null; await openProject(L.sort((a, b) => b.updated - a.updated)[0].id); } else await createProject(1080, 1920); }
           else { close(); projectsDialog(); }
         }
@@ -4691,33 +4699,78 @@ function idbOpen() {
 }
 async function idbPut(k, v) { const db = await idbOpen(); return new Promise((res, rej) => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(v, k); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error); }); }
 async function idbGet(k) { const db = await idbOpen(); return new Promise((res, rej) => { const tx = db.transaction('kv', 'readonly'); const r = tx.objectStore('kv').get(k); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
-function setSaveState(t) { $('#saveState').textContent = t || (storageOk ? 'Đã tự lưu trên máy này' : '⚠ Không tự lưu được — hãy Xuất ZIP để giữ bài'); }
-function scheduleSave() { clearTimeout(saveT); $('#saveState').textContent = 'Chưa lưu…'; saveT = setTimeout(saveProject, 1500); }
+function setSaveState(t) { $('#saveState').textContent = t || (storageOk ? 'Đã tự lưu trên máy này' : '⚠ Chưa lưu được — sẽ thử lại, nên Xuất ZIP để giữ bài'); }
+// Big data (frame PNGs, audio, background video) lives in its own keys "blob:<project>:<name>" and is only
+// rewritten when it changed. The project record keeps { ref: key } in its place, so an autosave after a
+// stroke writes one PNG + a small JSON record instead of the whole project.
+let savedBlobs = new Map(), savedBlobsProj = null, saveFails = 0, saveRetryT = null, saveWarned = false;
+const blobPrefix = id => 'blob:' + id + ':';
+const blobRange = id => IDBKeyRange.bound(blobPrefix(id), blobPrefix(id) + '￿');
+function scheduleSave() { clearTimeout(saveT); $('#saveState').textContent = 'Chưa lưu…'; saveT = setTimeout(autoSave, 1500); }
+function autoSave() { if (stroke || playing) { saveT = setTimeout(autoSave, 1500); return; } saveT = null; saveProject(); }
+async function idbBlobPut(rec, recKey, blobs, pid, gc) {
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('kv', 'readwrite'), st = tx.objectStore('kv');
+    for (const [k, v] of blobs) st.put(v, k);
+    st.put(rec, recKey);
+    if (gc) { const r = st.getAllKeys(blobRange(pid)); r.onsuccess = () => { for (const k of r.result) if (!gc.has(k)) { st.delete(k); savedBlobs.delete(k); } }; }
+    tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error || new Error('abort'));
+  });
+}
+async function resolveRef(v) { if (v && typeof v === 'object' && typeof v.ref === 'string') { const b = await idbGet(v.ref); if (b) savedBlobs.set(v.ref, b); return b || null; } return v; }
+async function resolveProjectRefs(p, pid) {
+  savedBlobs = new Map(); savedBlobsProj = pid;
+  for (const b of p.bgs || []) b.png = await resolveRef(b.png);
+  for (const f of p.frames || []) { f.png = await resolveRef(f.png); f.col = await resolveRef(f.col); }
+  if (p.audio) for (const k of ['music', 'voice']) if (p.audio[k]) p.audio[k].buf = await resolveRef(p.audio[k].buf);
+  if (p.bgVideo) p.bgVideo.buf = await resolveRef(p.bgVideo.buf);
+  return p;
+}
+async function copyProjectBlobs(fromId, toId, rec) {
+  const db = await idbOpen();
+  const keys = await new Promise((res, rej) => { const r = db.transaction('kv', 'readonly').objectStore('kv').getAllKeys(blobRange(fromId)); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+  for (const k of keys) { const v = await idbGet(k); await idbPut(blobPrefix(toId) + k.slice(blobPrefix(fromId).length), v); }
+  const fix = o => { if (!o || typeof o !== 'object') return; if (typeof o.ref === 'string' && o.ref.startsWith(blobPrefix(fromId))) o.ref = blobPrefix(toId) + o.ref.slice(blobPrefix(fromId).length); else for (const k in o) if (k !== 'buf' || !(o[k] instanceof ArrayBuffer)) fix(o[k]); };
+  fix(rec); return rec;
+}
+async function deleteProjectBlobs(id) { const db = await idbOpen(); return new Promise((res, rej) => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').delete(blobRange(id)); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); }); }
 async function saveProject() {
-  if (!storageOk) { setSaveState(); return; }
   if (saving) { saveAgain = true; return; }
-  saving = true; $('#saveState').textContent = 'Đang lưu…';
+  saving = true; clearTimeout(saveRetryT); $('#saveState').textContent = 'Đang lưu…';
   try {
     for (const o of [...S.bgs, ...S.frames]) await ensurePng(o);
+    if (!curProjId) setCurProj(newId());
+    const pid = curProjId;
+    if (savedBlobsProj !== pid) { savedBlobs = new Map(); savedBlobsProj = pid; }
+    const dirty = [], live = new Set();
+    const ref = (name, buf) => { if (!buf) return null; const k = blobPrefix(pid) + name; live.add(k); if (savedBlobs.get(k) !== buf) dirty.push([k, buf]); return { ref: k }; };
+    const A = S.audio, slim = a => a ? { ...a, buf: ref('m:' + (a === A.music ? 'music' : 'voice'), a.buf) } : null;
     const data = {
-      v: 1, W, H, cur: S.cur,
-      bgs: S.bgs.map(b => ({ id: b.id, png: b.png })),
+      v: 2, W, H, cur: S.cur,
+      bgs: S.bgs.map(b => ({ id: b.id, png: ref('b:' + b.id, b.png) })),
       name: S.projName || 'Dự án', poses: S.poses || [],
-      frames: S.frames.map(f => ({ id: f.id, dur: f.dur, bgId: f.bgId, png: f.png, col: f.colPng || null, vec: f.vec, pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null })),
-      audio: S.audio || null, bgVideo: S.bgVideo || null,
+      frames: S.frames.map(f => ({ id: f.id, dur: f.dur, bgId: f.bgId, png: ref('f:' + f.id, f.png), col: ref('c:' + f.id, f.colPng), vec: f.vec, pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null })),
+      audio: A ? { ...A, music: slim(A.music), voice: slim(A.voice) } : null,
+      bgVideo: S.bgVideo ? { ...S.bgVideo, buf: ref('m:video', S.bgVideo.buf) } : null,
       pp: S.pp ? { parts: S.pp.parts.map(p => ({ id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null, png: p.png, alts: (p.alts || []).map(a => ({ png: a.png, dx: a.dx || 0, dy: a.dy || 0 })) })) } : null,
       rig: S.rig || null,
       ref: REF.c && REF.png ? { png: REF.png, cx: REF.cx, cy: REF.cy, scale: REF.scale, rot: REF.rot, opacity: REF.opacity, show: REF.show } : null
     };
-    if (!curProjId) setCurProj(newId());
-    await idbPut('project:' + curProjId, data);
+    await idbBlobPut(data, 'project:' + pid, dirty, pid, live);
+    for (const [k, v] of dirty) savedBlobs.set(k, v);
     try {
       const L = await projIndex(), th = S.frames[0] && S.frames[0].thumb ? S.frames[0].thumb.toDataURL('image/jpeg', 0.7) : '';
-      const it = L.find(x => x.id === curProjId), rec = { id: curProjId, name: data.name, updated: Date.now(), frames: S.frames.length, thumb: th };
+      const it = L.find(x => x.id === pid), rec = { id: pid, name: data.name, updated: Date.now(), frames: S.frames.length, thumb: th };
       if (it) Object.assign(it, rec); else L.push(rec); await idbPut('projects', L);
     } catch (e) { console.error(e); }
-    setSaveState();
-  } catch (e) { console.error(e); storageOk = false; setSaveState(); }
+    storageOk = true; saveFails = 0; saveWarned = false; setSaveState();
+  } catch (e) {
+    // never give up for good: a full disk or a busy tab can recover, so retry with a growing delay
+    console.error(e); storageOk = false; setSaveState();
+    saveFails++; clearTimeout(saveRetryT); saveRetryT = setTimeout(saveProject, Math.min(60000, 3000 * 2 ** (saveFails - 1)));
+    if (!saveWarned) { saveWarned = true; toast('⚠ Chưa lưu được vào máy (có thể máy hết dung lượng). App sẽ tự thử lại — nên Xuất ZIP để giữ bài.', 5000); }
+  }
   saving = false;
   if (saveAgain) { saveAgain = false; saveProject(); }
 }
@@ -5958,7 +6011,7 @@ async function init() {
     if (!list.length) { const legacy = await idbGet('project'); if (legacy && legacy.frames && legacy.frames.length) { const id = newId(); legacy.name = legacy.name || 'Dự án 1'; await idbPut('project:' + id, legacy); list = [{ id, name: legacy.name, updated: Date.now(), frames: legacy.frames.length }]; await idbPut('projects', list); await idbDel('project'); } }
     let id = null; try { id = localStorage.getItem('fs-cur-proj'); } catch (e) {}
     if (!list.find(x => x.id === id)) id = list.length ? list.sort((a, b) => b.updated - a.updated)[0].id : null;
-    if (id) { p = await idbGet('project:' + id); if (p) setCurProj(id); }
+    if (id) { p = await idbGet('project:' + id); if (p) { await resolveProjectRefs(p, id); setCurProj(id); } }
   } catch (e) { storageOk = false; }
   if (p && p.frames && p.frames.length) { try { await loadProjectData(p); } catch (e) { console.error(e); S.projName = 'Dự án 1'; setCurProj(newId()); newProject(1080, 1920); } }
   else { S.projName = 'Dự án 1'; setCurProj(newId()); newProject(1080, 1920); }
