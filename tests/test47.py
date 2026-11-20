@@ -4,42 +4,60 @@ os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tes
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
-# on-canvas flipper: ◀ n/N ▶ ＋ — tap to move, hold to peek and come back, ＋ = new frame with onion, hold ＋ = duplicate
+# Undo for deleting frames: Xoá (one frame, keeps its own background) and Xoá hết (everything) come back with ↶ / ↷.
+# Also: landscape tablet layout gives the canvas more height and keeps the Menu button on screen.
 srv = subprocess.Popen(['python3','-m','http.server','8847'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1)
-async def hold(pg, sel, ms):
-    box = await pg.evaluate(f"(()=>{{const r=document.querySelector('{sel}').getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]}})()")
-    await pg.mouse.move(*box); await pg.mouse.down(); await pg.wait_for_timeout(ms); return box
+PIX = "(([i,x,y])=>{const f=S.frames[i]; return ensureLoaded(f).then(()=>f.canvas.getContext('2d').getImageData(x,y,1,1).data[3])})"
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(executable_path=CHROME, args=['--no-sandbox'])
-        for vp in [{'width':1180,'height':820},{'width':820,'height':1180}]:
-            pg = await b.new_page(viewport=vp); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
-            await pg.goto('http://localhost:8847/index.html'); await pg.wait_for_timeout(1000)
-            await pg.click('.dlg .btns >> text=Bắt đầu vẽ'); await pg.wait_for_timeout(300)
-            w = vp['width']
-            print(w, 'shown on brush', await pg.evaluate("!!document.getElementById('flipNav').offsetParent"), await pg.inner_text('#fnLbl'))
-            # frame stays above the pill
-            geo = await pg.evaluate("(()=>{const m=viewMat(), st=stage.getBoundingClientRect(); return [st.top+(m[1]*W+m[3]*H+m[5])/DPR, document.getElementById('flipNav').getBoundingClientRect().top]})()")
-            print(w, 'frame clear of pill', geo[0] <= geo[1] + 1, [round(g) for g in geo])
-            await pg.evaluate("S.onion=false; updateToggles()")
-            await pg.click('#fnAdd'); await pg.wait_for_timeout(400)
-            print(w, '＋ adds frame', await pg.evaluate("S.frames.length") == 2, 'onion on', await pg.evaluate("S.onion"), await pg.inner_text('#fnLbl'))
-            await pg.click('#fnAdd'); await pg.wait_for_timeout(400)
-            await pg.click('#fnPrev'); await pg.wait_for_timeout(300); print(w, 'tap ◀', await pg.evaluate("S.cur") == 1)
-            await pg.click('#fnNext'); await pg.wait_for_timeout(300); print(w, 'tap ▶', await pg.evaluate("S.cur") == 2)
-            await hold(pg, '#fnPrev', 600); print(w, 'hold ◀ peeks', await pg.evaluate("S.cur") == 1, await pg.inner_text('#fnLbl'))
-            await pg.mouse.up(); await pg.wait_for_timeout(300); print(w, 'release returns', await pg.evaluate("S.cur") == 2, await pg.inner_text('#fnLbl'))
-            # hold ＋ → duplicate current
-            await pg.evaluate("(async()=>{const f=curFrame(); await ensureLoaded(f); const x=f.canvas.getContext('2d'); x.fillStyle='#000'; x.fillRect(100,100,50,50); f.ver++;})(); 0")
-            await hold(pg, '#fnAdd', 750); await pg.mouse.up(); await pg.wait_for_timeout(500)
-            dup = await pg.evaluate("(async()=>{const f=curFrame(); await ensureLoaded(f); return [S.frames.length, S.cur, f.canvas.getContext('2d').getImageData(120,120,1,1).data[3]];})()")
-            print(w, 'hold ＋ duplicates', dup == [4, 3, 255], dup)
-            await pg.evaluate("setTool('puppet')"); await pg.wait_for_timeout(200)
-            print(w, 'hidden in puppet', await pg.evaluate("!document.getElementById('flipNav').offsetParent"))
-            await pg.evaluate("setTool('brush'); startPlay()"); await pg.wait_for_timeout(300)
-            print(w, 'hidden while playing', await pg.evaluate("!document.getElementById('flipNav').offsetParent")); await pg.evaluate("stopPlay()")
-            await pg.screenshot(path=f't47_{w}.png')
-            print('ERR', errs); await pg.close()
-        await b.close()
+        pg = await b.new_page(viewport={'width':1280,'height':800}); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
+        def check(name, ok):
+            print(name, ok)
+            if not ok: errs.append('FAIL ' + name)
+        await pg.goto('http://localhost:8847/index.html'); await pg.wait_for_timeout(1000)
+        await pg.click('.dlg .btns >> text=Bắt đầu vẽ'); await pg.wait_for_timeout(200)
+        # landscape layout
+        m = await pg.evaluate("document.getElementById('menuBtn').getBoundingClientRect().bottom")
+        check('menu button on screen', m <= 800)
+        h = await pg.evaluate("document.getElementById('view').getBoundingClientRect().height")
+        check('canvas area tall (>=540px)', h >= 540)
+        check('frame bar one row', await pg.evaluate("document.getElementById('tlBar').getBoundingClientRect().height") < 60)
+        await pg.screenshot(path='t47_land.png')
+        # 3 frames; frame 2 gets its own background + a mark on char and bg
+        await pg.click('#addBtn'); await pg.click('#addBtn'); await pg.wait_for_timeout(300)
+        await pg.evaluate("S.cur=1; updateFrameUI()")
+        await pg.evaluate("(async()=>{await newBg(false); const f=curFrame(); f.canvas.getContext('2d').fillRect(100,100,50,50); markEdited(f); const b=bgOf(f); b.canvas.getContext('2d').fillRect(300,300,40,40); markEdited(b);})()")
+        await pg.wait_for_timeout(300)
+        ids = await pg.evaluate("S.frames.map(f=>f.id)"); bgid = await pg.evaluate("S.frames[1].bgId")
+        await pg.click('#delBtn'); await pg.wait_for_timeout(400)
+        check('no confirm dialog for one frame', await pg.evaluate("!document.querySelector('.ov')"))
+        check('frame removed', await pg.evaluate("S.frames.length") == 2)
+        check('its background removed', await pg.evaluate(f"!S.bgs.some(b=>b.id==='{bgid}')"))
+        await pg.evaluate("undo()"); await pg.wait_for_timeout(500)
+        check('undo restores order', await pg.evaluate("S.frames.map(f=>f.id)") == ids)
+        check('undo selects it', await pg.evaluate("S.cur") == 1)
+        check('drawing back', await pg.evaluate(PIX, [1, 120, 120]) > 0)
+        check('background back', await pg.evaluate(f"(()=>{{const b=S.bgs.find(b=>b.id==='{bgid}'); return !!b && b.canvas.getContext('2d').getImageData(310,310,1,1).data[3]>0}})()"))
+        await pg.evaluate("redo()"); await pg.wait_for_timeout(400)
+        check('redo deletes again', await pg.evaluate("S.frames.length") == 2)
+        await pg.evaluate("undo()"); await pg.wait_for_timeout(400)
+        # delete all → undo brings everything back
+        await pg.click('#delAllBtn'); await pg.wait_for_timeout(200); await pg.click('.dlg .btns >> text=Xoá hết'); await pg.wait_for_timeout(600)
+        check('wiped to 1 frame', await pg.evaluate("S.frames.length") == 1)
+        await pg.evaluate("undo()"); await pg.wait_for_timeout(600)
+        check('undo wipe restores frames', await pg.evaluate("S.frames.map(f=>f.id)") == ids)
+        check('undo wipe restores drawing', await pg.evaluate(PIX, [1, 120, 120]) > 0)
+        await pg.evaluate("redo()"); await pg.wait_for_timeout(500)
+        check('redo wipe', await pg.evaluate("S.frames.length") == 1)
+        await pg.evaluate("undo()"); await pg.wait_for_timeout(500)
+        # survives save + reload
+        await pg.evaluate("saveProject()"); await pg.wait_for_timeout(1200)
+        await pg.reload(); await pg.wait_for_timeout(1500)
+        check('saved after undo', await pg.evaluate("S.frames.length") == 3 and await pg.evaluate(PIX, [1, 120, 120]) > 0)
+        # portrait unchanged: rail is one column
+        await pg.set_viewport_size({'width':800,'height':1280}); await pg.wait_for_timeout(300)
+        check('portrait rail one column', await pg.evaluate("getComputedStyle(document.getElementById('rail')).display") == 'flex')
+        print('ERR', errs); await b.close()
 asyncio.run(main()); srv.kill()
