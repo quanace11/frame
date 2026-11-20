@@ -378,7 +378,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <span class="lbl">Dày</span><input type="range" id="vecW" min="0.5" max="60" step="0.5" value="6">
       <span class="lbl">Xoay</span><input type="range" id="vecRot" min="-180" max="180" step="1" value="0">
       <span class="lbl">Cỡ</span><input type="range" id="vecScale" min="20" max="300" step="1" value="100">
-      <span class="lbl">Kéo chấm:</span><button class="chip small" data-vdm="point" title="Chỉ di chuyển đúng chấm đang cầm">1 chấm</button><button class="chip small" data-vdm="soft" title="Kéo theo phần nét lân cận (uốn mềm)">Uốn mềm</button><button class="chip small" data-vdm="move" title="Chạm vào nét để di chuyển cả nét">Cả nét</button><button class="chip small" data-vdm="multi" title="Khoanh vùng để chọn nhiều chấm (kể cả trên nhiều nét), kéo thì các chấm được chọn đi theo, chấm còn lại đứng yên làm mốc">Nhiều chấm</button><input type="range" id="vecBend" min="10" max="800" step="5" value="160" title="Độ rộng uốn mềm"><span class="lbl" id="vecMBendL">Mềm</span><input type="range" id="vecMBend" min="0" max="400" step="5" value="0" title="0 = chấm không chọn đứng yên hẳn; tăng lên thì phần nét gần chỗ kéo cũng uốn theo một chút">
+      <span class="lbl">Kéo chấm:</span><button class="chip small" data-vdm="point" title="Chỉ di chuyển đúng chấm đang cầm">1 chấm</button><button class="chip small" data-vdm="soft" title="Kéo theo phần nét lân cận (uốn mềm)">Uốn mềm</button><button class="chip small" data-vdm="move" title="Chạm nhiều nét để chọn cùng lúc, kéo để dời, kéo góc khung để phóng to/thu nhỏ, kéo nút tròn trên khung để xoay">Cả nét</button><button class="chip small" data-vdm="multi" title="Khoanh vùng để chọn nhiều chấm (kể cả trên nhiều nét), kéo thì các chấm được chọn đi theo, chấm còn lại đứng yên làm mốc">Nhiều chấm</button><input type="range" id="vecBend" min="10" max="800" step="5" value="160" title="Độ rộng uốn mềm"><span class="lbl" id="vecMBendL">Mềm</span><input type="range" id="vecMBend" min="0" max="400" step="5" value="0" title="0 = chấm không chọn đứng yên hẳn; tăng lên thì phần nét gần chỗ kéo cũng uốn theo một chút">
       <button class="chip small" id="vecDense" title="Chèn thêm chấm dọc các nét đang chọn để chọn và uốn được chi tiết hơn">Thêm chấm</button>
       <button class="chip small" id="vecColor" title="Áp màu đang chọn cho các nét">Áp màu</button>
       <button class="chip small" id="vecSmooth">Làm mượt</button>
@@ -388,7 +388,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <button class="chip small" id="vecNone">Bỏ chọn</button>
       <button class="chip small on" id="vecRig" title="Gắn xương để đi, chạy, lăn... và tạo biểu cảm mặt">🦴 Xương & biểu cảm</button>
       <button class="chip small on" id="vecMotion" title="Tự sinh frame chuyển động cho các nét đang chọn">🎬 Tạo chuyển động</button>
-      <span class="lbl" style="flex-basis:100%;font-size:11px">Chạm nét để chọn · kéo nét để dời · kéo chấm để uốn · khoanh vùng trống để chọn nhiều nét · chế độ Nhiều chấm: khoanh các chấm rồi kéo, chấm không chọn đứng yên</span>
+      <span class="lbl" style="flex-basis:100%;font-size:11px">Chạm nét để chọn · kéo chấm để uốn · khoanh vùng trống để chọn nhiều nét · kéo trong khung xanh để dời, kéo góc khung để phóng to/thu nhỏ, nút tròn trên khung để xoay · chế độ Cả nét: chạm từng nét để chọn thêm/bỏ · chế độ Nhiều chấm: khoanh các chấm rồi kéo, chấm không chọn đứng yên</span>
     </div>
     <div id="motionbar" hidden>
       <div class="mrow"><b>🎬 Tạo chuyển động</b><span class="lbl" id="mInfo"></span><span style="flex:1"></span><button class="chip small" id="mMini" title="Thu gọn để nhìn rõ khung">▾ Thu gọn</button></div>
@@ -2029,7 +2029,7 @@ function renderVec(c, f, px) {
       c.save(); c.setLineDash([6 * px, 6 * px]); c.strokeStyle = 'rgba(255,138,0,.8)'; c.fillStyle = 'rgba(255,138,0,.07)';
       c.beginPath(); vpoly.forEach((q, i) => i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y)); c.closePath(); c.fill(); c.stroke(); c.restore();
     }
-    for (const st of f.vec) if (vsel.has(st.id)) { const ps = multi ? vpGet(st.id) : null; st.pts.forEach((q, i) => {
+    if (S.vdm !== 'move') for (const st of f.vec) if (vsel.has(st.id)) { const ps = multi ? vpGet(st.id) : null; st.pts.forEach((q, i) => {
       if (ps && ps.has(i)) { c.beginPath(); c.arc(q.x, q.y, 6.5 * px, 0, Math.PI * 2); c.fillStyle = '#ff8a00'; c.fill(); c.strokeStyle = '#fff'; c.stroke(); return; }
       const end = i === 0 || i === st.pts.length - 1;
       c.beginPath(); c.arc(q.x, q.y, (end ? 6 : 4.5) * px, 0, Math.PI * 2);
@@ -2037,6 +2037,47 @@ function renderVec(c, f, px) {
     }); }
     c.restore();
   }
+  if (vboxOn() && !(action && action.kind === 'vlasso')) {
+    const b = vselBox(f); if (b) {
+      c.save(); c.lineWidth = 1.5 * px; c.setLineDash([7 * px, 5 * px]); c.strokeStyle = '#2f7bff';
+      c.strokeRect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0); c.setLineDash([]);
+      const hs = vboxHandles(b), r = hs.find(h => h.k === 'r');
+      c.beginPath(); c.moveTo(r.x, b.y0); c.lineTo(r.x, r.y); c.stroke();
+      for (const h of hs) {
+        c.beginPath(); if (h.k === 'r') c.arc(h.x, h.y, 10 * px, 0, Math.PI * 2); else c.rect(h.x - 9 * px, h.y - 9 * px, 18 * px, 18 * px);
+        c.fillStyle = h.k === 'r' ? '#2f7bff' : '#fff'; c.fill(); c.lineWidth = 2 * px; c.strokeStyle = h.k === 'r' ? '#fff' : '#2f7bff'; c.stroke();
+      }
+      c.restore();
+    }
+  }
+}
+/* --- transform box around the selected strokes: drag inside = move, corners = scale, round knob = rotate --- */
+const vboxOn = () => S.tool === 'vedit' && S.vdm !== 'multi' && vsel.size > 0 && !motion && !rig && S.showVec;
+function vselBox(f) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const st of f.vec) if (vsel.has(st.id)) for (const q of st.pts) { const h = st.w / 2; x0 = Math.min(x0, q.x - h); y0 = Math.min(y0, q.y - h); x1 = Math.max(x1, q.x + h); y1 = Math.max(y1, q.y + h); }
+  if (x0 === Infinity) return null;
+  const pad = 12 * DPR / vs; return { x0: x0 - pad, y0: y0 - pad, x1: x1 + pad, y1: y1 + pad, pad };
+}
+function vboxHandles(b) {
+  const L = b.x0 + b.pad, T = b.y0 + b.pad, R = b.x1 - b.pad, B = b.y1 - b.pad;   // scale about the opposite corner of the drawing itself
+  return [{ k: 's', x: b.x0, y: b.y0, ax: R, ay: B }, { k: 's', x: b.x1, y: b.y0, ax: L, ay: B }, { k: 's', x: b.x1, y: b.y1, ax: L, ay: T }, { k: 's', x: b.x0, y: b.y1, ax: R, ay: T },
+    { k: 'r', x: (b.x0 + b.x1) / 2, y: b.y0 - 36 * DPR / vs }];
+}
+function vboxHit(b, p) { let best = null, bd = 24 * DPR / vs; for (const h of vboxHandles(b)) { const d = Math.hypot(h.x - p.x, h.y - p.y); if (d <= bd) { bd = d; best = h; } } return best; }
+function vxformMove(a, p, f) {
+  if (!a.moved && Math.hypot(p.x - a.start.x, p.y - a.start.y) < 3 * DPR / vs) return;
+  a.moved = true; const h = a.h;
+  let fn, ws = 1;
+  if (h.k === 's') {
+    const d0 = Math.hypot(a.start.x - h.ax, a.start.y - h.ay) || 1, s = Math.max(0.05, Math.hypot(p.x - h.ax, p.y - h.ay) / d0); ws = s;
+    fn = q => ({ x: h.ax + (q.x - h.ax) * s, y: h.ay + (q.y - h.ay) * s });
+  } else {
+    const ang = Math.atan2(p.y - a.cy, p.x - a.cx) - Math.atan2(a.start.y - a.cy, a.start.x - a.cx), cs = Math.cos(ang), sn = Math.sin(ang);
+    fn = q => { const x = q.x - a.cx, y = q.y - a.cy; return { x: a.cx + x * cs - y * sn, y: a.cy + x * sn + y * cs }; };
+  }
+  for (const st of f.vec) { const b = a.base.get(st.id); if (!b) continue; st.pts = b.pts.map(fn); st.w = Math.max(0.5, b.w * ws); }
+  requestRender();
 }
 function segDist(p, a, b) {
   const dx = b.x - a.x, dy = b.y - a.y, L = dx * dx + dy * dy;
@@ -2073,19 +2114,23 @@ function vecStart(p, base) {
   if (!S.showVec) { toast('Lớp Nét đang ẩn'); return; }
   const mode = S.vdm || 'point', ptol = (mode === 'move' ? 14 : 22) * DPR / vs;
   if (mode === 'multi') { vecMultiStart(p, base, f); return; }
+  const box = vboxOn() ? vselBox(f) : null, bh = box && vboxHit(box, p);
+  if (bh) { action = { ...base, kind: 'vxform', h: bh, start: p, cx: (box.x0 + box.x1) / 2, cy: (box.y0 + box.y1) / 2, before: cloneVec(f.vec), base: new Map(selStrokes().map(st => [st.id, { pts: st.pts.map(q => ({ x: q.x, y: q.y })), w: st.w }])), moved: false }; return; }
   let best = null, bd = ptol;   // nearest point wins, not the first one in range
-  for (const st of f.vec) if (vsel.has(st.id)) for (let i = 0; i < st.pts.length; i++) { const d = Math.hypot(st.pts[i].x - p.x, st.pts[i].y - p.y); if (d <= bd) { bd = d; best = { st, i }; } }
+  if (mode !== 'move') for (const st of f.vec) if (vsel.has(st.id)) for (let i = 0; i < st.pts.length; i++) { const d = Math.hypot(st.pts[i].x - p.x, st.pts[i].y - p.y); if (d <= bd) { bd = d; best = { st, i }; } }   // "Cả nét" works on whole strokes only
   const startBend = (st, i, before) => { action = { ...base, kind: 'vbend', st, i, start: p, basePts: st.pts.map(q => ({ ...q })), cum: cumLen(st.pts), before: before || cloneVec(f.vec), moved: false }; };
   if (best) { startBend(best.st, best.i); return; }
   const hit = hitStroke(f.vec, p, tol);
   if (hit) {
-    if (mode === 'move') { if (!vsel.has(hit.id)) { vsel.clear(); vsel.add(hit.id); } action = { ...base, kind: 'vmove', last: p, before: cloneVec(f.vec), moved: false }; updVecBar(); requestRender(); return; }
+    // "Cả nét": tap toggles a stroke in/out of the selection (pick many); dragging a selected stroke moves all of them, dragging an unselected one moves just it
+    if (mode === 'move') { action = { ...base, kind: 'vmove', start: p, last: p, tapId: hit.id, wasSel: vsel.has(hit.id), before: cloneVec(f.vec), moved: false }; return; }
     if (!vsel.has(hit.id)) { vsel.clear(); vsel.add(hit.id); updVecBar(); requestRender(); return; }   // first tap only selects
     // on a selected stroke between points: insert a new point there and drag just that one
     const before = cloneVec(f.vec), P = hit.pts; let si = 0, sd = Infinity;
     for (let i = 0; i < P.length - 1; i++) { const d = segDist(p, P[i], P[i + 1]); if (d < sd) { sd = d; si = i; } }
     P.splice(si + 1, 0, { x: p.x, y: p.y }); startBend(hit, si + 1, before); action.moved = true; requestRender(); return;
   }
+  if (box && p.x >= box.x0 && p.x <= box.x1 && p.y >= box.y0 && p.y <= box.y1) { action = { ...base, kind: 'vmove', start: p, last: p, before: cloneVec(f.vec), moved: false }; return; }
   lasso = [p]; action = { ...base, kind: 'vlasso' }; requestRender();
 }
 /* --- "Nhiều chấm": lasso many points (across strokes), drag them together, unselected points stay as anchors --- */
@@ -2164,7 +2209,12 @@ function vecMove(p) {
   } else if (a.kind === 'verase') vecEraseAt(p);
   else if (a.kind === 'vlasso') { const l = lasso[lasso.length - 1]; if (Math.hypot(p.x - l.x, p.y - l.y) > 3 / vs) { lasso.push(p); requestRender(); } }
   else if (a.kind === 'vmulti') vecMultiMove(a, p, f);
+  else if (a.kind === 'vxform') vxformMove(a, p, f);
   else if (a.kind === 'vmove') {
+    if (!a.moved) {
+      if (a.start && Math.hypot(p.x - a.start.x, p.y - a.start.y) < 6 * DPR / vs) return;
+      if (a.tapId && !a.wasSel) { vsel.clear(); vsel.add(a.tapId); updVecBar(); }
+    }
     const dx = p.x - a.last.x, dy = p.y - a.last.y; a.last = p; a.moved = true;
     for (const st of f.vec) if (vsel.has(st.id)) for (const q of st.pts) { q.x += dx; q.y += dy; }
     requestRender();
@@ -2194,7 +2244,8 @@ function vecEnd() {
     let area = 0; if (poly.length > 2) for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) area += (poly[j].x + poly[i].x) * (poly[j].y - poly[i].y);
     if (Math.abs(area / 2) < 200) vsel.clear();
     else { vsel.clear(); for (const st of f.vec) { const inside = st.pts.filter(q => pip(q, poly)).length; if (inside >= Math.max(1, st.pts.length * 0.5)) vsel.add(st.id); } if (!vsel.size) toast('Không có nét nào trong vùng khoanh'); }
-  } else if ((a.kind === 'vmove' || a.kind === 'vbend') && a.moved) { pushVecUndo(f, a.before); markEdited(f); }
+  } else if ((a.kind === 'vmove' || a.kind === 'vbend' || a.kind === 'vxform') && a.moved) { pushVecUndo(f, a.before); markEdited(f); }
+  else if (a.kind === 'vmove' && a.tapId) { a.wasSel ? vsel.delete(a.tapId) : vsel.add(a.tapId); }
   updVecBar(); requestRender();
 }
 function updVecBar() {
@@ -2255,7 +2306,7 @@ $('#vecBend').addEventListener('input', e => { S.bendR = +e.target.value; });
 $('#vecMBend').addEventListener('input', e => { S.mbendR = +e.target.value; });
 $('#vecMBend').addEventListener('change', saveSettings);
 $('#vecDense').addEventListener('click', vecDensify);
-document.querySelectorAll('[data-vdm]').forEach(b => b.addEventListener('click', () => { S.vdm = b.dataset.vdm; saveSettings(); updVecBar(); toast({ point: 'Kéo chấm nào chỉ chấm đó di chuyển. Chạm giữa 2 chấm để thêm chấm mới.', soft: 'Kéo chấm sẽ uốn cong cả đoạn nét lân cận', move: 'Chạm vào nét rồi kéo để dời cả nét', multi: 'Khoanh vùng quanh các chấm (vd cả cẳng chân) rồi kéo bên trong vùng. Chấm không chọn đứng yên làm mốc. Chạm 1 chấm để thêm/bớt.' }[S.vdm], 4000); requestRender(); }));
+document.querySelectorAll('[data-vdm]').forEach(b => b.addEventListener('click', () => { S.vdm = b.dataset.vdm; saveSettings(); updVecBar(); toast({ point: 'Kéo chấm nào chỉ chấm đó di chuyển. Chạm giữa 2 chấm để thêm chấm mới.', soft: 'Kéo chấm sẽ uốn cong cả đoạn nét lân cận', move: 'Chạm từng nét để chọn nhiều nét (chạm lại để bỏ). Kéo để dời, kéo góc khung để phóng to/thu nhỏ, nút tròn để xoay.', multi: 'Khoanh vùng quanh các chấm (vd cả cẳng chân) rồi kéo bên trong vùng. Chấm không chọn đứng yên làm mốc. Chạm 1 chấm để thêm/bớt.' }[S.vdm], 4000); requestRender(); }));
 $('#vecColor').addEventListener('click', () => vecOp((f, sel) => sel.forEach(st => st.c = S.color)));
 $('#vecSmooth').addEventListener('click', () => vecOp((f, sel) => sel.forEach(st => { st.pts = smoothPts(smoothPts(st.pts)); })));
 $('#vecAll').addEventListener('click', () => { const f = curFrame(); vsel.clear(); vpsel.clear(); vpoly = null; f.vec.forEach(st => { vsel.add(st.id); if (S.vdm === 'multi') vpsel.set(st.id, new Set(st.pts.map((_, i) => i))); }); updVecBar(); requestRender(); });
@@ -5291,7 +5342,7 @@ function abortAction() {
   if (action.kind === 'stroke') strokeAbort();
   if (action.kind === 'lasso' || action.kind === 'vlasso') { lasso = null; requestRender(); }
   if (action.kind === 'ballpath' && ballMode) { ballMode.pts = null; requestRender(); }
-  if (action.kind === 'vbend' || action.kind === 'vmove' || action.kind === 'verase' || action.kind === 'vmulti') { curFrame().vec = action.before; if (action.kind === 'vmulti' && action.polyBase) vpoly = action.polyBase; requestRender(); }
+  if (action.kind === 'vbend' || action.kind === 'vmove' || action.kind === 'verase' || action.kind === 'vmulti' || action.kind === 'vxform') { curFrame().vec = action.before; if (action.kind === 'vmulti' && action.polyBase) vpoly = action.polyBase; requestRender(); }
   if (action.kind === 'pprot' || action.kind === 'ppmove' || action.kind === 'ppik') { ppSetState(curFrame(), action.before); requestRender(); }
   if (action.kind === 'ppcut' || action.kind === 'pppatch') { lasso = null; requestRender(); }
   if ((action.kind === 'labpaint' || action.kind === 'lablasso') && ppSetup) { lasso = null; if (ppSetup.undo.length) ppSetup.hand = ppSetup.undo.pop(); ppLabOverlay(ppSetup); requestRender(); }
