@@ -43,7 +43,7 @@ async def main():
         # delete a frame -> its blob is garbage-collected
         if n > 1:
             fid = await pg.evaluate("S.frames[1].id")
-            await pg.evaluate("selectFrame(1)"); await pg.wait_for_timeout(200); await pg.evaluate("delFrame(); 0"); await pg.wait_for_timeout(300); await pg.click('.dlg .btns >> text=Xoá')
+            await pg.evaluate("selectFrame(1)"); await pg.wait_for_timeout(200); await pg.evaluate("delFrame(); 0"); await pg.wait_for_timeout(300);
             await pg.wait_for_timeout(2500)
             ks = await pg.evaluate(KEYS); print('gc removed deleted frame', not any(fid in k for k in ks))
         # duplicate copies blobs, delete project removes them
