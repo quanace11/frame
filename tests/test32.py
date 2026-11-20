@@ -4,59 +4,65 @@ os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tes
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
-# Quick shapes (line / rect / ellipse, hold-to-snap), symmetry drawing, draw-inside (lock alpha)
-srv = subprocess.Popen(['python3','-m','http.server','8832'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+# Autosave: only changed PNGs are written (blob keys), save keeps retrying after an error, playback cache is bounded + freed
+srv = subprocess.Popen(['python3','-m','http.server','8829'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1)
-A = "(([x,y])=>curFrame().canvas.getContext('2d').getImageData(x,y,1,1).data[3])"
-CLR = "(()=>{curFrame().canvas.getContext('2d').clearRect(0,0,W,H); S.size=10; S.smooth=0.3})()"
+PEN='''async ([pts])=>{const v=document.getElementById('view');const r=v.getBoundingClientRect();
+  const mk=(t,x,y)=>new PointerEvent(t,{pointerId:7,pointerType:'pen',clientX:r.left+x,clientY:r.top+y,pressure:0.6,buttons:1,bubbles:true,cancelable:true});
+  v.dispatchEvent(mk('pointerdown',pts[0][0],pts[0][1])); for(const [x,y] of pts.slice(1)){v.dispatchEvent(mk('pointermove',x,y)); await new Promise(r=>setTimeout(r,4));}
+  v.dispatchEvent(mk('pointerup',pts.at(-1)[0],pts.at(-1)[1]));}'''
+KEYS='''async()=>{const db=await idbOpen();return await new Promise(r=>{const q=db.transaction('kv').objectStore('kv').getAllKeys();q.onsuccess=()=>r(q.result.filter(k=>k.startsWith('blob:')))})}'''
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(executable_path=CHROME, args=['--no-sandbox'])
         pg = await b.new_page(viewport={'width':1366,'height':1024}); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
-        await pg.goto('http://localhost:8832/index.html'); await pg.wait_for_timeout(1000)
+        await pg.goto('http://localhost:8829/index.html'); await pg.wait_for_timeout(1000)
         await pg.click('.dlg .btns >> text=Bắt đầu vẽ')
-        print('buttons', await pg.evaluate("['shapeBtn','symBtn','clipBtn'].map(i=>!!document.getElementById(i).offsetParent)"))
-        # straight-line mode: wobbly drag ends as a straight line
-        await pg.click('#shapeBtn'); print('mode', await pg.evaluate('S.shapeMode'))
-        await pg.evaluate(CLR)
-        await pg.evaluate("(()=>{strokeBegin({x:200,y:500,p:.6},0); for(let i=1;i<=40;i++) strokePoint({x:200+i*15,y:500+Math.sin(i)*40,p:.6},i*16); strokePoint({x:800,y:500,p:.6},700); strokeEnd();})()")
-        print('line straight', await pg.evaluate(A+"([500,500])")>0, 'no wobble', await pg.evaluate(A+"([500,535])")==0)
-        # rect
-        await pg.click('#shapeBtn'); await pg.evaluate(CLR)
-        await pg.evaluate("(()=>{strokeBegin({x:300,y:300,p:.6},0); for(let i=1;i<=20;i++) strokePoint({x:300+i*20,y:300+i*30,p:.6},i*16); strokeEnd();})()")
-        print('rect', await pg.evaluate('S.shapeMode'), await pg.evaluate(A+"([500,300])")>0, await pg.evaluate(A+"([700,600])")>0, 'hollow', await pg.evaluate(A+"([500,600])")==0)
-        # ellipse
-        await pg.click('#shapeBtn'); await pg.evaluate(CLR)
-        await pg.evaluate("(()=>{strokeBegin({x:300,y:1000,p:.6},0); strokePoint({x:700,y:1400,p:.6},50); strokeEnd();})()")
-        print('ellipse', await pg.evaluate('S.shapeMode'), await pg.evaluate(A+"([500,1000])")>0, await pg.evaluate(A+"([300,1200])")>0, 'corner empty', await pg.evaluate(A+"([310,1010])")==0)
-        await pg.click('#shapeBtn'); print('back to free', await pg.evaluate('S.shapeMode')=='')
-        # hold-to-snap: freehand wobbly line then hold still 600ms
-        await pg.evaluate(CLR)
-        await pg.evaluate("(()=>{strokeBegin({x:200,y:800,p:.6},performance.now()); for(let i=1;i<=30;i++) strokePoint({x:200+i*20,y:800+Math.sin(i*0.7)*25,p:.6},performance.now());})()")
-        await pg.wait_for_timeout(800)
-        print('hold → line', await pg.evaluate("stroke && stroke.shape"))
-        await pg.evaluate("strokeEnd()"); print("snapped straight", await pg.evaluate(A+"([490,810])")>0)
-        # hold on a rough circle → ellipse
-        await pg.evaluate(CLR)
-        await pg.evaluate("(()=>{strokeBegin({x:700,y:1100,p:.6},performance.now()); for(let i=1;i<=40;i++){const t=i/40*Math.PI*2*0.97; strokePoint({x:540+160*Math.cos(t)+(i%3)*4,y:1100+120*Math.sin(t),p:.6},performance.now());}})()")
-        await pg.wait_for_timeout(800); print('hold → ellipse', await pg.evaluate("stroke && stroke.shape")); await pg.evaluate("strokeEnd()")
-        # symmetry left-right
-        await pg.evaluate(CLR); await pg.click('#symBtn'); print('sym', await pg.evaluate('S.sym'))
-        await pg.evaluate("(()=>{strokeBegin({x:200,y:300,p:.6},0); for(let i=1;i<=10;i++) strokePoint({x:200+i*10,y:300,p:.6},i*16); strokeEnd();})()")
-        print('mirrored', await pg.evaluate(A+"([1080-250,300])")>0)
-        await pg.screenshot(path='t32_sym.png')
-        await pg.evaluate("undo()"); print('one undo removes both', await pg.evaluate(A+"([1080-250,300])")==0 and await pg.evaluate(A+"([250,300])")==0)
-        for _ in range(3): await pg.click('#symBtn')
-        print('sym off', await pg.evaluate('S.sym'))
-        # lock alpha brush
-        await pg.evaluate("setTool('brush')"); print('clip btn shown', await pg.evaluate("!!document.getElementById('clipBtn').offsetParent"))
-        await pg.click('#clipBtn')
-        await pg.evaluate("(()=>{const f=curFrame(),x=f.canvas.getContext('2d'); x.clearRect(0,0,W,H); x.fillStyle='#000'; x.fillRect(400,400,200,200); f.ver++; setColor('#ff0000'); S.size=30;})()")
-        await pg.evaluate("(()=>{strokeBegin({x:300,y:500,p:1},0); for(let i=1;i<=30;i++) strokePoint({x:300+i*13,y:500,p:1},i*16); strokeEnd();})()")
-        px = "(([x,y])=>[...curFrame().canvas.getContext('2d').getImageData(x,y,1,1).data])"
-        print('inside recoloured', (await pg.evaluate(px+"([500,500])"))[:2]==[255,0], 'outside untouched', (await pg.evaluate(px+"([340,500])"))[3]==0)
-        await pg.click('#clipBtn')
-        await pg.evaluate("(()=>{strokeBegin({x:300,y:700,p:1},0); for(let i=1;i<=30;i++) strokePoint({x:300+i*13,y:700,p:1},i*16); strokeEnd();})()")
-        print('off draws anywhere', (await pg.evaluate(px+"([340,700])"))[3]>0)
+        box = await pg.evaluate("(()=>{const r=document.getElementById('view').getBoundingClientRect();return [r.width,r.height]})()"); cx,cy = box[0]/2, box[1]/2
+        await pg.evaluate(PEN,[[[cx-60,cy-60],[cx,cy-20],[cx+60,cy]]]); await pg.wait_for_timeout(2500)
+        rec = await pg.evaluate("idbGet('project:'+curProjId).then(p=>({v:p.v, ref:!!(p.frames[0].png&&p.frames[0].png.ref)}))")
+        print('record v2 with refs', rec)
+        k1 = await pg.evaluate(KEYS); print('blob keys', len(k1))
+        # count writes on the next stroke: only the edited frame's PNG should be rewritten
+        await pg.evaluate("window._w=[]; const o=idbBlobPut; idbBlobPut=(r,k,bl,pid,gc)=>{_w.push(bl.map(x=>x[0])); return o(r,k,bl,pid,gc)}; 0")
+        await pg.click('#addBtn') if await pg.query_selector('#addBtn') else None
+        await pg.wait_for_timeout(2500)
+        await pg.evaluate(PEN,[[[cx-40,cy+80],[cx+20,cy+100]]]); await pg.wait_for_timeout(2500)
+        w = await pg.evaluate("_w"); print('writes per save', [len(x) for x in w], 'last only 1', len(w[-1])==1)
+        # failure -> retry instead of giving up
+        await pg.evaluate("window._fail=1; const o2=idbBlobPut; idbBlobPut=async(...a)=>{ if(_fail-->0) throw new Error('quota'); return o2(...a) }; 0")
+        await pg.evaluate(PEN,[[[cx,cy+150],[cx+20,cy+190]]]); await pg.wait_for_timeout(2200)
+        print('after error', await pg.evaluate("[storageOk, document.getElementById('saveState').textContent]"))
+        await pg.wait_for_timeout(4000)
+        print('retried ok', await pg.evaluate("[storageOk, document.getElementById('saveState').textContent]"))
+        # reload: drawing still there
+        n = await pg.evaluate("S.frames.length")
+        await pg.reload(); await pg.wait_for_timeout(1500)
+        a = await pg.evaluate("(async()=>{await ensureLoaded(S.frames[0]); const d=S.frames[0].canvas.getContext('2d').getImageData(0,0,W,H).data; let c=0; for(let i=3;i<d.length;i+=4) if(d[i]) c++; return c})()")
+        print('reload frames', await pg.evaluate("S.frames.length")==n, 'pixels kept', a>100)
+        # delete a frame -> its blob is garbage-collected
+        if n > 1:
+            fid = await pg.evaluate("S.frames[1].id")
+            await pg.evaluate("selectFrame(1)"); await pg.wait_for_timeout(200); await pg.evaluate("delFrame(); 0"); await pg.wait_for_timeout(300); await pg.click('.dlg .btns >> text=Xoá')
+            await pg.wait_for_timeout(2500)
+            ks = await pg.evaluate(KEYS); print('gc removed deleted frame', not any(fid in k for k in ks))
+        # duplicate copies blobs, delete project removes them
+        pid = await pg.evaluate("curProjId")
+        await pg.evaluate("(async()=>{const p=await idbGet('project:'+curProjId); window._nid=newId(); await copyProjectBlobs(curProjId,_nid,p); await idbPut('project:'+_nid,p);})()")
+        ok = await pg.evaluate("(async()=>{const p=await idbGet('project:'+_nid); const b=await idbGet(p.frames[0].png.ref); return p.frames[0].png.ref.includes(_nid) && !!b})()")
+        print('dup copies blobs', ok)
+        nid = await pg.evaluate("_nid"); await pg.evaluate("deleteProjectBlobs(_nid)"); ks = await pg.evaluate(KEYS)
+        print('delete removes blobs', not any(k.startswith('blob:'+nid) for k in ks))
+        # old (v1) records with inline PNGs still open, and get upgraded on the next save
+        await pg.evaluate("(async()=>{const p=await idbGet('project:'+curProjId); await resolveProjectRefs(p,'x'); p.v=1; window._oid=newId(); await idbPut('project:'+_oid,p); const L=await projIndex(); L.push({id:_oid,name:'cu',updated:1,frames:p.frames.length}); await idbPut('projects',L); await openProject(_oid);})()")
+        await pg.wait_for_timeout(500)
+        a = await pg.evaluate("(async()=>{await ensureLoaded(S.frames[0]); const d=S.frames[0].canvas.getContext('2d').getImageData(0,0,W,H).data; let c=0; for(let i=3;i<d.length;i+=4) if(d[i]) c++; return c})()")
+        await pg.evaluate("saveProject()"); await pg.wait_for_timeout(800)
+        print('v1 opens', a>100, 'upgraded', await pg.evaluate("idbGet('project:'+_oid).then(p=>p.v===2&&!!p.frames[0].png.ref)"))
+        # playback cache: lower resolution for long films, freed after stop
+        print('play size short/long', await pg.evaluate("[playCacheSize(10), playCacheSize(600)]"))
+        await pg.evaluate("startPlay()"); await pg.wait_for_timeout(600); await pg.evaluate("stopPlay()")
+        print('cache built', await pg.evaluate("S.frames.some(f=>f.play)"))
+        await pg.evaluate("freePlayCache()"); print('cache freed', await pg.evaluate("!S.frames.some(f=>f.play)"))
         print('ERR', errs); await b.close()
 asyncio.run(main()); srv.kill()
