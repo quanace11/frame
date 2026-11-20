@@ -415,7 +415,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
     <div id="fxbar" hidden>
       <div class="mrow"><b>✨ Chữ, camera & âm thanh</b><span class="lbl">(cho frame đang xem)</span><span style="flex:1"></span><button class="chip small on" id="fxExport2">🎬 Xuất video</button><button class="chip small" id="fxMini">▾ Thu gọn</button><button class="chip small pclose" data-close="fx" title="Đóng bảng (công cụ vẫn bật)">✕</button></div>
       <div class="mrow tabs" data-tabs="fx"><button class="tabb" data-t="text">🔤 Chữ</button><button class="tabb" data-t="cam">🎥 Camera</button><button class="tabb" data-t="audio">🎵 Âm thanh</button></div>
-      <div class="mrow" data-tab="text"><span class="lbl"><b>Chữ:</b></span><button class="chip small on" id="fxAddTxt">＋ Thêm chữ</button>
+      <div class="mrow" data-tab="text"><span class="lbl"><b>Chữ:</b></span><button class="chip small on" id="fxAddTxt">＋ Thêm chữ</button><button class="chip small" id="fxQuickSub" title="Dán lời thoại, app tự chia thành phụ đề và đặt theo giọng nói (hoặc chia đều)">📝 Phụ đề nhanh</button>
         <button class="chip small" data-fxs="comic">Truyện tranh</button><button class="chip small" data-fxs="bubble">Bóng thoại</button><button class="chip small" data-fxs="shout">Hét to 💥</button><button class="chip small" data-fxs="caption">Phụ đề</button>
         <button class="chip small" id="fxEditTxt">✎ Sửa</button><span class="lbl">Cỡ</span><input type="range" id="fxSize" min="30" max="300"><span class="lbl">Xoay</span><input type="range" id="fxRot" min="-45" max="45">
         <button class="chip small" id="fxColorTxt" title="Đổi màu chữ thành màu đang chọn ở thanh trên">Màu</button>
@@ -3409,6 +3409,67 @@ async function fxAddText() {
   const cam = camAt(S.cur), t = { id: newId(), str, x: cam.x, y: cam.y - H / (cam.z * 5), size: fxNewStyle === 'caption' ? 64 : 110, color: '#ffe14d', style: fxNewStyle, rot: fxNewStyle === 'comic' ? -6 : 0 };
   fxEdit(f => { f.texts = f.texts || []; f.texts.push(t); }); fxSel = t.id; fxSyncBar();
 }
+/* --- quick subtitles: paste the script, lines are timed to the voice track (or spread evenly) --- */
+// speech segments [start, end] in seconds from the voice's RMS envelope (gaps < 0.25 s merged)
+async function voiceSegments(ab) {
+  const ac = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100, 44100), b = await ac.decodeAudioData(ab.slice(0));
+  const d = b.getChannelData(0), hop = Math.round(b.sampleRate / 100), n = Math.floor(d.length / hop), env = new Float32Array(n);
+  let mx = 1e-6; for (let i = 0; i < n; i++) { let e = 0; for (let j = i * hop; j < (i + 1) * hop; j += 2) e += d[j] * d[j]; env[i] = Math.sqrt(e / (hop / 2)); if (env[i] > mx) mx = env[i]; }
+  const th = mx * 0.12, seg = []; let st = -1;
+  for (let i = 0; i <= n; i++) { const on = i < n && env[i] > th; if (on && st < 0) st = i; if (!on && st >= 0) { seg.push([st / 100, i / 100]); st = -1; } }
+  const out = []; for (const g of seg) { const L = out[out.length - 1]; if (L && g[0] - L[1] < 0.25) L[1] = g[1]; else out.push([...g]); }
+  return { segs: out.filter(g => g[1] - g[0] > 0.06), dur: b.duration };
+}
+// share the speech time between the lines by length; move each cut into the nearest pause when one is close
+function timeLines(lines, segs) {
+  const tot = segs.reduce((a, g) => a + g[1] - g[0], 0), w = lines.map(l => Math.max(3, l.replace(/\s+/g, '').length)), W0 = w.reduce((a, b) => a + b, 0);
+  const at = sp => { for (const g of segs) { const L = g[1] - g[0]; if (sp <= L) return g[0] + sp; sp -= L; } return segs[segs.length - 1][1]; };
+  const cuts = [segs[0][0]]; let acc = 0;
+  for (let i = 0; i < lines.length - 1; i++) {
+    acc += w[i] / W0 * tot; let t = at(acc);
+    let best = null; for (let k = 0; k < segs.length - 1; k++) { const gm = (segs[k][1] + segs[k + 1][0]) / 2; if (Math.abs(gm - t) < 0.6 && (!best || Math.abs(gm - t) < Math.abs(best - t))) best = gm; }
+    if (best != null && best > cuts[cuts.length - 1] + 0.2) t = best; cuts.push(Math.max(t, cuts[cuts.length - 1] + 0.2));
+  }
+  cuts.push(segs[segs.length - 1][1] + 0.3);
+  return lines.map((l, i) => [cuts[i], cuts[i + 1]]);
+}
+function wrapSub(str, size) {
+  const c = makeCanvas(8, 8).getContext('2d'); c.font = fxFont('caption').replace('{s}', size);
+  const maxW = W * 0.78, out = []; let cur = '';
+  for (const word of str.split(/\s+/)) { const t = cur ? cur + ' ' + word : word; if (c.measureText(t).width > maxW && cur) { out.push(cur); cur = word; } else cur = t; }
+  if (cur) out.push(cur); return out.join('\n');
+}
+async function quickSubtitles() {
+  const A = S.audio || {}, hasV = !!A.voice; let txt = null, mode = null;
+  const v = await modal({ title: '📝 Phụ đề nhanh', html: `<p class="lbl">Dán lời thoại, <b>mỗi dòng là một câu phụ đề</b>. ${hasV ? 'App nghe giọng đã thêm để đặt từng câu đúng lúc nói.' : 'Chưa có giọng lồng tiếng: phụ đề được chia đều từ frame đang xem tới cuối.'} Chạy lại sẽ thay bộ phụ đề cũ.</p>
+<textarea id="qsIn" rows="7" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:17px" placeholder="Xin chào mọi người!&#10;Hôm nay mình kể chuyện này…"></textarea>`,
+    buttons: [{ label: 'Huỷ', value: null }, ...(hasV ? [{ label: 'Chia đều', value: 'even', action: () => { txt = document.getElementById('qsIn').value; } }] : []), { label: hasV ? '🗣 Theo giọng' : 'Tạo phụ đề', value: hasV ? 'voice' : 'even', primary: true, action: () => { txt = document.getElementById('qsIn').value; } }],
+    onOpen: ov => { const ta = ov.querySelector('#qsIn'); ta.addEventListener('keydown', e => e.stopPropagation()); setTimeout(() => ta.focus(), 50); } });
+  mode = v; if (!mode || !txt) return;
+  const lines = txt.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 300); if (!lines.length) return;
+  const T = frameStartTimes(), n = S.frames.length; let spans, t0;
+  if (mode === 'voice') {
+    const pm = progress('Đang nghe giọng…');
+    try {
+      const vi = Math.max(0, S.frames.findIndex(f => f.id === A.voice.frameId)); t0 = T[vi];
+      const { segs } = await voiceSegments(A.voice.buf);
+      if (!segs.length) { pm.close(); toast('Không nghe thấy tiếng nói trong file giọng'); return; }
+      spans = timeLines(lines, segs);
+    } finally { pm.close(); }
+  } else { t0 = T[S.cur]; const L = T[n] - t0, wts = lines.map(l => Math.max(3, l.length)), tw = wts.reduce((a, b) => a + b, 0); let a = 0; spans = lines.map((l, i) => { const s0 = a; a += wts[i] / tw * L; return [s0, a]; }); }
+  const size = 62, ids = lines.map(() => newId()), entries = [];
+  for (let i = 0; i < n; i++) {
+    const f = S.frames[i], mid = (T[i] + T[i + 1]) / 2 - t0, k = spans.findIndex(sp => mid >= sp[0] && mid < sp[1]);
+    const had = (f.texts || []).some(t => t.sub); if (k < 0 && !had) continue;
+    const before = fxState(f); f.texts = (f.texts || []).filter(t => !t.sub);
+    if (k >= 0) { f.texts.push({ id: ids[k], str: wrapSub(lines[k], size), x: W / 2, y: H * 0.7, size, color: '#ffffff', style: 'caption', rot: 0, sub: true }); }
+    entries.push({ t: targetOf(f), fxe: true, before, after: fxState(f), bytes: 400 }); f.ver++; queueThumbFor(f);
+  }
+  if (entries.length) pushEntry({ multi: entries });
+  const end = t0 + spans[spans.length - 1][1];
+  scheduleSave(); fxSyncBar(); requestRender(); updUndoBtns();
+  toast(end > T[n] + 0.3 ? `Đã đặt ${lines.length} câu — phim ngắn hơn lời thoại ${(end - T[n]).toFixed(1)}s, thêm frame để hiện hết` : `Đã đặt ${lines.length} câu phụ đề — hoàn tác 1 lần để bỏ`, 3500);
+}
 /* --- sound effects (synthesised, no copyright) --- */
 const SFX = {
   pop: { label: 'Bụp', dur: 0.25 }, whoosh: { label: 'Vút', dur: 0.6 }, punch: { label: 'Đấm', dur: 0.35 }, boing: { label: 'Boing', dur: 0.7 },
@@ -4023,6 +4084,7 @@ $('#delAllBtn').addEventListener('click', deleteAllFrames);
 $('#videoBtn').addEventListener('click', exportVideo);
 $('#fxExport').addEventListener('click', exportVideo);
 $('#fxMini').addEventListener('click', () => { const b = $('#fxbar'); b.classList.toggle('mini'); $('#fxMini').textContent = b.classList.contains('mini') ? '▴ Mở rộng' : '▾ Thu gọn'; });
+$('#fxQuickSub').addEventListener('click', quickSubtitles);
 $('#fxAddTxt').addEventListener('click', fxAddText);
 document.querySelectorAll('[data-fxs]').forEach(b => b.addEventListener('click', () => { const f = curFrame(), t = (f.texts || []).find(x => x.id === fxSel); if (t) fxEdit(() => { t.style = b.dataset.fxs; }); else { fxNewStyle = b.dataset.fxs; fxSyncBar(); } }));
 $('#fxEditTxt').addEventListener('click', async () => { const f = curFrame(), t = (f.texts || []).find(x => x.id === fxSel); if (!t) return; const v = await fxAskText(t.str); if (v) fxEdit(() => { t.str = v; }); });
