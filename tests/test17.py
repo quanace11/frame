@@ -16,7 +16,7 @@ async def main():
         await pg.set_input_files('#imgFile',os.path.join(ASSETS,'mit.png')); await pg.wait_for_timeout(400)
         await pg.click('[data-mode=pp]'); await pg.click('[data-cm=color]'); await pg.wait_for_timeout(1200)
         await pg.click('.dlg .btns >> text=Dùng'); await pg.wait_for_timeout(500)
-        await pg.click('#ppCutAuto'); await pg.wait_for_function('S.pp && S.pp.parts.length', timeout=60000)
+        await pg.click('#ppCutAuto'); await pg.click('#ppLabCut'); await pg.wait_for_function('S.pp && S.pp.parts.length', timeout=60000)
         await pg.evaluate("()=>{ppPreset='walk'; document.getElementById('ppPN').value=8; document.getElementById('ppPDur').value=0.15;}")
         await pg.evaluate("ppMakePreset()"); await pg.wait_for_timeout(800)
         await pg.set_input_files('#bgVidFile',os.path.join(ASSETS,'bgv.webm')); await pg.wait_for_function('bgVid.ready', timeout=20000); await pg.wait_for_timeout(500)

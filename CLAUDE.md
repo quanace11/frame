@@ -52,6 +52,7 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
 - **Cut-out puppet** (`S.pp.parts`: `{id, role, parent, z, ox, oy, px, py, c, alts[], asset?}`)
   - Mỗi frame có `f.pp[partId] = {r, dx, dy, sx, sy, v, h}`. FK dùng ma trận 2×3 (`ppMats`).
   - Vai trò (`PP_ROLES`): `head`, `torso`, `armL/R`, `foreL/R`, `legL/R`, `shinL/R`, `mouth`, `eyes`.
+  - Cắt tự động 2 bước: `ppFitJoints` (+ `ppFitLimbs`: tìm bàn tay/bàn chân là đầu mút xa nhất khi đi bên trong hình; tay áp sát thân thì tìm theo viền) → `ppLabBegin` chia vùng (`ppAutoLabels`: lan từ xương, qua nét viền tốn thêm) và cho người dùng tô sửa (`ppSetup.hand`, bút / chạm cả mảng / khoanh, giá trị theo `PP_R10`, 10 = bỏ đi) → `ppAutoCut`. Nút "Sửa lại vùng cắt" mở lại từ `ppLastCut` (chỉ trong phiên), cắt lại giữ tư thế theo vai trò.
   - `ppPresetPose` (đi, chạy, nhảy...), `ppTween`/`ppRetween` (frame giữa tự cập nhật theo keyframe 🔑).
 - **Kho hình** (`ASSET_CATS`, `assetDialog`, `assetToPart`, `assetToFrame`)
   - Mắt, miệng, biểu cảm, tay, hiệu ứng.
