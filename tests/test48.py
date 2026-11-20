@@ -4,7 +4,7 @@ os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tes
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
-srv = subprocess.Popen(['python3','-m','http.server','8846'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+srv = subprocess.Popen(['python3','-m','http.server','8848'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1)
 # Import a coloured cartoon -> 🎨 Tách nét + màu: dark outlines go to the Nhân vật layer, the picture's own colours go to
 # the Màu layer and run under the lines, so erasing every line leaves (almost) no hole. Also the 🧩 "Làm sạch" switch.
@@ -18,7 +18,7 @@ async def main():
         b = await p.chromium.launch(executable_path=CHROME, args=['--no-sandbox'])
         pg = await b.new_page(viewport={'width':1280,'height':900}); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
         await pg.add_init_script("new MutationObserver(()=>document.querySelectorAll('.tabhide').forEach(e=>e.classList.remove('tabhide'))).observe(document,{subtree:true,attributes:true,childList:true,attributeFilter:['class']})")
-        await pg.goto('http://localhost:8846/index.html'); await pg.wait_for_timeout(800); await pg.click('text=Bắt đầu vẽ')
+        await pg.goto('http://localhost:8848/index.html'); await pg.wait_for_timeout(800); await pg.click('text=Bắt đầu vẽ')
         fails = []
         def check(name, ok, extra=''):
             print(name, ok, extra)
