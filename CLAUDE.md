@@ -65,6 +65,7 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
   - IK, Pose library, Projects
   - Text/camera/FX + SFX tổng hợp + lip sync + xuất video MP4 (MediaRecorder)
   - **Caricature** (tab 🤪 Biếm hoạ trong Import dialog): `cariFindHead` (tìm cổ từ mask u2netp), `cariToon` (bilateral + k-means + nét DoG), `cariCompose` (đầu to/thân nhỏ/phồng mặt/viền ngoài). Kết quả cache trong `st.cariC`: đổi thanh hình dáng chỉ chạy lại `cariCompose`.
+  - **AI tạo nhân vật** (nút 🤖 AI nhân vật, `aiCharDialog`): gửi ảnh mẫu phong cách (image 1, có sẵn vẽ bằng code `aiStyleRefCanvas` hoặc ảnh người dùng chọn, IndexedDB `ai-style-ref`) + ảnh chụp (photo 2) + câu lệnh tới Gemini `generateContent` (`geminiGenerate`, model mặc định `gemini-2.5-flash-image`). Kết quả lưu IndexedDB `ai-chars`, ✂ Cắt mảnh = `openImport` chế độ Nhân vật ghép. **Key Gemini chỉ nằm trong localStorage `fs-gemini-key`** (gửi qua header `x-goog-api-key`), không bao giờ commit/hardcode, không lưu vào dự án/ZIP. Test dùng API giả (test30).
   - Image → vector (centre-line tracing), Snap-to-line, Delete all
   - Input (cử chỉ, phím tắt), Toolbar, Modal, Persistence, ZIP, Import dialog
   - Video nền, Panel tabs, Wizard (🚀 Làm nhanh), Menu/Help, Init, PWA
