@@ -120,6 +120,8 @@ input[type=range]{width:110px;accent-color:var(--accent);height:28px}
 #focusBar{position:absolute;right:10px;top:10px;display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:5px;box-shadow:0 6px 20px #0008;z-index:6}
 #focusBar button{border:0;background:var(--panel2);color:var(--text);border-radius:10px;min-width:44px;height:44px;font-size:16px;cursor:pointer;padding:0 10px}
 #focusBar button.on{background:var(--accent);color:var(--accent-ink)}
+#top .tico{font-weight:inherit}#shapeBtn,#symBtn,#clipBtn,#snapBtn{min-width:44px}
+@media (max-width:1400px){ #top .tlbl{display:none} #pressBtn{display:none} }   /* narrow bar: Lực nhấn is in the Bút ▾ menu */
 body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:not([data-tool=brush]):not([data-tool=eraser]) #symBtn{display:none}
 #tl.collapsed #strip{display:none}
 /* Collapsible regions: each one folds into a small floating button on the stage */
@@ -286,9 +288,9 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
     <button class="chip small" id="brushBtn" title="Chọn loại bút, kiểu tẩy, độ chống run tay"><span id="brushName">Bút tròn</span> ▾</button>
     <button class="chip small" id="shapeBtn" title="Vẽ hình nhanh: đường thẳng, chữ nhật, hình tròn. Mẹo: vẽ tự do rồi giữ yên bút một chút cũng tự thành đường thẳng / hình tròn">✏ Tự do</button>
     <button class="chip small" id="symBtn" title="Vẽ đối xứng: nét vẽ bên này tự hiện ở bên kia (mặt, thân nhân vật)">⇋ Đối xứng</button>
-    <button class="chip small" id="clipBtn" title="Chỉ vẽ lên chỗ đã có nét/màu ở lớp đang chọn: tô bóng, đổi màu nét mà không lem ra ngoài">🔒 Vẽ trong vùng</button>
+    <button class="chip small" id="clipBtn" title="Chỉ vẽ lên chỗ đã có nét/màu ở lớp đang chọn: tô bóng, đổi màu nét mà không lem ra ngoài" aria-label="Vẽ trong vùng"><b class="tico">🔒</b><span class="tlbl"> Vẽ trong vùng</span></button>
     <button class="chip small" id="pressBtn" title="Nét thay đổi theo lực nhấn bút">Lực nhấn</button>
-    <button class="chip small" id="snapBtn" title="Hút nét: vẽ lệch sẽ tự kéo vào nét cũ gần nhất (nét frame này, frame trước khi bật Onion, ảnh mờ)">🧲 Hút nét</button>
+    <button class="chip small" id="snapBtn" title="Hút nét: vẽ lệch sẽ tự kéo vào nét cũ gần nhất (nét frame này, frame trước khi bật Onion, ảnh mờ)" aria-label="Hút nét"><b class="tico">🧲</b><span class="tlbl"> Hút nét</span></button>
     <div class="grp" id="palette">
       <button id="curColor" title="Bảng màu đầy đủ: chọn màu tuỳ ý, mã màu, màu vừa dùng"></button>
       <button class="chip small" id="dropBtn" hidden title="Dò màu: chạm vào bất kỳ chỗ nào trên hình để lấy đúng màu đó, rồi đổ màu (máy tính: giữ Alt + bấm)">💧 Dò màu</button>
@@ -997,10 +999,12 @@ function shapeRedraw() {
 // drawing helpers for the brush: quick shapes, symmetry, draw-inside (lock alpha); remembered in settings
 SETTINGS_KEYS.push('shapeMode', 'sym', 'clipIn'); S.shapeMode = ''; S.sym = 0; S.clipIn = false;
 const SHAPES = [['', '✏ Tự do'], ['line', '╱ Thẳng'], ['rect', '▭ Chữ nhật'], ['ellipse', '◯ Tròn']], SYMS = ['⇋ Đối xứng', '⇋ Đối xứng: trái–phải', '⇋ Đối xứng: trên–dưới', '⇋ Đối xứng: 4 góc'];
-function syncShapeBtns() { const sh = SHAPES.find(x => x[0] === (S.shapeMode || '')) || SHAPES[0]; $('#shapeBtn').textContent = sh[1]; $('#shapeBtn').classList.toggle('on', !!S.shapeMode); $('#symBtn').textContent = SYMS[S.sym | 0]; $('#symBtn').classList.toggle('on', !!S.sym); $('#clipBtn').classList.toggle('on', !!S.clipIn); }
+// icon + words; on a narrow top bar only the icon shows (the words stay in the tooltip and in the toast on tap)
+function setIconLabel(el, t) { const k = t.indexOf(' '); el.innerHTML = '<b class="tico">' + t.slice(0, k) + '</b><span class="tlbl"> ' + t.slice(k + 1) + '</span>'; el.setAttribute('aria-label', t); }
+function syncShapeBtns() { const sh = SHAPES.find(x => x[0] === (S.shapeMode || '')) || SHAPES[0]; setIconLabel($('#shapeBtn'), sh[1]); $('#shapeBtn').classList.toggle('on', !!S.shapeMode); setIconLabel($('#symBtn'), SYMS[S.sym | 0]); $('#symBtn').classList.toggle('on', !!S.sym); $('#clipBtn').classList.toggle('on', !!S.clipIn); }
 setTimeout(syncShapeBtns, 0);   // after loadSettings()
-$('#shapeBtn').addEventListener('click', () => { const i = SHAPES.findIndex(x => x[0] === (S.shapeMode || '')); S.shapeMode = SHAPES[(i + 1) % SHAPES.length][0]; syncShapeBtns(); saveSettings(); if (S.shapeMode) toast('Kéo từ điểm đầu tới điểm cuối để vẽ ' + SHAPES.find(x => x[0] === S.shapeMode)[1].slice(2).toLowerCase(), 2200); });
-$('#symBtn').addEventListener('click', () => { S.sym = ((S.sym | 0) + 1) % 4; syncShapeBtns(); saveSettings(); requestRender(); });
+$('#shapeBtn').addEventListener('click', () => { const i = SHAPES.findIndex(x => x[0] === (S.shapeMode || '')); S.shapeMode = SHAPES[(i + 1) % SHAPES.length][0]; syncShapeBtns(); saveSettings(); if (S.shapeMode) toast('Kéo từ điểm đầu tới điểm cuối để vẽ ' + SHAPES.find(x => x[0] === S.shapeMode)[1].slice(2).toLowerCase(), 2200); else toast('Vẽ tự do', 1500); });
+$('#symBtn').addEventListener('click', () => { S.sym = ((S.sym | 0) + 1) % 4; syncShapeBtns(); saveSettings(); requestRender(); toast(S.sym ? SYMS[S.sym].replace('⇋ ', '') : 'Tắt vẽ đối xứng', 1800); });
 $('#clipBtn').addEventListener('click', () => { S.clipIn = !S.clipIn; syncShapeBtns(); saveSettings(); toast(S.clipIn ? 'Nét mới chỉ hiện trên chỗ đã vẽ ở lớp này (tô bóng, đổi màu nét)' : 'Vẽ bình thường', 2500); });
 let quickShapeHint = false;
 function quickShape(st) {
@@ -5211,7 +5215,8 @@ function brushPop() {
     <div class="br-grid">${Object.entries(ERASERS).map(([k, o]) => card(k, o, 'e')).join('')}</div>
     <div class="br-tip"></div>
     <div class="set-row"><span>Cỡ nét</span><input type="range" class="bp-size" min="1" max="150" step="1"><span class="val bp-sizev"></span></div>
-    <div class="set-row"><span title="Kéo lên cao để nét thẳng và mượt hơn khi tay run (nét đi chậm hơn bút một chút)">Chống run tay</span><input type="range" class="bp-smooth" min="0" max="90" step="1"><span class="val bp-smoothv"></span></div>`, 'wide');
+    <div class="set-row"><span title="Kéo lên cao để nét thẳng và mượt hơn khi tay run (nét đi chậm hơn bút một chút)">Chống run tay</span><input type="range" class="bp-smooth" min="0" max="90" step="1"><span class="val bp-smoothv"></span></div>
+    <label class="set-row"><span title="Nét to nhỏ theo lực nhấn bút">Nét theo lực nhấn bút</span><input type="checkbox" class="bp-press"></label>`, 'wide');
   const tip = d.querySelector('.br-tip');
   function sync() {
     const isE = S.tool === 'eraser';
@@ -5229,6 +5234,8 @@ function brushPop() {
   sm.value = Math.round(S.smooth * 100); d.querySelector('.bp-smoothv').textContent = sm.value + '%';
   sz.addEventListener('input', () => { S.size = +sz.value; d.querySelector('.bp-sizev').textContent = S.size; $('#sizeIn').value = S.size; $('#sizeVal').textContent = S.size; saveSettings(); });
   sm.addEventListener('input', () => { S.smooth = sm.value / 100; d.querySelector('.bp-smoothv').textContent = sm.value + '%'; saveSettings(); });
+  const pr = d.querySelector('.bp-press'); pr.checked = !!S.pressure;
+  pr.addEventListener('change', () => { S.pressure = pr.checked; updateToggles(); saveSettings(); });
   sync();
 }
 // background options live in a small menu so the top bar stays short; the real buttons are moved in and back out
