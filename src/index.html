@@ -2266,7 +2266,68 @@ function ppFitJoints(src, pts) {
     for (let y = Math.round(t0); y < t0 + 0.1 * hg; y += 2) for (let x = 0; x < W; x += 2) if (op(x, y)) { sx += x; c++; mn = Math.min(mn, x); mx = Math.max(mx, x); }
     if (c > 20 && mx - mn < 0.35 * hg) { const dx = sx / c - J.root.x; for (const k of ['head', 'neck', 'chest', 'root', 'shL', 'shR', 'hpL', 'hpR']) J[k].x += dx; }
   }
+  // image-aware axis, neck and shoulders: the bounding-box centre is off when feet are spread or one arm sticks out,
+  // and arms hanging beside the body put the generic shoulders out in the air
+  var armsDown = false, headFit = false;
+  {
+    const A = new Float32Array(W * H); for (let i = 0; i < A.length; i++) A[i] = d[i * 4 + 3] > 100 ? 1 : 0;
+    const hd = cariFindHead(A, W, H);
+    if (hd && hd.neck < hd.bot - 0.3 * (hd.bot - hd.top)) {
+      const H0 = hd.bot - hd.top;
+      const rowRun = (y, x0) => {   // opaque run on row y that contains (or is nearest to) x0
+        y = Math.round(y); let x = Math.round(x0);
+        if (!op(x, y)) { let f = null; for (let k = 1; k < 0.1 * H0 && f == null; k++) { if (op(x - k, y)) f = x - k; else if (op(x + k, y)) f = x + k; } if (f == null) return null; x = f; }
+        let a = x, b = x; while (op(a - 1, y)) a--; while (op(b + 1, y)) b++; return [a, b];
+      };
+      const nr = rowRun(hd.neck, hd.cx), nw = nr ? nr[1] - nr[0] : 0.05 * H0, neckX = nr ? (nr[0] + nr[1]) / 2 : hd.cx;
+      let yc = hd.neck + 0.03 * H0;
+      for (let y = hd.neck; y < hd.neck + 0.15 * H0; y++) { const r = rowRun(y, neckX); if (r && r[1] - r[0] > nw * 1.8) { yc = y; break; } }
+      headFit = true; J.head = { x: Math.abs(hd.cx - neckX) > 0.03 * H0 ? J.head.x : hd.cx, y: hd.top }; J.neck = { x: (J.head.x + neckX) / 2, y: hd.neck }; J.chest = { x: neckX, y: yc };   // a raised arm beside the head pulls hd.cx sideways
+      const ys = yc + 0.04 * H0, sr = rowRun(ys, neckX);
+      if (sr && sr[1] - sr[0] < 0.42 * H0 && sr[1] - sr[0] > nw * 1.5) {   // arms down: shoulders sit just inside the torso's top corners
+        const inset = Math.min(0.04 * H0, (sr[1] - sr[0]) * 0.15);
+        J.shL = { x: sr[0] + inset, y: ys }; J.shR = { x: sr[1] - inset, y: ys };
+        J.root.x = (sr[0] + sr[1]) / 2; armsDown = true;
+        // the arm is the outermost thing on its rows: take the first run from the outside (the centre of a run that
+        // also holds the shirt would put the elbow inside the body when the arm touches it)
+        const outerRun = (y, sgn) => { y = Math.round(y); let x = sgn < 0 ? 0 : W - 1; while (x >= 0 && x < W && !op(x, y)) x -= sgn; if (x < 0 || x >= W) return null; const a = x; while (op(x - sgn, y)) x -= sgn; return [Math.min(a, x), Math.max(a, x)]; };
+        for (const sd of ['L', 'R']) {
+          const sgn = sd === 'L' ? -1 : 1, sh = J['sh' + sd], ha = J['ha' + sd];
+          for (const [jt, y] of [['ha' + sd, ha.y], ['el' + sd, (sh.y + ha.y) / 2]]) {
+            const r = outerRun(y, sgn); if (!r) continue;
+            const x = r[1] - r[0] < 0.07 * H0 ? (r[0] + r[1]) / 2 : (sgn < 0 ? r[0] + 0.022 * H0 : r[1] - 0.022 * H0);
+            J[jt] = { x, y };
+          }
+        }
+      }
+    }
+  }
   const top = J.head.y, hgt = Math.max(J.ftL.y, J.ftR.y) - top, cx = J.root.x;
+  // legs: follow each foot's run of pixels upward until the two runs join (the crotch). Works when legs are apart at an angle
+  // and when the hands hang next to the thighs (a straight scan at the centre line fails there)
+  {
+    const runAt = (y, x) => { let a = x, b = x; while (op(a - 1, y)) a--; while (op(b + 1, y)) b++; return [a, b]; };
+    const near = (y, x, R) => { x = Math.round(x); for (let k = 0; k < R; k++) { if (op(x - k, y)) return runAt(y, x - k); if (op(x + k, y)) return runAt(y, x + k); } return null; };
+    const follow = (y, p) => { const m = Math.round((p[0] + p[1]) / 2); if (op(m, y)) return runAt(y, m); for (let x = p[0] - 2; x <= p[1] + 2; x++) if (op(x, y)) return runAt(y, x); return null; };
+    let y = Math.round(Math.max(J.ftL.y, J.ftR.y) - 0.03 * hgt), rL = near(y, J.ftL.x, 0.06 * hgt), rR = near(y, J.ftR.x, 0.06 * hgt);
+    if (rL && rR && rL[1] < rR[0]) {
+      const wL = [], wR = []; let cr = null;
+      for (; y > top + 0.35 * hgt; y--) {
+        const nL = follow(y, rL), nR = follow(y, rR); if (!nL || !nR) break;
+        if (nL[0] === nR[0]) { cr = y; break; }
+        wL.push(nL[1] - nL[0]); wR.push(nR[1] - nR[0]); rL = nL; rR = nR;
+      }
+      if (cr != null && wL.length > 0.1 * hgt) {
+        const thigh = w => { const a = w.slice(Math.floor(w.length * 0.6)).sort((p, q) => p - q); return a[Math.floor(a.length * 0.3)] || 0.06 * hgt; };
+        const hy = cr - 0.02 * hgt, lx = rL[1] - thigh(wL) * 0.5, rx = rR[0] + thigh(wR) * 0.5;
+        J.hpL = { x: lx, y: hy }; J.hpR = { x: rx, y: hy }; J.root = { x: (lx + rx) / 2, y: hy - 0.02 * hgt };
+        J.knL = { x: (lx + J.ftL.x) / 2, y: (hy + J.ftL.y) / 2 }; J.knR = { x: (rx + J.ftR.x) / 2, y: (hy + J.ftR.y) / 2 };
+        if (J.chest.y > J.root.y - 0.1 * hgt) J.chest.y = J.root.y - 0.25 * hgt;
+      }
+      else rL = null;
+      if (rL) return ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit);
+    }
+  }
   let crotch = null;
   for (let y = Math.round(top + 0.42 * hgt); y < top + 0.85 * hgt; y += 2) {
     if (op(cx, y) || op(cx - 3, y) || op(cx + 3, y)) continue;
@@ -2282,7 +2343,11 @@ function ppFitJoints(src, pts) {
       if (J.chest.y > J.root.y - 0.1 * hgt) J.chest.y = J.root.y - 0.25 * hgt;
     }
   }
-  { // neck = narrowest row under the head; the torso starts where the body gets wide again
+  return ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit);
+}
+/** shared end of joint fitting: neck/torso line, hands & feet from the drawing's shape, then centre the limb joints */
+function ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit) {
+  if (!headFit) { // neck = narrowest row under the head; the torso starts where the body gets wide again
     const runW = y => { const x0 = Math.round(cx); if (!op(x0, y)) return 0; let a = x0, b = x0; while (op(a - 1, y) && x0 - a < W) a--; while (op(b + 1, y) && b - x0 < W) b++; return b - a; };
     let ny = null, nw = Infinity; for (let y = Math.round(top + 0.1 * hgt); y < top + 0.33 * hgt; y += 2) { const w = runW(y); if (w < nw) { nw = w; ny = y; } }
     if (ny != null) for (let y = ny; y < top + 0.42 * hgt; y += 2) if (runW(y) > Math.max(nw * 1.6, nw + 0.04 * hgt)) {
@@ -2290,8 +2355,22 @@ function ppFitJoints(src, pts) {
       break;
     }
   }
+  // arms already placed against the body (arms-down front view) keep their joints; ppFitLimbs still finds the feet
+  // (a side whose hand ppFitLimbs finds raised above that elbow is a raised arm: the shape-based fit wins there)
+  const keep = armsDown ? ['shL', 'elL', 'haL', 'shR', 'elR', 'haR'].map(k => [k, J[k]]) : null, skip = {};
   try { ppFitLimbs(src, J); } catch (e) { console.warn(e); }
-  // centre limb joints inside the limb (scan across the limb at each joint)
+  if (keep) {
+    const K = Object.fromEntries(keep);
+    for (const sd of ['L', 'R']) {
+      if (J['ha' + sd].y < K['el' + sd].y) continue;
+      for (const k of ['sh', 'el', 'ha']) J[k + sd] = K[k + sd];
+      skip[sd] = true; if (J._out) delete J._out[sd];
+    }
+  }
+  return ppCentreLimbs(J, op, hgt, skip);
+}
+/** centre limb joints inside the limb (scan across the limb at each joint) */
+function ppCentreLimbs(J, op, hgt, skipArms) {   // skipArms: { L: true } = leave that arm's joints as placed
   const runMid = (x0, y0, horiz, range) => {   // horiz=true: scan a column (limb runs horizontally) ; else scan a row
     const at = t => horiz ? op(x0, t) : op(t, y0), c0 = horiz ? y0 : x0;
     let hit = null; for (let k = 0; k < range; k++) { if (at(c0 + k)) { hit = c0 + k; break; } if (at(c0 - k)) { hit = c0 - k; break; } }
@@ -2300,10 +2379,11 @@ function ppFitJoints(src, pts) {
   const rng = Math.round(0.1 * hgt);
   for (const sd of ['L', 'R']) {
     const sh = J['sh' + sd], el = J['el' + sd], ha = J['ha' + sd], sgn = sd === 'L' ? -1 : 1;
+    for (const k of ['kn' + sd, 'ft' + sd]) { const jt = J[k]; const m = runMid(jt.x, jt.y - (k[0] === 'f' ? 0.02 * hgt : 0), false, rng); if (m != null) jt.x = m; }
+    if (skipArms && skipArms[sd]) continue;
     const horiz = Math.abs(ha.x - sh.x) > Math.abs(ha.y - sh.y);
     if (!(J._out && J._out[sd])) for (const [jt, xoff] of [[el, 0], [ha, -sgn * 0.02 * hgt]]) { const m = runMid(jt.x + (horiz ? xoff : 0), jt.y, horiz, rng); if (m != null) { if (horiz) jt.y = m; else jt.x = m; } }
     if (horiz) { const m = runMid(sh.x + sgn * 0.03 * hgt, sh.y, true, rng); if (m != null) sh.y = m; }
-    for (const k of ['kn' + sd, 'ft' + sd]) { const jt = J[k]; const m = runMid(jt.x, jt.y - (k[0] === 'f' ? 0.02 * hgt : 0), false, rng); if (m != null) jt.x = m; }
   }
   delete J._out; return J;
 }
@@ -2316,7 +2396,7 @@ function ppStartSetup(img) {
   for (let y = 0; y < H; y += 4) for (let xx = 0; xx < W; xx += 4) if (d[(y * W + xx) * 4 + 3] > 100) pts.push({ x: xx, y });
   if (pts.length < 20) { toast('Ảnh trống sau khi xoá nền'); return; }
   const J = ppFitJoints(src, pts);
-  ppSetup = { src, J, split: false };
+  ppSetup = { src, J, split: true };   // 2 segments per limb by default: knees and elbows bend when walking
   setTool('puppet', true);
   ppSyncBar(); requestRender();
   toast('Kéo các chấm cho khớp với vai, khuỷu, hông, gối… rồi bấm Cắt tự động', 4000);
@@ -2577,6 +2657,16 @@ async function ppAutoCut(whole) {
     for (let t = 0.3; t <= 0.71; t += 0.1) { const x = Math.round(a.x + (b.x - a.x) * t), y = Math.round(a.y + (b.y - a.y) * t); if (x >= 0 && y >= 0 && x < W && y < H && bin[y * W + x]) vals.push(dt[y * W + x]); }
     vals.sort((p, q) => p - q); hw[j] = vals.length ? vals[vals.length >> 1] : 0.03 * hgt0;
   }
+  // where an arm/leg merges into the body the distance transform is huge; the forearm/shin width is a better guess
+  for (const sd of ['L', 'R']) { if (hw['ha' + sd]) hw['el' + sd] = Math.min(hw['el' + sd], hw['ha' + sd] * 1.4); if (hw['ft' + sd]) hw['kn' + sd] = Math.min(hw['kn' + sd], hw['ft' + sd] * 1.6); }
+  // arms hanging down (front view) are drawn OVER the body, and the body gets the area behind them filled in,
+  // so swinging an arm does not leave a hole in the shirt
+  const front = new Set();
+  if (!whole) for (const sd of ['L', 'R']) {
+    const gi = gIndex['arm' + sd]; if (gi == null) continue;
+    const sh = J['sh' + sd], ha = J['ha' + sd], L = Math.hypot(ha.x - sh.x, ha.y - sh.y) || 1;
+    if ((ha.y - sh.y) / L > 0.6) { front.add(gi); groups[gi].z = 12; const fi = gIndex['fore' + sd]; if (fi != null) { front.add(fi); groups[fi].z = 11; } }
+  }
   const capR = groups.map(g => { if (whole || !g.parent) return 0; return Math.max(10, Math.min(0.08 * hgt0, (hw[g.tip] || 0.025 * hgt0) * 1.3)); });
   // descendants of each group (for joint fill: the child and everything hanging off it)
   const desc = groups.map((g, gi) => { const s = new Set([gi]); let grew = true; while (grew) { grew = false; groups.forEach((h, hi) => { if (h.parent && s.has(gIndex[h.parent]) && !s.has(hi)) { s.add(hi); grew = true; } }); } return s; });
@@ -2606,25 +2696,52 @@ async function ppAutoCut(whole) {
           if (ppFillMode !== 'off' && dist <= R && along < 0) { hPar[k] = 1; anyP = true; }
           else if (g.role !== 'head' && along >= 0 && along < capR[gi] * 0.6 && dist > capR[gi]) trim[gi].add(i);   // square corners of the limb end: hand them to the parent
         }
-        else { if (solid) kPar[k] = 1; if (dist <= capR[gi]) { hChild[k] = 1; anyC = true; } }
+        else if (l === par) { if (solid) kPar[k] = 1; if (dist <= capR[gi]) { hChild[k] = 1; anyC = true; } }   // only the parent's own pixels (an arm next to the body must not paint over the shirt)
       }
       if (anyP && kPar.some(v => v)) {
         const res = await fillCrop(rgba, cw, ch, kPar, hPar, mode);
         for (let k = 0; k < hPar.length; k++) if (hPar[k]) { const x = k % cw, y = (k / cw) | 0; extra[par].set((cy0 + y) * W + cx0 + x, [res[k * 4], res[k * 4 + 1], res[k * 4 + 2]]); }
       }
-      if (anyC && kChild.some(v => v)) {
+      if (anyC && !(front.has(gi) && g.parent === 'torso') && kChild.some(v => v)) {
         const res = diffuseFill(rgba, cw, ch, kChild);
         for (let k = 0; k < hChild.length; k++) if (hChild[k]) { const x = k % cw, y = (k / cw) | 0; capCol[gi].set((cy0 + y) * W + cx0 + x, [res[k * 4], res[k * 4 + 1], res[k * 4 + 2]]); }
       }
     }
   }
   groups.forEach((g, gi) => { if (!g.parent) return; const par = gIndex[g.parent]; for (const i of trim[gi]) if (!extra[par].has(i)) extra[par].set(i, [d[i * 4], d[i * 4 + 1], d[i * 4 + 2]]); });
+  const tor = gIndex.torso;
+  const legG = new Set(['legL', 'legR', 'shinL', 'shinR'].map(r => gIndex[r]).filter(v => v != null));
+  if ((front.size || legG.size) && tor != null && !whole) {
+    pm.set('Đang vá phần thân sau tay, chân…');
+    const hole = []; let hx0 = W, hy0 = H, hx1 = -1, hy1 = -1;
+    const shR = Math.round(0.07 * hgt0), nearSh = (x, y) => ['L', 'R'].some(sd => front.has(gIndex['arm' + sd]) && Math.hypot(x - J['sh' + sd].x, y - J['sh' + sd].y) < shR);   // the round of the shoulder
+    // the body's left/right edge on each row (arms: also look a little up and down, so a sleeve that covers the whole row is still inside)
+    const rMn = new Int32Array(H).fill(W), rMx = new Int32Array(H).fill(-1);
+    for (let y = by0; y <= by1; y++) for (let xx = bx0; xx <= bx1; xx++) if (label[y * W + xx] === tor) { if (xx < rMn[y]) rMn[y] = xx; rMx[y] = xx; }
+    const vr = Math.round(0.06 * hgt0);
+    for (let y = by0; y <= by1; y++) {
+      if (rMx[y] < 0) continue;
+      let amn = rMn[y], amx = rMx[y];
+      for (let k = Math.max(by0, y - vr); k <= Math.min(by1, y + vr); k++) if (rMx[k] >= 0) { amn = Math.min(amn, rMn[k]); amx = Math.max(amx, rMx[k]); }
+      const mn = rMn[y], mx = rMx[y];
+      for (let xx = Math.max(bx0, amn - shR); xx <= Math.min(bx1, amx + shR); xx++) { const i = y * W + xx, l = label[i]; if (bin[i] && !extra[tor].has(i) && ((front.has(l) && ((xx > amn && xx < amx) || nearSh(xx, y))) || (legG.has(l) && xx > mn && xx < mx))) { hole.push(i); if (xx < hx0) hx0 = xx; if (xx > hx1) hx1 = xx; if (y < hy0) hy0 = y; if (y > hy1) hy1 = y; } }
+    }
+    if (hole.length) {
+      const P = 12; hx0 = Math.max(0, hx0 - P); hy0 = Math.max(0, hy0 - P); hx1 = Math.min(W - 1, hx1 + P); hy1 = Math.min(H - 1, hy1 + P);
+      const cw = hx1 - hx0 + 1, ch = hy1 - hy0 + 1, rgba = new Uint8ClampedArray(cw * ch * 4), kn = new Uint8Array(cw * ch), ho = new Uint8Array(cw * ch);
+      for (let y = 0; y < ch; y++) for (let xx = 0; xx < cw; xx++) { const i = (hy0 + y) * W + hx0 + xx, k = y * cw + xx; rgba.set(d.subarray(i * 4, i * 4 + 4), k * 4); if (label[i] === tor && d[i * 4 + 3] > 200) kn[k] = 1; }
+      for (const i of hole) ho[(((i / W) | 0) - hy0) * cw + (i % W) - hx0] = 1;
+      const res = await fillCrop(rgba, cw, ch, kn, ho, ppFillMode === 'ai' ? 'ai' : 'fast');
+      for (const i of hole) { const k = ((((i / W) | 0) - hy0) * cw + (i % W) - hx0) * 4; extra[tor].set(i, [res[k], res[k + 1], res[k + 2]]); }
+    }
+  }
   const parts = [], idOf = {};
   groups.forEach(g => idOf[g.role] = newId());
   for (let gi = 0; gi < groups.length; gi++) {
     const g = groups[gi], pv = J[g.pivot], cR = capR[gi], ex = extra[gi], cc = capCol[gi], tr = trim[gi];
     let x0 = W, y0 = H, x1 = -1, y1 = -1;
-    const isCap = i => cR && bin[i] && Math.hypot(i % W - pv.x, ((i / W) | 0) - pv.y) <= cR;
+    const parI = g.parent ? gIndex[g.parent] : -1;
+    const isCap = i => cR && bin[i] && (label[i] === parI || label[i] === gi) && Math.hypot(i % W - pv.x, ((i / W) | 0) - pv.y) <= cR;
     const inPart = i => (label[i] === gi && !tr.has(i)) || isCap(i) || ex.has(i);
     for (let y = by0; y <= by1; y++) for (let xx = bx0; xx <= bx1; xx++) { const i = y * W + xx; if (inPart(i)) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
     if (x1 < 0) continue;
@@ -4914,7 +5031,7 @@ function inkAlpha(img, detail) {
   return a;
 }
 /** Background removal by border colour flood fill (good for flat cartoon backgrounds). Returns alpha 0..1 */
-function colorBgAlpha(img, tol) {
+function colorBgAlpha(img, tol, holesOut) {
   const w = img.width, h = img.height, d = img.data, n = w * h;
   const bins = new Map();
   const borderIdx = [];
@@ -4932,7 +5049,26 @@ function colorBgAlpha(img, tol) {
     for (const j of nb) if (j >= 0 && j < n && !bg[j] && isBg(j)) { bg[j] = 1; stack.push(j); }
   }
   const a = new Float32Array(n); for (let i = 0; i < n; i++) a[i] = bg[i] ? 0 : 1;
+  if (holesOut) {   // background-coloured areas closed in by the figure (gap between an arm and the body, eye whites, white logos…)
+    const seen = new Uint8Array(n), minA = Math.max(30, n * 0.0002);
+    for (let s0 = 0; s0 < n; s0++) {
+      if (bg[s0] || seen[s0] || !isBg(s0)) continue;
+      const comp = [s0]; seen[s0] = 1;
+      for (let q = 0; q < comp.length; q++) { const i = comp[q], x = i % w; for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w]) if (j >= 0 && j < n && !seen[j] && !bg[j] && isBg(j)) { seen[j] = 1; comp.push(j); } }
+      if (comp.length >= minA) holesOut.push(comp);
+    }
+  }
   return boxBlur(a, w, h, 1);
+}
+/** true when the image border is mostly one flat colour (drawn character on a plain background) */
+function flatBorder(img) {
+  const w = img.width, h = img.height, d = img.data, idx = [];
+  for (let x = 0; x < w; x += 2) idx.push(x, (h - 1) * w + x);
+  for (let y = 0; y < h; y += 2) idx.push(y * w, y * w + w - 1);
+  const bins = new Map(); for (const i of idx) { const k = (d[i * 4] >> 4) << 8 | (d[i * 4 + 1] >> 4) << 4 | (d[i * 4 + 2] >> 4); bins.set(k, (bins.get(k) || 0) + 1); }
+  const [k] = [...bins.entries()].sort((a, b) => b[1] - a[1])[0], c = [((k >> 8) & 15) * 16 + 8, ((k >> 4) & 15) * 16 + 8, (k & 15) * 16 + 8];
+  let ok = 0; for (const i of idx) if (Math.abs(d[i * 4] - c[0]) + Math.abs(d[i * 4 + 1] - c[1]) + Math.abs(d[i * 4 + 2] - c[2]) < 50) ok++;
+  return ok / idx.length > 0.85;
 }
 /* AI background removal (u2netp, runs locally in the browser) */
 let ortSession = null, ortLoading = null;
@@ -4999,6 +5135,7 @@ function cariFindHead(a, w, h) {
     if (s < best) { best = s; neck = y; }
   }
   if (best > 0.85) neck = bot;                        // no clear neck (face close-up): the whole cut-out is the head
+  else { const lim = sm[neck] * 1.15; while (neck > y0 && sm[neck - 1] <= lim) neck--; }   // a long neck: cut just under the chin, not at the shoulders
   const cs = []; let hw = 0;
   for (let y = top; y < neck; y++) if (xs[y] >= 0) { cs.push(xs[y]); if (sm[y] > hw) hw = sm[y]; }
   cs.sort((p, q) => p - q);
@@ -5047,6 +5184,11 @@ function cariQuant(rgb, a, n, k, mix) {
 /** Cartoon colouring + inner ink lines. style: 'flat' | 'soft' | 'bw'; detail 0..100 */
 function cariToon(img, a, style, detail) {
   const w = img.width, h = img.height, n = w * h, s = img.data;
+  if (style === 'orig') {   // already a drawing: keep its own colours and lines
+    const out = makeCanvas(w, h), x = out.getContext('2d'), im = x.createImageData(w, h);
+    im.data.set(s); for (let i = 0; i < n; i++) im.data[i * 4 + 3] = Math.round(a[i] * s[i * 4 + 3]);
+    x.putImageData(im, 0, 0); return out;
+  }
   let rgb = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) { rgb[i * 3] = s[i * 4]; rgb[i * 3 + 1] = s[i * 4 + 1]; rgb[i * 3 + 2] = s[i * 4 + 2]; }
   rgb = cariBilateral(rgb, a, w, h, 2, 38); rgb = cariBilateral(rgb, a, w, h, 2, 30);
@@ -5149,6 +5291,7 @@ function openImport(bmp) {
   };
   const resampleA = (a, w0, h0, w1, h1) => { const o = new Float32Array(w1 * h1); for (let y = 0; y < h1; y++) for (let x = 0; x < w1; x++) o[y * w1 + x] = a[Math.min(h0 - 1, Math.floor(y * h0 / h1)) * w0 + Math.min(w0 - 1, Math.floor(x * w0 / w1))]; return o; };
   const st = { mode: 'ref', lineKind: 'ink', lineOut: 'vec', vecRes: null, cutMethod: 'ai', edge: 60, tol: 60, detail: 55, thick: 0, onlyChar: false, lineColor: '#111111', aiA: null, result: null, busy: false,
+    colA: null, slits: true, flat: flatBorder(srcImg),
     cari: { style: 'flat', head: 1.6, body: 0.75, bulge: 0.3, neck: 0, detail: 50, outline: 5 }, cariOut: 'float', cariC: null };
   const html = `
 <div class="imp-tabs">
@@ -5164,13 +5307,15 @@ function openImport(bmp) {
   <div class="imp-ctrl" id="impCtrl"></div>
 </div>`;
   let pv, busyEl, ctrl;
+  const flatNote = () => (st.flat && st.cutMethod === 'color' ? '<p class="imp-note">✨ Ảnh nền trơn: đã tự chọn <b>Theo màu nền</b> để giữ đúng khe giữa tay và người.</p>' : '')
+    + (st.cutMethod === 'color' ? `<div class="row"><span>Xoá khe nền kín (giữa tay và người)</span><input type="checkbox" class="switch" id="iSlits" ${st.slits ? 'checked' : ''}></div>` : '');
   const ctrls = {
     ref: () => `<p class="imp-note">Ảnh hiện mờ <b>dưới</b> các lớp để bạn vẽ đồ theo. Không xuất ra video. Chỉnh vị trí, cỡ, độ mờ sau khi bấm Dùng.</p>`,
     pp: () => `
 <div class="row"><span>Xoá nền</span><span>
   <button class="chip small ${st.cutMethod === 'ai' ? 'on' : ''}" data-cm="ai">AI tự động</button>
   <button class="chip small ${st.cutMethod === 'color' ? 'on' : ''}" data-cm="color">Theo màu nền</button>
-  <button class="chip small ${st.cutMethod === 'none' ? 'on' : ''}" data-cm="none">Ảnh đã tách nền</button></span></div>
+  <button class="chip small ${st.cutMethod === 'none' ? 'on' : ''}" data-cm="none">Ảnh đã tách nền</button></span></div>${flatNote()}
 ${st.cutMethod === 'ai' ? `<div class="row"><span>Viền mềm ↔ sắc</span><input type="range" id="iEdge" min="0" max="100" value="${st.edge}"></div>` : st.cutMethod === 'color' ? `<div class="row"><span>Độ rộng màu nền</span><input type="range" id="iTol" min="5" max="200" value="${st.tol}"></div>` : ''}
 <p class="imp-note">Dùng ảnh nhân vật <b>đứng thẳng, thấy rõ tay chân</b> (ảnh AI tạo rất hợp). Bước sau: kéo các khớp cho đúng → app cắt thành Đầu, Thân, Tay, Chân → bạn tự xoay từng mảnh quanh khớp, có Frame giữa và mẫu Đi/Chạy/Vẫy… Ảnh giữ nguyên màu, không bị méo.</p>`,
     cari: () => {
@@ -5179,8 +5324,9 @@ ${st.cutMethod === 'ai' ? `<div class="row"><span>Viền mềm ↔ sắc</span><
 <div class="row"><span>Tách người</span><span>
   <button class="chip small ${st.cutMethod === 'ai' ? 'on' : ''}" data-cm="ai">AI tự động</button>
   <button class="chip small ${st.cutMethod === 'color' ? 'on' : ''}" data-cm="color">Theo màu nền</button></span></div>
-${st.cutMethod === 'color' ? sl('iTol', 'Độ rộng màu nền', 5, 200, st.tol) : ''}
+${flatNote()}${st.cutMethod === 'color' ? sl('iTol', 'Độ rộng màu nền', 5, 200, st.tol) : ''}
 <div class="row"><span>Kiểu vẽ</span><span>
+  <button class="chip small ${c.style === 'orig' ? 'on' : ''}" data-cs="orig">Giữ màu gốc</button>
   <button class="chip small ${c.style === 'flat' ? 'on' : ''}" data-cs="flat">Màu phẳng</button>
   <button class="chip small ${c.style === 'soft' ? 'on' : ''}" data-cs="soft">Mềm mại</button>
   <button class="chip small ${c.style === 'bw' ? 'on' : ''}" data-cs="bw">Đen trắng</button></span></div>
@@ -5188,18 +5334,18 @@ ${sl('iCHead', 'Đầu to', 100, 220, Math.round(c.head * 100))}
 ${sl('iCBody', 'Cỡ thân', 50, 100, Math.round(c.body * 100))}
 ${sl('iCBulge', 'Phồng giữa mặt', 0, 70, Math.round(c.bulge * 100))}
 ${sl('iCNeck', 'Vị trí cổ (cao ↔ thấp)', -30, 30, c.neck)}
-${sl('iCDetail', 'Nét bên trong', 0, 100, c.detail)}
+${c.style === 'orig' ? '' : sl('iCDetail', 'Nét bên trong', 0, 100, c.detail)}
 ${sl('iCOut', 'Viền ngoài', 0, 12, c.outline)}
 <div class="row"><span>Đưa vào</span><span>
   <button class="chip small ${st.cariOut === 'float' ? 'on' : ''}" data-co="float">Vùng chọn (kéo đặt)</button>
   <button class="chip small ${st.cariOut === 'pp' ? 'on' : ''}" data-co="pp">🧩 Nhân vật ghép (làm động)</button></span></div>
-<p class="imp-note">Hợp nhất với ảnh <b>1 người</b>, thấy rõ đầu và vai. App tự tách người, tìm cổ, phóng to đầu, thu nhỏ thân, phồng giữa mặt rồi tô màu kiểu hoạt hình. Tất cả chạy ngay trên máy, không gửi ảnh đi đâu. Đầu bị cắt lệch thì chỉnh <b>Vị trí cổ</b>.</p>`;
+<p class="imp-note">Hợp nhất với ảnh <b>1 người</b>, thấy rõ đầu và vai. App tự tách người, tìm cổ, phóng to đầu, thu nhỏ thân, phồng giữa mặt. Ảnh chụp thì tô lại kiểu hoạt hình; tranh vẽ sẵn thì <b>Giữ màu gốc</b>. Tất cả chạy ngay trên máy, không gửi ảnh đi đâu. Đầu bị cắt lệch thì chỉnh <b>Vị trí cổ</b>.</p>`;
     },
     raw: () => `<p class="imp-note">Chèn ảnh vào lớp đang chọn (<b>${S.layer === 'bg' ? 'Nền' : 'Nhân vật'}</b>), rồi kéo, chỉnh cỡ/xoay.</p>`,
     cut: () => `
 <div class="row"><span>Cách tách</span><span>
   <button class="chip small ${st.cutMethod === 'ai' ? 'on' : ''}" data-cm="ai">AI tự động</button>
-  <button class="chip small ${st.cutMethod === 'color' ? 'on' : ''}" data-cm="color">Theo màu nền</button></span></div>
+  <button class="chip small ${st.cutMethod === 'color' ? 'on' : ''}" data-cm="color">Theo màu nền</button></span></div>${flatNote()}
 ${st.cutMethod === 'ai'
   ? `<div class="row"><span>Viền mềm ↔ sắc</span><input type="range" id="iEdge" min="0" max="100" value="${st.edge}"></div>
      <p class="imp-note">AI chạy ngay trên máy (lần đầu tải mô hình ~20 MB). Hợp với ảnh chụp người, vật thể rõ.</p>`
@@ -5231,9 +5377,34 @@ ${st.lineOut === 'vec'
   async function ensureAi() {
     if (st.aiA) return st.aiA;
     setBusy('Đang chạy AI tách nền…\n(lần đầu cần tải mô hình)');
-    try { st.aiA = await aiMask(src); } finally { setBusy(null); }
+    if (!st.aiP) st.aiP = aiMask(src).finally(() => { st.aiP = null; });   // one run shared by every caller
+    try { st.aiA = await st.aiP; } finally { setBusy(null); }
     return st.aiA;
   }
+  /** plain-background cut: flood the background colour from the edges, then let the AI decide which closed-in
+   *  background-coloured areas are really background (gap between arm and body) and which belong to the figure (white logo, eyes) */
+  async function colorCut() {
+    if (st.colA && st.colA.tol === st.tol && st.colA.slits === st.slits) return st.colA.a;
+    setBusy('Đang xử lý…'); await new Promise(r => setTimeout(r, 20));
+    const holes = [], a = colorBgAlpha(srcImg, st.tol, holes); setBusy(null);
+    if (holes.length) {
+      let m = null; try { m = await ensureAi(); } catch (e) { console.warn('AI không chạy, giữ các vùng kín', e); }
+      if (m) {
+        let cut = 0;
+        const sw = src.width;
+        for (const comp of holes) {
+          let sum = 0, x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+          for (const i of comp) { sum += m[i]; const x = i % sw, y = (i / sw) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+          const len = Math.max(x1 - x0, y1 - y0) + 1, thick = comp.length / len, mean = sum / comp.length;
+          const slit = st.slits && len / thick > 8 && len > src.height * 0.08;   // long thin gap (arm held close to the body): the AI blurs these, so trust it less
+          if (mean < 0.4 || (slit && mean < 0.98)) { for (const i of comp) a[i] = 0; cut++; }
+        }
+        if (cut) { const b = boxBlur(a, src.width, src.height, 1); for (let i = 0; i < a.length; i++) a[i] = Math.min(a[i], b[i] * 1.5); }
+      }
+    }
+    st.colA = { tol: st.tol, slits: st.slits, a }; return a;
+  }
+  if (st.flat) { st.cutMethod = 'color'; st.cari.style = 'orig'; st.cari.outline = 0; }   // a drawing already has its own outline   // drawn character on a plain background: colour flood keeps arm/leg gaps clean
   let seq = 0;
   async function recompute() {
     const my = ++seq;
@@ -5243,16 +5414,16 @@ ${st.lineOut === 'vec'
       if (st.mode === 'cut' || st.mode === 'pp') {
         let a;
         if (st.cutMethod === 'ai') a = sharpenMask(await ensureAi(), st.edge);
-        else { setBusy('Đang xử lý…'); await new Promise(r => setTimeout(r, 20)); a = colorBgAlpha(srcImg, st.tol); setBusy(null); }
+        else a = await colorCut();
         if (my !== seq) return;
         st.result = withAlpha(a); showCanvas(st.result); return;
       }
       if (st.mode === 'cari') {
-        const C = st.cariC || (st.cariC = {}), aKey = st.cutMethod + (st.cutMethod === 'color' ? st.tol : '');
+        const C = st.cariC || (st.cariC = {}), aKey = st.cutMethod + (st.cutMethod === 'color' ? st.tol + '|' + st.slits : '');
         if (C.aKey !== aKey) {
           let a;
           if (st.cutMethod === 'ai') a = sharpenMask(await ensureAi(), 70);
-          else { setBusy('Đang xử lý…'); await new Promise(r => setTimeout(r, 20)); a = colorBgAlpha(srcImg, st.tol); setBusy(null); }
+          else a = await colorCut();
           if (my !== seq) return;
           const k = Math.min(1, 800 / Math.max(src.width, src.height)), ww = Math.round(src.width * k), hh = Math.round(src.height * k);
           const wc = makeCanvas(ww, hh), wx = wc.getContext('2d'); wx.imageSmoothingQuality = 'high'; wx.drawImage(src, 0, 0, ww, hh);
@@ -5312,6 +5483,7 @@ ${st.lineOut === 'vec'
     const on = (id, ev, fn) => { const el = ctrl.querySelector(id); if (el) el.addEventListener(ev, fn); };
     on('#iEdge', 'input', e => { st.edge = +e.target.value; later(); });
     on('#iTol', 'input', e => { st.tol = +e.target.value; later(); });
+    on('#iSlits', 'change', e => { st.slits = e.target.checked; recompute(); });
     on('#iDetail', 'input', e => { st.detail = +e.target.value; later(); });
     on('#iThick', 'input', e => { st.thick = +e.target.value; later(); });
     on('#iOnly', 'change', e => { st.onlyChar = e.target.checked; recompute(); });
@@ -5335,7 +5507,7 @@ ${st.lineOut === 'vec'
       ov.querySelector('.dlg').classList.add('wide');
       pv = ov.querySelector('#impCv'); busyEl = ov.querySelector('#impBusy'); ctrl = ov.querySelector('#impCtrl');
       busyEl.style.whiteSpace = 'pre-line';
-      ov.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { if (st.busy) return; st.mode = b.dataset.mode; renderCtrl(); recompute(); }));
+      ov.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { st.mode = b.dataset.mode; st.result = null; renderCtrl(); recompute(); }));   // switching while busy is fine: the older run sees a newer seq and stops
       if (wizImport) { wizImport = false; st.mode = 'pp'; }
       renderCtrl(); recompute();
     } });
