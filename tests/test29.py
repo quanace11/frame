@@ -2,67 +2,75 @@ import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
 os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tests/out
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
-import asyncio, subprocess, time
+import asyncio, subprocess, time, base64
 from playwright.async_api import async_playwright
-# Autosave: only changed PNGs are written (blob keys), save keeps retrying after an error, playback cache is bounded + freed
-srv = subprocess.Popen(['python3','-m','http.server','8829'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+# Làm nhanh / Nhân vật ghép: chia vùng tự động (tay áp sát thân, tay giơ lên), bước tô sửa vùng, cắt lại giữ tư thế
+srv = subprocess.Popen(['python3','-m','http.server','8802'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1)
 PEN='''async ([pts])=>{const v=document.getElementById('view');const r=v.getBoundingClientRect();
-  const mk=(t,x,y)=>new PointerEvent(t,{pointerId:7,pointerType:'pen',clientX:r.left+x,clientY:r.top+y,pressure:0.6,buttons:1,bubbles:true,cancelable:true});
-  v.dispatchEvent(mk('pointerdown',pts[0][0],pts[0][1])); for(const [x,y] of pts.slice(1)){v.dispatchEvent(mk('pointermove',x,y)); await new Promise(r=>setTimeout(r,4));}
+  const mk=(t,x,y)=>new PointerEvent(t,{pointerId:7,pointerType:'pen',clientX:r.left+x,clientY:r.top+y,pressure:0.6,buttons:1,button:0,bubbles:true,cancelable:true});
+  v.dispatchEvent(mk('pointerdown',pts[0][0],pts[0][1]));
+  for(const [x,y] of pts.slice(1)){v.dispatchEvent(mk('pointermove',x,y)); await new Promise(r=>setTimeout(r,4));}
   v.dispatchEvent(mk('pointerup',pts.at(-1)[0],pts.at(-1)[1]));}'''
-KEYS='''async()=>{const db=await idbOpen();return await new Promise(r=>{const q=db.transaction('kv').objectStore('kv').getAllKeys();q.onsuccess=()=>r(q.result.filter(k=>k.startsWith('blob:')))})}'''
+D2S='''([x,y])=>[(x*vs+vtx)/DPR,(y*vs+vty)/DPR]'''
+# share of opaque pixels inside a doc-space box that carry region value v (hand-painted or automatic)
+FRAC='''([x0,y0,x1,y1,v])=>{const st=ppSetup;let n=0,k=0;for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){const i=y*W+x;if(!st.bin[i])continue;n++;const e=st.hand&&st.hand[i]>=0?st.hand[i]:st.auto[i];if(ppRoleMap(e,st.split)===v)k++;}return n?k/n:0}'''
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(executable_path=CHROME, args=['--no-sandbox'])
-        pg = await b.new_page(viewport={'width':1366,'height':1024}); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
-        await pg.goto('http://localhost:8829/index.html'); await pg.wait_for_timeout(1000)
-        await pg.click('.dlg .btns >> text=Bắt đầu vẽ')
-        box = await pg.evaluate("(()=>{const r=document.getElementById('view').getBoundingClientRect();return [r.width,r.height]})()"); cx,cy = box[0]/2, box[1]/2
-        await pg.evaluate(PEN,[[[cx-60,cy-60],[cx,cy-20],[cx+60,cy]]]); await pg.wait_for_timeout(2500)
-        rec = await pg.evaluate("idbGet('project:'+curProjId).then(p=>({v:p.v, ref:!!(p.frames[0].png&&p.frames[0].png.ref)}))")
-        print('record v2 with refs', rec)
-        k1 = await pg.evaluate(KEYS); print('blob keys', len(k1))
-        # count writes on the next stroke: only the edited frame's PNG should be rewritten
-        await pg.evaluate("window._w=[]; const o=idbBlobPut; idbBlobPut=(r,k,bl,pid,gc)=>{_w.push(bl.map(x=>x[0])); return o(r,k,bl,pid,gc)}; 0")
-        await pg.click('#addBtn') if await pg.query_selector('#addBtn') else None
-        await pg.wait_for_timeout(2500)
-        await pg.evaluate(PEN,[[[cx-40,cy+80],[cx+20,cy+100]]]); await pg.wait_for_timeout(2500)
-        w = await pg.evaluate("_w"); print('writes per save', [len(x) for x in w], 'last only 1', len(w[-1])==1)
-        # failure -> retry instead of giving up
-        await pg.evaluate("window._fail=1; const o2=idbBlobPut; idbBlobPut=async(...a)=>{ if(_fail-->0) throw new Error('quota'); return o2(...a) }; 0")
-        await pg.evaluate(PEN,[[[cx,cy+150],[cx+20,cy+190]]]); await pg.wait_for_timeout(2200)
-        print('after error', await pg.evaluate("[storageOk, document.getElementById('saveState').textContent]"))
-        await pg.wait_for_timeout(4000)
-        print('retried ok', await pg.evaluate("[storageOk, document.getElementById('saveState').textContent]"))
-        # reload: drawing still there
-        n = await pg.evaluate("S.frames.length")
-        await pg.reload(); await pg.wait_for_timeout(1500)
-        a = await pg.evaluate("(async()=>{await ensureLoaded(S.frames[0]); const d=S.frames[0].canvas.getContext('2d').getImageData(0,0,W,H).data; let c=0; for(let i=3;i<d.length;i+=4) if(d[i]) c++; return c})()")
-        print('reload frames', await pg.evaluate("S.frames.length")==n, 'pixels kept', a>100)
-        # delete a frame -> its blob is garbage-collected
-        if n > 1:
-            fid = await pg.evaluate("S.frames[1].id")
-            await pg.evaluate("selectFrame(1)"); await pg.wait_for_timeout(200); await pg.evaluate("delFrame(); 0"); await pg.wait_for_timeout(300); await pg.click('.dlg .btns >> text=Xoá')
-            await pg.wait_for_timeout(2500)
-            ks = await pg.evaluate(KEYS); print('gc removed deleted frame', not any(fid in k for k in ks))
-        # duplicate copies blobs, delete project removes them
-        pid = await pg.evaluate("curProjId")
-        await pg.evaluate("(async()=>{const p=await idbGet('project:'+curProjId); window._nid=newId(); await copyProjectBlobs(curProjId,_nid,p); await idbPut('project:'+_nid,p);})()")
-        ok = await pg.evaluate("(async()=>{const p=await idbGet('project:'+_nid); const b=await idbGet(p.frames[0].png.ref); return p.frames[0].png.ref.includes(_nid) && !!b})()")
-        print('dup copies blobs', ok)
-        nid = await pg.evaluate("_nid"); await pg.evaluate("deleteProjectBlobs(_nid)"); ks = await pg.evaluate(KEYS)
-        print('delete removes blobs', not any(k.startswith('blob:'+nid) for k in ks))
-        # old (v1) records with inline PNGs still open, and get upgraded on the next save
-        await pg.evaluate("(async()=>{const p=await idbGet('project:'+curProjId); await resolveProjectRefs(p,'x'); p.v=1; window._oid=newId(); await idbPut('project:'+_oid,p); const L=await projIndex(); L.push({id:_oid,name:'cu',updated:1,frames:p.frames.length}); await idbPut('projects',L); await openProject(_oid);})()")
-        await pg.wait_for_timeout(500)
-        a = await pg.evaluate("(async()=>{await ensureLoaded(S.frames[0]); const d=S.frames[0].canvas.getContext('2d').getImageData(0,0,W,H).data; let c=0; for(let i=3;i<d.length;i+=4) if(d[i]) c++; return c})()")
-        await pg.evaluate("saveProject()"); await pg.wait_for_timeout(800)
-        print('v1 opens', a>100, 'upgraded', await pg.evaluate("idbGet('project:'+_oid).then(p=>p.v===2&&!!p.frames[0].png.ref)"))
-        # playback cache: lower resolution for long films, freed after stop
-        print('play size short/long', await pg.evaluate("[playCacheSize(10), playCacheSize(600)]"))
-        await pg.evaluate("startPlay()"); await pg.wait_for_timeout(600); await pg.evaluate("stopPlay()")
-        print('cache built', await pg.evaluate("S.frames.some(f=>f.play)"))
-        await pg.evaluate("freePlayCache()"); print('cache freed', await pg.evaluate("!S.frames.some(f=>f.play)"))
+        pg = await b.new_page(viewport={'width':1180,'height':900})
+        errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
+        await pg.goto('http://localhost:8802/index.html'); await pg.wait_for_timeout(800)
+        await pg.click('text=Bắt đầu vẽ')
+        await pg.set_input_files('#imgFile',os.path.join(ASSETS,'limbs.png')); await pg.wait_for_timeout(400)
+        await pg.click('[data-mode=pp]'); await pg.wait_for_timeout(300)
+        await pg.click('[data-cm=color]'); await pg.wait_for_timeout(1200)
+        await pg.click('.dlg .btns >> text=Dùng'); await pg.wait_for_timeout(500)
+        J = await pg.evaluate('ppSetup.J')
+        # arm drawn against the body (viewer-left) is found from its outline; the raised arm (viewer-right) from its tip
+        print('arm L x', round(J['shL']['x']), round(J['elL']['x']), round(J['haL']['x']), 'hand y', round(J['haL']['y']))
+        print('arm R hand', round(J['haR']['x']), round(J['haR']['y']), 'head x', round(J['head']['x']))
+        await pg.click('#ppCutAuto'); await pg.wait_for_selector('#ppLabSec:not([hidden])')
+        print('stage', await pg.evaluate('ppSetup.stage'), 'chips', await pg.locator('#ppLabParts [data-plp]').count())
+        # sleeve of the left arm: doc x 330..400, y 780..1080 -> should mostly be armL (6)
+        print('sleeve armL', round(await pg.evaluate(FRAC,[340,800,395,1060,6]),2), 'torso body', round(await pg.evaluate(FRAC,[480,800,640,1100,0]),2), 'raised forearm armR', round(await pg.evaluate(FRAC,[830,560,870,700,8]),2))
+        await pg.screenshot(path='lab_stage.png')
+        # 1) bucket: tap the torso fill with "Đầu" selected -> whole torso patch becomes head; then undo
+        await pg.click('[data-plp="1"]'); await pg.click('[data-plt=bucket]')
+        s = await pg.evaluate(D2S,[560,900]); await pg.evaluate(PEN,[[s,s]]); await pg.wait_for_timeout(200)
+        print('bucket torso->head', round(await pg.evaluate(FRAC,[480,800,640,1100,1]),2))
+        await pg.click('#ppLabUndo'); await pg.wait_for_timeout(100)
+        print('after undo head share', round(await pg.evaluate(FRAC,[480,800,640,1100,1]),2))
+        # 2) brush: paint the top of the left sleeve as Tay trái (shoulder cap)
+        await pg.click('[data-plp="6"]'); await pg.click('[data-plt=brush]')
+        pts=[await pg.evaluate(D2S,[x,690]) for x in range(340,400,6)]; await pg.evaluate(PEN,[pts]); await pg.wait_for_timeout(200)
+        print('brush cap armL', round(await pg.evaluate(FRAC,[345,680,395,700,6]),2))
+        # 3) lasso: mark a box of the leg as "Bỏ đi" then put it back with undo
+        await pg.click('[data-plp="10"]'); await pg.click('[data-plt=lasso]')
+        ring=[await pg.evaluate(D2S,q) for q in [[420,1300],[540,1300],[540,1400],[420,1400],[420,1300]]]; await pg.evaluate(PEN,[ring]); await pg.wait_for_timeout(200)
+        print('lasso none', round(await pg.evaluate(FRAC,[440,1310,520,1390,10]),2))
+        await pg.evaluate('undo()'); await pg.wait_for_timeout(100)   # two-finger tap path also lands here
+        print('global undo -> none share', round(await pg.evaluate(FRAC,[440,1310,520,1390,10]),2))
+        # back to joints keeps the painting; cut
+        await pg.click('#ppLabBack'); print('joint stage', await pg.evaluate("ppSetup.stage"), 'kept', await pg.evaluate('ppSetup.hand.some(v=>v===6)'))
+        await pg.click('#ppCutAuto'); await pg.wait_for_selector('#ppLabSec:not([hidden])')
+        await pg.click('#ppLabCut'); await pg.wait_for_function('!ppSetup', timeout=60000)
+        parts = await pg.evaluate("S.pp.parts.map(p=>p.role)")
+        print('parts', len(parts), sorted(parts))
+        arm = await pg.evaluate("(()=>{const p=S.pp.parts.find(x=>x.role==='armL');return [Math.round(p.px),Math.round(p.py),p.c.width,p.c.height]})()")
+        print('armL pivot/size', arm)
+        # pose a frame, then reopen the regions and cut again: pose must survive
+        await pg.evaluate("()=>{ppSel=S.pp.parts.find(x=>x.role==='armR').id; ppSyncBar(); const r=document.getElementById('ppRot'); r.value=40; r.dispatchEvent(new Event('input')); r.dispatchEvent(new Event('change'));}")
+        print('recut enabled', await pg.evaluate("!document.getElementById('ppRecut').disabled"))
+        await pg.evaluate("openTab('pp','parts')"); await pg.click('#ppRecut'); await pg.wait_for_selector('#ppLabSec:not([hidden])')
+        print('recut keeps painting', await pg.evaluate('ppSetup.hand.some(v=>v===6)'))
+        await pg.click('[data-plp="9"]') if await pg.locator('[data-plp="9"]').count() else None
+        await pg.click('#ppLabSplit'); await pg.wait_for_timeout(100)
+        print('split chips', await pg.locator('#ppLabParts [data-plp]').count())
+        await pg.click('#ppLabCut'); await pg.wait_for_function('!ppSetup', timeout=60000)
+        print('after recut parts', await pg.evaluate("S.pp.parts.length"), 'modal', await pg.locator('.dlg').count())
+        print('pose kept', await pg.evaluate("(()=>{const p=S.pp.parts.find(x=>x.role==='armR');const q=curFrame().pp[p.id];return q&&q.r})()"))
+        u = await pg.evaluate("(()=>{const c=makeCanvas(),x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,W,H);drawPuppet(x,curFrame().pp);return c.toDataURL()})()")
+        open('lab_after.png','wb').write(base64.b64decode(u.split(',')[1]))
         print('ERR', errs); await b.close()
 asyncio.run(main()); srv.kill()
