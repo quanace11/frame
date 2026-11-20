@@ -258,7 +258,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
     <button class="tool" id="redoBtn" title="Làm lại (chạm 3 ngón)">
       <svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>Làm lại</button>
     <div class="rail-sep"></div>
-    <button class="tool" id="onionBtn" title="Onion skin">
+    <button class="tool" id="onionBtn" title="Onion skin: chạm để bật/tắt, giữ để chọn số frame trước/sau">
       <svg viewBox="0 0 24 24"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6" stroke-dasharray="2.5 2"/></svg>Onion</button>
     <button class="tool" id="fitBtn" title="Vừa khung">
       <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Vừa khung</button>
@@ -314,6 +314,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <span class="lbl">Cỡ</span><input type="range" id="selScale" min="10" max="300" step="1" value="100"><span class="val" id="selScaleVal">100%</span>
       <span class="lbl">Xoay</span><input type="range" id="selRot" min="-180" max="180" step="1" value="0"><span class="val" id="selRotVal">0°</span>
       <button class="chip small" id="selFlip">Lật ngang</button>
+      <button class="chip small" id="selCopy" title="Chép vùng chọn để dán sang frame khác (giữ đúng vị trí, cỡ, góc xoay)">📋 Chép</button>
       <button class="chip small" id="selStamp" title="In một bản tại chỗ, vẫn giữ vùng chọn để kéo tiếp">Nhân bản</button>
       <button class="chip small" id="selVec" title="Biến nét pixel trong vùng chọn thành nét vector sửa được, giữ nguyên vị trí">→ Nét vector</button>
       <button class="chip small" id="selDelete">Xoá vùng</button>
@@ -460,6 +461,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <span class="spacer" style="flex:1"></span>
       <button class="tbtn" id="moveL" title="Dời frame sang trái">◀</button>
       <button class="tbtn" id="moveR" title="Dời frame sang phải">▶</button>
+      <button class="tbtn" id="pasteBtn" hidden title="Dán hình đã chép vào frame này hoặc nhiều frame liền nhau">📋 Dán</button>
       <button class="tbtn" id="dupBtn">Nhân bản frame</button>
       <button class="tbtn" id="addBtn">+ Frame trống</button>
       <button class="tbtn" id="delBtn" style="color:var(--danger)">Xoá</button>
@@ -596,6 +598,28 @@ function setupWorkCanvases() {
   tintCache.clear();
 }
 const tintCache = new Map();
+SETTINGS_KEYS.push('onionPrev', 'onionNext'); S.onionPrev = 1; S.onionNext = 1;
+// onion frames: [index, colour, alpha], farthest first so the nearest frame draws on top; alpha fades with distance
+function onionList() {
+  const L = [], P = S.onionPrev ?? 1, N = S.onionNext ?? 1;
+  for (let d = Math.max(P, N); d >= 1; d--) {
+    const a = S.onionAlpha * Math.pow(0.6, d - 1);
+    if (d <= P && S.cur - d >= 0) L.push([S.cur - d, d === 1 ? '#ff3b5c' : '#ff8a3b', a]);
+    if (d <= N && S.cur + d < S.frames.length) L.push([S.cur + d, d === 1 ? '#2f7bff' : '#26b8c9', a]);
+  }
+  return L;
+}
+function onionDialog() {
+  const chips = (k) => [0, 1, 2, 3, 4].map(n => `<button class="chip small ${(S[k] ?? 1) === n ? 'on' : ''}" data-ok="${k}" data-n="${n}">${n}</button>`).join('');
+  modal({ title: 'Onion skin', html: `<p class="lbl">Hiện mờ các frame bên cạnh để vẽ chuyển động đều tay. Đỏ/cam = frame trước, xanh = frame sau, càng xa càng mờ.</p>
+<div class="set-row"><span>Số frame trước</span><span class="grp">${chips('onionPrev')}</span></div>
+<div class="set-row"><span>Số frame sau</span><span class="grp">${chips('onionNext')}</span></div>
+<div class="set-row"><span>Độ mờ</span><input type="range" id="onA" min="5" max="70" value="${Math.round(S.onionAlpha * 100)}"></div>`,
+    buttons: [{ label: 'Xong', value: null, primary: true }], onOpen: ov => {
+      ov.querySelectorAll('[data-ok]').forEach(b => b.addEventListener('click', () => { S[b.dataset.ok] = +b.dataset.n; S.onion = true; ov.querySelectorAll(`[data-ok=${b.dataset.ok}]`).forEach(x => x.classList.toggle('on', x === b)); updateToggles(); saveSettings(); requestRender(); }));
+      ov.querySelector('#onA').addEventListener('input', e => { S.onionAlpha = e.target.value / 100; saveSettings(); requestRender(); });
+    } });
+}
 function onionTint(f, col) {
   let e = tintCache.get(f.id);
   if (e && e.ver === f.ver && e.col === col) return e.c;
@@ -608,8 +632,8 @@ function onionTint(f, col) {
   x.globalCompositeOperation = 'source-in'; x.fillStyle = col; x.fillRect(0, 0, c.width, c.height);
   x.globalCompositeOperation = 'source-over';
   tintCache.set(f.id, { ver: f.ver, col, c });
-  if (tintCache.size > 4) {
-    const keep = new Set([S.frames[S.cur - 1], S.frames[S.cur + 1]].filter(Boolean).map(f => f.id));
+  if (tintCache.size > 2 + (S.onionPrev | 0) + (S.onionNext | 0)) {
+    const keep = new Set(onionList().map(([i]) => S.frames[i]).filter(Boolean).map(f => f.id));
     for (const k of tintCache.keys()) if (!keep.has(k)) tintCache.delete(k);
   }
   return c;
@@ -648,10 +672,9 @@ function render() {
     }
   }
   if (S.onion) {
-    const pairs = [[S.cur - 1, '#ff3b5c'], [S.cur + 1, '#2f7bff']];
-    for (const [i, col] of pairs) {
+    for (const [i, col, a] of onionList()) {
       const of = S.frames[i];
-      if (of && of.canvas) { c.globalAlpha = S.onionAlpha; c.drawImage(onionTint(of, col), 0, 0, W, H); c.globalAlpha = 1; }
+      if (of && of.canvas) { c.globalAlpha = a; c.drawImage(onionTint(of, col), 0, 0, W, H); c.globalAlpha = 1; }
       else if (of && !of.canvas) ensureLoaded(of).then(requestRender);
     }
   }
@@ -1174,6 +1197,57 @@ function showSelbar() {
   $('#selRot').value = 0; $('#selRotVal').textContent = '0°';
 }
 function hideSelbar() { $('#selbar').hidden = true; }
+
+/* ===== copy / paste a selection across frames ===== */
+let selClip = null;
+const cloneCv = c => { if (!c) return null; const k = makeCanvas(c.width, c.height); k.getContext('2d').drawImage(c, 0, 0); return k; };
+function copyFloating() {
+  if (!floating || !floating.c) return;
+  const f = floating; selClip = { c: cloneCv(f.c), cc: cloneCv(f.cc), cx: f.cx, cy: f.cy, scale: f.scale, rot: f.rot, flip: f.flip };
+  $('#pasteBtn').hidden = false; toast('Đã chép — sang frame khác bấm 📋 Dán (ở thanh frame)', 2500);
+}
+function drawClip(ctx, img) { const q = selClip; ctx.save(); ctx.translate(q.cx, q.cy); ctx.rotate(q.rot); ctx.scale(q.scale * q.flip, q.scale); ctx.drawImage(img, -img.width / 2, -img.height / 2); ctx.restore(); }
+function pasteHere() {
+  if (!selClip) return;
+  if (S.layer !== 'char') setLayer('char');
+  if (S.tool !== 'lasso') setTool('lasso');
+  commitFloating();
+  const o = activeObj(); if (!o || !o.canvas) return;
+  const snap = makeCanvas(); snap.getContext('2d').drawImage(o.canvas, 0, 0);
+  const q = selClip;
+  floating = { t: targetOf(o), o, c: cloneCv(q.c), cx: q.cx, cy: q.cy, scale: q.scale, rot: q.rot, flip: q.flip, snap, dirty: null };
+  if (q.cc) { const cv = colOf(o, true); Object.assign(floating, { cc: cloneCv(q.cc), csnap: cloneCv(cv) }); }
+  showSelbar(); requestRender();
+}
+async function pasteToFrames(n) {
+  if (!selClip) return;
+  commitFloating();
+  const i0 = S.cur, i1 = Math.min(S.frames.length - 1, i0 + n - 1), entries = [];
+  const box = (() => { const q = selClip, w = q.c.width / 2 * q.scale, h = q.c.height / 2 * q.scale, cs = Math.cos(q.rot), sn = Math.sin(q.rot), b = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const [x, y] of [[-w, -h], [w, -h], [w, h], [-w, h]]) { const X = q.cx + x * cs - y * sn, Y = q.cy + x * sn + y * cs; b[0] = Math.min(b[0], X); b[1] = Math.min(b[1], Y); b[2] = Math.max(b[2], X); b[3] = Math.max(b[3], Y); } return b; })();
+  const rect = rectFromBox(box, 2); if (!rect) return;
+  const pm = progress('Đang dán…');
+  try {
+    for (let i = i0; i <= i1; i++) {
+      const f = S.frames[i]; await ensureLoaded(f);
+      const lx = f.canvas.getContext('2d'), before = lx.getImageData(...rect); drawClip(lx, selClip.c); entries.push(pixEntry(f, rect, before, lx.getImageData(...rect)));
+      if (selClip.cc) { const kx = colOf(f, true).getContext('2d'), cb = kx.getImageData(...rect); drawClip(kx, selClip.cc); entries.push(pixEntry(f, rect, cb, kx.getImageData(...rect), true)); f.colVer++; }
+      markEdited(f);
+    }
+    pushEntry({ multi: entries });
+  } finally { pm.close(); }
+  requestRender(); toast(`Đã dán vào ${i1 - i0 + 1} frame (frame ${i0 + 1}–${i1 + 1}) — hoàn tác 1 lần để bỏ`, 3000);
+}
+async function pasteDialog() {
+  if (!selClip) { toast('Chọn vùng bằng công cụ Chọn vùng rồi bấm 📋 Chép trước'); return; }
+  const left = S.frames.length - S.cur; let inp = null;
+  const v = await modal({ title: '📋 Dán hình đã chép', html: `<p class="lbl">Hình được dán đúng vị trí lúc chép. Dán vào nhiều frame hợp cho đạo cụ, vật đứng yên, chữ…</p>
+<div class="set-row"><span>Dán vào frame này và các frame sau, tổng số</span><input type="number" id="pasteN" min="1" max="${left}" value="${Math.min(left, 5)}" style="width:80px"></div>`,
+    buttons: [{ label: 'Huỷ', value: null }, { label: 'Dán nhiều frame', value: 'many' }, { label: 'Dán & chỉnh tay', value: 'one', primary: true }],
+    onOpen: ov => { inp = ov.querySelector('#pasteN'); inp.addEventListener('keydown', e => e.stopPropagation()); } });
+  const n = clamp(parseInt(inp && inp.value) || 1, 1, left);
+  if (v === 'one') pasteHere(); else if (v === 'many') await pasteToFrames(n);
+}
 
 /* ========= Undo ========= */
 const undoStack = [], redoStack = [];
@@ -4015,7 +4089,12 @@ $('#sizeIn').addEventListener('input', e => { S.size = +e.target.value; $('#size
 $('#opIn').addEventListener('input', e => { S.opacity = e.target.value / 100; $('#opVal').textContent = e.target.value + '%'; saveSettings(); });
 $('#pressBtn').addEventListener('click', () => { S.pressure = !S.pressure; updateToggles(); saveSettings(); });
 $('#snapBtn').addEventListener('click', () => { S.snap = !S.snap; snapField = null; updateToggles(); saveSettings(); toast(S.snap ? `Hút nét: BẬT (bán kính ${S.snapR}px — chỉnh trong Menu)` : 'Hút nét: TẮT'); });
-$('#onionBtn').addEventListener('click', () => { S.onion = !S.onion; updateToggles(); saveSettings(); requestRender(); });
+let onionLP = null, onionLPFired = false;
+$('#onionBtn').addEventListener('pointerdown', () => { onionLPFired = false; clearTimeout(onionLP); onionLP = setTimeout(() => { onionLPFired = true; onionDialog(); }, 550); });
+['pointerup', 'pointerleave', 'pointercancel'].forEach(t => $('#onionBtn').addEventListener(t, () => clearTimeout(onionLP)));
+$('#onionBtn').addEventListener('contextmenu', e => { e.preventDefault(); if (!onionLPFired) { onionLPFired = true; onionDialog(); } });
+let onionHint = false;
+$('#onionBtn').addEventListener('click', () => { if (onionLPFired) { onionLPFired = false; return; } S.onion = !S.onion; updateToggles(); saveSettings(); requestRender(); if (S.onion && !onionHint) { onionHint = true; toast('Giữ nút Onion để chọn số frame trước/sau', 2200); } });
 $('#loopBtn').addEventListener('click', () => { S.loop = !S.loop; updateToggles(); saveSettings(); });
 $('#fitBtn').addEventListener('click', () => fitView(true));
 $('#rotBtn').addEventListener('click', rotateView90);
@@ -4069,6 +4148,8 @@ $('#selScale').addEventListener('input', e => { if (!floating) return; floating.
 $('#selRot').addEventListener('input', e => { if (!floating) return; floating.rot = e.target.value * Math.PI / 180; $('#selRotVal').textContent = e.target.value + '°'; requestRender(); });
 $('#selFlip').addEventListener('click', () => { if (floating) { floating.flip *= -1; requestRender(); } });
 $('#selStamp').addEventListener('click', stampFloating);
+$('#selCopy').addEventListener('click', copyFloating);
+$('#pasteBtn').addEventListener('click', pasteDialog);
 $('#selVec').addEventListener('click', () => convertPixelsToVector(true));
 $('#selDelete').addEventListener('click', () => { if (floating) { floating.c = null; floating.cc = null; commitFloating(); toast('Đã xoá vùng chọn'); } });
 $('#selCancel').addEventListener('click', () => { cancelFloating(); updUndoBtns(); });
@@ -5239,6 +5320,7 @@ $('#menuBtn').addEventListener('click', () => {
 <div class="set-row"><span>🧲 Bán kính hút nét (px)</span><input type="range" id="sSnapR" min="6" max="80" value="${S.snapR}"></div>
 <div class="set-row"><span>Làm mượt nét (chống run tay)</span><input type="range" id="sSmooth" min="0" max="80" value="${Math.round(S.smooth * 100)}"></div>
 <div class="set-row"><span>Độ mờ onion skin</span><input type="range" id="sOnion" min="5" max="70" value="${Math.round(S.onionAlpha * 100)}"></div>
+<div class="set-row"><span>Onion skin: số frame trước / sau</span><button class="chip small" id="sOnionN">${S.onionPrev ?? 1} / ${S.onionNext ?? 1} ▸</button></div>
 <div class="set-row"><span>Thời lượng mặc định frame mới (giây)</span><input type="number" id="sDur" min="0.02" max="10" step="0.02" value="${S.defaultDur}"></div>
 <div class="set-row"><span>Kích thước khung</span><span class="lbl">${W} × ${H}</span></div>`;
   modal({ title: 'Menu', html, buttons: [{ label: 'Đóng', value: null, primary: true }], onOpen: (ov, close) => {
@@ -5246,6 +5328,7 @@ $('#menuBtn').addEventListener('click', () => {
     ov.querySelector('#sRotG').addEventListener('change', e => { S.rotGesture = e.target.checked; saveSettings(); });
     ov.querySelector('#sSnapR').addEventListener('input', e => { S.snapR = +e.target.value; snapField = null; saveSettings(); });
     ov.querySelector('#sSmooth').addEventListener('input', e => { S.smooth = e.target.value / 100; saveSettings(); });
+    ov.querySelector('#sOnionN').addEventListener('click', () => { close(null); onionDialog(); });
     ov.querySelector('#sOnion').addEventListener('input', e => { S.onionAlpha = e.target.value / 100; saveSettings(); requestRender(); });
     ov.querySelector('#sDur').addEventListener('change', e => { const v = parseFloat(e.target.value); if (v > 0) { S.defaultDur = v; saveSettings(); } });
     ov.querySelectorAll('[data-m]').forEach(b => b.addEventListener('click', async () => {
@@ -5293,7 +5376,7 @@ async function init() {
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }
 /* ========= Installed app (PWA): offline + updates ========= */
-const APP_VERSION = '2026.11.20-1738';
+const APP_VERSION = '2026.11.20-1822';
 let swReg = null, swUpdating = false;
 (function setupPWA() {
   let top = false; try { top = window.top === window; } catch (e) {}
