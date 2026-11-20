@@ -486,6 +486,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <button class="tbtn" id="pasteBtn" hidden title="Dán hình đã chép vào frame này hoặc nhiều frame liền nhau">📋 Dán</button>
       <button class="tbtn" id="dupBtn">Nhân bản frame</button>
       <button class="tbtn" id="addBtn">+ Frame trống</button>
+      <button class="tbtn" id="loopRangeBtn" title="Lặp lại một đoạn frame (chu kỳ đi bộ, chớp mắt, vẫy tay…) hoặc cho chạy đi rồi chạy về">🔁 Lặp đoạn</button>
       <button class="tbtn" id="delBtn" style="color:var(--danger)">Xoá</button>
       <button class="tbtn" id="delAllBtn" style="color:var(--danger)" title="Xoá toàn bộ frame">Xoá hết</button>
       <span id="totalLbl"></span>
@@ -1544,6 +1545,49 @@ async function dupFrame() {
   f.canvas.getContext('2d').drawImage(src.canvas, 0, 0); copyCol(f, src); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(src.vec); f.pp = ppClone(src.pp); f.texts = JSON.parse(JSON.stringify(src.texts || []));
   S.frames.splice(S.cur + 1, 0, f); loaded.push(f);
   await drawThumb(f); buildStrip(); await selectFrame(S.cur + 1); scheduleSave(); evictSoon();
+}
+// repeat frames a..b (0-based) after b: 'loop' = a..b again, 'pingpong' = b-1..a (there and back); undo = one step
+async function repeatRange(a, b, times, mode) {
+  if (playing) stopPlay(); commitFloating();
+  const src = S.frames.slice(a, b + 1); if (!src.length) return 0;
+  let seq = [];
+  for (let k = 0; k < times; k++) seq = seq.concat(mode === 'pingpong' ? (k % 2 === 0 ? src.slice(0, -1).reverse() : src.slice(1)) : src);
+  if (!seq.length) return 0;
+  const pm = progress('Đang lặp đoạn…'), added = [];
+  try {
+    for (let k = 0; k < seq.length; k++) {
+      const s0 = seq[k]; await ensureLoaded(s0);
+      const f = newFrameObj(s0.bgId); f.dur = s0.dur;
+      f.canvas.getContext('2d').drawImage(s0.canvas, 0, 0); copyCol(f, s0); f.ver = 1; f.pngVer = 0;
+      f.vec = cloneVec(s0.vec); f.pp = ppClone(s0.pp); f.ppKey = s0.ppKey; f.ppEase = s0.ppEase; f.lip = s0.lip ? JSON.parse(JSON.stringify(s0.lip)) : null;
+      f.texts = JSON.parse(JSON.stringify(s0.texts || [])); f.cam = s0.cam ? { ...s0.cam } : null; f.shake = s0.shake || 0; f.flash = !!s0.flash;
+      added.push(f); loaded.push(f);
+      if (k % 10 === 9) { pm.set(`Đang lặp đoạn ${k + 1}/${seq.length}…`); await new Promise(r => setTimeout(r, 0)); await evictSoon(); }
+    }
+    const f0 = S.frames[b]; S.frames.splice(b + 1, 0, ...added);
+    pushEntry({ t: targetOf(f0), add: { frames: added, index: b + 1, dur0: f0.dur, dur1: f0.dur }, bytes: 0 });
+    for (const f of added) await drawThumb(f);
+  } finally { pm.close(); }
+  tintCache.clear(); ppRetween(); buildStrip(); await selectFrame(b + 1); scheduleSave(); evictSoon(); updUndoBtns();
+  return added.length;
+}
+async function repeatRangeDialog() {
+  const n = S.frames.length, num = (id, v, mx) => `<input type="number" id="${id}" min="1" max="${mx}" value="${v}" style="width:72px">`;
+  if (n < 2) { toast('Cần ít nhất 2 frame để lặp đoạn — vẽ thêm frame trước'); return; }
+  let el = {};
+  const v = await modal({ title: '🔁 Lặp đoạn frame', html: `<p class="lbl">Vẽ một chu kỳ (vd. 1 bước đi, 1 lần chớp mắt) rồi lặp lại, không cần vẽ lại. Frame mới được thêm ngay sau đoạn.</p>
+<div class="set-row"><span>Từ frame</span>${num('lrA', Math.max(1, S.cur), n)}</div>
+<div class="set-row"><span>Đến frame</span>${num('lrB', S.cur + 1, n)}</div>
+<div class="set-row"><span>Số lần thêm</span>${num('lrN', 2, 50)}</div>`,
+    buttons: [{ label: 'Huỷ', value: null }, { label: '↔ Đi rồi về', value: 'pingpong' }, { label: '🔁 Lặp lại', value: 'loop', primary: true }],
+    onOpen: ov => { ov.querySelectorAll('input').forEach(i => { el[i.id] = i; i.addEventListener('keydown', e => e.stopPropagation()); }); } });
+  if (!v) return;
+  let a = clamp((parseInt(el.lrA.value) || 1) - 1, 0, n - 1), b = clamp((parseInt(el.lrB.value) || 1) - 1, 0, n - 1); if (a > b) [a, b] = [b, a];
+  const times = clamp(parseInt(el.lrN.value) || 1, 1, 50);
+  if (v === 'pingpong' && b - a < 1) { toast('Đi rồi về cần đoạn ít nhất 2 frame'); return; }
+  if ((b - a + 1) * times > 600) { toast('Nhiều quá (tối đa 600 frame mỗi lần)'); return; }
+  const c = await repeatRange(a, b, times, v);
+  toast(`Đã thêm ${c} frame sau frame ${b + 1} — hoàn tác 1 lần để bỏ`, 3000);
 }
 async function delFrame() {
   if (playing) stopPlay();
@@ -4810,6 +4854,7 @@ $('#redoBtn').addEventListener('click', redo);
 $('#playBtn').addEventListener('click', startPlay);
 $('#addBtn').addEventListener('click', addFrame);
 $('#dupBtn').addEventListener('click', dupFrame);
+$('#loopRangeBtn').addEventListener('click', repeatRangeDialog);
 $('#delBtn').addEventListener('click', delFrame);
 $('#delAllBtn').addEventListener('click', deleteAllFrames);
 $('#videoBtn').addEventListener('click', exportVideo);
