@@ -4,42 +4,47 @@ os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tes
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
-# on-canvas flipper: ◀ n/N ▶ ＋ — tap to move, hold to peek and come back, ＋ = new frame with onion, hold ＋ = duplicate
-srv = subprocess.Popen(['python3','-m','http.server','8847'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+# 🪄 colour a frame from the previous one: areas that overlap a coloured area take its colour; chain to the last frame; one undo
+srv = subprocess.Popen(['python3','-m','http.server','8846'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1)
-async def hold(pg, sel, ms):
-    box = await pg.evaluate(f"(()=>{{const r=document.querySelector('{sel}').getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]}})()")
-    await pg.mouse.move(*box); await pg.mouse.down(); await pg.wait_for_timeout(ms); return box
+DRAW = """(async ([i,dx])=>{ const f=S.frames[i]; await ensureLoaded(f); const x=f.canvas.getContext('2d'); x.clearRect(0,0,W,H); x.strokeStyle='#111'; x.lineWidth=8;
+  x.beginPath(); x.arc(400+dx,600,150,0,7); x.stroke(); x.strokeRect(250+dx,900,300,400);
+  x.beginPath(); x.arc(400+dx,560,25,0,7); x.stroke(); f.ver++; })"""
+COL = "(async ([i,x,y])=>{ const f=S.frames[i]; await ensureLoaded(f); const c=f.col; if(!c) return null; return [...c.getContext('2d').getImageData(x,y,1,1).data]; })"
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(executable_path=CHROME, args=['--no-sandbox'])
-        for vp in [{'width':1180,'height':820},{'width':820,'height':1180}]:
-            pg = await b.new_page(viewport=vp); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
-            await pg.goto('http://localhost:8847/index.html'); await pg.wait_for_timeout(1000)
-            await pg.click('.dlg .btns >> text=Bắt đầu vẽ'); await pg.wait_for_timeout(300)
-            w = vp['width']
-            print(w, 'shown on brush', await pg.evaluate("!!document.getElementById('flipNav').offsetParent"), await pg.inner_text('#fnLbl'))
-            # frame stays above the pill
-            geo = await pg.evaluate("(()=>{const m=viewMat(), st=stage.getBoundingClientRect(); return [st.top+(m[1]*W+m[3]*H+m[5])/DPR, document.getElementById('flipNav').getBoundingClientRect().top]})()")
-            print(w, 'frame clear of pill', geo[0] <= geo[1] + 1, [round(g) for g in geo])
-            await pg.evaluate("S.onion=false; updateToggles()")
-            await pg.click('#fnAdd'); await pg.wait_for_timeout(400)
-            print(w, '＋ adds frame', await pg.evaluate("S.frames.length") == 2, 'onion on', await pg.evaluate("S.onion"), await pg.inner_text('#fnLbl'))
-            await pg.click('#fnAdd'); await pg.wait_for_timeout(400)
-            await pg.click('#fnPrev'); await pg.wait_for_timeout(300); print(w, 'tap ◀', await pg.evaluate("S.cur") == 1)
-            await pg.click('#fnNext'); await pg.wait_for_timeout(300); print(w, 'tap ▶', await pg.evaluate("S.cur") == 2)
-            await hold(pg, '#fnPrev', 600); print(w, 'hold ◀ peeks', await pg.evaluate("S.cur") == 1, await pg.inner_text('#fnLbl'))
-            await pg.mouse.up(); await pg.wait_for_timeout(300); print(w, 'release returns', await pg.evaluate("S.cur") == 2, await pg.inner_text('#fnLbl'))
-            # hold ＋ → duplicate current
-            await pg.evaluate("(async()=>{const f=curFrame(); await ensureLoaded(f); const x=f.canvas.getContext('2d'); x.fillStyle='#000'; x.fillRect(100,100,50,50); f.ver++;})(); 0")
-            await hold(pg, '#fnAdd', 750); await pg.mouse.up(); await pg.wait_for_timeout(500)
-            dup = await pg.evaluate("(async()=>{const f=curFrame(); await ensureLoaded(f); return [S.frames.length, S.cur, f.canvas.getContext('2d').getImageData(120,120,1,1).data[3]];})()")
-            print(w, 'hold ＋ duplicates', dup == [4, 3, 255], dup)
-            await pg.evaluate("setTool('puppet')"); await pg.wait_for_timeout(200)
-            print(w, 'hidden in puppet', await pg.evaluate("!document.getElementById('flipNav').offsetParent"))
-            await pg.evaluate("setTool('brush'); startPlay()"); await pg.wait_for_timeout(300)
-            print(w, 'hidden while playing', await pg.evaluate("!document.getElementById('flipNav').offsetParent")); await pg.evaluate("stopPlay()")
-            await pg.screenshot(path=f't47_{w}.png')
-            print('ERR', errs); await pg.close()
-        await b.close()
+        pg = await b.new_page(viewport={'width':1180,'height':820}); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
+        await pg.goto('http://localhost:8846/index.html'); await pg.wait_for_timeout(1000)
+        await pg.click('.dlg .btns >> text=Bắt đầu vẽ'); await pg.wait_for_timeout(200)
+        await pg.evaluate("(async()=>{ await addFrame(); await addFrame(); await addFrame(); })(); 0"); await pg.wait_for_timeout(600)
+        for i, dx in enumerate([0, 30, 60, 90]): await pg.evaluate(DRAW, [i, dx])
+        # colour frame 1 by hand: head red, eye white, body blue
+        await pg.evaluate("(async()=>{ await selectFrame(0); setColor('#e53935'); fillColLayer(curFrame(),{x:400,y:680}); setColor('#ffffff'); fillColLayer(curFrame(),{x:400,y:560}); setColor('#1e88e5'); fillColLayer(curFrame(),{x:400,y:1100}); })(); 0")
+        await pg.wait_for_timeout(500)
+        await pg.evaluate("setTool('fill')"); await pg.wait_for_timeout(100)
+        print('button shown for fill tool', await pg.evaluate("!!document.getElementById('autoColBtn').offsetParent"))
+        await pg.evaluate("selectFrame(1)"); await pg.wait_for_timeout(300)
+        await pg.click('#autoColBtn'); await pg.wait_for_timeout(800)
+        head = await pg.evaluate(COL, [1, 430, 690]); eye = await pg.evaluate(COL, [1, 430, 560]); body = await pg.evaluate(COL, [1, 430, 1100]); out = await pg.evaluate(COL, [1, 900, 300])
+        line = await pg.evaluate(COL, [1, 430 + 150, 600])
+        print('frame2 head red', head[:3] == [229, 57, 53], 'eye white', eye[:3] == [255, 255, 255], 'body blue', body[:3] == [30, 136, 229], 'outside empty', out[3] == 0, 'under line', line[3] == 255)
+        await pg.evaluate("undo()"); await pg.wait_for_timeout(300)
+        print('undo clears', (await pg.evaluate(COL, [1, 430, 690]) or [0,0,0,0])[3] == 0)
+        # long-press → to the last frame (chained)
+        box = await pg.evaluate("(()=>{const r=document.getElementById('autoColBtn').getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]})()")
+        await pg.mouse.move(*box); await pg.mouse.down(); await pg.wait_for_timeout(750); await pg.mouse.up(); await pg.wait_for_timeout(200)
+        await pg.click('.dlg .btns >> text=Tới frame cuối'); await pg.wait_for_timeout(2000)
+        f4 = await pg.evaluate(COL, [3, 490, 690]); f4b = await pg.evaluate(COL, [3, 490, 1100])
+        print('chained to frame 4', f4[:3] == [229, 57, 53], f4b[:3] == [30, 136, 229])
+        await pg.evaluate("undo()"); await pg.wait_for_timeout(500)
+        vals = [((await pg.evaluate(COL, [i, 400 + 30*i, 690])) or [0,0,0,0])[3] for i in [1, 2, 3]]; print('one undo clears all', vals == [0, 0, 0])
+        # first frame / no colour messages don't crash
+        await pg.evaluate("selectFrame(0)"); await pg.wait_for_timeout(200); await pg.click('#autoColBtn'); await pg.wait_for_timeout(200)
+        await pg.evaluate("selectFrame(2)"); await pg.wait_for_timeout(200); await pg.click('#autoColBtn'); await pg.wait_for_timeout(300)
+        print('no colour on prev → message', await pg.inner_text('#toast'))
+        ms = await pg.evaluate("(async()=>{ await ensureLoaded(S.frames[0]); await ensureLoaded(S.frames[1]); const t=performance.now(); const e=autoColorFrame(S.frames[0], S.frames[1]); return performance.now()-t; })()")
+        print('time per frame ms', round(ms), ms < 3000)
+        await pg.screenshot(path='t46.png')
+        print('ERR', errs); await b.close()
 asyncio.run(main()); srv.kill()
