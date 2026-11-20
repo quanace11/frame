@@ -257,9 +257,11 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
     <button class="chip small" id="snapBtn" title="Hút nét: vẽ lệch sẽ tự kéo vào nét cũ gần nhất (nét frame này, frame trước khi bật Onion, ảnh mờ)">🧲 Hút nét</button>
     <div class="grp" id="palette">
       <label id="curColor" title="Chọn màu tuỳ ý"><input type="color" id="colorIn"></label>
+      <button class="chip small" id="dropBtn" hidden title="Dò màu: chạm vào bất kỳ chỗ nào trên hình để lấy đúng màu đó, rồi đổ màu (máy tính: giữ Alt + bấm)">💧 Dò màu</button>
     </div>
     <div class="grp">
       <div class="layer" id="layerBg"><button class="name" data-layer="bg">Nền</button><button class="eye" data-eye="bg" title="Ẩn/hiện">👁</button></div>
+      <div class="layer" id="layerCol"><button class="name" data-layer="col" title="Lớp màu nằm dưới nét: Đổ màu tô vào đây, nên tẩy nét không làm mất hay loang màu">Màu</button><button class="eye" data-eye="col" title="Ẩn/hiện">👁</button></div>
       <div class="layer on" id="layerChar"><button class="name" data-layer="char">Nhân vật</button><button class="eye" data-eye="char" title="Ẩn/hiện">👁</button></div>
       <div class="layer" id="layerPP"><button class="name" id="ppLayerBtn" title="Nhân vật ghép từ mảnh ảnh">Ghép</button><button class="eye" data-eye="pp" title="Ẩn/hiện">👁</button></div>
       <div class="layer" id="layerVec"><button class="name" data-layer="vec" title="Lớp nét vector: chỉnh sửa được từng nét">Nét</button><button class="eye" data-eye="vec" title="Ẩn/hiện">👁</button></div>
@@ -460,7 +462,7 @@ const PALETTE = ['#111111','#ffffff','#e53935','#fb8c00','#fdd835','#43a047','#1
 const S = {
   frames: [], bgs: [], cur: 0, layer: 'char', tool: 'brush',
   color: '#111111', size: 8, opacity: 1, pressure: true,
-  onion: true, onionAlpha: 0.3, showBg: true, showChar: true, showVec: true, showPP: true, bendR: 160, mbendR: 0, vdm: 'point', snap: false, snapR: 24,
+  onion: true, onionAlpha: 0.3, showBg: true, showChar: true, showCol: true, showVec: true, showPP: true, bendR: 160, mbendR: 0, vdm: 'point', snap: false, snapR: 24,
   fingerDraw: false, smooth: 0.3, defaultDur: 0.1, loop: true, fillTol: 120,
   uiHide: { rail: false, top: false, tl: false }
 };
@@ -470,7 +472,12 @@ function makeCanvas(w = W, h = H) { const c = document.createElement('canvas'); 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const curFrame = () => S.frames[S.cur];
 const bgOf = f => f ? S.bgs.find(b => b.id === f.bgId) : null;
-function activeObj() { const f = curFrame(); return S.layer === 'bg' ? bgOf(f) : f; } // 'vec' and 'char' both live on the frame
+function activeObj() { const f = curFrame(); return S.layer === 'bg' ? bgOf(f) : f; } // 'vec', 'char' and 'col' all live on the frame
+// colour layer: each frame may have f.col (a canvas under the line pixels). Fill writes here, so erasing a line never moves the colour.
+function colOf(f, make) { if (!f.col && make && f.kind === 'char' && f.canvas) f.col = makeCanvas(); return f.col; }
+function copyCol(dst, src) { if (src && src.col) { colOf(dst, true).getContext('2d').drawImage(src.col, 0, 0); dst.colVer = (dst.colVer || 0) + 1; } }
+function freeFrame(f) { if (f.canvas) f.canvas.width = 0; if (f.col) { f.col.width = 0; f.col = null; } }
+function drawCol(x, f, w, h) { if (S.showCol && f.col) w ? x.drawImage(f.col, 0, 0, w, h) : x.drawImage(f.col, 0, 0); }
 function objByTarget(t) { return t.type === 'bg' ? S.bgs.find(b => b.id === t.id) : S.frames.find(f => f.id === t.id); }
 const targetOf = o => ({ type: o.kind, id: o.id });
 
@@ -485,14 +492,16 @@ function saveSettings() { try { const o = {}; for (const k of SETTINGS_KEYS) o[k
 
 /* ========= Objects (frames + backgrounds), lazy loading ========= */
 function newBgObj() { return { kind: 'bg', id: newId(), ver: 0, png: null, pngVer: 0, canvas: makeCanvas() }; }
-function newFrameObj(bgId) { return { kind: 'char', id: newId(), dur: Math.round(S.defaultDur * 1000), bgId, ver: 0, png: null, pngVer: 0, canvas: makeCanvas(), thumb: null, play: null, playKey: '', vec: [] }; }
+function newFrameObj(bgId) { return { kind: 'char', id: newId(), dur: Math.round(S.defaultDur * 1000), bgId, ver: 0, png: null, pngVer: 0, canvas: makeCanvas(), col: null, colPng: null, colVer: 0, colPngVer: 0, thumb: null, play: null, playKey: '', vec: [] }; }
 const loaded = [];            // LRU of loaded frames
 const MAX_LOADED = (navigator.deviceMemory && navigator.deviceMemory <= 4) ? 8 : 14;
 function touchLRU(f) { const i = loaded.indexOf(f); if (i >= 0) loaded.splice(i, 1); loaded.push(f); }
 function toBlob(c) { return new Promise(r => c.toBlob(r, 'image/png')); }
 async function ensurePng(o) {
   if (o.canvas && o.pngVer !== o.ver) { const v = o.ver; const b = await toBlob(o.canvas); if (b) { o.png = await b.arrayBuffer(); o.pngVer = v; } }
+  if (o.col && o.colPngVer !== o.colVer) { const v = o.colVer; const b = await toBlob(o.col); if (b) { o.colPng = await b.arrayBuffer(); o.colPngVer = v; } }
 }
+const pngDirty = o => o.pngVer !== o.ver || (o.col && o.colPngVer !== o.colVer);
 async function decodePng(buf) { return await createImageBitmap(new Blob([buf], { type: 'image/png' })); }
 function ensureLoaded(o) {
   if (o.canvas) { if (o.kind === 'char') touchLRU(o); return Promise.resolve(o.canvas); }
@@ -500,6 +509,7 @@ function ensureLoaded(o) {
   o.loading = (async () => {
     const c = makeCanvas();
     if (o.png) { try { const bmp = await decodePng(o.png); c.getContext('2d').drawImage(bmp, 0, 0); bmp.close && bmp.close(); } catch (e) { console.error(e); } }
+    if (o.colPng && !o.col) { try { const bmp = await decodePng(o.colPng), cc = makeCanvas(); cc.getContext('2d').drawImage(bmp, 0, 0); bmp.close && bmp.close(); o.col = cc; } catch (e) { console.error(e); } }
     o.canvas = c; o.loading = null;
     if (o.kind === 'char') { touchLRU(o); evictSoon(); }
     return c;
@@ -519,9 +529,9 @@ async function evictSoon() {
       const keep2 = new Set([S.cur - 1, S.cur, S.cur + 1].map(i => S.frames[i]).filter(Boolean));
       const i = loaded.indexOf(victim);
       if (i < 0) continue;
-      if (keep2.has(victim) || victim.pngVer !== victim.ver) { touchLRU(victim); continue; }
+      if (keep2.has(victim) || pngDirty(victim)) { touchLRU(victim); continue; }
       loaded.splice(i, 1);
-      if (victim.canvas) { victim.canvas.width = 0; victim.canvas = null; }
+      freeFrame(victim); victim.canvas = null;
     }
   } finally { evicting = false; }
 }
@@ -565,7 +575,7 @@ function onionTint(f, col) {
   const c = e ? e.c : makeCanvas(Math.round(W / 2), Math.round(H / 2));
   const x = c.getContext('2d');
   x.globalCompositeOperation = 'source-over'; x.clearRect(0, 0, c.width, c.height);
-  x.drawImage(f.canvas, 0, 0, c.width, c.height);
+  x.drawImage(f.canvas, 0, 0, c.width, c.height);   // onion shows lines only, not the colour layer
   if (S.pp && S.showPP) { x.save(); x.scale(c.width / W, c.height / H); drawPuppet(x, f.pp, f.lip); x.restore(); }
   if (f.vec && f.vec.length) { x.save(); x.scale(c.width / W, c.height / H); drawVec(x, f.vec); x.restore(); }
   x.globalCompositeOperation = 'source-in'; x.fillStyle = col; x.fillRect(0, 0, c.width, c.height);
@@ -618,7 +628,9 @@ function render() {
       else if (of && !of.canvas) ensureLoaded(of).then(requestRender);
     }
   }
-  if (S.showChar && f.canvas) c.drawImage(stroke && stroke.t.type === 'char' ? work : f.canvas, 0, 0);
+  if (S.showCol && f.col) c.drawImage(stroke && stroke.cv === f.col ? work : f.col, 0, 0);
+  if (floating && floating.cc && S.showCol) drawFloating(c, floating.cc);
+  if (S.showChar && f.canvas) c.drawImage(stroke && stroke.cv === f.canvas ? work : f.canvas, 0, 0);
   if (floating && floating.t.type === 'char') drawFloating(c);
   const px = 1 / vs * DPR;
   if (S.pp && S.showPP && !ppSetup) drawPuppet(c, f.pp, f.lip);
@@ -663,7 +675,8 @@ function growDirty(x, y, r) {
 function strokeBegin(p) {
   snapPrepare(); p = snapPoint(p);
   const o = activeObj();
-  stroke = { t: targetOf(o), o, erase: S.tool === 'eraser', pts: [], sp: null, raw: p,
+  const isCol = S.layer === 'col' && o.kind === 'char';
+  stroke = { t: targetOf(o), o, cv: isCol ? colOf(o, true) : o.canvas, col: isCol, erase: S.tool === 'eraser', pts: [], sp: null, raw: p,
     bbox: [Infinity, Infinity, -Infinity, -Infinity], dirty: [0, 0, W, H], full: true, opacity: S.opacity };
   sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.globalCompositeOperation = 'source-over'; sctx.clearRect(0, 0, W, H);
   sctx.lineCap = 'round'; sctx.lineJoin = 'round';
@@ -696,7 +709,7 @@ function strokeFinishTail() {
   }
 }
 function buildWork() {
-  const o = stroke.o; if (!o.canvas) return;
+  const o = stroke.o, cv = stroke.cv; if (!o.canvas || !cv) return;
   const d = stroke.dirty;
   if (!(d[2] > d[0] && d[3] > d[1])) return;
   const x = Math.max(0, Math.floor(d[0])), y = Math.max(0, Math.floor(d[1]));
@@ -705,7 +718,7 @@ function buildWork() {
   if (w <= 0 || h <= 0) return;
   wctx.save(); wctx.beginPath(); wctx.rect(x, y, w, h); wctx.clip();
   wctx.globalCompositeOperation = 'source-over'; wctx.globalAlpha = 1; wctx.clearRect(x, y, w, h);
-  wctx.drawImage(o.canvas, 0, 0);
+  wctx.drawImage(cv, 0, 0);
   if (stroke.erase) { wctx.globalCompositeOperation = 'destination-out'; wctx.drawImage(scv, 0, 0); }
   else { wctx.globalAlpha = stroke.opacity; wctx.drawImage(scv, 0, 0); }
   wctx.restore();
@@ -719,13 +732,13 @@ function strokeEnd() {
   if (!stroke) return;
   strokeFinishTail();
   const o = stroke.o, rect = rectFromBox(stroke.bbox, 2);
-  if (rect && o.canvas) {
-    const lc = o.canvas.getContext('2d');
+  if (rect && o.canvas && stroke.cv) {
+    const lc = stroke.cv.getContext('2d');
     const before = lc.getImageData(...rect);
     lc.save(); lc.globalCompositeOperation = stroke.erase ? 'destination-out' : 'source-over'; lc.globalAlpha = stroke.erase ? 1 : stroke.opacity;
     lc.drawImage(scv, 0, 0); lc.restore();
     const after = lc.getImageData(...rect);
-    pushUndo(o, rect, before, after);
+    pushEntry(pixEntry(o, rect, before, after, stroke.col)); if (stroke.col) o.colVer++;
     markEdited(o);
   }
   stroke = null; requestRender();
@@ -735,7 +748,89 @@ function strokeAbort() { stroke = null; requestRender(); }
 /* ========= Fill & pick ========= */
 function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
 function doFill(p) {
-  const o = activeObj(); if (!o || !o.canvas) return;
+  const f = curFrame(); if (!f || !f.canvas) return;
+  if (S.layer !== 'bg') {
+    const x0 = Math.floor(p.x), y0 = Math.floor(p.y);
+    if (x0 < 0 || y0 < 0 || x0 >= W || y0 >= H) return;
+    // tapping on pixels already painted in the Nhân vật layer recolours them there (old way); empty areas fill the Màu layer
+    const a0 = S.showChar ? f.canvas.getContext('2d').getImageData(x0, y0, 1, 1).data[3] : 0;
+    if (a0 < 100) { fillColLayer(f, p); return; }
+    if (S.layer === 'col') { toast('Chạm vào bên trong vùng, không phải lên nét'); return; }
+  }
+  fillPixels(activeObj(), p);
+}
+function lineWalls(f) {           // 1 where a line is (pixel lines of Nhân vật + vector Nét), else 0
+  const n = W * H, walls = new Uint8Array(n);
+  if (S.showChar && f.canvas) { const d = f.canvas.getContext('2d').getImageData(0, 0, W, H).data; for (let i = 0; i < n; i++) if (d[i * 4 + 3] >= 100) walls[i] = 1; }
+  if (S.showVec && f.vec && f.vec.length) {
+    const wc = makeCanvas(), wx = wc.getContext('2d'); drawVec(wx, f.vec);
+    const d = wx.getImageData(0, 0, W, H).data; for (let i = 0; i < n; i++) if (d[i * 4 + 3] > 90) walls[i] = 1; wc.width = 0;
+  }
+  return walls;
+}
+/* Fill into the frame's colour layer. The area is bounded by lines only; the colour also runs under the lines up to their
+   middle (split with the neighbouring area), so erasing a line later leaves the colour exactly where it was — no gap, no spreading. */
+function fillColLayer(f, p) {
+  if (!S.showCol) { toast('Lớp Màu đang ẩn — bấm 👁 để hiện'); return; }
+  const x0 = Math.floor(p.x), y0 = Math.floor(p.y);
+  const walls = lineWalls(f);
+  if (walls[y0 * W + x0]) { toast('Chạm vào bên trong vùng, không phải lên nét'); return; }
+  const mask = new Uint8Array(W * H);
+  let minX = x0, maxX = x0, minY = y0, maxY = y0;
+  const stack = [x0, y0];
+  while (stack.length) {
+    const sy = stack.pop(), sx = stack.pop(), row = sy * W;
+    if (mask[row + sx] || walls[row + sx]) continue;
+    let l = sx, r = sx;
+    while (l > 0 && !mask[row + l - 1] && !walls[row + l - 1]) l--;
+    while (r < W - 1 && !mask[row + r + 1] && !walls[row + r + 1]) r++;
+    for (let k = l; k <= r; k++) mask[row + k] = 1;
+    if (l < minX) minX = l; if (r > maxX) maxX = r; if (sy < minY) minY = sy; if (sy > maxY) maxY = sy;
+    for (const ny of [sy - 1, sy + 1]) {
+      if (ny < 0 || ny >= H) continue;
+      const nrow = ny * W; let inSeg = false;
+      for (let k = l; k <= r; k++) {
+        const ok = !mask[nrow + k] && !walls[nrow + k];
+        if (ok && !inSeg) { stack.push(k, ny); inSeg = true; } else if (!ok) inSeg = false;
+      }
+    }
+  }
+  // run under the lines: BFS through line pixels from this area (da) and from every other area (db); keep pixels nearer to us
+  const R = 28, bx = Math.max(0, minX - 2 * R), by = Math.max(0, minY - 2 * R), bx2 = Math.min(W - 1, maxX + 2 * R), by2 = Math.min(H - 1, maxY + 2 * R);
+  const bw = bx2 - bx + 1, bh = by2 - by + 1, BIG = 255;
+  const da = new Uint8Array(bw * bh).fill(BIG), db = new Uint8Array(bw * bh).fill(BIG), q = new Int32Array(bw * bh);
+  const bfs = (dist, isSrc, lim) => {
+    let qh = 0, qt = 0;
+    for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+      const gi = (y + by) * W + x + bx; if (walls[gi] || !isSrc(gi)) continue;
+      // only sources touching a line matter
+      if ((x > 0 && walls[gi - 1]) || (x < bw - 1 && walls[gi + 1]) || (y > 0 && walls[gi - W]) || (y < bh - 1 && walls[gi + W])) { dist[y * bw + x] = 0; q[qt++] = y * bw + x; }
+    }
+    while (qh < qt) {
+      const li = q[qh++], x = li % bw, y = (li - x) / bw, nd = dist[li] + 1; if (nd > lim) continue;
+      const nb = [x > 0 ? li - 1 : -1, x < bw - 1 ? li + 1 : -1, y > 0 ? li - bw : -1, y < bh - 1 ? li + bw : -1];
+      for (const nj of nb) { if (nj < 0 || dist[nj] <= nd) continue; const gx = nj % bw, gi = (((nj - gx) / bw) + by) * W + gx + bx; if (!walls[gi]) continue; dist[nj] = nd; q[qt++] = nj; }
+    }
+  };
+  bfs(da, gi => mask[gi], R);
+  bfs(db, gi => !mask[gi], 2 * R);
+  const [fr, fg, fb] = hexToRgb(S.color);
+  const cv = colOf(f, true), kx = cv.getContext('2d');
+  const rect = [bx, by, bw, bh], before = kx.getImageData(...rect), img = kx.getImageData(...rect), d = img.data;
+  let n = 0;
+  for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+    const li = y * bw + x, gi = (y + by) * W + x + bx;
+    if (!(mask[gi] || (walls[gi] && da[li] <= R && da[li] <= db[li]))) continue;
+    const j = li * 4; d[j] = fr; d[j + 1] = fg; d[j + 2] = fb; d[j + 3] = 255; n++;
+  }
+  if (!n) return;
+  kx.putImageData(img, bx, by);
+  pushEntry(pixEntry(f, rect, before, img, true)); f.colVer++; markEdited(f); requestRender();
+  if (S.layer !== 'col' && !fillColHint) { fillColHint = true; toast('Đã đổ vào lớp Màu (dưới nét) — xoá nét màu vẫn giữ nguyên', 3000); }
+}
+let fillColHint = false;
+function fillPixels(o, p) {
+  if (!o || !o.canvas) return;
   let walls = null;
   if (o.kind === 'char' && o.vec && o.vec.length && S.showVec) {
     const wc = makeCanvas(), wx = wc.getContext('2d'); drawVec(wx, o.vec);
@@ -796,14 +891,17 @@ function doPick(p) {
   const c = makeCanvas(1, 1), x = c.getContext('2d');
   x.fillStyle = '#fff'; x.fillRect(0, 0, 1, 1);
   if (S.showBg && bg && bg.canvas) x.drawImage(bg.canvas, -Math.floor(p.x), -Math.floor(p.y));
+  if (S.showCol && f.col) x.drawImage(f.col, -Math.floor(p.x), -Math.floor(p.y));
   if (S.showChar && f.canvas) x.drawImage(f.canvas, -Math.floor(p.x), -Math.floor(p.y));
   if (S.pp && S.showPP) { x.save(); x.translate(-Math.floor(p.x), -Math.floor(p.y)); drawPuppet(x, f.pp, f.lip); x.restore(); }
   if (S.showVec && f.vec.length) { x.save(); x.translate(-Math.floor(p.x), -Math.floor(p.y)); drawVec(x, f.vec); x.restore(); }
   const d = x.getImageData(0, 0, 1, 1).data;
   setColor('#' + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, '0')).join(''));
-  toast('Đã lấy màu');
-  setTool('brush');
+  const back = pickBack && pickBack !== 'pick' ? pickBack : 'brush';
+  toast(back === 'fill' ? 'Đã lấy màu — chạm vào vùng để đổ màu này' : 'Đã lấy màu');
+  setTool(back);
 }
+let pickBack = null;   // tool to return to after the eyedropper
 
 /* ========= Lasso / floating selection ========= */
 let lasso = null, floating = null;
@@ -821,10 +919,17 @@ function liftSelection(poly) {
   const lx = o.canvas.getContext('2d');
   lx.save(); polyPath(lx, poly); lx.globalCompositeOperation = 'destination-out'; lx.fill(); lx.restore();
   floating = { t: targetOf(o), o, c: fc, cx: bx + bw / 2, cy: by + bh / 2, scale: 1, rot: 0, flip: 1, snap, dirty: [bx, by, bx + bw, by + bh] };
+  if (o.kind === 'char' && o.col) { // colour under the lines moves together with them
+    const csnap = makeCanvas(); csnap.getContext('2d').drawImage(o.col, 0, 0);
+    const cc = makeCanvas(bw, bh), cx2 = cc.getContext('2d');
+    cx2.save(); cx2.translate(-bx, -by); polyPath(cx2, poly); cx2.clip(); cx2.drawImage(o.col, 0, 0); cx2.restore();
+    const kx = o.col.getContext('2d'); kx.save(); polyPath(kx, poly); kx.globalCompositeOperation = 'destination-out'; kx.fill(); kx.restore();
+    Object.assign(floating, { cc, csnap });
+  }
   showSelbar(); requestRender();
 }
 function floatFromImage(bmp) {
-  if (S.layer === 'vec') setLayer('char');            // pixels go into a pixel layer
+  if (S.layer === 'vec' || S.layer === 'col') setLayer('char');            // pixels go into a pixel layer
   if (S.tool === 'vedit' || S.tool === 'puppet') setTool('brush');
   const o = activeObj(); if (!o || !o.canvas) return;
   commitFloating();
@@ -837,10 +942,11 @@ function floatFromImage(bmp) {
   floating = { t: targetOf(o), o, c: fc, cx: W / 2, cy: H / 2, scale: fit, rot: 0, flip: 1, snap, dirty: null };
   setTool('lasso'); showSelbar(); requestRender();
 }
-function drawFloating(c) {
-  if (!floating || !floating.c) return;
+function drawFloating(c, img) {
+  img = img || (floating && floating.c);
+  if (!floating || !img) return;
   c.save(); c.translate(floating.cx, floating.cy); c.rotate(floating.rot); c.scale(floating.scale * floating.flip, floating.scale);
-  c.drawImage(floating.c, -floating.c.width / 2, -floating.c.height / 2); c.restore();
+  c.drawImage(img, -img.width / 2, -img.height / 2); c.restore();
 }
 function floatBox() {
   const f = floating, w = f.c.width / 2 * f.scale, h = f.c.height / 2 * f.scale, cs = Math.cos(f.rot), sn = Math.sin(f.rot);
@@ -855,6 +961,7 @@ function unionBox(a, b) { if (!a) return b; if (!b) return a; return [Math.min(a
 function stampFloating() {
   if (!floating || !floating.c || !floating.o.canvas) return;
   const lx = floating.o.canvas.getContext('2d'); drawFloating(lx);
+  if (floating.cc && floating.o.col) { drawFloating(floating.o.col.getContext('2d'), floating.cc); floating.o.colVer++; }
   floating.dirty = unionBox(floating.dirty, floatBox());
   floating.o.ver++; requestRender(); toast('Đã in một bản — kéo tiếp hoặc bấm Xong');
 }
@@ -869,8 +976,15 @@ function commitFloating() {
   if (rect) {
     const before = f.snap.getContext('2d').getImageData(...rect);
     const after = lx.getImageData(...rect);
-    pushUndo(f.o, rect, before, after);
+    const entries = [pixEntry(f.o, rect, before, after)];
+    if (f.csnap && f.o.col) {
+      const kx = f.o.col.getContext('2d');
+      if (f.cc && f.c) { const save = floating; floating = f; drawFloating(kx, f.cc); floating = save; }
+      entries.push(pixEntry(f.o, rect, f.csnap.getContext('2d').getImageData(...rect), kx.getImageData(...rect), true)); f.o.colVer++;
+    }
+    pushEntry(entries.length > 1 ? { multi: entries } : entries[0]);
   }
+  if (f.csnap) f.csnap.width = 0;
   if (f.anim && f.o.kind === 'char') { const keep = makeCanvas(); keep.getContext('2d').drawImage(f.snap, 0, 0); assetStampAnim(f, keep); }
   f.snap.width = 0; markEdited(f.o); requestRender();
 }
@@ -878,7 +992,13 @@ function cancelFloating() {
   if (!floating) return;
   const f = floating; floating = null; hideSelbar();
   if (f.o.canvas) { const lx = f.o.canvas.getContext('2d'); lx.save(); lx.globalCompositeOperation = 'copy'; lx.drawImage(f.snap, 0, 0); lx.restore(); }
+  restoreFloatCol(f);
   f.snap.width = 0; f.o.ver++; queueThumbFor(f.o); requestRender();
+}
+function restoreFloatCol(f) {
+  if (!f.csnap) return;
+  if (f.o.col) { const kx = f.o.col.getContext('2d'); kx.save(); kx.globalCompositeOperation = 'copy'; kx.drawImage(f.csnap, 0, 0); kx.restore(); f.o.colVer++; }
+  f.csnap.width = 0; f.csnap = null;
 }
 function showSelbar() {
   const sb = $('#selbar'); sb.hidden = false;
@@ -898,7 +1018,7 @@ function pushEntry(e) {
   while (undoStack.length > 1 && (undoStack.length > 100 || undoBytes > 160e6)) undoBytes -= undoStack.shift().bytes;
   updUndoBtns();
 }
-function pixEntry(o, rect, before, after) { const e = { t: targetOf(o), rect, before, after }; e.bytes = before.data.length + after.data.length; return e; }
+function pixEntry(o, rect, before, after, col) { const e = { t: targetOf(o), rect, before, after }; if (col) e.col = true; e.bytes = before.data.length + after.data.length; return e; }
 function vecEntry(f, before, after) { const e = { t: targetOf(f), vec: true, before, after }; e.bytes = vecBytes(before) + vecBytes(after); return e; }
 function pushUndo(o, rect, before, after) { pushEntry(pixEntry(o, rect, before, after)); }
 function pushVecUndo(f, before) { pushEntry(vecEntry(f, before, cloneVec(f.vec))); }
@@ -926,7 +1046,7 @@ async function applyEntry(e, key) {
   if (e.fxe) { fxSetState(o, e[key]); o.ver++; fxSyncBar(); requestRender(); return o; }
   if (e.ppose) { ppSetState(o, e[key]); markEdited(o); ppRetween(); ppSyncBar(); updateFrameUI(); return o; }
   if (e.vec) { o.vec = cloneVec(e[key]); vsel.clear(); updVecBar(); }
-  else { await ensureLoaded(o); o.canvas.getContext('2d').putImageData(e[key], e.rect[0], e.rect[1]); }
+  else { await ensureLoaded(o); const cv = e.col ? colOf(o, true) : o.canvas; if (e.col) o.colVer++; cv.getContext('2d').putImageData(e[key], e.rect[0], e.rect[1]); }
   markEdited(o); return o;
 }
 const entryAlive = e => e.partpix ? !!ppPart(e.pid) : e.add ? true : e.multi ? e.multi.some(entryAlive) : !!objByTarget(e.t);
@@ -961,8 +1081,8 @@ async function drawThumb(f) {
   x.fillStyle = '#fff'; x.fillRect(0, 0, t.width, t.height);
   const bg = bgOf(f);
   if (bg && bg.canvas) x.drawImage(bg.canvas, 0, 0, t.width, t.height);
-  if (f.canvas) x.drawImage(f.canvas, 0, 0, t.width, t.height);
-  else if (f.png) { try { const b = await decodePng(f.png); x.drawImage(b, 0, 0, t.width, t.height); b.close && b.close(); } catch (e) {} }
+  if (f.canvas) { drawCol(x, f, t.width, t.height); x.drawImage(f.canvas, 0, 0, t.width, t.height); }
+  else for (const buf of [S.showCol && f.colPng, f.png]) if (buf) { try { const b = await decodePng(buf); x.drawImage(b, 0, 0, t.width, t.height); b.close && b.close(); } catch (e) {} }
   if (S.pp && S.showPP) { x.save(); x.scale(t.width / W, t.height / H); drawPuppet(x, f.pp, f.lip); x.restore(); }
   if (f.vec && f.vec.length) { x.save(); x.scale(t.width / W, t.height / H); drawVec(x, f.vec); x.restore(); }
 }
@@ -1026,7 +1146,7 @@ async function dupFrame() {
   if (playing) stopPlay(); commitFloating();
   const src = curFrame(); await ensureLoaded(src);
   const f = newFrameObj(src.bgId); f.dur = src.dur;
-  f.canvas.getContext('2d').drawImage(src.canvas, 0, 0); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(src.vec); f.pp = ppClone(src.pp); f.texts = JSON.parse(JSON.stringify(src.texts || []));
+  f.canvas.getContext('2d').drawImage(src.canvas, 0, 0); copyCol(f, src); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(src.vec); f.pp = ppClone(src.pp); f.texts = JSON.parse(JSON.stringify(src.texts || []));
   S.frames.splice(S.cur + 1, 0, f); loaded.push(f);
   await drawThumb(f); buildStrip(); await selectFrame(S.cur + 1); scheduleSave(); evictSoon();
 }
@@ -1039,7 +1159,7 @@ async function delFrame() {
   commitFloating();
   const [f] = S.frames.splice(S.cur, 1);
   const li = loaded.indexOf(f); if (li >= 0) loaded.splice(li, 1);
-  if (f.canvas) f.canvas.width = 0;
+  freeFrame(f);
   gcBgs();
   S.cur = Math.min(S.cur, S.frames.length - 1);
   ppRetween(); buildStrip(); await selectFrame(S.cur); scheduleSave();
@@ -1086,7 +1206,7 @@ async function buildPlayCache() {
     const x = f.play.getContext('2d');
     if (S.bgVideo) x.clearRect(0, 0, pw, ph); else { x.fillStyle = '#fff'; x.fillRect(0, 0, pw, ph); }
     if (bg && bg.canvas) x.drawImage(bg.canvas, 0, 0, pw, ph);
-    if (f.canvas) x.drawImage(f.canvas, 0, 0, pw, ph);
+    drawCol(x, f, pw, ph); if (f.canvas) x.drawImage(f.canvas, 0, 0, pw, ph);
     if (S.pp && S.showPP) { x.save(); x.scale(pw / W, ph / H); drawPuppet(x, f.pp, f.lip); x.restore(); }
     if (f.vec && f.vec.length) { x.save(); x.scale(pw / W, ph / H); drawVec(x, f.vec); x.restore(); }
     f.playKey = key;
@@ -1487,7 +1607,7 @@ async function motionCommit() {
     const added = [];
     for (let k = 1; k < m.n; k++) {
       const f = newFrameObj(f0.bgId); f.dur = durMs;
-      f.canvas.getContext('2d').drawImage(f0.canvas, 0, 0); f.ver = 1; f.pngVer = 0;
+      f.canvas.getContext('2d').drawImage(f0.canvas, 0, 0); copyCol(f, f0); f.ver = 1; f.pngVer = 0;
       f.vec = cloneVec(motionVec(f0.vec, k, m)); f.pp = ppClone(f0.pp); added.push(f);
     }
     const oldDur = f0.dur; f0.dur = durMs;
@@ -1817,7 +1937,7 @@ async function rigCommit() {
   await ensureLoaded(f0);
   R.simplify = true;
   const added = [], entries = [];
-  const mk = kk => { const f = newFrameObj(f0.bgId); f.dur = durMs; f.canvas.getContext('2d').drawImage(f0.canvas, 0, 0); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(rigFrameVec(kk).vec); f.pp = ppClone(f0.pp); return f; };
+  const mk = kk => { const f = newFrameObj(f0.bgId); f.dur = durMs; f.canvas.getContext('2d').drawImage(f0.canvas, 0, 0); copyCol(f, f0); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(rigFrameVec(kk).vec); f.pp = ppClone(f0.pp); return f; };
   if (R.keep) { for (let kk = 0; kk < R.n; kk++) added.push(mk(kk)); }
   else {
     const before = cloneVec(f0.vec); f0.vec = cloneVec(rigFrameVec(0).vec);
@@ -2270,7 +2390,7 @@ function ppLerpPose(A, B, t) {
 let ppInsertAuto = false;
 async function ppInsertFrames(poses, durMs) {
   const f0 = curFrame(), i0 = S.cur; await ensureLoaded(f0);
-  const added = poses.map(pose => { const f = newFrameObj(f0.bgId); f.dur = durMs || f0.dur; f.canvas.getContext('2d').drawImage(f0.canvas, 0, 0); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(f0.vec); f.pp = pose; f.ppKey = !ppInsertAuto; return f; });
+  const added = poses.map(pose => { const f = newFrameObj(f0.bgId); f.dur = durMs || f0.dur; f.canvas.getContext('2d').drawImage(f0.canvas, 0, 0); copyCol(f, f0); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(f0.vec); f.pp = pose; f.ppKey = !ppInsertAuto; return f; });
   S.frames.splice(i0 + 1, 0, ...added); loaded.push(...added);
   pushEntry({ t: targetOf(f0), add: { frames: added, index: i0 + 1, dur0: f0.dur, dur1: f0.dur }, bytes: 0 });
   for (const f of added) await drawThumb(f);
@@ -2723,7 +2843,7 @@ async function assetStampAnim(fl, keep) {
   const base = S.frames[i0], pix = [], added = [];
   for (let j = 1; j < total; j++) {
     let fr = S.frames[i0 + j];
-    if (!fr) { fr = newFrameObj(base.bgId); fr.dur = base.dur; fr.canvas.getContext('2d').drawImage(keep, 0, 0); fr.ver = 1; fr.pngVer = 0; fr.vec = cloneVec(base.vec); fr.pp = ppClone(base.pp); fr.texts = JSON.parse(JSON.stringify(base.texts || [])); S.frames.push(fr); loaded.push(fr); added.push(fr); }
+    if (!fr) { fr = newFrameObj(base.bgId); fr.dur = base.dur; fr.canvas.getContext('2d').drawImage(keep, 0, 0); copyCol(fr, base); fr.ver = 1; fr.pngVer = 0; fr.vec = cloneVec(base.vec); fr.pp = ppClone(base.pp); fr.texts = JSON.parse(JSON.stringify(base.texts || [])); S.frames.push(fr); loaded.push(fr); added.push(fr); }
     else await ensureLoaded(fr);
     const lx = fr.canvas.getContext('2d'), c = assetRender(A.cat, A.key, A.k, { ...A.opt, t: j % n }), save = floating;
     floating = { ...fl, c }; const rect = rectFromBox(floatBox(), 2); const before = added.includes(fr) ? null : lx.getImageData(...rect); drawFloating(lx); floating = save;
@@ -3198,7 +3318,7 @@ async function fxLipSync() {
     if (ok) {
       const pm = progress('Đang thêm frame…'); const last = S.frames[S.frames.length - 1]; await ensureLoaded(last);
       const blank = !last.png && last.ver === 0;
-      for (let k = 0; k < n; k++) { const f = newFrameObj(last.bgId); f.dur = fd * 1000; if (!blank) { f.canvas.getContext('2d').drawImage(last.canvas, 0, 0); f.ver = 1; } f.vec = cloneVec(last.vec); f.pp = ppClone(last.pp); f.ppKey = false; S.frames.push(f); loaded.push(f); if (k % 20 === 0) { pm.set(`Đang thêm frame ${k}/${n}…`); await new Promise(r => setTimeout(r, 0)); evictSoon(); } }
+      for (let k = 0; k < n; k++) { const f = newFrameObj(last.bgId); f.dur = fd * 1000; if (!blank && last.canvas) { f.canvas.getContext('2d').drawImage(last.canvas, 0, 0); copyCol(f, last); f.ver = 1; } f.vec = cloneVec(last.vec); f.pp = ppClone(last.pp); f.ppKey = false; S.frames.push(f); loaded.push(f); if (k % 20 === 0) { pm.set(`Đang thêm frame ${k}/${n}…`); await new Promise(r => setTimeout(r, 0)); evictSoon(); } }
       pm.close(); for (const f of S.frames.slice(-n)) await drawThumb(f); ppRetween(); buildStrip(); evictSoon(); T = frameStartTimes();
     }
   }
@@ -3214,6 +3334,7 @@ async function fxLipSync() {
 function drawFrameBase(ctx, f, bg) {
   if (S.bgVideo) ctx.clearRect(0, 0, W, H); else { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); }
   if (bg && bg.canvas && S.showBg) ctx.drawImage(bg.canvas, 0, 0);
+  drawCol(ctx, f);
   if (f.canvas && S.showChar) ctx.drawImage(f.canvas, 0, 0);
   if (S.pp && S.showPP) drawPuppet(ctx, f.pp, f.lip);
   if (S.showVec) drawVec(ctx, f.vec);
@@ -3468,7 +3589,7 @@ async function convertPixelsToVector(fromFloating) {
   if (fromFloating) {
     const fl = floating; floating = null; hideSelbar();
     if (fl.o.canvas) { const lx = fl.o.canvas.getContext('2d'); lx.save(); lx.globalCompositeOperation = 'copy'; lx.drawImage(fl.snap, 0, 0); lx.restore(); }
-    fl.snap.width = 0; fl.o.ver++;
+    restoreFloatCol(fl); fl.snap.width = 0; fl.o.ver++;
     f.vec.push(...strokes); pushVecUndo(f, vBefore); markEdited(f);
   } else {
     const keep = await modal({ title: `Đã dò được ${strokes.length} nét`, html: '<p>Xoá nét pixel cũ ở lớp Nhân vật (frame này) sau khi chuyển sang vector?</p><p class="lbl" style="font-size:12px">Nếu lớp có cả mảng tô màu, hãy chọn Giữ lại.</p>',
@@ -3492,7 +3613,7 @@ async function deleteAllFrames() {
   clearRef(true); updateRefUI();
   S.pp = null; ppSetup = null; ppSel = null; ppCutMode = false; ppPatchMode = false; S.rig = null; S.bgVideo = null; bgVideoSetup();
   if (S.tool === 'puppet' || S.tool === 'vedit') setTool('brush');
-  S.frames.forEach(f => { if (f.canvas) f.canvas.width = 0; });
+  S.frames.forEach(freeFrame);
   S.bgs.forEach(b => { if (b.canvas) b.canvas.width = 0; });
   loaded.length = 0; undoStack.length = 0; redoStack.length = 0; undoBytes = 0; tintCache.clear();
   const b = newBgObj(); S.bgs = [b];
@@ -3511,7 +3632,7 @@ function toDoc(ev, rect) {
   if (ev.pointerType === 'pen') p = ev.pressure > 0 ? ev.pressure : 0.5;
   return { x, y, p };
 }
-function layerVisible() { return S.layer === 'bg' ? S.showBg : S.layer === 'vec' ? S.showVec : S.showChar; }
+function layerVisible() { return S.layer === 'bg' ? S.showBg : S.layer === 'vec' ? S.showVec : S.layer === 'col' ? S.showCol : S.showChar; }
 function startAction(e, isTouch) {
   const f = curFrame(); if (!f || !f.canvas) return;
   const rect = view.getBoundingClientRect();
@@ -3547,7 +3668,7 @@ function startAction(e, isTouch) {
       const o = activeObj(); if (!o || !o.canvas) return;
       strokeBegin(p); action = { ...base, kind: 'stroke' }; break;
     }
-    case 'fill': if (!layerVisible()) { toast('Lớp đang ẩn'); return; } doFill(p); break;
+    case 'fill': if (e.altKey) { pickBack = 'fill'; doPick(p); break; } if (!layerVisible()) { toast('Lớp đang ẩn'); return; } doFill(p); break;
     case 'pick': doPick(p); break;
     case 'lasso': lasso = [p]; action = { ...base, kind: 'lasso' }; requestRender(); break;
   }
@@ -3680,6 +3801,8 @@ document.addEventListener('touchmove', e => { if (e.target.closest && e.target.c
 /* ========= Toolbar wiring ========= */
 function setTool(t) {
   if (t === 'lasso' && S.layer === 'vec') t = 'vedit';
+  if (t === 'lasso' && S.layer === 'col') { setLayer('char'); toast('Chọn vùng ở lớp Nhân vật — màu bên dưới đi theo'); }
+  if (t === 'pick' && S.tool !== 'pick') pickBack = S.tool;
   motionClose(); rigClose();
   if (t !== 'lasso' && floating) commitFloating();
   S.tool = t;
@@ -3690,11 +3813,12 @@ function setTool(t) {
   if (t !== 'fx') fxCamPick = false;
   updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); requestRender();
   document.querySelectorAll('.tool[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
+  $('#dropBtn').hidden = !(t === 'fill' || t === 'pick'); $('#dropBtn').classList.toggle('on', t === 'pick');
 }
 function setLayer(l) {
   if (floating) commitFloating();
   S.layer = l;
-  $('#layerBg').classList.toggle('on', l === 'bg'); $('#layerChar').classList.toggle('on', l === 'char'); $('#layerVec').classList.toggle('on', l === 'vec');
+  $('#layerBg').classList.toggle('on', l === 'bg'); $('#layerCol').classList.toggle('on', l === 'col'); $('#layerChar').classList.toggle('on', l === 'char'); $('#layerVec').classList.toggle('on', l === 'vec');
   if (l !== 'vec' && S.tool === 'vedit') setTool('brush');
 }
 function setColor(c) {
@@ -3706,13 +3830,13 @@ function updateToggles() {
   $('#onionBtn').classList.toggle('on', S.onion);
   $('#pressBtn').classList.toggle('on', S.pressure); $('#snapBtn').classList.toggle('on', S.snap);
   $('#loopBtn').classList.toggle('on', S.loop);
-  $('#layerBg').classList.toggle('hidden', !S.showBg); $('#layerChar').classList.toggle('hidden', !S.showChar); $('#layerVec').classList.toggle('hidden', !S.showVec);
+  $('#layerBg').classList.toggle('hidden', !S.showBg); $('#layerChar').classList.toggle('hidden', !S.showChar); $('#layerCol').classList.toggle('hidden', !S.showCol); $('[data-eye=col]').textContent = S.showCol ? '👁' : '🚫'; $('#layerVec').classList.toggle('hidden', !S.showVec);
   $('[data-eye=bg]').textContent = S.showBg ? '👁' : '🚫'; $('[data-eye=char]').textContent = S.showChar ? '👁' : '🚫'; $('[data-eye=vec]').textContent = S.showVec ? '👁' : '🚫'; $('[data-eye=pp]').textContent = S.showPP ? '👁' : '🚫'; $('#layerPP').classList.toggle('hidden', !S.showPP);
 }
 document.querySelectorAll('.tool[data-tool]').forEach(b => b.addEventListener('click', () => { const t = b.dataset.tool; if (t === S.tool && t in panelHidden) { panelHidden[t] ? showPanel() : hidePanel(t); return; } setTool(t); }));
 document.querySelectorAll('[data-layer]').forEach(b => b.addEventListener('click', () => setLayer(b.dataset.layer)));
 document.querySelectorAll('[data-eye]').forEach(b => b.addEventListener('click', () => {
-  const k = b.dataset.eye; if (k === 'bg') S.showBg = !S.showBg; else if (k === 'vec') S.showVec = !S.showVec; else if (k === 'pp') S.showPP = !S.showPP; else S.showChar = !S.showChar; updateToggles(); requestRender();
+  const k = b.dataset.eye; if (k === 'bg') S.showBg = !S.showBg; else if (k === 'vec') S.showVec = !S.showVec; else if (k === 'pp') S.showPP = !S.showPP; else if (k === 'col') { S.showCol = !S.showCol; } else S.showChar = !S.showChar; updateToggles(); requestRender();
 }));
 PALETTE.forEach(c => { const s = document.createElement('button'); s.className = 'sw'; s.style.background = c; s.dataset.c = c; s.title = c; s.addEventListener('click', () => setColor(c)); $('#palette').append(s); });
 $('#colorIn').addEventListener('input', e => setColor(e.target.value));
@@ -3725,6 +3849,7 @@ $('#loopBtn').addEventListener('click', () => { S.loop = !S.loop; updateToggles(
 $('#fitBtn').addEventListener('click', () => fitView(true));
 $('#rotBtn').addEventListener('click', rotateView90);
 $('#undoBtn').addEventListener('click', undo);
+$('#dropBtn').addEventListener('click', () => setTool(S.tool === 'pick' ? (pickBack && pickBack !== 'pick' ? pickBack : 'fill') : 'pick'));
 $('#redoBtn').addEventListener('click', redo);
 $('#playBtn').addEventListener('click', startPlay);
 $('#addBtn').addEventListener('click', addFrame);
@@ -3774,7 +3899,7 @@ $('#selRot').addEventListener('input', e => { if (!floating) return; floating.ro
 $('#selFlip').addEventListener('click', () => { if (floating) { floating.flip *= -1; requestRender(); } });
 $('#selStamp').addEventListener('click', stampFloating);
 $('#selVec').addEventListener('click', () => convertPixelsToVector(true));
-$('#selDelete').addEventListener('click', () => { if (floating) { floating.c = null; commitFloating(); toast('Đã xoá vùng chọn'); } });
+$('#selDelete').addEventListener('click', () => { if (floating) { floating.c = null; floating.cc = null; commitFloating(); toast('Đã xoá vùng chọn'); } });
 $('#selCancel').addEventListener('click', () => { cancelFloating(); updUndoBtns(); });
 $('#selDone').addEventListener('click', commitFloating);
 // keyboard (for desktop testing / keyboard covers)
@@ -3849,7 +3974,7 @@ async function saveProject() {
       v: 1, W, H, cur: S.cur,
       bgs: S.bgs.map(b => ({ id: b.id, png: b.png })),
       name: S.projName || 'Dự án', poses: S.poses || [],
-      frames: S.frames.map(f => ({ id: f.id, dur: f.dur, bgId: f.bgId, png: f.png, vec: f.vec, pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null })),
+      frames: S.frames.map(f => ({ id: f.id, dur: f.dur, bgId: f.bgId, png: f.png, col: f.colPng || null, vec: f.vec, pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null })),
       audio: S.audio || null, bgVideo: S.bgVideo || null,
       pp: S.pp ? { parts: S.pp.parts.map(p => ({ id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null, png: p.png, alts: (p.alts || []).map(a => ({ png: a.png, dx: a.dx || 0, dy: a.dy || 0 })) })) } : null,
       rig: S.rig || null,
@@ -3870,7 +3995,7 @@ async function saveProject() {
 async function loadProjectData(p) {
   W = p.W; H = p.H; setupWorkCanvases();
   S.bgs = p.bgs.map(b => ({ kind: 'bg', id: b.id, ver: 0, png: b.png || null, pngVer: 0, canvas: null }));
-  S.frames = p.frames.map(f => ({ kind: 'char', id: f.id, dur: f.dur, bgId: f.bgId, ver: 0, png: f.png || null, pngVer: 0, canvas: null, thumb: null, play: null, playKey: '', vec: f.vec || [], pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null }));
+  S.frames = p.frames.map(f => ({ kind: 'char', id: f.id, dur: f.dur, bgId: f.bgId, ver: 0, png: f.png || null, pngVer: 0, canvas: null, col: null, colPng: f.col || null, colVer: 0, colPngVer: 0, thumb: null, play: null, playKey: '', vec: f.vec || [], pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null }));
   S.audio = p.audio || null; S.bgVideo = p.bgVideo || null; bgVideoSetup();
   S.projName = p.name || S.projName || 'Dự án'; S.poses = p.poses || [];
   loaded.length = 0; undoStack.length = 0; redoStack.length = 0; undoBytes = 0;
@@ -3900,7 +4025,7 @@ async function loadProjectData(p) {
 }
 function newProject(w, h) {
   W = w; H = h; setupWorkCanvases();
-  S.frames.forEach(f => { if (f.canvas) f.canvas.width = 0; });
+  S.frames.forEach(freeFrame);
   S.bgs.forEach(b => { if (b.canvas) b.canvas.width = 0; });
   loaded.length = 0; undoStack.length = 0; redoStack.length = 0; undoBytes = 0;
   const b = newBgObj(); S.bgs = [b];
@@ -4006,19 +4131,22 @@ async function exportZip() {
       await ensureLoaded(f); await ensurePng(f);
       cx.globalCompositeOperation = 'source-over'; cx.fillStyle = '#fff'; cx.fillRect(0, 0, W, H);
       if (b && b.canvas) cx.drawImage(b.canvas, 0, 0);
+      if (f.col) cx.drawImage(f.col, 0, 0);
       if (f.canvas) cx.drawImage(f.canvas, 0, 0);
       if (S.pp && S.showPP) drawPuppet(cx, f.pp, f.lip);
       drawVec(cx, f.vec); if (f.texts && f.texts.length) drawTexts(cx, f, null);
       const compBuf = new Uint8Array(await (await toBlob(comp)).arrayBuffer());
       files.push({ name: `frames/frame_${n}.png`, data: compBuf });
       files.push({ name: `layers/char_${n}.png`, data: f.png ? new Uint8Array(f.png) : blankBuf });
+      let colorName = null;
+      if (f.colPng) { colorName = `layers/color_${n}.png`; files.push({ name: colorName, data: new Uint8Array(f.colPng) }); }
       let linesName = null;
       if (f.vec.length) {
         cx.clearRect(0, 0, W, H); drawVec(cx, f.vec);
         linesName = `layers/lines_${n}.png`;
         files.push({ name: linesName, data: new Uint8Array(await (await toBlob(comp)).arrayBuffer()) });
       }
-      meta.push({ index: i + 1, file: `frames/frame_${n}.png`, char_layer: `layers/char_${n}.png`, lines_layer: linesName, bg_layer: bgFile.get(f.bgId), duration_ms: f.dur,
+      meta.push({ index: i + 1, file: `frames/frame_${n}.png`, char_layer: `layers/char_${n}.png`, color_layer: colorName, lines_layer: linesName, bg_layer: bgFile.get(f.bgId), duration_ms: f.dur,
         pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], camera: camAt(i), cam_key: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null,
         vector: f.vec.map(st => ({ c: st.c, w: +st.w.toFixed(2), pts: st.pts.map(q => [+q.x.toFixed(1), +q.y.toFixed(1)]) })) });
     }
@@ -4039,7 +4167,7 @@ async function exportZip() {
     files.push({ name: 'README.txt', data: enc.encode(
 `Frame Studio export
 frames/   : từng frame đã ghép (nền trắng + nền + nhân vật + nét), ${W}x${H}
-layers/   : lớp nền (bg_XX), lớp nhân vật trong suốt (char_XXX), lớp nét vector đã vẽ ra (lines_XXX)
+layers/   : lớp nền (bg_XX), lớp nhân vật trong suốt (char_XXX), lớp màu tô dưới nét (color_XXX), lớp nét vector đã vẽ ra (lines_XXX)
 timing.json : thứ tự frame và thời lượng mỗi frame (duration_ms)
 Mở lại trong Frame Studio: Menu > Mở dự án từ ZIP.
 `) });
@@ -4065,7 +4193,8 @@ async function importZip(file) {
       let bgId = bgIdByFile.get(fr.bg_layer);
       if (!bgId) { bgId = newId(); bgs.push({ id: bgId, png: null }); }
       const vec = (fr.vector || []).map(st => ({ id: newId(), c: st.c, w: st.w, pts: st.pts.map(([x, y]) => ({ x, y })) }));
-      return { id: newId(), dur: fr.duration_ms || 100, bgId, vec, pp: fr.pp || {}, ppKey: fr.ppKey, ppEase: fr.ppEase, texts: fr.texts || [], cam: fr.cam_key || null, shake: fr.shake || 0, flash: !!fr.flash, lip: fr.lip || null, png: d ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : null };
+      const dc = fr.color_layer && z.get(fr.color_layer);
+      return { id: newId(), dur: fr.duration_ms || 100, bgId, vec, col: dc ? dc.buffer.slice(dc.byteOffset, dc.byteOffset + dc.byteLength) : null, pp: fr.pp || {}, ppKey: fr.ppKey, ppEase: fr.ppEase, texts: fr.texts || [], cam: fr.cam_key || null, shake: fr.shake || 0, flash: !!fr.flash, lip: fr.lip || null, png: d ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : null };
     });
     if (!frames.length) throw new Error('ZIP không có frame nào');
     pm.set('Đang mở…');
@@ -4526,7 +4655,8 @@ function helpHtml() {
 <li><b>✨ Chữ & FX</b>: thêm chữ truyện tranh/bóng thoại/hét/phụ đề (kéo để dời), camera zoom + chạm đặt tâm (tự lia mượt giữa các camera key), rung, chớp sáng; nhạc nền, lồng tiếng + 🗣 tự nhép miệng; âm thanh hiệu ứng có sẵn. <b>🎬 Video</b> xuất MP4/WebM có tiếng.</li>
 <li><b>📁 Dự án</b>: lưu nhiều bài, mở/đổi tên/nhân bản/xoá.</li>
 <li><b>🧩 Nhân vật ghép</b> (công cụ Ghép): Nhập ảnh → Nhân vật ghép → kéo khớp → Cắt tự động. Chạm mảnh, kéo để xoay quanh khớp. Cách làm hoạt hình: đặt tư thế A → Nhân bản frame → đặt tư thế B → quay lại A → <b>Tạo frame giữa</b>. Có mẫu Đi/Chạy/Nhảy/Vẫy/Gật/Lắc đầu/Thở, Nói/Chớp mắt (khoanh tách mảnh Miệng/Mắt rồi đặt vai trò).</li>
-<li>Tô màu: chọn lớp <b>Nhân vật</b>, dùng Đổ màu — màu nằm dưới nét và tự chặn theo nét vector.</li>
+<li><b>Tô màu giữ nét</b>: vẽ nét ở lớp <b>Nhân vật</b> hoặc <b>Nét</b>, rồi dùng <b>Đổ màu</b> — màu vào lớp <b>Màu</b> riêng nằm dưới nét, tô lấn tới giữa nét. Tẩy hay sửa nét thì màu vẫn nằm yên chỗ cũ, không loang. Muốn sửa màu bằng bút/tẩy thì chọn lớp Màu. Chọn vùng ở lớp Nhân vật thì màu bên dưới đi theo.</li>
+<li><b>💧 Dò màu</b>: khi đang Đổ màu, bấm 💧 Dò màu (cạnh bảng màu) rồi chạm vào chỗ nào trên hình để lấy đúng màu đó — app tự quay lại Đổ màu, chạm vùng cần tô là xong. Máy tính: giữ Alt + bấm.</li>
 <li><b>🧲 Hút nét</b>: bật để khi đồ lại, nét vẽ lệch tự hút vào nét cũ gần nhất (nét frame này, frame trước khi bật Onion, ảnh mờ). Chỉnh bán kính trong Menu.</li>
 <li><b>Nét pixel → vector</b>: chọn vùng (hoặc vừa nhập "Ảnh nét (pixel)") → bấm <b>→ Nét vector</b>; hoặc Menu → chuyển cả lớp Nhân vật.</li>
 <li><b>Onion</b>: đỏ = frame trước, xanh = frame sau, để vẽ khớp chuyển động.</li>
@@ -4611,7 +4741,7 @@ async function init() {
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }
 /* ========= Installed app (PWA): offline + updates ========= */
-const APP_VERSION = '2026.11.20-1610';
+const APP_VERSION = '2026.11.20-1713';
 let swReg = null, swUpdating = false;
 (function setupPWA() {
   let top = false; try { top = window.top === window; } catch (e) {}
