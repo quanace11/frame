@@ -55,6 +55,7 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
   - `ppPresetPose` (đi, chạy, nhảy...), `ppTween`/`ppRetween` (frame giữa tự cập nhật theo keyframe 🔑).
 - **Kho hình** (`ASSET_CATS`, `assetDialog`, `assetToPart`, `assetToFrame`)
   - Mắt, miệng, biểu cảm, tay, hiệu ứng.
+  - Hiệu ứng động (`ANIM_CATS`: 💫 Choáng, 🥊 Đánh nhau, 💥 Chữ âm thanh): mỗi hình là vòng lặp nhiều frame, hàm vẽ nhận `o.t`, số frame + âm thanh ở `items[k][2]` = `{n, sfx}`. `assetToFrameAnim` đặt frame 0, bấm ✓ thì `assetStampAnim` vẽ tiếp lên các frame sau (thiếu thì thêm frame), gắn SFX và ghi undo.
   - Gắn vào mảnh thì tạo mảnh con có `alts` (hình thay thế theo frame). Bộ nhép miệng = 3 hình, dùng với `fxLipSync`.
 - **Cử chỉ** (`GESTURES`, `ppGesture`)
   - Keyframe theo vai trò và góc tuyệt đối của tay (`ppApplyAbs`), nên áp được cho mọi nhân vật đã gán vai trò.
