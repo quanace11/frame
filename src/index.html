@@ -116,6 +116,7 @@ input[type=range]{width:110px;accent-color:var(--accent);height:28px}
 #focusBar{position:absolute;right:10px;top:10px;display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:5px;box-shadow:0 6px 20px #0008;z-index:6}
 #focusBar button{border:0;background:var(--panel2);color:var(--text);border-radius:10px;min-width:44px;height:44px;font-size:16px;cursor:pointer;padding:0 10px}
 #focusBar button.on{background:var(--accent);color:var(--accent-ink)}
+body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:not([data-tool=brush]):not([data-tool=eraser]) #symBtn{display:none}
 #tl.collapsed #strip{display:none}
 /* Collapsible regions: each one folds into a small floating button on the stage */
 #app.hide-rail #rail,#app.hide-top #top,#app.hide-tl #tl{display:none}
@@ -273,6 +274,9 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <span class="lbl">Độ đậm</span><input type="range" id="opIn" min="5" max="100" step="1"><span class="val" id="opVal"></span>
     </div>
     <button class="chip small" id="brushBtn" title="Chọn loại bút, kiểu tẩy, độ chống run tay"><span id="brushName">Bút tròn</span> ▾</button>
+    <button class="chip small" id="shapeBtn" title="Vẽ hình nhanh: đường thẳng, chữ nhật, hình tròn. Mẹo: vẽ tự do rồi giữ yên bút một chút cũng tự thành đường thẳng / hình tròn">✏ Tự do</button>
+    <button class="chip small" id="symBtn" title="Vẽ đối xứng: nét vẽ bên này tự hiện ở bên kia (mặt, thân nhân vật)">⇋ Đối xứng</button>
+    <button class="chip small" id="clipBtn" title="Chỉ vẽ lên chỗ đã có nét/màu ở lớp đang chọn: tô bóng, đổi màu nét mà không lem ra ngoài">🔒 Vẽ trong vùng</button>
     <button class="chip small" id="pressBtn" title="Nét thay đổi theo lực nhấn bút">Lực nhấn</button>
     <button class="chip small" id="snapBtn" title="Hút nét: vẽ lệch sẽ tự kéo vào nét cũ gần nhất (nét frame này, frame trước khi bật Onion, ảnh mờ)">🧲 Hút nét</button>
     <div class="grp" id="palette">
@@ -653,6 +657,7 @@ function render() {
   if (S.showChar && f.canvas) c.drawImage(stroke && stroke.cv === f.canvas ? work : f.canvas, 0, 0);
   if (floating && floating.t.type === 'char') drawFloating(c);
   if (stroke) drawStrokePred(c);
+  if (S.sym && (S.tool === 'brush' || S.tool === 'eraser')) { const q = 1 / vs * DPR; c.save(); c.setLineDash([10 * q, 8 * q]); c.lineWidth = 1.5 * q; c.strokeStyle = 'rgba(125,107,255,.85)'; c.beginPath(); if (S.sym !== 2) { c.moveTo(W / 2, 0); c.lineTo(W / 2, H); } if (S.sym !== 1) { c.moveTo(0, H / 2); c.lineTo(W, H / 2); } c.stroke(); c.restore(); }
   const px = 1 / vs * DPR;
   if (S.pp && S.showPP && !ppSetup) drawPuppet(c, f.pp, f.lip);
   if (S.showVec) renderVec(c, rig && rig.pv ? { vec: rig.pv } : rig ? { vec: f.vec } : motion && motion.pv ? { vec: motion.pv } : f, px);
@@ -832,26 +837,84 @@ function growDirty(x, y, r) {
   d[0] = Math.min(d[0], x - r); d[1] = Math.min(d[1], y - r); d[2] = Math.max(d[2], x + r); d[3] = Math.max(d[3], y + r);
   b[0] = Math.min(b[0], x - r); b[1] = Math.min(b[1], y - r); b[2] = Math.max(b[2], x + r); b[3] = Math.max(b[3], y + r);
 }
+// symmetry: a second brush engine draws the mirrored stroke into the same layer
+const symPt = p => S.sym === 2 ? { ...p, y: H - p.y } : S.sym === 3 ? { ...p, x: W - p.x, y: H - p.y } : { ...p, x: W - p.x };
+function strokeEngines() {
+  const st = stroke, o = { brush: st.B, color: S.color, size: S.size, pressure: S.pressure, smooth: st.shape ? 0 : S.smooth, erase: st.erase, dirty: growDirty };
+  st.eng = makeBrushEngine(sctx, o); st.eng2 = S.sym ? makeBrushEngine(sctx, o) : null;
+}
+function strokeFeed(p, t) { stroke.eng.add(p, t); if (stroke.eng2) stroke.eng2.add(symPt(p), t); }
 function strokeBegin(p, t) {
   snapPrepare(); p = snapPoint(p);
   const o = activeObj(), erase = S.tool === 'eraser', B = brushOf(S.tool);
   const isCol = S.layer === 'col' && o.kind === 'char';
+  t = t != null ? t : performance.now();
   stroke = { t: targetOf(o), o, cv: isCol ? colOf(o, true) : o.canvas, col: isCol, erase, B, pred: null,
-    bbox: [Infinity, Infinity, -Infinity, -Infinity], dirty: [0, 0, W, H], full: true, opacity: erase ? 1 : S.opacity * (B.alpha || 1) };
+    bbox: [Infinity, Infinity, -Infinity, -Infinity], dirty: [0, 0, W, H], full: true, opacity: erase ? 1 : S.opacity * (B.alpha || 1),
+    raw: [{ ...p, t }], shape: !erase && S.shapeMode ? S.shapeMode : null, hold: { x: p.x, y: p.y }, clip: !erase && !!S.clipIn };
   sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.globalCompositeOperation = 'source-over'; sctx.globalAlpha = 1; sctx.clearRect(0, 0, W, H);
-  stroke.eng = makeBrushEngine(sctx, { brush: B, color: S.color, size: S.size, pressure: S.pressure, smooth: S.smooth, erase, dirty: growDirty });
-  stroke.eng.add(p, t != null ? t : performance.now());
+  strokeEngines(); strokeFeed(p, t);
   if (!erase) addRecentColor(S.color);
   requestRender();
 }
 function strokePoint(raw, t) {
-  raw = snapPoint(raw);
-  stroke.eng.add(raw, t != null ? t : performance.now());
+  raw = snapPoint(raw); t = t != null ? t : performance.now();
+  const st = stroke; st.raw.push({ ...raw, t });
+  if (st.shape) { if (!st.locked) { st.end = raw; shapeRedraw(); } }
+  else {
+    strokeFeed(raw, t);
+    // QuickShape: holding the pen still for a moment turns the freehand stroke into a line / ellipse
+    if (!st.erase && Math.hypot(raw.x - st.hold.x, raw.y - st.hold.y) > 5 / (vs / DPR)) { st.hold = { x: raw.x, y: raw.y }; clearTimeout(st.holdT); st.holdT = setTimeout(() => quickShape(st), 550); }
+  }
   requestRender();
+}
+// rebuild the stroke as a clean shape from its start point to st.end (or the fitted ellipse box)
+function shapePts(st) {
+  const a = st.raw[0], b = st.end || st.raw[st.raw.length - 1], P = [];
+  const pr = st.raw.reduce((s, q) => s + (q.p || 0.5), 0) / st.raw.length;
+  const line = (x0, y0, x1, y1) => { const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 4)); for (let i = P.length ? 1 : 0; i <= n; i++) P.push({ x: x0 + (x1 - x0) * i / n, y: y0 + (y1 - y0) * i / n, p: pr }); };
+  if (st.shape === 'line') line(a.x, a.y, b.x, b.y);
+  else if (st.shape === 'rect') { line(a.x, a.y, b.x, a.y); line(b.x, a.y, b.x, b.y); line(b.x, b.y, a.x, b.y); line(a.x, b.y, a.x, a.y); }
+  else {
+    const bx = st.box || { cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, rx: Math.abs(b.x - a.x) / 2, ry: Math.abs(b.y - a.y) / 2 };
+    const n = Math.max(24, Math.ceil(Math.PI * (bx.rx + bx.ry) / 4)), a0 = bx.a0 || 0;
+    for (let i = 0; i <= n + 1; i++) { const t = a0 + i / n * Math.PI * 2; P.push({ x: bx.cx + Math.cos(t) * bx.rx, y: bx.cy + Math.sin(t) * bx.ry, p: pr }); }
+  }
+  return P;
+}
+function shapeRedraw() {
+  const st = stroke;
+  sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.globalCompositeOperation = 'source-over'; sctx.globalAlpha = 1; sctx.clearRect(0, 0, W, H);
+  st.dirty = [0, 0, W, H]; strokeEngines();
+  let t = st.raw[0].t; for (const q of shapePts(st)) strokeFeed(q, t += 8);
+  st.eng.end(); if (st.eng2) st.eng2.end(); st.shapeDone = true;
+}
+// drawing helpers for the brush: quick shapes, symmetry, draw-inside (lock alpha); remembered in settings
+SETTINGS_KEYS.push('shapeMode', 'sym', 'clipIn'); S.shapeMode = ''; S.sym = 0; S.clipIn = false;
+const SHAPES = [['', '✏ Tự do'], ['line', '╱ Thẳng'], ['rect', '▭ Chữ nhật'], ['ellipse', '◯ Tròn']], SYMS = ['⇋ Đối xứng', '⇋ Đối xứng: trái–phải', '⇋ Đối xứng: trên–dưới', '⇋ Đối xứng: 4 góc'];
+function syncShapeBtns() { const sh = SHAPES.find(x => x[0] === (S.shapeMode || '')) || SHAPES[0]; $('#shapeBtn').textContent = sh[1]; $('#shapeBtn').classList.toggle('on', !!S.shapeMode); $('#symBtn').textContent = SYMS[S.sym | 0]; $('#symBtn').classList.toggle('on', !!S.sym); $('#clipBtn').classList.toggle('on', !!S.clipIn); }
+setTimeout(syncShapeBtns, 0);   // after loadSettings()
+$('#shapeBtn').addEventListener('click', () => { const i = SHAPES.findIndex(x => x[0] === (S.shapeMode || '')); S.shapeMode = SHAPES[(i + 1) % SHAPES.length][0]; syncShapeBtns(); saveSettings(); if (S.shapeMode) toast('Kéo từ điểm đầu tới điểm cuối để vẽ ' + SHAPES.find(x => x[0] === S.shapeMode)[1].slice(2).toLowerCase(), 2200); });
+$('#symBtn').addEventListener('click', () => { S.sym = ((S.sym | 0) + 1) % 4; syncShapeBtns(); saveSettings(); requestRender(); });
+$('#clipBtn').addEventListener('click', () => { S.clipIn = !S.clipIn; syncShapeBtns(); saveSettings(); toast(S.clipIn ? 'Nét mới chỉ hiện trên chỗ đã vẽ ở lớp này (tô bóng, đổi màu nét)' : 'Vẽ bình thường', 2500); });
+let quickShapeHint = false;
+function quickShape(st) {
+  if (stroke !== st || st.shape || st.raw.length < 6) return;
+  const R = st.raw, a = R[0], b = R[R.length - 1]; let len = 0, x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let i = 1; i < R.length; i++) len += Math.hypot(R[i].x - R[i - 1].x, R[i].y - R[i - 1].y);
+  for (const q of R) { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y); }
+  if (len < 30) return;
+  const chord = Math.hypot(b.x - a.x, b.y - a.y);
+  if (chord < len * 0.22 && x1 - x0 > 12 && y1 - y0 > 12) { st.shape = 'ellipse'; st.box = { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, rx: (x1 - x0) / 2, ry: (y1 - y0) / 2, a0: Math.atan2((a.y - (y0 + y1) / 2) / ((y1 - y0) / 2), (a.x - (x0 + x1) / 2) / ((x1 - x0) / 2)) }; }
+  else if (chord > len * 0.6) st.shape = 'line';
+  else return;
+  st.end = { x: b.x, y: b.y }; shapeRedraw(); requestRender();
+  if (!quickShapeHint) { quickShapeHint = true; toast(st.shape === 'line' ? 'Đã nắn thành đường thẳng — kéo tiếp để chỉnh đầu nét' : 'Đã nắn thành hình tròn', 2200); }
+  if (st.shape === 'ellipse') st.locked = true;
 }
 // predicted pointer positions: drawn on screen only (never saved) to hide input latency
 function drawStrokePred(c) {
-  const st = stroke; if (!st || !st.pred || !st.pred.length || st.erase) return;
+  const st = stroke; if (!st || !st.pred || !st.pred.length || st.erase || st.shape || st.eng2 || st.clip) return;
   const B = st.B, pts = st.eng.E.pts, n = pts.length;
   if (B.kind !== 'line' || B.grain || (B.alpha || 1) < 1 || S.smooth > 0.35 || n < 2) return;
   const a = pts[n - 2], b = pts[n - 1];
@@ -880,7 +943,7 @@ function buildWork() {
   wctx.globalCompositeOperation = 'source-over'; wctx.globalAlpha = 1; wctx.clearRect(x, y, w, h);
   wctx.drawImage(cv, 0, 0);
   if (stroke.erase) { wctx.globalCompositeOperation = 'destination-out'; wctx.drawImage(L, 0, 0); }
-  else { wctx.globalAlpha = stroke.opacity; wctx.drawImage(L, 0, 0); }
+  else { if (stroke.clip) wctx.globalCompositeOperation = 'source-atop'; wctx.globalAlpha = stroke.opacity; wctx.drawImage(L, 0, 0); }
   wctx.restore();
 }
 function rectFromBox(b, pad = 0) {
@@ -890,13 +953,15 @@ function rectFromBox(b, pad = 0) {
 }
 function strokeEnd() {
   if (!stroke) return;
-  stroke.eng.end();
+  clearTimeout(stroke.holdT);
+  if (stroke.shape && !stroke.shapeDone) shapeRedraw();
+  if (!stroke.shapeDone) { stroke.eng.end(); if (stroke.eng2) stroke.eng2.end(); }
   const o = stroke.o, rect = rectFromBox(stroke.bbox, 2);
   if (rect && o.canvas && stroke.cv) {
     const lc = stroke.cv.getContext('2d'), L = strokeLayer(rect);
     const before = lc.getImageData(...rect);
     lc.save(); lc.beginPath(); lc.rect(...rect); lc.clip();
-    lc.globalCompositeOperation = stroke.erase ? 'destination-out' : 'source-over'; lc.globalAlpha = stroke.erase ? 1 : stroke.opacity;
+    lc.globalCompositeOperation = stroke.erase ? 'destination-out' : stroke.clip ? 'source-atop' : 'source-over'; lc.globalAlpha = stroke.erase ? 1 : stroke.opacity;
     lc.drawImage(L, 0, 0); lc.restore();
     const after = lc.getImageData(...rect);
     pushEntry(pixEntry(o, rect, before, after, stroke.col)); if (stroke.col) o.colVer++;
@@ -3978,6 +4043,7 @@ function setTool(t) {
   if (t !== 'fx') fxCamPick = false;
   updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); updBrushBtn(); requestRender();
   document.querySelectorAll('.tool[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
+  document.body.dataset.tool = t;
   $('#dropBtn').hidden = !(t === 'fill' || t === 'pick'); $('#dropBtn').classList.toggle('on', t === 'pick');
 }
 function setLayer(l) {
