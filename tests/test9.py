@@ -22,7 +22,7 @@ async def run(mode):
         await pg.click('[data-mode=pp]'); await pg.click('[data-cm=color]'); await pg.wait_for_timeout(1200)
         await pg.click('.dlg .btns >> text=Dùng'); await pg.wait_for_timeout(500)
         await pg.click(f'[data-ppf={mode}]')
-        t=time.time(); await pg.click('#ppCutAuto'); await pg.wait_for_function('S.pp && S.pp.parts.length', timeout=180000)
+        t=time.time(); await pg.click('#ppCutAuto'); await pg.click('#ppLabCut'); await pg.wait_for_function('S.pp && S.pp.parts.length', timeout=180000)
         print(mode,'cut secs', round(time.time()-t,1), 'mode now', await pg.evaluate('ppFillMode'))
         url = await pg.evaluate(POSE, mode)
         open(f'gap_{mode}.png','wb').write(base64.b64decode(url.split(',')[1]))
