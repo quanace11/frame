@@ -4,7 +4,7 @@ os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tes
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
-srv = subprocess.Popen(['python3','-m','http.server','8846'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+srv = subprocess.Popen(['python3','-m','http.server','8849'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1)
 # "Cả nét": pick many strokes by tapping, drag to move, corner handles scale, round knob rotates
 PEN = """async ([pts])=>{const v=document.getElementById('view');
@@ -20,7 +20,7 @@ async def main():
         pg = await b.new_page(viewport={'width':1180,'height':900})
         errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
         await pg.add_init_script("new MutationObserver(()=>document.querySelectorAll('.tabhide').forEach(e=>e.classList.remove('tabhide'))).observe(document,{subtree:true,attributes:true,childList:true,attributeFilter:['class']})")
-        await pg.goto('http://localhost:8846/index.html'); await pg.wait_for_timeout(800)
+        await pg.goto('http://localhost:8849/index.html'); await pg.wait_for_timeout(800)
         await pg.click('text=Bắt đầu vẽ')
         await pg.evaluate("""()=>{setLayer('vec'); const f=curFrame(); f.vec=[];
           const mk=(id,x)=>({id,c:'#000',w:6,pts:[400,500,600].map(y=>({x,y}))});
@@ -35,7 +35,7 @@ async def main():
         await tap(await s2(500, 500)); assert await pg.evaluate("[...vsel].join()") == 'A'
         await tap(await s2(500, 500)); assert await pg.evaluate("vsel.size") == 2
         print('info', await pg.inner_text('#vecInfo'))
-        await pg.screenshot(path='t46_box.png')
+        await pg.screenshot(path='t49_box.png')
         before = await pg.evaluate(PTS)
         # drag a selected stroke: both A and B move, C stays
         a = await s2(300, 450); bb = await s2(300, 350)
@@ -67,7 +67,7 @@ async def main():
         a = await s2(r[0], r[1]); bb = await s2(r[2] + (r[3]-r[1]), r[3])
         await pg.evaluate(PEN, [line(a, bb, 16)]); aft = await pg.evaluate(PTS); print('rotated', aft[0])
         assert abs(aft[0][0][1] - aft[0][2][1]) <= 3 and abs(abs(aft[0][0][0] - aft[0][2][0]) - 200) <= 4
-        await pg.screenshot(path='t46_rot.png')
+        await pg.screenshot(path='t49_rot.png')
         await pg.evaluate("undo()")
         # point mode still bends a single point; box also shown there
         await pg.click('[data-vdm=point]'); await pg.evaluate("vsel.clear(); vsel.add('C'); updVecBar(); requestRender();")

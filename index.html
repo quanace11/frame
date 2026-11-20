@@ -554,7 +554,7 @@ let toastT;
 function toast(msg, ms = 1800) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
 
 /* ========= Settings ========= */
-const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','uiHide','panelHidden','brush','eraserType','recentColors'];
+const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','lineLayer','uiHide','panelHidden','brush','eraserType','recentColors'];
 function loadSettings() { try { const o = JSON.parse(localStorage.getItem('fs-settings') || '{}'); for (const k of SETTINGS_KEYS) if (k in o) { if (k === 'panelHidden') Object.assign(panelHidden, o[k]); else S[k] = o[k]; } } catch (e) {}
   S.uiHide = Object.assign({ rail: false, top: false, tl: false }, S.uiHide); }
 function saveSettings() { try { const o = {}; for (const k of SETTINGS_KEYS) o[k] = S[k]; localStorage.setItem('fs-settings', JSON.stringify(o)); } catch (e) {} }
@@ -1863,18 +1863,58 @@ function vboxHandles(b) {
     { k: 'r', x: (b.x0 + b.x1) / 2, y: b.y0 - 36 * DPR / vs }];
 }
 function vboxHit(b, p) { let best = null, bd = 24 * DPR / vs; for (const h of vboxHandles(b)) { const d = Math.hypot(h.x - p.x, h.y - p.y); if (d <= bd) { bd = d; best = h; } } return best; }
+/* colour on the Màu layer inside the selected strokes (and under them) follows when they are moved / scaled / rotated */
+function colLiftStart(f) {
+  if (!f.col || !S.showCol) return null;
+  const sel = selStrokes(); if (!sel.length) return null;
+  let x0 = W, y0 = H, x1 = -1, y1 = -1;
+  for (const st of sel) for (const q of st.pts) { const h = st.w / 2 + 2; x0 = Math.min(x0, q.x - h); y0 = Math.min(y0, q.y - h); x1 = Math.max(x1, q.x + h); y1 = Math.max(y1, q.y + h); }
+  const m0 = 4 + 0.2 * Math.max(x1 - x0, y1 - y0);   // the drawn curve can bulge past its points: keep it whole so the outline stays closed
+  x0 = Math.max(0, Math.floor(x0 - m0)); y0 = Math.max(0, Math.floor(y0 - m0)); x1 = Math.min(W - 1, Math.ceil(x1 + m0)); y1 = Math.min(H - 1, Math.ceil(y1 + m0));
+  const bw = x1 - x0 + 1, bh = y1 - y0 + 1; if (bw < 3 || bh < 3) return null;
+  const wc = makeCanvas(bw, bh), wx = wc.getContext('2d'); wx.translate(-x0, -y0); drawVec(wx, sel);
+  const wd = wx.getImageData(0, 0, bw, bh).data; wc.width = 0;
+  const n = bw * bh, out = new Uint8Array(n), stack = [];
+  const seed = i => { if (!out[i] && wd[i * 4 + 3] <= 60) { out[i] = 1; stack.push(i); } };
+  for (let x = 0; x < bw; x++) { seed(x); seed((bh - 1) * bw + x); }
+  for (let y = 0; y < bh; y++) { seed(y * bw); seed(y * bw + bw - 1); }
+  while (stack.length) { const i = stack.pop(), x = i % bw; if (x > 0) seed(i - 1); if (x < bw - 1) seed(i + 1); if (i >= bw) seed(i - bw); if (i < n - bw) seed(i + bw); }
+  const kx = f.col.getContext('2d'), img = kx.getImageData(x0, y0, bw, bh), d = img.data;
+  const cc = makeCanvas(bw, bh), cx = cc.getContext('2d'), ci = cx.createImageData(bw, bh), cd = ci.data; let any = 0;
+  for (let i = 0; i < n; i++) { const j = i * 4; if (out[i] || !d[j + 3]) continue; cd[j] = d[j]; cd[j + 1] = d[j + 1]; cd[j + 2] = d[j + 2]; cd[j + 3] = d[j + 3]; d[j] = d[j + 1] = d[j + 2] = d[j + 3] = 0; any++; }
+  if (!any) { cc.width = 0; return null; }
+  cx.putImageData(ci, 0, 0);
+  const snap = makeCanvas(); snap.getContext('2d').drawImage(f.col, 0, 0);
+  kx.putImageData(img, x0, y0);
+  const hole = makeCanvas(); hole.getContext('2d').drawImage(f.col, 0, 0);
+  return { cc, x0, y0, x1, y1, snap, hole, m: [1, 0, 0, 1, 0, 0] };
+}
+function colLiftApply(f, L, m) {      // m: canvas transform [a, b, c, d, e, f] in document space
+  const kx = f.col.getContext('2d'); kx.save(); kx.globalCompositeOperation = 'copy'; kx.drawImage(L.hole, 0, 0);
+  kx.globalCompositeOperation = 'source-over'; kx.setTransform(m[0], m[1], m[2], m[3], m[4], m[5]); kx.drawImage(L.cc, L.x0, L.y0); kx.restore(); L.m = m; f.colVer++;
+}
+function colLiftAbort(f, L) { if (!L) return; const kx = f.col.getContext('2d'); kx.save(); kx.globalCompositeOperation = 'copy'; kx.drawImage(L.snap, 0, 0); kx.restore(); f.colVer++; L.snap.width = L.hole.width = L.cc.width = 0; }
+function colLiftEnd(f, L) {           // -> pixel undo entry for the Màu layer
+  const m = L.m, xs = [L.x0, L.x1], ys = [L.y0, L.y1]; let bx0 = L.x0, by0 = L.y0, bx1 = L.x1, by1 = L.y1;
+  for (const x of xs) for (const y of ys) { const X = m[0] * x + m[2] * y + m[4], Y = m[1] * x + m[3] * y + m[5]; bx0 = Math.min(bx0, X); by0 = Math.min(by0, Y); bx1 = Math.max(bx1, X); by1 = Math.max(by1, Y); }
+  const rect = rectFromBox([bx0, by0, bx1, by1], 2); let e = null;
+  if (rect) { const kx = f.col.getContext('2d'); e = pixEntry(f, rect, L.snap.getContext('2d').getImageData(...rect), kx.getImageData(...rect), true); }
+  L.snap.width = L.hole.width = L.cc.width = 0; return e;
+}
 function vxformMove(a, p, f) {
-  if (!a.moved && Math.hypot(p.x - a.start.x, p.y - a.start.y) < 3 * DPR / vs) return;
+  if (!a.moved) { if (Math.hypot(p.x - a.start.x, p.y - a.start.y) < 3 * DPR / vs) return; a.col = colLiftStart(f); }
   a.moved = true; const h = a.h;
-  let fn, ws = 1;
+  let m, ws = 1;
   if (h.k === 's') {
     const d0 = Math.hypot(a.start.x - h.ax, a.start.y - h.ay) || 1, s = Math.max(0.05, Math.hypot(p.x - h.ax, p.y - h.ay) / d0); ws = s;
-    fn = q => ({ x: h.ax + (q.x - h.ax) * s, y: h.ay + (q.y - h.ay) * s });
+    m = [s, 0, 0, s, h.ax * (1 - s), h.ay * (1 - s)];
   } else {
     const ang = Math.atan2(p.y - a.cy, p.x - a.cx) - Math.atan2(a.start.y - a.cy, a.start.x - a.cx), cs = Math.cos(ang), sn = Math.sin(ang);
-    fn = q => { const x = q.x - a.cx, y = q.y - a.cy; return { x: a.cx + x * cs - y * sn, y: a.cy + x * sn + y * cs }; };
+    m = [cs, sn, -sn, cs, a.cx - a.cx * cs + a.cy * sn, a.cy - a.cx * sn - a.cy * cs];
   }
+  const fn = q => ({ x: m[0] * q.x + m[2] * q.y + m[4], y: m[1] * q.x + m[3] * q.y + m[5] });
   for (const st of f.vec) { const b = a.base.get(st.id); if (!b) continue; st.pts = b.pts.map(fn); st.w = Math.max(0.5, b.w * ws); }
+  if (a.col) colLiftApply(f, a.col, m);
   requestRender();
 }
 function segDist(p, a, b) {
@@ -1969,7 +2009,7 @@ function vecMultiTap(a) {      // tap on a point toggles it in/out of the select
 function vecMultiLasso(poly, f) {
   let area = 0; if (poly.length > 2) for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) area += (poly[j].x + poly[i].x) * (poly[j].y - poly[i].y);
   vpsel.clear(); vpoly = null; vsel.clear();
-  if (Math.abs(area / 2) < 200) { const hit = hitStroke(f.vec, poly[0], 14 * DPR / vs); if (hit) vsel.add(hit.id); return; }   // tap: show one stroke's points
+  if (Math.abs(area / 2) < 200) { const hit = hitStroke(f.vec, poly[0], 14 * DPR / vs); if (hit) vsel.add(hit.id); else if (charPixelAt(f, poly[0])) vecOfferConvert(); return; }   // tap: show one stroke's points
   for (const st of f.vec) { const idx = []; st.pts.forEach((q, i) => { if (pip(q, poly)) idx.push(i); }); if (idx.length) { vsel.add(st.id); vpsel.set(st.id, new Set(idx)); } }
   if (vsel.size) vpoly = poly; else toast('Không có chấm nào trong vùng khoanh');
 }
@@ -1992,6 +2032,27 @@ function vecDensify() {
   }));
   toast('Đã thêm chấm dọc nét');
 }
+/* lines drawn on the Nhân vật layer are pixels: Sửa nét can't grab them, so offer to turn them into editable strokes */
+function charPixelAt(f, p) {
+  if (!S.showChar || !f || !f.canvas) return false;
+  const x = Math.round(p.x), y = Math.round(p.y), r = Math.round(8 * DPR / vs);
+  if (x < 0 || y < 0 || x >= W || y >= H) return false;
+  const x0 = Math.max(0, x - r), y0 = Math.max(0, y - r), d = f.canvas.getContext('2d').getImageData(x0, y0, Math.min(W, x + r + 1) - x0, Math.min(H, y + r + 1) - y0).data;
+  for (let i = 3; i < d.length; i += 4) if (d[i] > 100) return true;
+  return false;
+}
+function charHasPixels(f) {
+  if (!f || !f.canvas) return false;
+  const c = makeCanvas(108, 192), x = c.getContext('2d'); x.drawImage(f.canvas, 0, 0, 108, 192);
+  const d = x.getImageData(0, 0, 108, 192).data; c.width = 0;
+  for (let i = 3; i < d.length; i += 4) if (d[i] > 40) return true;
+  return false;
+}
+async function vecOfferConvert() {
+  const ok = await modal({ title: 'Đây là nét pixel', html: '<p>Nét này được vẽ ở lớp <b>Nhân vật</b> (dạng pixel) nên chưa sửa được bằng Sửa nét.</p><p>Chuyển các nét pixel của frame này thành <b>nét sửa được</b>? Màu đã tô ở lớp Màu vẫn giữ nguyên.</p><p class="lbl" style="font-size:12px">Mẹo: chọn lớp <b>Nét</b> trước khi vẽ thì nét luôn sửa được, kể cả sau khi tô màu hay đổi công cụ. App sẽ nhớ lớp này cho lần sau.</p>',
+    buttons: [{ label: 'Để sau', value: false }, { label: 'Chuyển thành nét sửa được', value: true, primary: true }] });
+  if (ok) convertPixelsToVector(false);
+}
 function vecEraseAt(p) {
   const f = curFrame(), r = Math.max(S.size / 2, 6 * DPR / vs);
   const n0 = f.vec.length; f.vec = f.vec.filter(st => strokeDist(st, p) - st.w / 2 > r);
@@ -2012,9 +2073,11 @@ function vecMove(p) {
     if (!a.moved) {
       if (a.start && Math.hypot(p.x - a.start.x, p.y - a.start.y) < 6 * DPR / vs) return;
       if (a.tapId && !a.wasSel) { vsel.clear(); vsel.add(a.tapId); updVecBar(); }
+      a.col = colLiftStart(f);
     }
     const dx = p.x - a.last.x, dy = p.y - a.last.y; a.last = p; a.moved = true;
     for (const st of f.vec) if (vsel.has(st.id)) for (const q of st.pts) { q.x += dx; q.y += dy; }
+    if (a.col && a.start) colLiftApply(f, a.col, [1, 0, 0, 1, p.x - a.start.x, p.y - a.start.y]);
     requestRender();
   } else if (a.kind === 'vbend') {
     const dx = p.x - a.start.x, dy = p.y - a.start.y, R = S.bendR, ci = a.cum[a.i]; a.moved = true;
@@ -2040,8 +2103,10 @@ function vecEnd() {
   else if (a.kind === 'vlasso') {
     const poly = lasso; lasso = null;
     let area = 0; if (poly.length > 2) for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) area += (poly[j].x + poly[i].x) * (poly[j].y - poly[i].y);
-    if (Math.abs(area / 2) < 200) vsel.clear();
+    if (Math.abs(area / 2) < 200) { vsel.clear(); if (poly.length && charPixelAt(f, poly[0])) vecOfferConvert(); }
     else { vsel.clear(); for (const st of f.vec) { const inside = st.pts.filter(q => pip(q, poly)).length; if (inside >= Math.max(1, st.pts.length * 0.5)) vsel.add(st.id); } if (!vsel.size) toast('Không có nét nào trong vùng khoanh'); }
+  } else if ((a.kind === 'vmove' || a.kind === 'vxform') && a.moved && a.col) {
+    const pe = colLiftEnd(f, a.col), ve = vecEntry(f, a.before, cloneVec(f.vec)); pushEntry(pe ? { multi: [pe, ve] } : ve); markEdited(f);
   } else if ((a.kind === 'vmove' || a.kind === 'vbend' || a.kind === 'vxform') && a.moved) { pushVecUndo(f, a.before); markEdited(f); }
   else if (a.kind === 'vmove' && a.tapId) { a.wasSel ? vsel.delete(a.tapId) : vsel.add(a.tapId); }
   updVecBar(); requestRender();
@@ -4914,7 +4979,7 @@ function abortAction() {
   if (!action) return;
   if (action.kind === 'stroke') strokeAbort();
   if (action.kind === 'lasso' || action.kind === 'vlasso') { lasso = null; requestRender(); }
-  if (action.kind === 'vbend' || action.kind === 'vmove' || action.kind === 'verase' || action.kind === 'vmulti' || action.kind === 'vxform') { curFrame().vec = action.before; if (action.kind === 'vmulti' && action.polyBase) vpoly = action.polyBase; requestRender(); }
+  if (action.kind === 'vbend' || action.kind === 'vmove' || action.kind === 'verase' || action.kind === 'vmulti' || action.kind === 'vxform') { if (action.col) colLiftAbort(curFrame(), action.col); curFrame().vec = action.before; if (action.kind === 'vmulti' && action.polyBase) vpoly = action.polyBase; requestRender(); }
   if (action.kind === 'pprot' || action.kind === 'ppmove' || action.kind === 'ppik') { ppSetState(curFrame(), action.before); requestRender(); }
   if (action.kind === 'ppcut' || action.kind === 'pppatch') { lasso = null; requestRender(); }
   if ((action.kind === 'labpaint' || action.kind === 'lablasso') && ppSetup) { lasso = null; if (ppSetup.undo.length) ppSetup.hand = ppSetup.undo.pop(); ppLabOverlay(ppSetup); requestRender(); }
@@ -5011,6 +5076,7 @@ function setTool(t) {
   S.tool = t;
   if (t === 'vedit' && S.layer !== 'vec') setLayer('vec');
   if (t !== 'vedit') { vsel.clear(); }
+  else { const f = curFrame(); if (f && !f.vec.length && charHasPixels(f)) toast('Nét ở frame này là pixel (lớp Nhân vật). Chạm vào nét để chuyển thành nét sửa được.', 4000); }
   if (t !== 'puppet') { ppSetup = null; ppCutMode = false; ppPatchMode = false; ppPaint = null; }
   $('#layerPP').classList.toggle('on', t === 'puppet');
   if (t !== 'fx') fxCamPick = false;
@@ -5022,6 +5088,7 @@ function setTool(t) {
 function setLayer(l) {
   if (floating) commitFloating();
   S.layer = l;
+  if ((l === 'vec' || l === 'char') && S.lineLayer !== l) { S.lineLayer = l; saveSettings(); }   // remembered: drawing on Nét keeps lines editable next time too
   $('#layerBg').classList.toggle('on', l === 'bg'); $('#layerCol').classList.toggle('on', l === 'col'); $('#layerChar').classList.toggle('on', l === 'char'); $('#layerVec').classList.toggle('on', l === 'vec');
   if (l !== 'vec' && S.tool === 'vedit') setTool('brush');
 }
@@ -5486,7 +5553,7 @@ function newProject(w, h) {
   const b = newBgObj(); S.bgs = [b];
   const f = newFrameObj(b.id); S.frames = [f]; loaded.push(f);
   clearRef(true); updateRefUI(); S.rig = null; S.pp = null; ppSetup = null; ppSel = null; S.audio = null; S.bgVideo = null; bgVideoSetup();
-  S.cur = 0; setLayer('char'); resizeView(); drawThumb(f); buildStrip(); updUndoBtns(); requestRender(); scheduleSave();
+  S.cur = 0; setLayer(S.lineLayer === 'vec' ? 'vec' : 'char'); resizeView(); drawThumb(f); buildStrip(); updUndoBtns(); requestRender(); scheduleSave();
 }
 
 /* ========= ZIP (store, no compression) ========= */
@@ -6903,7 +6970,7 @@ async function init() {
   loadSettings();
   $('#sizeIn').value = S.size; $('#sizeVal').textContent = S.size;
   $('#opIn').value = Math.round(S.opacity * 100); $('#opVal').textContent = Math.round(S.opacity * 100) + '%';
-  setColor(S.color); renderRecentSw(); updateToggles(); setTool('brush'); setLayer('char');
+  setColor(S.color); renderRecentSw(); updateToggles(); setTool('brush'); setLayer(S.lineLayer === 'vec' ? 'vec' : 'char');
   if (S.tlCollapsed) { $('#tl').classList.add('collapsed'); $('#tlCollapse').textContent = '▴ Hiện dòng frame'; }
   setUiHide('rail', S.uiHide.rail, true);
   new ResizeObserver(() => resizeView()).observe(stage);
@@ -6924,7 +6991,7 @@ async function init() {
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }
 /* ========= Installed app (PWA): offline + updates ========= */
-const APP_VERSION = '2026.11.20-2302';
+const APP_VERSION = '2026.11.20-2333';
 let swReg = null, swUpdating = false;
 (function setupPWA() {
   let top = false; try { top = window.top === window; } catch (e) {}
