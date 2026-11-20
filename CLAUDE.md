@@ -47,6 +47,7 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
   - Objects (frames, nền, lazy load)
   - **View**: `vs`/`vtx`/`vty`/`vr`, `viewMat()`, `scrToDoc()`, `fitView()`, `rotateView90()`
   - Render, Strokes, Fill, Lasso/floating (`floatFromImage`), Undo, Timeline, Playback
+  - **Cỡ / Độ đậm** (trong Strokes): `setSize`/`setOp`/`syncSizeOp`/`wireSizeOp` (nút − + giữ để lặp, bấm số = `sizeOpPop`). Thanh cỡ không tuyến tính (`sizeToPos`/`posToSize`). Độ đậm lưu riêng cho mỗi bút/kiểu tẩy trong `S.brushOp` (`curOp()`), mặc định = `B.op0`/`B.alpha`; bút dab vượt `op0` thì tăng flow (`flowK`). Tẩy cũng dùng độ đậm (xoá nhạt).
 - **Nét vector**
   - Vector line layer: `vecStart`/`vecMove`/`vecEnd`. Chế độ kéo chấm `S.vdm` gồm `point` / `soft` / `move`.
   - Motion generator; Rig xương + biểu cảm; Gap filling (diffusion + MI-GAN)
@@ -67,6 +68,7 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
   - Text/camera/FX + SFX tổng hợp + lip sync + xuất video MP4 (MediaRecorder)
   - **⚽ Bóng & combo** (tab trong Chữ & FX): `ballMode` → kéo vẽ đường → `ballRun` (`ballPlan` chia đường theo tốc độ, `ballItem` vẽ bóng `aBall`/giày + vệt bay + bẹp cuối). Combo 1 chạm `GAGS` (sốc, bóng vào mặt, VÀO!, choáng, tức điên) → `gagApply(i0, {n, pix, fx, sfx})`: thiếu frame thì thêm, vẽ pixel + đổi camera/rung/chớp/chữ + gắn SFX, tất cả là **1 bước undo** (entry `multi` gồm `add`, pixel, `fxe`, `sfxadd`).
   - **Xoá frame / Xoá hết hoàn tác được**: `removeFrameAt` + entry `del`; Xoá hết dùng entry `wipe` (`wipeSnap`/`wipeSwap`). Frame bị xoá được "cất" bằng `parkObj` (giữ PNG, nhả canvas).
+  - **🎨 Tách nét + màu** (tab trong Import dialog, `splitLineColor`): nét tối (`inkAlpha`) → lớp Nhân vật, màu gốc từng vùng (Màu phẳng: gom về vài màu chính mỗi vùng) → lớp Màu, lan dưới nét. `floatFromImage(line, col)` đặt cả 2 lớp (floating `cc`/`csnap`). Tab Nhân vật ghép có công tắc Làm sạch (`st.ppClean`). Test48.
   - **Caricature** (tab 🤪 Biếm hoạ trong Import dialog): `cariFindHead` (tìm cổ từ mask u2netp), `cariToon` (bilateral + k-means + nét DoG), `cariCompose` (đầu to/thân nhỏ/phồng mặt/viền ngoài). Kết quả cache trong `st.cariC`: đổi thanh hình dáng chỉ chạy lại `cariCompose`.
   - **AI tạo nhân vật** (nút 🤖 AI nhân vật, `aiCharDialog`): gửi ảnh mẫu phong cách (image 1, có sẵn vẽ bằng code `aiStyleRefCanvas` hoặc ảnh người dùng chọn, IndexedDB `ai-style-ref`) + ảnh chụp (photo 2) + câu lệnh tới Gemini `generateContent` (`geminiGenerate`, model mặc định `gemini-2.5-flash-image`). Kết quả lưu IndexedDB `ai-chars`, ✂ Cắt mảnh = `openImport` chế độ Nhân vật ghép. **Key Gemini chỉ nằm trong localStorage `fs-gemini-key`** (gửi qua header `x-goog-api-key`), không bao giờ commit/hardcode, không lưu vào dự án/ZIP. Test dùng API giả (test30).
   - Image → vector (centre-line tracing), Snap-to-line, Delete all
