@@ -2558,7 +2558,7 @@ function ppFitJoints(src, pts) {
       const nr = rowRun(hd.neck, hd.cx), nw = nr ? nr[1] - nr[0] : 0.05 * H0, neckX = nr ? (nr[0] + nr[1]) / 2 : hd.cx;
       let yc = hd.neck + 0.03 * H0;
       for (let y = hd.neck; y < hd.neck + 0.15 * H0; y++) { const r = rowRun(y, neckX); if (r && r[1] - r[0] > nw * 1.8) { yc = y; break; } }
-      headFit = true; J.head = { x: hd.cx, y: hd.top }; J.neck = { x: (hd.cx + neckX) / 2, y: hd.neck }; J.chest = { x: neckX, y: yc };
+      headFit = true; J.head = { x: Math.abs(hd.cx - neckX) > 0.03 * H0 ? J.head.x : hd.cx, y: hd.top }; J.neck = { x: (J.head.x + neckX) / 2, y: hd.neck }; J.chest = { x: neckX, y: yc };   // a raised arm beside the head pulls hd.cx sideways
       const ys = yc + 0.04 * H0, sr = rowRun(ys, neckX);
       if (sr && sr[1] - sr[0] < 0.42 * H0 && sr[1] - sr[0] > nw * 1.5) {   // arms down: shoulders sit just inside the torso's top corners
         const inset = Math.min(0.04 * H0, (sr[1] - sr[0]) * 0.15);
@@ -2632,13 +2632,21 @@ function ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit) {
     }
   }
   // arms already placed against the body (arms-down front view) keep their joints; ppFitLimbs still finds the feet
-  const keep = armsDown ? ['shL', 'elL', 'haL', 'shR', 'elR', 'haR'].map(k => [k, J[k]]) : null;
+  // (a side whose hand ppFitLimbs finds raised above that elbow is a raised arm: the shape-based fit wins there)
+  const keep = armsDown ? ['shL', 'elL', 'haL', 'shR', 'elR', 'haR'].map(k => [k, J[k]]) : null, skip = {};
   try { ppFitLimbs(src, J); } catch (e) { console.warn(e); }
-  if (keep) { for (const [k, v] of keep) J[k] = v; delete J._out; }
-  return ppCentreLimbs(J, op, hgt, armsDown);
+  if (keep) {
+    const K = Object.fromEntries(keep);
+    for (const sd of ['L', 'R']) {
+      if (J['ha' + sd].y < K['el' + sd].y) continue;
+      for (const k of ['sh', 'el', 'ha']) J[k + sd] = K[k + sd];
+      skip[sd] = true; if (J._out) delete J._out[sd];
+    }
+  }
+  return ppCentreLimbs(J, op, hgt, skip);
 }
 /** centre limb joints inside the limb (scan across the limb at each joint) */
-function ppCentreLimbs(J, op, hgt, skipArms) {
+function ppCentreLimbs(J, op, hgt, skipArms) {   // skipArms: { L: true } = leave that arm's joints as placed
   const runMid = (x0, y0, horiz, range) => {   // horiz=true: scan a column (limb runs horizontally) ; else scan a row
     const at = t => horiz ? op(x0, t) : op(t, y0), c0 = horiz ? y0 : x0;
     let hit = null; for (let k = 0; k < range; k++) { if (at(c0 + k)) { hit = c0 + k; break; } if (at(c0 - k)) { hit = c0 - k; break; } }
@@ -2648,7 +2656,7 @@ function ppCentreLimbs(J, op, hgt, skipArms) {
   for (const sd of ['L', 'R']) {
     const sh = J['sh' + sd], el = J['el' + sd], ha = J['ha' + sd], sgn = sd === 'L' ? -1 : 1;
     for (const k of ['kn' + sd, 'ft' + sd]) { const jt = J[k]; const m = runMid(jt.x, jt.y - (k[0] === 'f' ? 0.02 * hgt : 0), false, rng); if (m != null) jt.x = m; }
-    if (skipArms) continue;
+    if (skipArms && skipArms[sd]) continue;
     const horiz = Math.abs(ha.x - sh.x) > Math.abs(ha.y - sh.y);
     if (!(J._out && J._out[sd])) for (const [jt, xoff] of [[el, 0], [ha, -sgn * 0.02 * hgt]]) { const m = runMid(jt.x + (horiz ? xoff : 0), jt.y, horiz, rng); if (m != null) { if (horiz) jt.y = m; else jt.x = m; } }
     if (horiz) { const m = runMid(sh.x + sgn * 0.03 * hgt, sh.y, true, rng); if (m != null) sh.y = m; }
