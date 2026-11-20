@@ -49,8 +49,34 @@ input[type=range]{width:110px;accent-color:var(--accent);height:28px}
 .val{min-width:30px;text-align:right;font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted)}
 .sw{width:28px;height:28px;border-radius:50%;border:2px solid #0004;cursor:pointer;padding:0;flex:none}
 .sw.on{outline:2px solid var(--accent);outline-offset:2px}
-#curColor{position:relative;width:36px;height:36px;border-radius:10px;border:2px solid #fff3;overflow:hidden;flex:none}
-#curColor input{position:absolute;inset:-8px;width:60px;height:60px;opacity:0;cursor:pointer}
+#curColor{position:relative;width:42px;height:42px;border-radius:10px;border:2px solid #fff3;flex:none;padding:0;cursor:pointer}
+#curColor::after{content:"";position:absolute;right:-5px;bottom:-5px;width:17px;height:17px;border-radius:50%;border:2px solid var(--panel);
+  background:conic-gradient(red,#ff0,lime,cyan,blue,#f0f,red)}
+.sw.rc{width:24px;height:24px}
+.rsep{width:1px;height:24px;background:var(--line);flex:none}
+#brushBtn{min-height:36px;min-width:92px}
+/* Popovers: colour picker & brush picker */
+.pop{position:fixed;z-index:45;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 40px #000c;padding:12px;
+  width:min(360px,calc(100vw - 16px));max-height:calc(100vh - 16px);overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+.pop.wide{width:min(470px,calc(100vw - 16px))}
+.pop .cp-lbl{font-size:12px;color:var(--muted);margin-top:2px}
+.pop canvas.cp-sv,.pop canvas.cp-hue{display:block;width:100%;border-radius:10px;touch-action:none;cursor:crosshair}
+.pop canvas.cp-sv{height:170px}
+.pop canvas.cp-hue{height:34px}
+.cp-row{display:flex;align-items:center;gap:8px}
+.cp-prev{display:flex;border-radius:10px;overflow:hidden;border:2px solid #fff3;flex:none}
+.cp-prev span{width:34px;height:38px;display:block;cursor:pointer}
+.cp-hex{width:96px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 8px;font-family:ui-monospace,monospace;font-size:14px;-webkit-user-select:text;user-select:text}
+.cp-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:4px}
+.cp-grid button{aspect-ratio:1;min-height:24px;border-radius:7px;border:1px solid #0005;padding:0;cursor:pointer}
+.cp-grid button.on{outline:2px solid var(--accent);outline-offset:1px}
+.cp-empty{font-size:12px;color:var(--muted);grid-column:1/-1}
+.br-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:6px}
+.br{border:1px solid var(--line);background:var(--panel2);border-radius:12px;padding:5px;cursor:pointer;display:flex;flex-direction:column;align-items:stretch;gap:3px;min-height:44px;font-size:12px}
+.br canvas{width:100%;height:40px;border-radius:7px;display:block;background:#fff}
+.br.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.br-tip{font-size:12px;color:var(--muted);line-height:1.4;min-height:32px}
+.pop .set-row input[type=range]{width:140px}
 .chip{border:1px solid var(--line);background:var(--panel2);border-radius:10px;padding:7px 10px;cursor:pointer;white-space:nowrap;font-size:13px}
 .chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .chip.small{padding:5px 8px;font-size:12px}
@@ -253,10 +279,11 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
     <div class="grp">
       <span class="lbl">Độ đậm</span><input type="range" id="opIn" min="5" max="100" step="1"><span class="val" id="opVal"></span>
     </div>
+    <button class="chip small" id="brushBtn" title="Chọn loại bút, kiểu tẩy, độ chống run tay"><span id="brushName">Bút tròn</span> ▾</button>
     <button class="chip small" id="pressBtn" title="Nét thay đổi theo lực nhấn bút">Lực nhấn</button>
     <button class="chip small" id="snapBtn" title="Hút nét: vẽ lệch sẽ tự kéo vào nét cũ gần nhất (nét frame này, frame trước khi bật Onion, ảnh mờ)">🧲 Hút nét</button>
     <div class="grp" id="palette">
-      <label id="curColor" title="Chọn màu tuỳ ý"><input type="color" id="colorIn"></label>
+      <button id="curColor" title="Bảng màu đầy đủ: chọn màu tuỳ ý, mã màu, màu vừa dùng"></button>
       <button class="chip small" id="dropBtn" hidden title="Dò màu: chạm vào bất kỳ chỗ nào trên hình để lấy đúng màu đó, rồi đổ màu (máy tính: giữ Alt + bấm)">💧 Dò màu</button>
     </div>
     <div class="grp">
@@ -461,7 +488,7 @@ let W = 1080, H = 1920;
 const PALETTE = ['#111111','#ffffff','#e53935','#fb8c00','#fdd835','#43a047','#1e88e5','#8e24aa','#f6c7a8','#8d6e63','#9e9e9e','#00acc1'];
 const S = {
   frames: [], bgs: [], cur: 0, layer: 'char', tool: 'brush',
-  color: '#111111', size: 8, opacity: 1, pressure: true,
+  color: '#111111', size: 8, opacity: 1, pressure: true, brush: 'pen', eraserType: 'hard', recentColors: [],
   onion: true, onionAlpha: 0.3, showBg: true, showChar: true, showCol: true, showVec: true, showPP: true, bendR: 160, mbendR: 0, vdm: 'point', snap: false, snapR: 24,
   fingerDraw: false, smooth: 0.3, defaultDur: 0.1, loop: true, fillTol: 120,
   uiHide: { rail: false, top: false, tl: false }
@@ -485,7 +512,7 @@ let toastT;
 function toast(msg, ms = 1800) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
 
 /* ========= Settings ========= */
-const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','uiHide','panelHidden'];
+const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','uiHide','panelHidden','brush','eraserType','recentColors'];
 function loadSettings() { try { const o = JSON.parse(localStorage.getItem('fs-settings') || '{}'); for (const k of SETTINGS_KEYS) if (k in o) { if (k === 'panelHidden') Object.assign(panelHidden, o[k]); else S[k] = o[k]; } } catch (e) {}
   S.uiHide = Object.assign({ rail: false, top: false, tl: false }, S.uiHide); }
 function saveSettings() { try { const o = {}; for (const k of SETTINGS_KEYS) o[k] = S[k]; localStorage.setItem('fs-settings', JSON.stringify(o)); } catch (e) {} }
@@ -632,6 +659,7 @@ function render() {
   if (floating && floating.cc && S.showCol) drawFloating(c, floating.cc);
   if (S.showChar && f.canvas) c.drawImage(stroke && stroke.cv === f.canvas ? work : f.canvas, 0, 0);
   if (floating && floating.t.type === 'char') drawFloating(c);
+  if (stroke) drawStrokePred(c);
   const px = 1 / vs * DPR;
   if (S.pp && S.showPP && !ppSetup) drawPuppet(c, f.pp, f.lip);
   if (S.showVec) renderVec(c, rig && rig.pv ? { vec: rig.pv } : rig ? { vec: f.vec } : motion && motion.pv ? { vec: motion.pv } : f, px);
@@ -664,49 +692,187 @@ function render() {
 }
 
 /* ========= Strokes ========= */
+// Brush types. kind: line = round tip drawn as a dense polyline, nib = flat slanted calligraphy nib, dab = stamped soft dabs.
+// sizeK: size multiplier; press:false = width ignores pressure; pexp/pmin: pressure curve; alpha: whole-stroke opacity;
+// grain: paper texture mask; speed: fast strokes get thinner; taper: thin start; flow/spacing/jitter: dab settings.
+const BRUSHES = {
+  pen:    { name: 'Bút tròn', tip: 'Nét tròn, mượt, to nhỏ theo lực nhấn. Dùng cho hầu hết mọi việc.', kind: 'line', pexp: 0.85 },
+  ink:    { name: 'Bút mực', tip: 'Nét thanh đậm rõ như bút lông kim: đầu nét thon, vuốt nhanh thì nét mảnh lại. Hợp để đi viền.', kind: 'line', pexp: 1.4, pmin: 0.06, taper: 1, speed: 0.32 },
+  pencil: { name: 'Bút chì', tip: 'Nét mảnh có vân giấy, hợp để phác thảo.', kind: 'line', sizeK: 0.6, pexp: 1, grain: 'fine', alpha: 0.9 },
+  marker: { name: 'Bút dạ', tip: 'Nét đều, hơi trong: tô chồng lên nhau thì đậm hơn. Hợp để tô bóng.', kind: 'line', press: false, sizeK: 1.4, alpha: 0.5 },
+  callig: { name: 'Thư pháp', tip: 'Ngòi dẹt nghiêng: kéo chéo thì mảnh, kéo ngang hay dọc thì đậm.', kind: 'nib', sizeK: 1.3, pexp: 0.7 },
+  crayon: { name: 'Sáp màu', tip: 'Nét sần như bút sáp, phấn.', kind: 'line', sizeK: 1.2, pexp: 0.6, grain: 'coarse' },
+  soft:   { name: 'Cọ mềm', tip: 'Cọ viền mềm, ấn mạnh thì to và đậm hơn. Hợp để tô má hồng, bóng mờ.', kind: 'dab', dab: 'round', sizeK: 1.5, pexp: 0.8, flow: 0.35, spacing: 0.06, pflow: true },
+  air:    { name: 'Bút phun', tip: 'Phun sương mờ, giữ lâu càng đậm. Hợp để tô ánh sáng, khói.', kind: 'dab', dab: 'soft', sizeK: 2.4, press: false, flow: 0.07, spacing: 0.07, pflow: true },
+  water:  { name: 'Màu nước', tip: 'Loang nhẹ, viền đậm hơn giữa, có vân giấy.', kind: 'dab', dab: 'wet', sizeK: 1.8, pexp: 0.6, flow: 0.13, spacing: 0.07, jitter: 0.12, grain: 'paper', alpha: 0.85 }
+};
+const ERASERS = {
+  hard: { name: 'Tẩy cứng', base: 'pen', tip: 'Xoá sạch, viền gọn.' },
+  soft: { name: 'Tẩy mềm', base: 'soft', tip: 'Xoá viền mềm, ấn nhẹ thì xoá nhạt.' },
+  air:  { name: 'Tẩy nhẹ', base: 'air', tip: 'Làm mờ dần từng chút, như phun tẩy.' }
+};
+function brushOf(tool) { return tool === 'eraser' ? BRUSHES[(ERASERS[S.eraserType] || ERASERS.hard).base] : (BRUSHES[S.brush] || BRUSHES.pen); }
+function hexA(hex, a) { const [r, g, b] = hexToRgb(hex); return `rgba(${r},${g},${b},${a})`; }
+function dabCanvas(kind, col) {
+  const N = 64, c = makeCanvas(N, N), x = c.getContext('2d'), g = x.createRadialGradient(N / 2, N / 2, 0, N / 2, N / 2, N / 2);
+  const st = kind === 'round' ? [[0, 1], [0.5, 0.95], [0.8, 0.45], [1, 0]] : kind === 'wet' ? [[0, 0.55], [0.7, 0.7], [0.88, 0.9], [1, 0]] : [[0, 1], [0.35, 0.6], [0.7, 0.18], [1, 0]];
+  for (const [o, a] of st) g.addColorStop(o, hexA(col, a));
+  x.fillStyle = g; x.fillRect(0, 0, N, N); return c;
+}
+// tileable paper textures (value noise with wrap-around), used as an alpha mask fixed to the paper
+const grainCache = {};
+function grainCanvas(kind) {
+  if (grainCache[kind]) return grainCache[kind];
+  const N = 256, c = makeCanvas(N, N), x = c.getContext('2d'), img = x.createImageData(N, N), d = img.data;
+  const noise = G => { const g = new Float32Array(G * G); for (let i = 0; i < g.length; i++) g[i] = Math.random(); const out = new Float32Array(N * N), k = N / G;
+    for (let y = 0; y < N; y++) for (let xx = 0; xx < N; xx++) {
+      const fx = xx / k, fy = y / k, x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0, sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+      const a = g[(y0 % G) * G + x0 % G], b = g[(y0 % G) * G + (x0 + 1) % G], cc = g[((y0 + 1) % G) * G + x0 % G], dd = g[((y0 + 1) % G) * G + (x0 + 1) % G];
+      out[y * N + xx] = (a + (b - a) * sx) * (1 - sy) + (cc + (dd - cc) * sx) * sy;
+    } return out; };
+  const lo = noise(kind === 'fine' ? 64 : kind === 'coarse' ? 32 : 16), mid = kind === 'paper' ? noise(64) : null;
+  for (let i = 0; i < N * N; i++) {
+    const r = Math.random(); let a;
+    if (kind === 'fine') a = clamp((0.55 * r + 0.45 * lo[i] - 0.2) / 0.5, 0, 1);
+    else if (kind === 'coarse') a = clamp((0.3 * r + 0.7 * lo[i] - 0.2) / 0.32, 0, 1);
+    else a = 0.5 + 0.3 * lo[i] + 0.2 * mid[i] - 0.08 * r;
+    d[i * 4 + 3] = Math.round(a * 255);
+  }
+  x.putImageData(img, 0, 0); return (grainCache[kind] = c);
+}
+function applyGrain(ctx, kind, x, y, w, h) {
+  ctx.save(); ctx.globalCompositeOperation = 'destination-in'; ctx.globalAlpha = 1;
+  ctx.fillStyle = ctx.createPattern(grainCanvas(kind), 'repeat'); ctx.fillRect(x, y, w, h); ctx.restore();
+}
+// The drawing engine: stabilises raw input (time-window weighted average + pressure smoothing), interpolates with
+// midpoint quadratic curves, then samples the curve densely so width/opacity change smoothly instead of in steps.
+// o: {brush, color, size, pressure, smooth (0..0.9), erase, dirty(x, y, r)}
+function makeBrushEngine(ctx, o) {
+  const B = o.brush, col = o.erase ? '#000000' : o.color, winMs = (o.smooth || 0) * 120;
+  const pmin = B.pmin != null ? B.pmin : 0.12, size = o.size * (B.sizeK || 1);
+  const dab = B.kind === 'dab' ? dabCanvas(B.dab, col) : null;
+  const nib = -Math.PI / 4, ncos = Math.cos(nib), nsin = Math.sin(nib);
+  const E = { B, raw: [], pts: [], ps: null, v: 0, sf: 1, lastRaw: null, dist: 0, carry: 0 };
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = col; ctx.fillStyle = col;
+  const dirty = o.dirty || (() => {});
+  function widthOf(p) {
+    let w = size;
+    if (o.pressure && B.press !== false) w *= pmin + (1 - pmin) * Math.pow(clamp(p.p, 0, 1), B.pexp || 0.85);
+    if (B.speed) w *= p.sf;
+    if (B.taper) w *= Math.min(1, 0.25 + p.d / (o.size * 2.5 + 10));
+    return Math.max(0.5, w);
+  }
+  const flowOf = p => B.flow * (B.pflow && o.pressure ? 0.25 + 0.75 * clamp(p.p, 0, 1) : 1);
+  const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, w: (a.w + b.w) / 2, a: (a.a + b.a) / 2 });
+  function stamp(x, y, w, a) {
+    const r = w / 2 * (B.jitter ? 1 + B.jitter * (Math.random() * 2 - 1) : 1);
+    ctx.globalAlpha = clamp(a, 0, 1); ctx.drawImage(dab, x - r, y - r, r * 2, r * 2);
+  }
+  function dot(p) {
+    dirty(p.x, p.y, p.w / 2 + 3);
+    if (B.kind === 'dab') { stamp(p.x, p.y, p.w, p.a); ctx.globalAlpha = 1; E.carry = Math.max(0.6, p.w * B.spacing); }
+    else if (B.kind === 'nib') { const hx = ncos * p.w / 2, hy = nsin * p.w / 2; ctx.lineWidth = Math.max(1.5, p.w * 0.14); ctx.beginPath(); ctx.moveTo(p.x - hx, p.y - hy); ctx.lineTo(p.x + hx, p.y + hy); ctx.stroke(); }
+    else { ctx.beginPath(); ctx.arc(p.x, p.y, p.w / 2, 0, Math.PI * 2); ctx.fill(); }
+  }
+  function seg(A, C, Bp) {
+    const L = C ? Math.hypot(C.x - A.x, C.y - A.y) + Math.hypot(Bp.x - C.x, Bp.y - C.y) : Math.hypot(Bp.x - A.x, Bp.y - A.y);
+    const n = Math.max(1, Math.min(800, Math.ceil(L / (B.kind === 'nib' ? 1.5 : 1)))), P = [];
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, wm = 0;
+    for (let i = 0; i <= n; i++) {
+      const t = i / n, u = 1 - t, x = C ? u * u * A.x + 2 * u * t * C.x + t * t * Bp.x : A.x + (Bp.x - A.x) * t, y = C ? u * u * A.y + 2 * u * t * C.y + t * t * Bp.y : A.y + (Bp.y - A.y) * t;
+      const q = { x, y, w: A.w + (Bp.w - A.w) * t, a: A.a + (Bp.a - A.a) * t }; P.push(q);
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (q.w > wm) wm = q.w;
+    }
+    dirty(x0, y0, wm / 2 + 3); dirty(x1, y1, wm / 2 + 3);
+    if (B.kind === 'line') { // merge runs of near-equal width into one path
+      let i0 = 0;
+      for (let i = 1; i < P.length; i++) {
+        if (i < P.length - 1 && Math.abs(P[i + 1].w - P[i0].w) <= 0.3) continue;
+        ctx.lineWidth = (P[i0].w + P[i].w) / 2; ctx.beginPath(); ctx.moveTo(P[i0].x, P[i0].y);
+        for (let k = i0 + 1; k <= i; k++) ctx.lineTo(P[k].x, P[k].y);
+        ctx.stroke(); i0 = i;
+      }
+    } else if (B.kind === 'nib') {
+      for (let i = 1; i < P.length; i++) {
+        const p = P[i - 1], q = P[i], hp = p.w / 2, hq = q.w / 2;
+        ctx.lineWidth = Math.max(1, p.w * 0.12); ctx.beginPath();
+        ctx.moveTo(p.x - ncos * hp, p.y - nsin * hp); ctx.lineTo(q.x - ncos * hq, q.y - nsin * hq); ctx.lineTo(q.x + ncos * hq, q.y + nsin * hq); ctx.lineTo(p.x + ncos * hp, p.y + nsin * hp);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
+    } else {
+      for (let i = 1; i < P.length; i++) {
+        const p = P[i - 1], q = P[i], d = Math.hypot(q.x - p.x, q.y - p.y);
+        while (E.carry <= d) { const t = d ? E.carry / d : 0, w = p.w + (q.w - p.w) * t; stamp(p.x + (q.x - p.x) * t, p.y + (q.y - p.y) * t, w, p.a + (q.a - p.a) * t); E.carry += Math.max(0.6, w * B.spacing); }
+        E.carry -= d;
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+  function add(raw, t) {
+    if (E.ps == null) E.ps = raw.p; else E.ps += (raw.p - E.ps) * 0.4;
+    if (E.lastRaw) { const dt = Math.max(1, t - E.lastRaw.t), d = Math.hypot(raw.x - E.lastRaw.x, raw.y - E.lastRaw.y); E.v += (Math.min(d / dt, 8) - E.v) * 0.25; }
+    E.lastRaw = { x: raw.x, y: raw.y, t };
+    E.raw.push({ x: raw.x, y: raw.y, t });
+    while (E.raw.length > 1 && E.raw[0].t < t - winMs) E.raw.shift();
+    let sx = 0, sy = 0, sw = 0;
+    for (const q of E.raw) { const w = winMs > 0 ? 1 + 3 * clamp((q.t - (t - winMs)) / winMs, 0, 1) : 1; sx += q.x * w; sy += q.y * w; sw += w; }
+    const p = { x: sx / sw, y: sy / sw, p: E.ps }, pts = E.pts, last = pts[pts.length - 1];
+    if (last) { const d = Math.hypot(p.x - last.x, p.y - last.y); if (d < 0.35) return; E.dist += d; }
+    if (B.speed) E.sf += (clamp(1.1 - E.v * B.speed, 0.3, 1) - E.sf) * 0.3;
+    p.d = E.dist; p.sf = E.sf; p.w = widthOf(p); p.a = B.kind === 'dab' ? flowOf(p) : 1;
+    pts.push(p); const n = pts.length;
+    if (n === 1) dot(p);
+    else if (n === 2) seg(pts[0], null, mid(pts[0], p));
+    else seg(mid(pts[n - 3], pts[n - 2]), pts[n - 2], mid(pts[n - 2], p));
+  }
+  function end() {
+    if (E.lastRaw && winMs > 0) { const r = E.lastRaw; let t = r.t; for (let k = 0; k < 10; k++) { t += winMs / 8; add({ x: r.x, y: r.y, p: E.ps }, t); } }
+    const n = E.pts.length;
+    if (n >= 2) seg(mid(E.pts[n - 2], E.pts[n - 1]), null, E.pts[n - 1]);
+  }
+  return { E, add, end };
+}
 let stroke = null;
 function widthFor(p) { return S.pressure ? Math.max(0.6, S.size * (0.12 + 0.88 * Math.pow(p, 0.85))) : S.size; }
-function mid(a, b) { return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, p: (a.p + b.p) / 2 }; }
 function growDirty(x, y, r) {
   const d = stroke.dirty, b = stroke.bbox;
   d[0] = Math.min(d[0], x - r); d[1] = Math.min(d[1], y - r); d[2] = Math.max(d[2], x + r); d[3] = Math.max(d[3], y + r);
   b[0] = Math.min(b[0], x - r); b[1] = Math.min(b[1], y - r); b[2] = Math.max(b[2], x + r); b[3] = Math.max(b[3], y + r);
 }
-function strokeBegin(p) {
+function strokeBegin(p, t) {
   snapPrepare(); p = snapPoint(p);
-  const o = activeObj();
+  const o = activeObj(), erase = S.tool === 'eraser', B = brushOf(S.tool);
   const isCol = S.layer === 'col' && o.kind === 'char';
-  stroke = { t: targetOf(o), o, cv: isCol ? colOf(o, true) : o.canvas, col: isCol, erase: S.tool === 'eraser', pts: [], sp: null, raw: p,
-    bbox: [Infinity, Infinity, -Infinity, -Infinity], dirty: [0, 0, W, H], full: true, opacity: S.opacity };
-  sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.globalCompositeOperation = 'source-over'; sctx.clearRect(0, 0, W, H);
-  sctx.lineCap = 'round'; sctx.lineJoin = 'round';
-  const col = stroke.erase ? '#000' : S.color; sctx.strokeStyle = col; sctx.fillStyle = col;
-  strokePoint(p);
-}
-function strokePoint(raw) {
-  if (stroke.pts.length) raw = snapPoint(raw);
-  stroke.raw = raw;
-  let p = raw;
-  if (stroke.sp) { const k = S.smooth; p = { x: stroke.sp.x + (raw.x - stroke.sp.x) * (1 - k), y: stroke.sp.y + (raw.y - stroke.sp.y) * (1 - k), p: raw.p }; }
-  if (stroke.sp && Math.hypot(p.x - stroke.sp.x, p.y - stroke.sp.y) < 0.4) return;
-  stroke.sp = p;
-  const pts = stroke.pts; pts.push(p); const n = pts.length;
-  const w = widthFor(p.p); growDirty(p.x, p.y, w / 2 + 3);
-  if (n === 1) { sctx.beginPath(); sctx.arc(p.x, p.y, w / 2, 0, Math.PI * 2); sctx.fill(); }
-  else if (n === 2) { const a = pts[0], m = mid(a, p); sctx.lineWidth = widthFor(a.p); sctx.beginPath(); sctx.moveTo(a.x, a.y); sctx.lineTo(m.x, m.y); sctx.stroke(); }
-  else {
-    const a = pts[n - 3], b = pts[n - 2], m1 = mid(a, b), m2 = mid(b, p);
-    sctx.lineWidth = widthFor(b.p); sctx.beginPath(); sctx.moveTo(m1.x, m1.y); sctx.quadraticCurveTo(b.x, b.y, m2.x, m2.y); sctx.stroke();
-  }
+  stroke = { t: targetOf(o), o, cv: isCol ? colOf(o, true) : o.canvas, col: isCol, erase, B, pred: null,
+    bbox: [Infinity, Infinity, -Infinity, -Infinity], dirty: [0, 0, W, H], full: true, opacity: erase ? 1 : S.opacity * (B.alpha || 1) };
+  sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.globalCompositeOperation = 'source-over'; sctx.globalAlpha = 1; sctx.clearRect(0, 0, W, H);
+  stroke.eng = makeBrushEngine(sctx, { brush: B, color: S.color, size: S.size, pressure: S.pressure, smooth: S.smooth, erase, dirty: growDirty });
+  stroke.eng.add(p, t != null ? t : performance.now());
+  if (!erase) addRecentColor(S.color);
   requestRender();
 }
-function strokeFinishTail() {
-  const pts = stroke.pts, n = pts.length;
-  if (n >= 2) {
-    const a = pts[n - 2], b = pts[n - 1], m = mid(a, b), r = stroke.raw;
-    sctx.lineWidth = widthFor(b.p); sctx.beginPath(); sctx.moveTo(m.x, m.y); sctx.quadraticCurveTo(b.x, b.y, r.x, r.y); sctx.stroke();
-    growDirty(r.x, r.y, widthFor(b.p) / 2 + 3);
-  }
+function strokePoint(raw, t) {
+  raw = snapPoint(raw);
+  stroke.eng.add(raw, t != null ? t : performance.now());
+  requestRender();
+}
+// predicted pointer positions: drawn on screen only (never saved) to hide input latency
+function drawStrokePred(c) {
+  const st = stroke; if (!st || !st.pred || !st.pred.length || st.erase) return;
+  const B = st.B, pts = st.eng.E.pts, n = pts.length;
+  if (B.kind !== 'line' || B.grain || (B.alpha || 1) < 1 || S.smooth > 0.35 || n < 2) return;
+  const a = pts[n - 2], b = pts[n - 1];
+  c.save(); c.globalAlpha = st.opacity; c.strokeStyle = S.color; c.lineCap = 'round'; c.lineJoin = 'round'; c.lineWidth = b.w;
+  c.beginPath(); c.moveTo((a.x + b.x) / 2, (a.y + b.y) / 2); c.lineTo(b.x, b.y); for (const q of st.pred) c.lineTo(q.x, q.y); c.stroke(); c.restore();
+}
+// the stroke as it will be applied: scv, masked by the paper grain for textured brushes
+let tcv = null, tctx = null;
+function strokeLayer(r) {
+  const g = stroke.B.grain; if (!g || !r) return scv;
+  if (!tcv || tcv.width !== W || tcv.height !== H) { tcv = makeCanvas(); tctx = tcv.getContext('2d'); }
+  const [x, y, w, h] = r;
+  tctx.clearRect(x, y, w, h); tctx.drawImage(scv, x, y, w, h, x, y, w, h); applyGrain(tctx, g, x, y, w, h);
+  return tcv;
 }
 function buildWork() {
   const o = stroke.o, cv = stroke.cv; if (!o.canvas || !cv) return;
@@ -716,11 +882,12 @@ function buildWork() {
   const w = Math.min(W, Math.ceil(d[2])) - x, h = Math.min(H, Math.ceil(d[3])) - y;
   stroke.dirty = [Infinity, Infinity, -Infinity, -Infinity];
   if (w <= 0 || h <= 0) return;
+  const L = strokeLayer([x, y, w, h]);
   wctx.save(); wctx.beginPath(); wctx.rect(x, y, w, h); wctx.clip();
   wctx.globalCompositeOperation = 'source-over'; wctx.globalAlpha = 1; wctx.clearRect(x, y, w, h);
   wctx.drawImage(cv, 0, 0);
-  if (stroke.erase) { wctx.globalCompositeOperation = 'destination-out'; wctx.drawImage(scv, 0, 0); }
-  else { wctx.globalAlpha = stroke.opacity; wctx.drawImage(scv, 0, 0); }
+  if (stroke.erase) { wctx.globalCompositeOperation = 'destination-out'; wctx.drawImage(L, 0, 0); }
+  else { wctx.globalAlpha = stroke.opacity; wctx.drawImage(L, 0, 0); }
   wctx.restore();
 }
 function rectFromBox(b, pad = 0) {
@@ -730,13 +897,14 @@ function rectFromBox(b, pad = 0) {
 }
 function strokeEnd() {
   if (!stroke) return;
-  strokeFinishTail();
+  stroke.eng.end();
   const o = stroke.o, rect = rectFromBox(stroke.bbox, 2);
   if (rect && o.canvas && stroke.cv) {
-    const lc = stroke.cv.getContext('2d');
+    const lc = stroke.cv.getContext('2d'), L = strokeLayer(rect);
     const before = lc.getImageData(...rect);
-    lc.save(); lc.globalCompositeOperation = stroke.erase ? 'destination-out' : 'source-over'; lc.globalAlpha = stroke.erase ? 1 : stroke.opacity;
-    lc.drawImage(scv, 0, 0); lc.restore();
+    lc.save(); lc.beginPath(); lc.rect(...rect); lc.clip();
+    lc.globalCompositeOperation = stroke.erase ? 'destination-out' : 'source-over'; lc.globalAlpha = stroke.erase ? 1 : stroke.opacity;
+    lc.drawImage(L, 0, 0); lc.restore();
     const after = lc.getImageData(...rect);
     pushEntry(pixEntry(o, rect, before, after, stroke.col)); if (stroke.col) o.colVer++;
     markEdited(o);
@@ -3666,7 +3834,7 @@ function startAction(e, isTouch) {
     case 'brush': case 'eraser': {
       if (!layerVisible()) { toast('Lớp đang ẩn — bấm 👁 để hiện'); return; }
       const o = activeObj(); if (!o || !o.canvas) return;
-      strokeBegin(p); action = { ...base, kind: 'stroke' }; break;
+      strokeBegin(p, e.timeStamp); action = { ...base, kind: 'stroke' }; break;
     }
     case 'fill': if (e.altKey) { pickBack = 'fill'; doPick(p); break; } if (!layerVisible()) { toast('Lớp đang ẩn'); return; } doFill(p); break;
     case 'pick': doPick(p); break;
@@ -3676,7 +3844,11 @@ function startAction(e, isTouch) {
 function moveAction(e) {
   const evs = (e.getCoalescedEvents && e.getCoalescedEvents()) || [];
   const list = evs.length ? evs : [e];
-  if (action.kind === 'stroke' && stroke) { for (const ev of list) strokePoint(toDoc(ev, action.rect)); }
+  if (action.kind === 'stroke' && stroke) {
+    for (const ev of list) strokePoint(toDoc(ev, action.rect), ev.timeStamp);
+    const pr = e.getPredictedEvents ? e.getPredictedEvents() : [];
+    stroke.pred = pr.length ? pr.slice(-3).map(ev => toDoc(ev, action.rect)) : null;
+  }
   else if (action.kind === 'lasso') {
     const p = toDoc(e, action.rect), l = lasso[lasso.length - 1];
     if (Math.hypot(p.x - l.x, p.y - l.y) > 3 / vs) { lasso.push(p); requestRender(); }
@@ -3811,7 +3983,7 @@ function setTool(t) {
   if (t !== 'puppet') { ppSetup = null; ppCutMode = false; ppPatchMode = false; ppPaint = null; }
   $('#layerPP').classList.toggle('on', t === 'puppet');
   if (t !== 'fx') fxCamPick = false;
-  updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); requestRender();
+  updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); updBrushBtn(); requestRender();
   document.querySelectorAll('.tool[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
   $('#dropBtn').hidden = !(t === 'fill' || t === 'pick'); $('#dropBtn').classList.toggle('on', t === 'pick');
 }
@@ -3822,7 +3994,7 @@ function setLayer(l) {
   if (l !== 'vec' && S.tool === 'vedit') setTool('brush');
 }
 function setColor(c) {
-  S.color = c; $('#colorIn').value = c; $('#curColor').style.background = c;
+  c = (normHex(c) || '#111111'); S.color = c; $('#curColor').style.background = c;
   document.querySelectorAll('#palette .sw').forEach(s => s.classList.toggle('on', s.dataset.c.toLowerCase() === c.toLowerCase()));
   saveSettings();
 }
@@ -3839,7 +4011,6 @@ document.querySelectorAll('[data-eye]').forEach(b => b.addEventListener('click',
   const k = b.dataset.eye; if (k === 'bg') S.showBg = !S.showBg; else if (k === 'vec') S.showVec = !S.showVec; else if (k === 'pp') S.showPP = !S.showPP; else if (k === 'col') { S.showCol = !S.showCol; } else S.showChar = !S.showChar; updateToggles(); requestRender();
 }));
 PALETTE.forEach(c => { const s = document.createElement('button'); s.className = 'sw'; s.style.background = c; s.dataset.c = c; s.title = c; s.addEventListener('click', () => setColor(c)); $('#palette').append(s); });
-$('#colorIn').addEventListener('input', e => setColor(e.target.value));
 $('#sizeIn').addEventListener('input', e => { S.size = +e.target.value; $('#sizeVal').textContent = S.size; saveSettings(); });
 $('#opIn').addEventListener('input', e => { S.opacity = e.target.value / 100; $('#opVal').textContent = e.target.value + '%'; saveSettings(); });
 $('#pressBtn').addEventListener('click', () => { S.pressure = !S.pressure; updateToggles(); saveSettings(); });
@@ -3923,6 +4094,182 @@ document.addEventListener('keydown', e => {
   else if (k === 'f') setFocus(!S.focus);
   else if (k === 'r') rotateView90();
 });
+
+/* ========= Colour picker & brush picker (popovers) ========= */
+const rgbHex = (r, g, b) => '#' + [r, g, b].map(v => clamp(Math.round(v), 0, 255).toString(16).padStart(2, '0')).join('');
+function hsvToHex(h, s, v) {
+  const f = n => { const k = (n + h / 60) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); };
+  return rgbHex(f(5) * 255, f(3) * 255, f(1) * 255);
+}
+function hexToHsv(hex) {
+  const [r, g, b] = hexToRgb(hex).map(v => v / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let h = 0;
+  if (d) h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return { h: (h * 60 + 360) % 360, s: mx ? d / mx : 0, v: mx };
+}
+function normHex(t) {
+  t = String(t || '').trim().replace(/^#/, '').toLowerCase();
+  if (/^[0-9a-f]{3}$/.test(t)) t = t.split('').map(c => c + c).join('');
+  return /^[0-9a-f]{6}$/.test(t) ? '#' + t : null;
+}
+const BIG_PALETTE = (() => {
+  const out = [];
+  for (let i = 0; i < 12; i++) { const v = 255 * i / 11; out.push(rgbHex(v, v, v)); }
+  const hues = [0, 18, 35, 52, 75, 110, 150, 180, 205, 230, 270, 320];
+  for (const [s, v] of [[0.22, 1], [0.48, 1], [0.88, 1], [0.9, 0.72], [0.85, 0.42]]) for (const h of hues) out.push(hsvToHex(h, s, v));
+  out.push('#fde3d0', '#f6c7a8', '#eab08a', '#d99a6c', '#c68652', '#a96b3f', '#8d5524', '#6b3e1e', '#4a2a14', '#f2d16b', '#b5651d', '#3b2a20');
+  return out;
+})();
+function addRecentColor(c) {
+  c = (c || '').toLowerCase(); if (!c) return;
+  const r = S.recentColors || []; if (r[0] === c) return;
+  S.recentColors = [c, ...r.filter(x => x !== c)].slice(0, 24); saveSettings(); renderRecentSw();
+}
+// a few recent colours that are not already in the fixed palette, next to it in the top bar
+function renderRecentSw() {
+  const pal = $('#palette'); if (!pal) return;
+  pal.querySelectorAll('.rc,.rsep').forEach(e => e.remove());
+  const fixed = new Set(PALETTE.map(c => c.toLowerCase())), list = (S.recentColors || []).filter(c => !fixed.has(c)).slice(0, 4);
+  if (!list.length) return;
+  const sep = document.createElement('span'); sep.className = 'rsep'; pal.append(sep);
+  for (const c of list) { const s = document.createElement('button'); s.className = 'sw rc'; s.style.background = c; s.dataset.c = c; s.title = 'Màu vừa dùng ' + c; s.addEventListener('click', () => setColor(c)); pal.append(s); }
+  pal.querySelectorAll('.sw').forEach(s => s.classList.toggle('on', s.dataset.c.toLowerCase() === S.color.toLowerCase()));
+}
+let popEl = null;
+function closePop() { if (!popEl) return; popEl.remove(); popEl = null; document.removeEventListener('pointerdown', popOutside, true); }
+function popOutside(e) {
+  if (!popEl || popEl.contains(e.target) || (popEl._anchor && popEl._anchor.contains(e.target))) return;
+  if (e.target === view) e.stopPropagation(); // a tap on the canvas only closes the popover, it does not draw
+  closePop();
+}
+function openPop(anchor, html, cls = '') {
+  closePop();
+  const d = document.createElement('div'); d.className = 'pop ' + cls; d.innerHTML = html; d._anchor = anchor;
+  document.body.append(d); popEl = d;
+  const r = anchor.getBoundingClientRect(), pw = d.offsetWidth, ph = d.offsetHeight;
+  d.style.left = clamp(r.left, 8, Math.max(8, innerWidth - pw - 8)) + 'px';
+  d.style.top = (r.bottom + 6 + ph > innerHeight - 8 ? Math.max(8, innerHeight - ph - 8) : r.bottom + 6) + 'px';
+  setTimeout(() => { if (popEl === d) document.addEventListener('pointerdown', popOutside, true); });
+  return d;
+}
+function colorPop() {
+  const btn = $('#curColor');
+  if (popEl && popEl._anchor === btn) { closePop(); return; }
+  const old = S.color;
+  const d = openPop(btn, `
+    <canvas class="cp-sv"></canvas>
+    <canvas class="cp-hue"></canvas>
+    <div class="cp-row">
+      <div class="cp-prev" title="Trái: màu cũ (chạm để quay lại) · Phải: màu mới"><span class="cp-o"></span><span class="cp-n"></span></div>
+      <input class="cp-hex" maxlength="7" spellcheck="false" autocomplete="off" title="Mã màu, ví dụ #ff8800">
+      <span class="spacer"></span>
+      <button class="chip cp-pick" title="Chạm vào hình trên khung vẽ để lấy đúng màu đó">💧 Hút màu</button>
+    </div>
+    <div class="cp-lbl">Màu vừa dùng</div><div class="cp-grid cp-recent"></div>
+    <div class="cp-lbl">Bảng màu</div><div class="cp-grid cp-pal"></div>`);
+  const sv = d.querySelector('.cp-sv'), hue = d.querySelector('.cp-hue'), hexIn = d.querySelector('.cp-hex');
+  let hsv = hexToHsv(S.color);
+  const size = c => { c.width = Math.round(c.clientWidth * DPR); c.height = Math.round(c.clientHeight * DPR); };
+  size(sv); size(hue);
+  function draw() {
+    let x = sv.getContext('2d'), w = sv.width, h = sv.height;
+    x.fillStyle = hsvToHex(hsv.h, 1, 1); x.fillRect(0, 0, w, h);
+    let g = x.createLinearGradient(0, 0, w, 0); g.addColorStop(0, '#fff'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h);
+    g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, '#000'); x.fillStyle = g; x.fillRect(0, 0, w, h);
+    const mx = hsv.s * w, my = (1 - hsv.v) * h;
+    x.lineWidth = 3 * DPR; x.strokeStyle = '#000'; x.beginPath(); x.arc(mx, my, 9 * DPR, 0, Math.PI * 2); x.stroke();
+    x.lineWidth = 2 * DPR; x.strokeStyle = '#fff'; x.stroke();
+    x = hue.getContext('2d'); w = hue.width; h = hue.height;
+    g = x.createLinearGradient(0, 0, w, 0); for (let i = 0; i <= 6; i++) g.addColorStop(i / 6, hsvToHex(i * 60, 1, 1));
+    x.fillStyle = g; x.fillRect(0, 0, w, h);
+    const hx = hsv.h / 360 * w; x.lineWidth = 3 * DPR; x.strokeStyle = '#000'; x.strokeRect(hx - 5 * DPR, 1.5 * DPR, 10 * DPR, h - 3 * DPR);
+    x.lineWidth = 2 * DPR; x.strokeStyle = '#fff'; x.strokeRect(hx - 5 * DPR, 1.5 * DPR, 10 * DPR, h - 3 * DPR);
+  }
+  function syncUI(fromHex) {
+    d.querySelector('.cp-o').style.background = old; d.querySelector('.cp-n').style.background = S.color;
+    if (!fromHex) hexIn.value = S.color;
+    d.querySelectorAll('.cp-grid button').forEach(b => b.classList.toggle('on', b.dataset.c === S.color.toLowerCase()));
+    draw();
+  }
+  function setFromHsv() { setColor(hsvToHex(hsv.h, hsv.s, hsv.v)); syncUI(); }
+  function drag(el, fn) {
+    el.addEventListener('pointerdown', e => { e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch (_) {} el._drag = e.pointerId; fn(e); });
+    el.addEventListener('pointermove', e => { if (el._drag === e.pointerId) fn(e); });
+    const up = e => { if (el._drag === e.pointerId) el._drag = null; };
+    el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+  }
+  drag(sv, e => { const r = sv.getBoundingClientRect(); hsv.s = clamp((e.clientX - r.left) / r.width, 0, 1); hsv.v = 1 - clamp((e.clientY - r.top) / r.height, 0, 1); setFromHsv(); });
+  drag(hue, e => { const r = hue.getBoundingClientRect(); hsv.h = clamp((e.clientX - r.left) / r.width, 0, 0.9999) * 360; if (hsv.s < 0.05 && hsv.v > 0.95) { hsv.s = 1; } setFromHsv(); });
+  hexIn.addEventListener('input', () => { const c = normHex(hexIn.value); if (c) { setColor(c); hsv = hexToHsv(c); syncUI(true); } });
+  hexIn.addEventListener('change', () => { const c = normHex(hexIn.value); if (!c) toast('Mã màu chưa đúng, ví dụ: #ff8800'); syncUI(); });
+  hexIn.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') hexIn.blur(); });
+  d.querySelector('.cp-o').addEventListener('click', () => { setColor(old); hsv = hexToHsv(old); syncUI(); });
+  const fill = (sel, list) => {
+    const g = d.querySelector(sel);
+    if (!list.length) { g.innerHTML = '<span class="cp-empty">Chưa có — màu bạn vẽ sẽ hiện ở đây.</span>'; return; }
+    for (const c of list) { const b = document.createElement('button'); b.style.background = c; b.dataset.c = c.toLowerCase(); b.title = c;
+      b.addEventListener('click', () => { setColor(c); hsv = hexToHsv(c); syncUI(); }); g.append(b); }
+  };
+  fill('.cp-recent', (S.recentColors || []).slice(0, 24)); fill('.cp-pal', BIG_PALETTE);
+  d.querySelector('.cp-pick').addEventListener('click', () => {
+    closePop(); setTool('pick'); toast('Chạm vào hình trên khung vẽ để lấy màu');
+  });
+  syncUI();
+}
+// small preview of each brush: an S curve that tapers at both ends, drawn with the real engine
+function brushPreview(cv, B, erase) {
+  const w = cv.width = Math.round(cv.clientWidth * DPR) || 260, h = cv.height = Math.round(cv.clientHeight * DPR) || 80;
+  const off = makeCanvas(w, h), ox = off.getContext('2d');
+  const eng = makeBrushEngine(ox, { brush: B, color: erase ? '#000000' : S.color, size: (B.kind === 'dab' ? 7 : 9) * DPR, pressure: true, smooth: 0, erase });
+  const N = 60;
+  for (let i = 0; i <= N; i++) { const t = i / N; eng.add({ x: w * (0.07 + 0.86 * t), y: h * (0.5 - 0.28 * Math.sin(t * Math.PI * 2)), p: 0.15 + 0.85 * Math.sin(t * Math.PI) }, i * 6); }
+  eng.end();
+  if (B.grain) applyGrain(ox, B.grain, 0, 0, w, h);
+  const x = cv.getContext('2d');
+  x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1; x.fillStyle = '#fff'; x.fillRect(0, 0, w, h);
+  if (erase) {
+    const g = x.createLinearGradient(0, 0, w, 0); g.addColorStop(0, '#7d6bff'); g.addColorStop(1, '#ff3b9a');
+    x.fillStyle = g; x.fillRect(0, h * 0.15, w, h * 0.7); x.globalCompositeOperation = 'destination-out'; x.drawImage(off, 0, 0);
+    x.globalCompositeOperation = 'destination-over'; x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); x.globalCompositeOperation = 'source-over';
+  } else { x.globalAlpha = B.alpha || 1; x.drawImage(off, 0, 0); x.globalAlpha = 1; }
+}
+function updBrushBtn() {
+  const el = $('#brushName'); if (!el) return;
+  el.textContent = S.tool === 'eraser' ? (ERASERS[S.eraserType] || ERASERS.hard).name : (BRUSHES[S.brush] || BRUSHES.pen).name;
+}
+function brushPop() {
+  const btn = $('#brushBtn');
+  if (popEl && popEl._anchor === btn) { closePop(); return; }
+  const card = (k, o, kind) => `<button class="br" data-${kind}="${k}" title="${o.tip}"><canvas></canvas><span>${o.name}</span></button>`;
+  const d = openPop(btn, `
+    <div class="cp-lbl">Loại bút</div>
+    <div class="br-grid">${Object.entries(BRUSHES).map(([k, o]) => card(k, o, 'b')).join('')}</div>
+    <div class="cp-lbl">Kiểu tẩy</div>
+    <div class="br-grid">${Object.entries(ERASERS).map(([k, o]) => card(k, o, 'e')).join('')}</div>
+    <div class="br-tip"></div>
+    <div class="set-row"><span>Cỡ nét</span><input type="range" class="bp-size" min="1" max="150" step="1"><span class="val bp-sizev"></span></div>
+    <div class="set-row"><span title="Kéo lên cao để nét thẳng và mượt hơn khi tay run (nét đi chậm hơn bút một chút)">Chống run tay</span><input type="range" class="bp-smooth" min="0" max="90" step="1"><span class="val bp-smoothv"></span></div>`, 'wide');
+  const tip = d.querySelector('.br-tip');
+  function sync() {
+    const isE = S.tool === 'eraser';
+    d.querySelectorAll('[data-b]').forEach(b => b.classList.toggle('on', !isE && b.dataset.b === S.brush));
+    d.querySelectorAll('[data-e]').forEach(b => b.classList.toggle('on', isE && b.dataset.e === S.eraserType));
+    tip.textContent = isE ? (ERASERS[S.eraserType] || ERASERS.hard).tip : (BRUSHES[S.brush] || BRUSHES.pen).tip;
+    updBrushBtn();
+  }
+  d.querySelectorAll('[data-b]').forEach(b => { brushPreview(b.querySelector('canvas'), BRUSHES[b.dataset.b], false);
+    b.addEventListener('click', () => { S.brush = b.dataset.b; saveSettings(); if (S.tool !== 'brush') setTool('brush'); sync(); }); });
+  d.querySelectorAll('[data-e]').forEach(b => { brushPreview(b.querySelector('canvas'), BRUSHES[ERASERS[b.dataset.e].base], true);
+    b.addEventListener('click', () => { S.eraserType = b.dataset.e; saveSettings(); if (S.tool !== 'eraser') setTool('eraser'); sync(); }); });
+  const sz = d.querySelector('.bp-size'), sm = d.querySelector('.bp-smooth');
+  sz.value = S.size; d.querySelector('.bp-sizev').textContent = S.size;
+  sm.value = Math.round(S.smooth * 100); d.querySelector('.bp-smoothv').textContent = sm.value + '%';
+  sz.addEventListener('input', () => { S.size = +sz.value; d.querySelector('.bp-sizev').textContent = S.size; $('#sizeIn').value = S.size; $('#sizeVal').textContent = S.size; saveSettings(); });
+  sm.addEventListener('input', () => { S.smooth = sm.value / 100; d.querySelector('.bp-smoothv').textContent = sm.value + '%'; saveSettings(); });
+  sync();
+}
+$('#curColor').addEventListener('click', colorPop);
+$('#brushBtn').addEventListener('click', brushPop);
 
 /* ========= Modal ========= */
 function modal({ title, html = '', buttons = [{ label: 'OK', value: true, primary: true }], onOpen, dismissable = true }) {
@@ -4841,6 +5188,7 @@ let wizImport = false;
 function helpHtml() {
   return `<ul>
 <li><b>Bút</b> (Apple Pencil / S-Pen) để vẽ. <b>Ngón tay</b>: 1 ngón kéo khung, 2 ngón chụm để zoom.</li>
+<li>Nút <b>Bút tròn ▾</b> trên thanh trên: chọn loại bút (bút mực, bút chì, bút dạ, thư pháp, sáp màu, cọ mềm, bút phun, màu nước), kiểu tẩy và mức <b>chống run tay</b>. Chạm <b>ô màu lớn</b> để mở bảng màu đầy đủ: kéo chọn màu bất kỳ, gõ mã màu, chọn lại màu vừa dùng, hoặc 💧 hút màu từ hình.</li>
 <li><b>Chạm 2 ngón</b> = Hoàn tác · <b>Chạm 3 ngón</b> = Làm lại.</li>
 <li><b>Lớp Nền</b> vẽ cảnh một lần; frame nhân bản dùng chung nền. <b>Nền mới</b> = đổi cảnh; <b>Tách nền</b> = sửa nền riêng cho frame này. Chấm màu dưới frame cho biết nhóm nền.</li>
 <li><b>Lớp Nhân vật</b> là phần chuyển động, riêng từng frame.</li>
@@ -4889,7 +5237,7 @@ $('#menuBtn').addEventListener('click', () => {
 <div class="set-row"><span>Ngón tay cũng vẽ (khi không có bút)</span><input type="checkbox" class="switch" id="sFinger" ${S.fingerDraw ? 'checked' : ''}></div>
 <div class="set-row"><span>Xoay khung bằng 2 ngón</span><input type="checkbox" class="switch" id="sRotG" ${S.rotGesture !== false ? 'checked' : ''}></div>
 <div class="set-row"><span>🧲 Bán kính hút nét (px)</span><input type="range" id="sSnapR" min="6" max="80" value="${S.snapR}"></div>
-<div class="set-row"><span>Làm mượt nét</span><input type="range" id="sSmooth" min="0" max="80" value="${Math.round(S.smooth * 100)}"></div>
+<div class="set-row"><span>Làm mượt nét (chống run tay)</span><input type="range" id="sSmooth" min="0" max="80" value="${Math.round(S.smooth * 100)}"></div>
 <div class="set-row"><span>Độ mờ onion skin</span><input type="range" id="sOnion" min="5" max="70" value="${Math.round(S.onionAlpha * 100)}"></div>
 <div class="set-row"><span>Thời lượng mặc định frame mới (giây)</span><input type="number" id="sDur" min="0.02" max="10" step="0.02" value="${S.defaultDur}"></div>
 <div class="set-row"><span>Kích thước khung</span><span class="lbl">${W} × ${H}</span></div>`;
@@ -4924,7 +5272,7 @@ async function init() {
   loadSettings();
   $('#sizeIn').value = S.size; $('#sizeVal').textContent = S.size;
   $('#opIn').value = Math.round(S.opacity * 100); $('#opVal').textContent = Math.round(S.opacity * 100) + '%';
-  setColor(S.color); updateToggles(); setTool('brush'); setLayer('char');
+  setColor(S.color); renderRecentSw(); updateToggles(); setTool('brush'); setLayer('char');
   if (S.tlCollapsed) { $('#tl').classList.add('collapsed'); $('#tlCollapse').textContent = '▴ Hiện dòng frame'; }
   setUiHide('rail', S.uiHide.rail, true);
   new ResizeObserver(() => resizeView()).observe(stage);
@@ -4945,7 +5293,7 @@ async function init() {
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }
 /* ========= Installed app (PWA): offline + updates ========= */
-const APP_VERSION = '2026.11.20-1728';
+const APP_VERSION = '2026.11.20-1738';
 let swReg = null, swUpdating = false;
 (function setupPWA() {
   let top = false; try { top = window.top === window; } catch (e) {}
