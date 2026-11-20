@@ -127,6 +127,12 @@ input[type=range]{width:110px;accent-color:var(--accent);height:28px}
 #focusBar{position:absolute;right:10px;top:10px;display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:5px;box-shadow:0 6px 20px #0008;z-index:6}
 #focusBar button{border:0;background:var(--panel2);color:var(--text);border-radius:10px;min-width:44px;height:44px;font-size:16px;cursor:pointer;padding:0 10px}
 #focusBar button.on{background:var(--accent);color:var(--accent-ink)}
+#flipNav{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:flex;align-items:center;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:4px;box-shadow:0 6px 20px #0008;z-index:5;opacity:.9;touch-action:none;user-select:none;-webkit-user-select:none}
+#flipNav button{border:0;background:var(--panel2);color:var(--text);border-radius:10px;min-width:46px;height:44px;font-size:18px;cursor:pointer}
+#flipNav button:disabled{opacity:.35} #flipNav #fnAdd{background:var(--accent);color:var(--accent-ink);font-weight:700}
+#flipNav #fnLbl{min-width:54px;text-align:center;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+#flipNav.peek{border-color:var(--accent)} #flipNav.peek #fnLbl{color:var(--accent)}
+body:not([data-tool=brush]):not([data-tool=eraser]):not([data-tool=fill]):not([data-tool=lasso]):not([data-tool=pick]) #flipNav,#app.focus #flipNav,#app.playing #flipNav{display:none}
 #top .tico{font-weight:inherit}#shapeBtn,#symBtn,#clipBtn,#snapBtn{min-width:44px}
 @media (max-width:1400px){ #top .tlbl{display:none} #pressBtn{display:none} }   /* narrow bar: Lực nhấn is in the Bút ▾ menu */
 body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:not([data-tool=brush]):not([data-tool=eraser]) #symBtn{display:none}
@@ -475,6 +481,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <button id="fbShow" title="Hiện lại công cụ">☰ Công cụ</button><button id="fbUndo" title="Hoàn tác">↶</button><button id="fbRedo" title="Làm lại">↷</button>
       <button id="fbPen" title="Bút">✏️</button><button id="fbEraser" title="Tẩy">🩹</button><button id="fbPlay" title="Phát">▶</button><button id="fbPrev" title="Frame trước">◀</button><button id="fbNext" title="Frame sau">▶|</button>
     </div>
+    <div id="flipNav" title="Lật frame ngay trên khung vẽ"><button id="fnPrev" title="Frame trước (giữ để lật xem nhanh rồi thả ra quay lại)">◀</button><span id="fnLbl">1/1</span><button id="fnNext" title="Frame sau (giữ để lật xem nhanh)">▶</button><button id="fnAdd" title="Frame trống mới ngay sau, bật Onion để đồ theo frame này (giữ lâu: nhân bản frame này để sửa tiếp)">＋</button></div>
     <div id="playHint" hidden>Đang phát — chạm vào khung để dừng</div>
     <span id="zoomLbl"></span>
   </main>
@@ -633,7 +640,7 @@ function fitView(resetRot) {
 // Floating panels (Ghép, Chữ & FX, xương, chuyển động) sit over the bottom of the stage and the vector bar over the top.
 // "Vừa khung" fits the frame into the part they leave free, and while the view is still the fitted one it refits by itself
 // whenever a panel opens, closes, folds or changes height, so the character's legs are never hidden behind a panel.
-const FIT_BOTTOM = ['#ppbar', '#fxbar', '#rigbar', '#motionbar'], FIT_TOP = ['#vecbar'];
+const FIT_BOTTOM = ['#ppbar', '#fxbar', '#rigbar', '#motionbar', '#flipNav'], FIT_TOP = ['#vecbar'];
 let lastFit = null, refitT = null;
 function freeBand() {
   const sr = stage.getBoundingClientRect(); let top = 0, bot = 0;
@@ -1564,6 +1571,7 @@ function updateFrameUI() {
   const total = S.frames.reduce((a, g) => a + g.dur, 0);
   $('#totalLbl').textContent = `${S.frames.length} frame · ${(total / 1000).toFixed(1)}s`;
   $('#dockTlLbl').textContent = `Frame ${S.cur + 1}/${S.frames.length}`;
+  if (!flipPeek) { $('#fnLbl').textContent = `${S.cur + 1}/${S.frames.length}`; $('#fnPrev').disabled = S.cur === 0; $('#fnNext').disabled = S.cur === S.frames.length - 1; }
   const shared = S.frames.filter(g => g.bgId === f.bgId).length;
   $('#bgInfo').textContent = shared > 1 ? `Nền dùng chung ${shared} frame` : 'Nền riêng';
   updateWaves();
@@ -1765,7 +1773,7 @@ async function startPlay() {
   await buildPlayCache(); setSaveState();
   playing = true; playIdx = S.cur; playT0 = performance.now() - frameStartTimes()[playIdx] * 1000; playAudioFrom(playIdx);
   if (S.bgVideo && bgVid.ready) { const v = bgVid.el; try { v.currentTime = bgVideoTimeAt(playIdx); } catch (e) {} v.muted = !S.bgVideo.audio; v.volume = S.bgVideo.vol ?? 0.7; v.play().catch(() => {}); }
-  $('#playBtn span').textContent = 'Dừng'; $('#playHint').hidden = false;
+  $('#playBtn span').textContent = 'Dừng'; $('#playHint').hidden = false; $('#app').classList.add('playing');
   step();
 }
 function step() {
@@ -1782,7 +1790,7 @@ function step() {
 function stopPlay() {
   playing = false; clearTimeout(playTimer); playCanvas = null; if (bgVid.el) { bgVid.el.pause(); bgVid.el.muted = true; setTimeout(() => bgVideoSync(true), 0); } playStopAudio(); playStopAudio = () => {}; if (playAC) { try { playAC.close(); } catch (e) {} playAC = null; }
   clearTimeout(playFreeT); playFreeT = setTimeout(() => { if (!playing) freePlayCache(); }, 45000);
-  $('#playBtn span').textContent = 'Phát'; $('#playHint').hidden = true;
+  $('#playBtn span').textContent = 'Phát'; $('#playHint').hidden = true; $('#app').classList.remove('playing');
   S.frames.forEach(g => g.el && g.el.classList.remove('playing'));
   requestRender();
 }
@@ -6714,6 +6722,35 @@ $('#mselBar').addEventListener('click', e => {
   else if (k === 'del') mselDelete();
   else if (k === 'done') mselEnd();
 });
+
+/* ===== on-canvas frame flipper: ◀ n/N ▶ ＋ near the drawing; hold an arrow to peek at the neighbour frame like flipping paper ===== */
+var flipPeek = null;
+function flipHold(btn, onTap, onHold, onRelease) {
+  let t = null, held = false;
+  btn.addEventListener('pointerdown', e => { e.preventDefault(); if (btn.disabled) return; held = false; try { btn.setPointerCapture(e.pointerId); } catch (_) {} clearTimeout(t); t = setTimeout(() => { held = true; onHold(); }, 320); });
+  const up = () => { clearTimeout(t); if (held) { held = false; onRelease && onRelease(); } else if (t) onTap(); t = null; };
+  btn.addEventListener('pointerup', up); btn.addEventListener('pointercancel', () => { clearTimeout(t); t = null; if (held) { held = false; onRelease && onRelease(); } });
+  btn.addEventListener('contextmenu', e => e.preventDefault());
+}
+async function flipPeekStart(d) {
+  const j = S.cur + d; if (j < 0 || j >= S.frames.length || playing) return;
+  flipPeek = { back: S.cur }; $('#flipNav').classList.add('peek'); $('#fnLbl').textContent = `👁 ${j + 1}`;
+  await selectFrame(j);
+}
+async function flipPeekEnd() {
+  const p = flipPeek; if (!p) return; flipPeek = null; $('#flipNav').classList.remove('peek');
+  await selectFrame(p.back); updateFrameUI();
+}
+async function flipNewFrame() {
+  await addFrame();
+  if (!S.onion) { S.onion = true; updateToggles(); saveSettings(); requestRender(); toast('Đã bật Onion: thấy mờ frame trước để vẽ theo', 2500); }
+}
+flipHold($('#fnPrev'), () => { if (playing) stopPlay(); selectFrame(S.cur - 1); }, () => flipPeekStart(-1), flipPeekEnd);
+flipHold($('#fnNext'), () => { if (playing) stopPlay(); selectFrame(S.cur + 1); }, () => flipPeekStart(1), flipPeekEnd);
+{ const b = $('#fnAdd'); let t = null, long = false;
+  b.addEventListener('pointerdown', e => { e.preventDefault(); long = false; clearTimeout(t); t = setTimeout(() => { long = true; dupFrame(); toast('Đã nhân bản frame này — sửa tiếp chỗ cần cử động', 2500); }, 550); });
+  b.addEventListener('pointerup', () => { clearTimeout(t); if (!long) flipNewFrame(); });
+  b.addEventListener('pointercancel', () => clearTimeout(t)); b.addEventListener('contextmenu', e => e.preventDefault()); }
 /* ========= Beginner wizard ========= */
 async function wizard() {
   if (playing) stopPlay();
@@ -6873,7 +6910,7 @@ async function init() {
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }
 /* ========= Installed app (PWA): offline + updates ========= */
-const APP_VERSION = '2026.11.20-2224';
+const APP_VERSION = '2026.11.20-2239';
 let swReg = null, swUpdating = false;
 (function setupPWA() {
   let top = false; try { top = window.top === window; } catch (e) {}
