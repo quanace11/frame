@@ -89,6 +89,8 @@ input[type=range]{width:110px;accent-color:var(--accent);height:28px}
 #bgInfo{font-size:11px;color:var(--muted)}
 .spacer{flex:1}
 #saveState{font-size:11px;color:var(--muted);white-space:nowrap}
+.pop.bgm{width:min(360px,92vw)} .bgm-row{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:12px;color:var(--muted)} .bgm-row > button{flex:none;min-width:110px;min-height:42px}
+#projBtn{max-width:170px;overflow:hidden;text-overflow:ellipsis} #top .chip.small,#top .layer{min-height:38px} #top .layer .name,#top .layer .eye{min-height:36px}
 /* Stage */
 #stage{grid-area:stage;position:relative;overflow:hidden;touch-action:none;background:#0f1013}
 #view{position:absolute;left:0;top:0;touch-action:none;display:block}
@@ -140,7 +142,7 @@ input[type=range]{width:110px;accent-color:var(--accent);height:28px}
 @media (orientation:landscape) and (max-height:820px){
   #tl{padding:5px 8px;gap:4px} #strip{padding:2px} .fr canvas{height:62px;width:auto}
   .tool{min-height:42px;padding:2px} .tool svg{width:20px;height:20px}
-  #top{padding:4px 8px;gap:4px 10px} #ppbar,#fxbar,#rigbar,#motionbar{max-height:55%}
+  #top{padding:4px 8px;gap:4px 8px} #top input[type=range]{width:88px} #top .grp{gap:4px} #ppbar,#fxbar,#rigbar,#motionbar{max-height:55%}
 }
 @media (orientation:portrait){ #rail{gap:2px} }
 #panelPill{position:absolute;right:12px;bottom:12px;border:1px solid var(--accent);background:var(--panel);color:var(--text);border-radius:999px;padding:10px 16px;font-size:14px;box-shadow:0 6px 20px #0008;cursor:pointer;z-index:5}
@@ -295,7 +297,8 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <div class="layer" id="layerPP"><button class="name" id="ppLayerBtn" title="Nhân vật ghép từ mảnh ảnh">Ghép</button><button class="eye" data-eye="pp" title="Ẩn/hiện">👁</button></div>
       <div class="layer" id="layerVec"><button class="name" data-layer="vec" title="Lớp nét vector: chỉnh sửa được từng nét">Nét</button><button class="eye" data-eye="vec" title="Ẩn/hiện">👁</button></div>
     </div>
-    <div class="grp">
+    <button class="chip small" id="bgMenuBtn" title="Nền của frame này: nền mới, nền video, tách nền">🖼 Nền ▾</button>
+    <div id="bgHold" hidden>
       <button class="chip small" id="newBgBtn" title="Cho frame này một nền trống riêng (cảnh mới)">Nền mới</button>
       <button class="chip small" id="bgVidBtn" title="Dùng một đoạn video làm nền phía sau nhân vật">🎞 Nền video</button>
       <button class="chip small" id="splitBgBtn" title="Tách nền thành bản sao riêng để sửa mà không ảnh hưởng frame khác">Tách nền</button>
@@ -307,7 +310,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
     <span class="spacer"></span>
     <button class="chip small on" id="wizBtn" title="Trợ lý làm video từng bước">🚀 Làm nhanh</button><button class="chip small" id="assetBtn" title="Kho hình: hiệu ứng động (choáng, đánh nhau, chữ âm thanh), mắt, miệng, tay">🎨 Kho hình</button>
     <button class="chip small" id="projBtn" title="Danh sách dự án">📁 Dự án</button><span id="saveState"></span>
-    <button class="chip small hidebtn" id="topHide" title="Thu thanh này thành 1 nút nhỏ để vùng vẽ rộng hơn">▴ Thu gọn</button>
+    <button class="chip small hidebtn" id="topHide" title="Thu gọn thanh này thành 1 nút nhỏ để vùng vẽ rộng hơn" aria-label="Thu gọn thanh trên">▴</button>
   </header>
 
   <main id="stage">
@@ -4400,7 +4403,7 @@ function renderRecentSw() {
   pal.querySelectorAll('.sw').forEach(s => s.classList.toggle('on', s.dataset.c.toLowerCase() === S.color.toLowerCase()));
 }
 let popEl = null;
-function closePop() { if (!popEl) return; popEl.remove(); popEl = null; document.removeEventListener('pointerdown', popOutside, true); }
+function closePop() { if (!popEl) return; if (popEl._onClose) popEl._onClose(); popEl.remove(); popEl = null; document.removeEventListener('pointerdown', popOutside, true); }
 function popOutside(e) {
   if (!popEl || popEl.contains(e.target) || (popEl._anchor && popEl._anchor.contains(e.target))) return;
   if (e.target === view) e.stopPropagation(); // a tap on the canvas only closes the popover, it does not draw
@@ -4532,6 +4535,21 @@ function brushPop() {
   sm.addEventListener('input', () => { S.smooth = sm.value / 100; d.querySelector('.bp-smoothv').textContent = sm.value + '%'; saveSettings(); });
   sync();
 }
+// background options live in a small menu so the top bar stays short; the real buttons are moved in and back out
+function bgMenuPop() {
+  const btn = $('#bgMenuBtn');
+  if (popEl && popEl._anchor === btn) { closePop(); return; }
+  const d = openPop(btn, `<div class="cp-lbl">Nền của frame này: <b class="bgm-info"></b></div>
+    <div class="bgm-row" data-k="newBgBtn"><span>Cho frame này nền trống riêng, dùng khi sang cảnh mới</span></div>
+    <div class="bgm-row" data-k="splitBgBtn"><span>Sửa nền ở frame này mà không đổi các frame khác</span></div>
+    <div class="bgm-row" data-k="bgVidBtn"><span>Dùng một đoạn video làm nền phía sau nhân vật</span></div>`, 'bgm');
+  const hold = $('#bgHold'), info = $('#bgInfo');
+  d.querySelector('.bgm-info').textContent = info.textContent;
+  d.querySelectorAll('.bgm-row').forEach(r => r.prepend($('#' + r.dataset.k)));
+  d._onClose = () => d.querySelectorAll('.bgm-row > button').forEach(b => hold.insertBefore(b, info));
+  d.addEventListener('click', e => { if (e.target.closest('.bgm-row > button')) setTimeout(closePop, 0); });
+}
+$('#bgMenuBtn').addEventListener('click', bgMenuPop);
 $('#curColor').addEventListener('click', colorPop);
 $('#brushBtn').addEventListener('click', brushPop);
 
@@ -4573,7 +4591,7 @@ function idbOpen() {
 }
 async function idbPut(k, v) { const db = await idbOpen(); return new Promise((res, rej) => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(v, k); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error); }); }
 async function idbGet(k) { const db = await idbOpen(); return new Promise((res, rej) => { const tx = db.transaction('kv', 'readonly'); const r = tx.objectStore('kv').get(k); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
-function setSaveState(t) { $('#saveState').textContent = t || (storageOk ? 'Đã tự lưu trên máy này' : '⚠ Không tự lưu được — hãy Xuất ZIP để giữ bài'); }
+function setSaveState(t) { const el = $('#saveState'); el.textContent = t || (storageOk ? '✓ Đã lưu' : '⚠ Chưa lưu được, hãy Xuất ZIP'); el.title = storageOk ? 'Bài được tự lưu trên máy này' : 'Trình duyệt không cho lưu: hãy Xuất ZIP để giữ bài'; }
 function scheduleSave() { clearTimeout(saveT); $('#saveState').textContent = 'Chưa lưu…'; saveT = setTimeout(saveProject, 1500); }
 async function saveProject() {
   if (!storageOk) { setSaveState(); return; }
@@ -5379,7 +5397,7 @@ function drawVideoCover(ctx, v) {
   const k = Math.max(W / v.videoWidth, H / v.videoHeight), w = v.videoWidth * k, h = v.videoHeight * k;
   ctx.drawImage(v, (W - w) / 2, (H - h) / 2, w, h);
 }
-function updateBgVideoBtn() { const b = document.getElementById('bgVidBtn'); if (b) { b.classList.toggle('on', !!S.bgVideo); b.textContent = S.bgVideo ? '🎞 Nền video ✓' : '🎞 Nền video'; } }
+function updateBgVideoBtn() { const b = document.getElementById('bgVidBtn'); if (b) { b.classList.toggle('on', !!S.bgVideo); b.textContent = S.bgVideo ? '🎞 Nền video ✓' : '🎞 Nền video'; } const m = document.getElementById('bgMenuBtn'); if (m) m.textContent = S.bgVideo ? '🖼 Nền: video ▾' : '🖼 Nền ▾'; }
 async function bgVideoDialog() {
   if (!S.bgVideo) { $('#bgVidFile').click(); return; }
   const V = S.bgVideo, dur = bgVid.el && bgVid.el.duration ? bgVid.el.duration.toFixed(1) + 's' : '';
@@ -5557,7 +5575,7 @@ async function init() {
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }
 /* ========= Installed app (PWA): offline + updates ========= */
-const APP_VERSION = '2026.11.20-1749';
+const APP_VERSION = '2026.11.20-1903';
 let swReg = null, swUpdating = false;
 (function setupPWA() {
   let top = false; try { top = window.top === window; } catch (e) {}
