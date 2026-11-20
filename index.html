@@ -190,6 +190,7 @@ input[type=range]{width:110px;accent-color:var(--accent);height:28px}
 #tl{grid-area:tl;background:var(--panel);border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px;padding:8px 10px}
 #tlBar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
 #durIn{width:70px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 8px;text-align:right}
+body:not([data-tool=fill]) #gapBtn{display:none}
 #strip{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 6px;scroll-behavior:smooth;touch-action:pan-x}
 .fr{flex:none;position:relative;border:2px solid transparent;border-radius:8px;cursor:pointer;background:#fff;overflow:hidden}
 .fr canvas{display:block}
@@ -285,6 +286,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
     <div class="grp" id="palette">
       <button id="curColor" title="Bảng màu đầy đủ: chọn màu tuỳ ý, mã màu, màu vừa dùng"></button>
       <button class="chip small" id="dropBtn" hidden title="Dò màu: chạm vào bất kỳ chỗ nào trên hình để lấy đúng màu đó, rồi đổ màu (máy tính: giữ Alt + bấm)">💧 Dò màu</button>
+      <button class="chip small" id="gapBtn" title="Tự bịt khe hở nhỏ trên nét khi đổ màu, để màu không tràn ra ngoài">Bịt khe: Nhỏ</button>
     </div>
     <div class="grp">
       <div class="layer" id="layerBg"><button class="name" data-layer="bg">Nền</button><button class="eye" data-eye="bg" title="Ẩn/hiện">👁</button></div>
@@ -936,6 +938,23 @@ function lineWalls(f) {           // 1 where a line is (pixel lines of Nhân v�
   }
   return walls;
 }
+// gap closing for the fill tool: radius in px per level (Tắt / Nhỏ / Vừa / Lớn), remembered in settings
+SETTINGS_KEYS.push('fillGap'); S.fillGap = 1;
+const GAP_R = [0, 3, 6, 11], GAP_N = ['Tắt', 'Nhỏ', 'Vừa', 'Lớn'];
+function syncFillBtns() { $('#gapBtn').textContent = 'Bịt khe: ' + GAP_N[S.fillGap | 0]; $('#gapBtn').classList.toggle('on', !!S.fillGap); }
+setTimeout(syncFillBtns, 0);   // after loadSettings()
+$('#gapBtn').addEventListener('click', () => { S.fillGap = ((S.fillGap | 0) + 1) % 4; syncFillBtns(); saveSettings(); toast(S.fillGap ? `Bịt khe hở tới ~${Math.round(GAP_R[S.fillGap] * 1.6)}px khi đổ màu` : 'Tắt bịt khe: màu chỉ dừng ở nét kín', 2200); });
+// chamfer distance (in px) from every pixel to the nearest line pixel, capped at cap
+function wallDist(walls, cap) {
+  const d = new Uint16Array(W * H), C = cap * 3 + 3;
+  for (let i = 0; i < d.length; i++) d[i] = walls[i] ? 0 : C;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x; let v = d[i]; if (!v) continue;
+    if (x > 0 && d[i - 1] + 3 < v) v = d[i - 1] + 3; if (y > 0) { if (d[i - W] + 3 < v) v = d[i - W] + 3; if (x > 0 && d[i - W - 1] + 4 < v) v = d[i - W - 1] + 4; if (x < W - 1 && d[i - W + 1] + 4 < v) v = d[i - W + 1] + 4; } d[i] = v; }
+  for (let y = H - 1; y >= 0; y--) for (let x = W - 1; x >= 0; x--) { const i = y * W + x; let v = d[i]; if (!v) continue;
+    if (x < W - 1 && d[i + 1] + 3 < v) v = d[i + 1] + 3; if (y < H - 1) { if (d[i + W] + 3 < v) v = d[i + W] + 3; if (x < W - 1 && d[i + W + 1] + 4 < v) v = d[i + W + 1] + 4; if (x > 0 && d[i + W - 1] + 4 < v) v = d[i + W - 1] + 4; } d[i] = v; }
+  for (let i = 0; i < d.length; i++) d[i] = d[i] / 3;
+  return d;
+}
 /* Fill into the frame's colour layer. The area is bounded by lines only; the colour also runs under the lines up to their
    middle (split with the neighbouring area), so erasing a line later leaves the colour exactly where it was — no gap, no spreading. */
 function fillColLayer(f, p) {
@@ -943,24 +962,36 @@ function fillColLayer(f, p) {
   const x0 = Math.floor(p.x), y0 = Math.floor(p.y);
   const walls = lineWalls(f);
   if (walls[y0 * W + x0]) { toast('Chạm vào bên trong vùng, không phải lên nét'); return; }
+  // gap closing: flood inside thickened lines (small holes in the outline get sealed), then grow back up to the real lines
+  const gr = GAP_R[S.fillGap | 0] || 0, dist = gr ? wallDist(walls, gr + 1) : null;
+  let fw = walls;
+  if (gr) { fw = new Uint8Array(W * H); for (let i = 0; i < fw.length; i++) fw[i] = dist[i] <= gr ? 1 : 0; if (fw[y0 * W + x0]) fw = walls; }
   const mask = new Uint8Array(W * H);
   let minX = x0, maxX = x0, minY = y0, maxY = y0;
   const stack = [x0, y0];
   while (stack.length) {
     const sy = stack.pop(), sx = stack.pop(), row = sy * W;
-    if (mask[row + sx] || walls[row + sx]) continue;
+    if (mask[row + sx] || fw[row + sx]) continue;
     let l = sx, r = sx;
-    while (l > 0 && !mask[row + l - 1] && !walls[row + l - 1]) l--;
-    while (r < W - 1 && !mask[row + r + 1] && !walls[row + r + 1]) r++;
+    while (l > 0 && !mask[row + l - 1] && !fw[row + l - 1]) l--;
+    while (r < W - 1 && !mask[row + r + 1] && !fw[row + r + 1]) r++;
     for (let k = l; k <= r; k++) mask[row + k] = 1;
     if (l < minX) minX = l; if (r > maxX) maxX = r; if (sy < minY) minY = sy; if (sy > maxY) maxY = sy;
     for (const ny of [sy - 1, sy + 1]) {
       if (ny < 0 || ny >= H) continue;
       const nrow = ny * W; let inSeg = false;
       for (let k = l; k <= r; k++) {
-        const ok = !mask[nrow + k] && !walls[nrow + k];
+        const ok = !mask[nrow + k] && !fw[nrow + k];
         if (ok && !inSeg) { stack.push(k, ny); inSeg = true; } else if (!ok) inSeg = false;
       }
+    }
+  }
+  if (fw !== walls) {   // grow back through non-line pixels by up to gr steps (stays behind the sealed gap)
+    let cur = []; for (let y = minY; y <= maxY; y++) for (let x = minX; x <= maxX; x++) { const i = y * W + x; if (mask[i]) cur.push(i); }
+    for (let k = 0; k < gr && cur.length; k++) {
+      const nx = [];
+      for (const i of cur) { const x = i % W; for (const j of [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, i - W, i + W]) { if (j < 0 || j >= W * H || mask[j] || walls[j]) continue; mask[j] = 1; nx.push(j); const jx = j % W, jy = (j - jx) / W; if (jx < minX) minX = jx; if (jx > maxX) maxX = jx; if (jy < minY) minY = jy; if (jy > maxY) maxY = jy; } }
+      cur = nx;
     }
   }
   // run under the lines: BFS through line pixels from this area (da) and from every other area (db); keep pixels nearer to us
@@ -3985,6 +4016,7 @@ function setTool(t) {
   if (t !== 'fx') fxCamPick = false;
   updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); updBrushBtn(); requestRender();
   document.querySelectorAll('.tool[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
+  document.body.dataset.tool = t;
   $('#dropBtn').hidden = !(t === 'fill' || t === 'pick'); $('#dropBtn').classList.toggle('on', t === 'pick');
 }
 function setLayer(l) {
@@ -5293,7 +5325,7 @@ async function init() {
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }
 /* ========= Installed app (PWA): offline + updates ========= */
-const APP_VERSION = '2026.11.20-1738';
+const APP_VERSION = '2026.11.20-1822';
 let swReg = null, swUpdating = false;
 (function setupPWA() {
   let top = false; try { top = window.top === window; } catch (e) {}
