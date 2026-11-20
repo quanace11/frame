@@ -47,6 +47,14 @@ button{touch-action:manipulation}
 .lbl{color:var(--muted);font-size:12px}
 input[type=range]{width:110px;accent-color:var(--accent);height:28px}
 .val{min-width:30px;text-align:right;font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted)}
+.stp{min-width:42px;min-height:42px;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:12px;font-size:22px;font-weight:700;line-height:1;padding:0;cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.stp:active{background:var(--accent);color:var(--accent-ink)}
+#top .stpv{min-width:44px;min-height:42px;border:1px solid transparent;background:none;border-radius:10px;font-size:14px;font-weight:600;color:var(--text);text-align:center;padding:0 2px;cursor:pointer}
+#top .stpv:active{border-color:var(--accent)}
+@media (max-width:1500px){ #top input.sizeR,#top input.opR{display:none} }   /* narrow bar: − value + only; tap the value for the slider */
+.qs-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.qs-row .chip{min-width:46px;min-height:42px;justify-content:center}.qs-row .chip.on{background:var(--accent);color:var(--accent-ink)}
+.pop .stpw input[type=range]{width:220px}
+.set-row .stpw{display:flex;align-items:center;gap:6px}
 .sw{width:28px;height:28px;border-radius:50%;border:2px solid #0004;cursor:pointer;padding:0;flex:none}
 .sw.on{outline:2px solid var(--accent);outline-offset:2px}
 #curColor{position:relative;width:42px;height:42px;border-radius:10px;border:2px solid #fff3;flex:none;padding:0;cursor:pointer}
@@ -304,10 +312,10 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
 
   <header id="top">
     <div class="grp">
-      <span class="lbl">Cỡ</span><input type="range" id="sizeIn" min="1" max="150" step="1"><span class="val" id="sizeVal"></span>
+      <span class="lbl">Cỡ</span><button class="stp" data-stp="size" data-d="-1" title="Nhỏ hơn (giữ để giảm liên tục)" aria-label="Giảm cỡ">−</button><input type="range" id="sizeIn" class="sizeR" min="0" max="1000" step="1" title="Cỡ nét: kéo sang trái để chỉnh nét nhỏ thật mịn"><button class="stp" data-stp="size" data-d="1" title="To hơn (giữ để tăng liên tục)" aria-label="Tăng cỡ">+</button><button class="val sizeV stpv" id="sizeVal" data-pop="size" title="Bấm để chọn nhanh cỡ nét"></button>
     </div>
     <div class="grp">
-      <span class="lbl">Độ đậm</span><input type="range" id="opIn" min="5" max="100" step="1"><span class="val" id="opVal"></span>
+      <span class="lbl" title="Độ đậm của loại bút / kiểu tẩy đang chọn. Mỗi loại bút nhớ độ đậm riêng">Độ đậm</span><button class="stp" data-stp="op" data-d="-1" title="Nhạt hơn 5%" aria-label="Giảm độ đậm">−</button><input type="range" id="opIn" class="opR" min="5" max="100" step="1"><button class="stp" data-stp="op" data-d="1" title="Đậm hơn 5%" aria-label="Tăng độ đậm">+</button><button class="val opV stpv" id="opVal" data-pop="op" title="Bấm để chọn nhanh độ đậm"></button>
     </div>
     <button class="chip small" id="brushBtn" title="Chọn loại bút, kiểu tẩy, độ chống run tay"><span id="brushName">Bút tròn</span> ▾</button>
     <button class="chip small" id="shapeBtn" title="Vẽ hình nhanh: đường thẳng, chữ nhật, hình tròn. Mẹo: vẽ tự do rồi giữ yên bút một chút cũng tự thành đường thẳng / hình tròn">✏ Tự do</button>
@@ -551,7 +559,7 @@ let W = 1080, H = 1920;
 const PALETTE = ['#111111','#ffffff','#e53935','#fb8c00','#fdd835','#43a047','#1e88e5','#8e24aa','#f6c7a8','#8d6e63','#9e9e9e','#00acc1'];
 const S = {
   frames: [], bgs: [], cur: 0, layer: 'char', tool: 'brush',
-  color: '#111111', size: 8, opacity: 1, pressure: true, brush: 'pen', eraserType: 'hard', recentColors: [],
+  color: '#111111', size: 8, opacity: 1, pressure: true, brush: 'pen', eraserType: 'hard', recentColors: [], brushOp: {},
   onion: true, onionAlpha: 0.3, showBg: true, showChar: true, showCol: true, showVec: true, showPP: true, bendR: 160, mbendR: 0, vdm: 'point', snap: false, snapR: 24,
   fingerDraw: false, smooth: 0.3, defaultDur: 0.1, loop: true, fillTol: 120,
   uiHide: { rail: false, top: false, tl: false }
@@ -575,7 +583,7 @@ let toastT;
 function toast(msg, ms = 1800) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
 
 /* ========= Settings ========= */
-const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','uiHide','panelHidden','brush','eraserType','recentColors'];
+const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','uiHide','panelHidden','brush','eraserType','recentColors','brushOp'];
 function loadSettings() { try { const o = JSON.parse(localStorage.getItem('fs-settings') || '{}'); for (const k of SETTINGS_KEYS) if (k in o) { if (k === 'panelHidden') Object.assign(panelHidden, o[k]); else S[k] = o[k]; } } catch (e) {}
   S.uiHide = Object.assign({ rail: false, top: false, tl: false }, S.uiHide); }
 function saveSettings() { try { const o = {}; for (const k of SETTINGS_KEYS) o[k] = S[k]; localStorage.setItem('fs-settings', JSON.stringify(o)); } catch (e) {} }
@@ -840,7 +848,7 @@ function cycleSafe() {
 
 /* ========= Strokes ========= */
 // Brush types. kind: line = round tip drawn as a dense polyline, nib = flat slanted calligraphy nib, dab = stamped soft dabs.
-// sizeK: size multiplier; press:false = width ignores pressure; pexp/pmin: pressure curve; alpha: whole-stroke opacity;
+// sizeK: size multiplier; press:false = width ignores pressure; pexp/pmin: pressure curve; alpha: default 'Độ đậm' (whole-stroke opacity);
 // grain: paper texture mask; speed: fast strokes get thinner; taper: thin start; flow/spacing/jitter: dab settings.
 const BRUSHES = {
   pen:    { name: 'Bút tròn', tip: 'Nét tròn, mượt, to nhỏ theo lực nhấn. Dùng cho hầu hết mọi việc.', kind: 'line', pexp: 0.85 },
@@ -850,14 +858,62 @@ const BRUSHES = {
   callig: { name: 'Thư pháp', tip: 'Ngòi dẹt nghiêng: kéo chéo thì mảnh, kéo ngang hay dọc thì đậm.', kind: 'nib', sizeK: 1.3, pexp: 0.7 },
   crayon: { name: 'Sáp màu', tip: 'Nét sần như bút sáp, phấn.', kind: 'line', sizeK: 1.2, pexp: 0.6, grain: 'coarse' },
   soft:   { name: 'Cọ mềm', tip: 'Cọ viền mềm, ấn mạnh thì to và đậm hơn. Hợp để tô má hồng, bóng mờ.', kind: 'dab', dab: 'round', sizeK: 1.5, pexp: 0.8, flow: 0.35, spacing: 0.06, pflow: true },
-  air:    { name: 'Bút phun', tip: 'Phun sương mờ, giữ lâu càng đậm. Hợp để tô ánh sáng, khói.', kind: 'dab', dab: 'soft', sizeK: 2.4, press: false, flow: 0.07, spacing: 0.07, pflow: true },
-  water:  { name: 'Màu nước', tip: 'Loang nhẹ, viền đậm hơn giữa, có vân giấy.', kind: 'dab', dab: 'wet', sizeK: 1.8, pexp: 0.6, flow: 0.13, spacing: 0.07, jitter: 0.12, grain: 'paper', alpha: 0.85 }
+  air:    { name: 'Bút phun', tip: 'Phun sương mờ, giữ lâu càng đậm. Hợp để tô ánh sáng, khói.', kind: 'dab', dab: 'soft', sizeK: 2.4, press: false, flow: 0.07, spacing: 0.07, pflow: true, op0: 0.3 },
+  water:  { name: 'Màu nước', tip: 'Loang nhẹ, viền đậm hơn giữa, có vân giấy.', kind: 'dab', dab: 'wet', sizeK: 1.8, pexp: 0.6, flow: 0.13, spacing: 0.07, jitter: 0.12, grain: 'paper', op0: 0.6 }
 };
 const ERASERS = {
   hard: { name: 'Tẩy cứng', base: 'pen', tip: 'Xoá sạch, viền gọn.' },
   soft: { name: 'Tẩy mềm', base: 'soft', tip: 'Xoá viền mềm, ấn nhẹ thì xoá nhạt.' },
   air:  { name: 'Tẩy nhẹ', base: 'air', tip: 'Làm mờ dần từng chút, như phun tẩy.' }
 };
+// "Độ đậm": every brush and eraser type remembers its own value (S.brushOp), starting from the brush's own default.
+// The slider value IS the stroke opacity, so 100% always means fully dark (marker, airbrush included).
+// Dab brushes (soft, air, water; op0 = default): below op0 the whole stroke gets lighter, above it the dabs build up faster
+// so 100% can reach full darkness. At op0 they look exactly as designed.
+function opKey() { return S.tool === 'eraser' ? 'e:' + (ERASERS[S.eraserType] ? S.eraserType : 'hard') : (BRUSHES[S.brush] ? S.brush : 'pen'); }
+function opDefault(k) { return k.startsWith('e:') ? 1 : (BRUSHES[k].op0 || BRUSHES[k].alpha || 1); }
+function curOp() { const k = opKey(), v = (S.brushOp || {})[k]; return clamp(v != null ? v : opDefault(k), 0.05, 1); }
+function setOp(v) { S.brushOp = S.brushOp || {}; S.brushOp[opKey()] = clamp(Math.round(v * 100) / 100, 0.05, 1); syncSizeOp(); saveSettings(); }
+const SIZE_MAX = 150;   // the size slider is not linear: the left half covers 1–38 so thin lines are easy to set
+const sizeToPos = s => Math.round(Math.sqrt((clamp(s, 1, SIZE_MAX) - 1) / (SIZE_MAX - 1)) * 1000);
+const posToSize = v => Math.max(1, Math.round(1 + (SIZE_MAX - 1) * Math.pow(v / 1000, 2)));
+function sizeStep(s, d) { const k = d > 0 ? s : s - 1, st = k < 10 ? 1 : k < 30 ? 2 : k < 60 ? 5 : 10; return clamp(d > 0 ? Math.floor(s / st) * st + st : Math.ceil(s / st) * st - st, 1, SIZE_MAX); }
+function setSize(v) { S.size = clamp(Math.round(v), 1, SIZE_MAX); syncSizeOp(); saveSettings(); }
+// refresh every size / opacity control (top bar + Bút ▾ menu)
+function syncSizeOp() {
+  const op = Math.round(curOp() * 100);
+  document.querySelectorAll('input.sizeR').forEach(e => { e.value = sizeToPos(S.size); });
+  document.querySelectorAll('.sizeV').forEach(e => { e.textContent = S.size; });
+  document.querySelectorAll('input.opR').forEach(e => { e.value = op; });
+  document.querySelectorAll('.opV').forEach(e => { e.textContent = op + '%'; });
+}
+// wire the − / + buttons and sliders inside root; holding a button keeps stepping
+function wireSizeOp(root) {
+  root.querySelectorAll('input.sizeR').forEach(e => e.addEventListener('input', () => setSize(posToSize(+e.value))));
+  root.querySelectorAll('input.opR').forEach(e => e.addEventListener('input', () => setOp(e.value / 100)));
+  root.querySelectorAll('.stp').forEach(b => {
+    const d = +b.dataset.d, step = () => b.dataset.stp === 'size' ? setSize(sizeStep(S.size, d)) : setOp(Math.round(curOp() * 20 + d) / 20);
+    let t1 = 0, t2 = 0; const stop = () => { clearTimeout(t1); clearInterval(t2); };
+    b.addEventListener('pointerdown', e => { e.preventDefault(); stop(); step(); t1 = setTimeout(() => { t2 = setInterval(step, 90); }, 420); });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(n => b.addEventListener(n, stop));
+    b.addEventListener('click', e => { if (e.detail === 0) step(); });   // keyboard
+    b.addEventListener('contextmenu', e => e.preventDefault());
+  });
+}
+// tap the number in the top bar: a big slider + quick presets
+function sizeOpPop(btn) {
+  if (popEl && popEl._anchor === btn) { closePop(); return; }
+  const isS = btn.dataset.pop === 'size', k = isS ? 'size' : 'op';
+  const pre = isS ? [1, 2, 3, 5, 8, 12, 20, 35, 60, 100, 150] : [10, 20, 30, 50, 70, 85, 100];
+  const d = openPop(btn, `<div class="cp-lbl">${isS ? 'Cỡ nét' : 'Độ đậm <small>(' + (S.tool === 'eraser' ? (ERASERS[S.eraserType] || ERASERS.hard).name : (BRUSHES[S.brush] || BRUSHES.pen).name).toLowerCase() + ')</small>'}</div>
+    <div class="stpw" style="display:flex;align-items:center;gap:6px"><button class="stp" data-stp="${k}" data-d="-1" aria-label="Giảm">−</button>${isS ? '<input type="range" class="sizeR" min="0" max="1000" step="1">' : '<input type="range" class="opR" min="5" max="100" step="1">'}<button class="stp" data-stp="${k}" data-d="1" aria-label="Tăng">+</button><span class="val ${isS ? 'sizeV' : 'opV'}" style="min-width:40px"></span></div>
+    <div class="qs-row">${pre.map(v => `<button class="chip small" data-qv="${v}">${v}${isS ? '' : '%'}</button>`).join('')}</div>`);
+  const mark = () => d.querySelectorAll('[data-qv]').forEach(b => b.classList.toggle('on', +b.dataset.qv === (isS ? S.size : Math.round(curOp() * 100))));
+  wireSizeOp(d);
+  d.querySelectorAll('[data-qv]').forEach(b => b.addEventListener('click', () => { isS ? setSize(+b.dataset.qv) : setOp(b.dataset.qv / 100); mark(); }));
+  d.addEventListener('input', mark); d.addEventListener('pointerup', () => setTimeout(mark, 0));
+  syncSizeOp(); mark();
+}
 function brushOf(tool) { return tool === 'eraser' ? BRUSHES[(ERASERS[S.eraserType] || ERASERS.hard).base] : (BRUSHES[S.brush] || BRUSHES.pen); }
 function hexA(hex, a) { const [r, g, b] = hexToRgb(hex); return `rgba(${r},${g},${b},${a})`; }
 function dabCanvas(kind, col) {
@@ -909,7 +965,7 @@ function makeBrushEngine(ctx, o) {
     if (B.taper) w *= Math.min(1, 0.25 + p.d / (o.size * 2.5 + 10));
     return Math.max(0.5, w);
   }
-  const flowOf = p => B.flow * (B.pflow && o.pressure ? 0.25 + 0.75 * clamp(p.p, 0, 1) : 1);
+  const flowOf = p => Math.min(1, B.flow * (o.flowK || 1) * (B.pflow && o.pressure ? 0.25 + 0.75 * clamp(p.p, 0, 1) : 1));
   const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, w: (a.w + b.w) / 2, a: (a.a + b.a) / 2 });
   function stamp(x, y, w, a) {
     const r = w / 2 * (B.jitter ? 1 + B.jitter * (Math.random() * 2 - 1) : 1);
@@ -989,7 +1045,7 @@ function growDirty(x, y, r) {
 // symmetry: a second brush engine draws the mirrored stroke into the same layer
 const symPt = p => S.sym === 2 ? { ...p, y: H - p.y } : S.sym === 3 ? { ...p, x: W - p.x, y: H - p.y } : { ...p, x: W - p.x };
 function strokeEngines() {
-  const st = stroke, o = { brush: st.B, color: S.color, size: S.size, pressure: S.pressure, smooth: st.shape ? 0 : S.smooth, erase: st.erase, dirty: growDirty };
+  const st = stroke, o = { brush: st.B, color: S.color, size: S.size, pressure: S.pressure, flowK: st.B.kind === 'dab' && !st.erase ? Math.max(1, curOp() / (st.B.op0 || 1)) : 1, smooth: st.shape ? 0 : S.smooth, erase: st.erase, dirty: growDirty };
   st.eng = makeBrushEngine(sctx, o); st.eng2 = S.sym ? makeBrushEngine(sctx, o) : null;
 }
 function strokeFeed(p, t) { stroke.eng.add(p, t); if (stroke.eng2) stroke.eng2.add(symPt(p), t); }
@@ -999,7 +1055,7 @@ function strokeBegin(p, t) {
   const isCol = S.layer === 'col' && o.kind === 'char';
   t = t != null ? t : performance.now();
   stroke = { t: targetOf(o), o, cv: isCol ? colOf(o, true) : o.canvas, col: isCol, erase, B, pred: null,
-    bbox: [Infinity, Infinity, -Infinity, -Infinity], dirty: [0, 0, W, H], full: true, opacity: erase ? 1 : S.opacity * (B.alpha || 1),
+    bbox: [Infinity, Infinity, -Infinity, -Infinity], dirty: [0, 0, W, H], full: true, opacity: erase || B.kind !== 'dab' ? curOp() : Math.min(1, curOp() / (B.op0 || 1)),
     raw: [{ ...p, t }], shape: !erase && S.shapeMode ? S.shapeMode : null, hold: { x: p.x, y: p.y }, clip: !erase && !!S.clipIn };
   sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.globalCompositeOperation = 'source-over'; sctx.globalAlpha = 1; sctx.clearRect(0, 0, W, H);
   strokeEngines(); strokeFeed(p, t);
@@ -1067,7 +1123,7 @@ function quickShape(st) {
 function drawStrokePred(c) {
   const st = stroke; if (!st || !st.pred || !st.pred.length || st.erase || st.shape || st.eng2 || st.clip) return;
   const B = st.B, pts = st.eng.E.pts, n = pts.length;
-  if (B.kind !== 'line' || B.grain || (B.alpha || 1) < 1 || S.smooth > 0.35 || n < 2) return;
+  if (B.kind !== 'line' || B.grain || st.opacity < 1 || S.smooth > 0.35 || n < 2) return;
   const a = pts[n - 2], b = pts[n - 1];
   c.save(); c.globalAlpha = st.opacity; c.strokeStyle = S.color; c.lineCap = 'round'; c.lineJoin = 'round'; c.lineWidth = b.w;
   c.beginPath(); c.moveTo((a.x + b.x) / 2, (a.y + b.y) / 2); c.lineTo(b.x, b.y); for (const q of st.pred) c.lineTo(q.x, q.y); c.stroke(); c.restore();
@@ -1093,7 +1149,7 @@ function buildWork() {
   wctx.save(); wctx.beginPath(); wctx.rect(x, y, w, h); wctx.clip();
   wctx.globalCompositeOperation = 'source-over'; wctx.globalAlpha = 1; wctx.clearRect(x, y, w, h);
   wctx.drawImage(cv, 0, 0);
-  if (stroke.erase) { wctx.globalCompositeOperation = 'destination-out'; wctx.drawImage(L, 0, 0); }
+  if (stroke.erase) { wctx.globalCompositeOperation = 'destination-out'; wctx.globalAlpha = stroke.opacity; wctx.drawImage(L, 0, 0); }
   else { if (stroke.clip) wctx.globalCompositeOperation = 'source-atop'; wctx.globalAlpha = stroke.opacity; wctx.drawImage(L, 0, 0); }
   wctx.restore();
 }
@@ -1112,7 +1168,7 @@ function strokeEnd() {
     const lc = stroke.cv.getContext('2d'), L = strokeLayer(rect);
     const before = lc.getImageData(...rect);
     lc.save(); lc.beginPath(); lc.rect(...rect); lc.clip();
-    lc.globalCompositeOperation = stroke.erase ? 'destination-out' : stroke.clip ? 'source-atop' : 'source-over'; lc.globalAlpha = stroke.erase ? 1 : stroke.opacity;
+    lc.globalCompositeOperation = stroke.erase ? 'destination-out' : stroke.clip ? 'source-atop' : 'source-over'; lc.globalAlpha = stroke.opacity;
     lc.drawImage(L, 0, 0); lc.restore();
     const after = lc.getImageData(...rect);
     pushEntry(pixEntry(o, rect, before, after, stroke.col)); if (stroke.col) o.colVer++;
@@ -5334,7 +5390,7 @@ function setTool(t) {
   if (t !== 'puppet') { ppSetup = null; ppCutMode = false; ppPatchMode = false; ppPaint = null; }
   $('#layerPP').classList.toggle('on', t === 'puppet');
   if (t !== 'fx') { fxCamPick = false; ballMode = null; gagMode = null; ballSyncBar(); }
-  updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); updBrushBtn(); requestRender();
+  updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); updBrushBtn(); syncSizeOp(); requestRender();
   document.querySelectorAll('.tool[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
   document.body.dataset.tool = t;
   $('#dropBtn').hidden = !(t === 'fill' || t === 'pick'); $('#dropBtn').classList.toggle('on', t === 'pick');
@@ -5363,8 +5419,7 @@ document.querySelectorAll('[data-eye]').forEach(b => b.addEventListener('click',
   const k = b.dataset.eye; if (k === 'bg') S.showBg = !S.showBg; else if (k === 'vec') S.showVec = !S.showVec; else if (k === 'pp') S.showPP = !S.showPP; else if (k === 'col') { S.showCol = !S.showCol; } else S.showChar = !S.showChar; updateToggles(); requestRender();
 }));
 PALETTE.forEach(c => { const s = document.createElement('button'); s.className = 'sw'; s.style.background = c; s.dataset.c = c; s.title = c; s.addEventListener('click', () => setColor(c)); $('#palette').append(s); });
-$('#sizeIn').addEventListener('input', e => { S.size = +e.target.value; $('#sizeVal').textContent = S.size; saveSettings(); });
-$('#opIn').addEventListener('input', e => { S.opacity = e.target.value / 100; $('#opVal').textContent = e.target.value + '%'; saveSettings(); });
+wireSizeOp($('#top')); document.querySelectorAll('#top .stpv').forEach(b => b.addEventListener('click', () => sizeOpPop(b)));
 $('#pressBtn').addEventListener('click', () => { S.pressure = !S.pressure; updateToggles(); saveSettings(); });
 $('#snapBtn').addEventListener('click', () => { S.snap = !S.snap; snapField = null; updateToggles(); saveSettings(); toast(S.snap ? `Hút nét: BẬT (bán kính ${S.snapR}px — chỉnh trong Menu)` : 'Hút nét: TẮT'); });
 let onionLP = null, onionLPFired = false;
@@ -5610,7 +5665,8 @@ function brushPop() {
     <div class="cp-lbl">Kiểu tẩy</div>
     <div class="br-grid">${Object.entries(ERASERS).map(([k, o]) => card(k, o, 'e')).join('')}</div>
     <div class="br-tip"></div>
-    <div class="set-row"><span>Cỡ nét</span><input type="range" class="bp-size" min="1" max="150" step="1"><span class="val bp-sizev"></span></div>
+    <div class="set-row"><span>Cỡ nét</span><span class="stpw"><button class="stp" data-stp="size" data-d="-1" aria-label="Giảm cỡ">−</button><input type="range" class="sizeR" min="0" max="1000" step="1"><button class="stp" data-stp="size" data-d="1" aria-label="Tăng cỡ">+</button><span class="val sizeV"></span></span></div>
+    <div class="set-row"><span title="Mỗi loại bút / kiểu tẩy nhớ độ đậm riêng. Với tẩy: độ đậm thấp thì xoá nhạt">Độ đậm <small class="bp-opfor"></small></span><span class="stpw"><button class="stp" data-stp="op" data-d="-1" aria-label="Giảm độ đậm">−</button><input type="range" class="opR" min="5" max="100" step="1"><button class="stp" data-stp="op" data-d="1" aria-label="Tăng độ đậm">+</button><span class="val opV"></span></span></div>
     <div class="set-row"><span title="Kéo lên cao để nét thẳng và mượt hơn khi tay run (nét đi chậm hơn bút một chút)">Chống run tay</span><input type="range" class="bp-smooth" min="0" max="90" step="1"><span class="val bp-smoothv"></span></div>
     <label class="set-row"><span title="Nét to nhỏ theo lực nhấn bút">Nét theo lực nhấn bút</span><input type="checkbox" class="bp-press"></label>`, 'wide');
   const tip = d.querySelector('.br-tip');
@@ -5619,16 +5675,15 @@ function brushPop() {
     d.querySelectorAll('[data-b]').forEach(b => b.classList.toggle('on', !isE && b.dataset.b === S.brush));
     d.querySelectorAll('[data-e]').forEach(b => b.classList.toggle('on', isE && b.dataset.e === S.eraserType));
     tip.textContent = isE ? (ERASERS[S.eraserType] || ERASERS.hard).tip : (BRUSHES[S.brush] || BRUSHES.pen).tip;
-    updBrushBtn();
+    d.querySelector('.bp-opfor').textContent = '(' + (isE ? (ERASERS[S.eraserType] || ERASERS.hard).name : (BRUSHES[S.brush] || BRUSHES.pen).name).toLowerCase() + ')';
+    updBrushBtn(); syncSizeOp();
   }
   d.querySelectorAll('[data-b]').forEach(b => { brushPreview(b.querySelector('canvas'), BRUSHES[b.dataset.b], false);
     b.addEventListener('click', () => { S.brush = b.dataset.b; saveSettings(); if (S.tool !== 'brush') setTool('brush'); sync(); }); });
   d.querySelectorAll('[data-e]').forEach(b => { brushPreview(b.querySelector('canvas'), BRUSHES[ERASERS[b.dataset.e].base], true);
     b.addEventListener('click', () => { S.eraserType = b.dataset.e; saveSettings(); if (S.tool !== 'eraser') setTool('eraser'); sync(); }); });
-  const sz = d.querySelector('.bp-size'), sm = d.querySelector('.bp-smooth');
-  sz.value = S.size; d.querySelector('.bp-sizev').textContent = S.size;
+  const sm = d.querySelector('.bp-smooth'); wireSizeOp(d);
   sm.value = Math.round(S.smooth * 100); d.querySelector('.bp-smoothv').textContent = sm.value + '%';
-  sz.addEventListener('input', () => { S.size = +sz.value; d.querySelector('.bp-sizev').textContent = S.size; $('#sizeIn').value = S.size; $('#sizeVal').textContent = S.size; saveSettings(); });
   sm.addEventListener('input', () => { S.smooth = sm.value / 100; d.querySelector('.bp-smoothv').textContent = sm.value + '%'; saveSettings(); });
   const pr = d.querySelector('.bp-press'); pr.checked = !!S.pressure;
   pr.addEventListener('change', () => { S.pressure = pr.checked; updateToggles(); saveSettings(); });
@@ -7350,8 +7405,10 @@ $('#menuBtn').addEventListener('click', () => {
 async function init() {
   loadSettings();
   S.ballOpt = { obj: 'ball', n: 8, ease: 'even', size: 1, hit: true, trail: true, sound: true, ...(S.ballOpt || {}) }; ballWire(); ballSyncBar();
-  $('#sizeIn').value = S.size; $('#sizeVal').textContent = S.size;
-  $('#opIn').value = Math.round(S.opacity * 100); $('#opVal').textContent = Math.round(S.opacity * 100) + '%';
+  S.size = clamp(Math.round(S.size) || 8, 1, SIZE_MAX);
+  if (!S.brushOp || typeof S.brushOp !== 'object') S.brushOp = {};
+  if (S.opacity < 1 && !Object.keys(S.brushOp).length) S.brushOp[BRUSHES[S.brush] ? S.brush : 'pen'] = S.opacity;   // old single setting
+  syncSizeOp();
   setColor(S.color); renderRecentSw(); updateToggles(); setTool('brush'); setLayer('char');
   if (S.tlCollapsed) { $('#tl').classList.add('collapsed'); $('#tlCollapse').textContent = '▴ Hiện dòng frame'; }
   setUiHide('rail', S.uiHide.rail, true);
@@ -7373,7 +7430,7 @@ async function init() {
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }
 /* ========= Installed app (PWA): offline + updates ========= */
-const APP_VERSION = '2026.11.20-2326';
+const APP_VERSION = '2026.11.20-2339';
 let swReg = null, swUpdating = false;
 (function setupPWA() {
   let top = false; try { top = window.top === window; } catch (e) {}

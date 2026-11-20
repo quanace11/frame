@@ -46,6 +46,7 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
   - Objects (frames, nền, lazy load)
   - **View**: `vs`/`vtx`/`vty`/`vr`, `viewMat()`, `scrToDoc()`, `fitView()`, `rotateView90()`
   - Render, Strokes, Fill, Lasso/floating (`floatFromImage`), Undo, Timeline, Playback
+  - **Cỡ / Độ đậm** (trong Strokes): `setSize`/`setOp`/`syncSizeOp`/`wireSizeOp` (nút − + giữ để lặp, bấm số = `sizeOpPop`). Thanh cỡ không tuyến tính (`sizeToPos`/`posToSize`). Độ đậm lưu riêng cho mỗi bút/kiểu tẩy trong `S.brushOp` (`curOp()`), mặc định = `B.op0`/`B.alpha`; bút dab vượt `op0` thì tăng flow (`flowK`). Tẩy cũng dùng độ đậm (xoá nhạt).
 - **Nét vector**
   - Vector line layer: `vecStart`/`vecMove`/`vecEnd`. Chế độ kéo chấm `S.vdm` gồm `point` / `soft` / `move`.
   - Motion generator; Rig xương + biểu cảm; Gap filling (diffusion + MI-GAN)
