@@ -243,6 +243,20 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
   input[type=range]{width:80px}
   .tool{width:50px;min-height:48px;font-size:10px}
 }
+/* Landscape tablet: the 9:16 canvas is limited by HEIGHT, so give height back to it — the tool rail runs the full height
+   (2 columns when short, so Menu is never cut off) and the frame bar keeps its buttons on one scrolling row. */
+@media (orientation:landscape){
+  #app{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"rail top" "rail stage" "rail tl"}
+  #tl,#top,#tlBar{min-width:0}
+}
+@media (orientation:landscape) and (max-height:900px){
+  #rail{display:grid;width:118px;grid-template-columns:repeat(2,52px);grid-auto-rows:min-content;align-content:start;gap:3px;padding:6px 5px}
+  #rail .tool{width:52px} #rail .rail-sep{grid-column:1/-1}
+  #tlBar{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;padding-bottom:1px;-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent)} #tlBar::-webkit-scrollbar{display:none}
+  #tlBar > *{flex:none}
+  #strip{align-items:flex-start} #strip .addfr{height:66px!important}
+}
+[data-gag].active{outline:3px solid var(--accent);background:var(--panel2)}
 </style>
 </head>
 <body>
@@ -453,7 +467,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
     </div>
     <div id="fxbar" hidden>
       <div class="mrow"><b>✨ Chữ, camera & âm thanh</b><span class="lbl">(cho frame đang xem)</span><span style="flex:1"></span><button class="chip small on" id="fxExport2">🎬 Xuất video</button><button class="chip small" id="fxMini">▾ Thu gọn</button><button class="chip small pclose" data-close="fx" title="Đóng bảng (công cụ vẫn bật)">✕</button></div>
-      <div class="mrow tabs" data-tabs="fx"><button class="tabb" data-t="text">🔤 Chữ</button><button class="tabb" data-t="cam">🎥 Camera</button><button class="tabb" data-t="audio">🎵 Âm thanh</button></div>
+      <div class="mrow tabs" data-tabs="fx"><button class="tabb" data-t="text">🔤 Chữ</button><button class="tabb" data-t="cam">🎥 Camera</button><button class="tabb" data-t="audio">🎵 Âm thanh</button><button class="tabb" data-t="gag">⚽ Bóng & combo</button></div>
       <div class="mrow" data-tab="text"><span class="lbl"><b>Chữ:</b></span><button class="chip small on" id="fxAddTxt">＋ Thêm chữ</button><button class="chip small" id="fxQuickSub" title="Dán lời thoại, app tự chia thành phụ đề và đặt theo giọng nói (hoặc chia đều)">📝 Phụ đề nhanh</button>
         <button class="chip small" data-fxs="comic">Truyện tranh</button><button class="chip small" data-fxs="bubble">Bóng thoại</button><button class="chip small" data-fxs="shout">Hét to 💥</button><button class="chip small" data-fxs="caption">Phụ đề</button>
         <button class="chip small" id="fxEditTxt">✎ Sửa</button><span class="lbl">Cỡ</span><input type="range" id="fxSize" min="30" max="300"><span class="lbl">Xoay</span><input type="range" id="fxRot" min="-45" max="45">
@@ -463,6 +477,12 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <div class="mrow" data-tab="cam"><span class="lbl"><b>Camera:</b> Zoom</span><input type="range" id="fxZoom" min="100" max="300"><span class="val" id="fxZoomVal"></span>
         <button class="chip small" id="fxPick" title="Chạm lên khung để chọn chỗ camera nhìn vào">📍 Chạm đặt tâm</button><button class="chip small" id="fxCamKey" title="Camera key: app tự lia/zoom mượt giữa các camera key">🎥 Camera key</button>
         <span class="lbl">Rung</span><input type="range" id="fxShake" min="0" max="60"><button class="chip small" id="fxFlash" title="Chớp trắng ở frame này">⚡ Chớp sáng</button></div>
+      <div class="mrow" data-tab="gag"><span class="lbl"><b>⚽ Đường bay:</b></span><button class="chip small on" id="ballGo" title="Kéo 1 ngón/bút trên khung để vẽ đường bay; bóng tự bay theo đường đó qua các frame tiếp theo">✏️ Vẽ đường bay</button>
+        <button class="chip small" data-bobj="ball">⚽ Bóng</button><button class="chip small" data-bobj="boot">👟 Giày</button>
+        <span class="lbl">Số frame</span><input type="number" id="ballN" min="2" max="60" value="8" style="width:56px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">Cỡ</span><input type="range" id="ballSize" min="0.5" max="2.5" step="0.05" style="width:90px">
+        <button class="chip small" data-bease="even" title="Bay đều">Đều</button><button class="chip small" data-bease="fast" title="Càng bay càng nhanh (cú sút mạnh dần, rơi xuống)">Nhanh dần</button><button class="chip small" data-bease="slow" title="Sút mạnh rồi chậm lại (bóng lăn)">Chậm dần</button>
+        <button class="chip small" id="ballHit" title="Frame cuối: bóng bẹp lại + tia va chạm">💥 Đập cuối</button><button class="chip small" id="ballTrail" title="Vệt gió phía sau bóng">〰 Vệt bay</button><button class="chip small" id="ballSnd" title="Tiếng sút, vút, cốp">🔊 Tiếng</button></div>
+      <div class="mrow" data-tab="gag"><span class="lbl"><b>⚡ Combo hài 1 chạm</b> (chọn rồi chạm lên khung):</span><button class="chip small" data-gag="shock" title="Zoom sát mặt + chớp + rung + sóng sốc + !!">😱 Sốc</button><button class="chip small" data-gag="ballface" title="Bóng bay vào mặt, đập bẹp, chữ BONK, sao quay vòng">🤕 Bóng vào mặt</button><button class="chip small" data-gag="goal" title="Còi + khán giả hò reo + chữ VÀOOO! + pháo giấy + zoom vào cầu thủ">🥅 VÀO!</button><button class="chip small" data-gag="dizzy" title="Sao quay vòng trên đầu + tiếng choáng, chim kêu">💫 Choáng</button><button class="chip small" data-gag="angry" title="Bốc khói trên đầu + GRRR! + rung + zoom chậm vào mặt">😡 Tức điên</button></div>
       <div class="mrow" data-tab="audio"><span class="lbl"><b>Nhạc nền:</b></span><span class="lbl" id="fxMusicName"></span><button class="chip small" id="fxMusicPick">Chọn file</button><button class="chip small" id="fxMusicDel">✕</button><span class="lbl">Âm lượng</span><input type="range" id="fxMusicVol" min="0" max="100"></div>
       <div class="mrow" data-tab="audio"><span class="lbl"><b>Lồng tiếng:</b></span><span class="lbl" id="fxVoiceName"></span><button class="chip small" id="fxVoicePick" title="Giọng bắt đầu từ frame đang xem">Chọn file (bắt đầu ở frame này)</button><button class="chip small" id="fxVoiceDel">✕</button><button class="chip small on" id="fxLip" title="Tự nhép miệng nhân vật ghép theo âm lượng giọng">🗣 Tự nhép miệng theo giọng</button></div>
       <div class="mrow" data-tab="audio"><span class="lbl"><b>Âm thanh hiệu ứng</b> (chạm để nghe & gắn vào frame này):</span><span id="fxSfx" class="mrow"></span></div>
@@ -766,6 +786,7 @@ function render() {
     c.beginPath(); c.arc(q.x, q.y, 9 * px, 0, Math.PI * 2); c.fill(); c.stroke();
     c.beginPath(); c.moveTo(q.x - 16 * px, q.y); c.lineTo(q.x + 16 * px, q.y); c.moveTo(q.x, q.y - 16 * px); c.lineTo(q.x, q.y + 16 * px); c.stroke(); c.restore();
   }
+  if (ballMode) renderBallPath(c, px);
   if (lasso && lasso.length > 1) {
     c.lineWidth = 2 * px; c.setLineDash([8 * px, 6 * px]);
     c.beginPath(); c.moveTo(lasso[0].x, lasso[0].y); for (const p of lasso) c.lineTo(p.x, p.y); c.closePath();
@@ -1397,8 +1418,8 @@ function liftSelection(poly) {
   }
   showSelbar(); requestRender();
 }
-function floatFromImage(bmp) {
-  if (S.layer === 'vec' || S.layer === 'col') setLayer('char');            // pixels go into a pixel layer
+function floatFromImage(bmp, colBmp) {
+  if (S.layer === 'vec' || S.layer === 'col' || (colBmp && S.layer === 'bg')) setLayer('char');            // pixels go into a pixel layer
   if (S.tool === 'vedit' || S.tool === 'puppet') setTool('brush');
   const o = activeObj(); if (!o || !o.canvas) return;
   commitFloating();
@@ -1409,6 +1430,12 @@ function floatFromImage(bmp) {
   const snap = makeCanvas(); snap.getContext('2d').drawImage(o.canvas, 0, 0);
   const fit = Math.min(W * 0.9 / fc.width, H * 0.9 / fc.height, 1);
   floating = { t: targetOf(o), o, c: fc, cx: W / 2, cy: H / 2, scale: fit, rot: 0, flip: 1, snap, dirty: null };
+  if (colBmp && o.kind === 'char') {   // colour that goes into the Màu layer under the lines, moved together with them
+    const cc = makeCanvas(fc.width, fc.height); cc.getContext('2d').drawImage(colBmp, 0, 0, cc.width, cc.height);
+    const csnap = makeCanvas(); csnap.getContext('2d').drawImage(colOf(o, true), 0, 0);
+    Object.assign(floating, { cc, csnap });
+    if (!S.showCol) { S.showCol = true; updateToggles(); }
+  }
   setTool('lasso'); showSelbar(); requestRender();
 }
 function drawFloating(c, img) {
@@ -1562,6 +1589,25 @@ async function applyEntry(e, key) {
     tintCache.clear(); ppRetween(); buildStrip(); scheduleSave(); evictSoon();
     return f0;
   }
+  if (e.del) {
+    const D = e.del;
+    if (key === 'before') {
+      if (D.bg && !S.bgs.includes(D.bg)) { S.bgs.push(D.bg); await ensureLoaded(D.bg); }
+      S.frames.splice(Math.min(D.index, S.frames.length), 0, D.f); S.cur = S.frames.indexOf(D.f);
+    } else {
+      const i = S.frames.indexOf(D.f); if (i < 0 || S.frames.length < 2) return null;
+      await removeFrameAt(i); S.cur = Math.min(i, S.frames.length - 1);
+    }
+    tintCache.clear(); ppRetween(); buildStrip(); await selectFrame(S.cur); scheduleSave();
+    return null;
+  }
+  if (e.sfxadd) {
+    S.audio = S.audio || {}; S.audio.sfx = S.audio.sfx || [];
+    const ids = new Set(e.sfxadd.map(x => x.id)); S.audio.sfx = S.audio.sfx.filter(x => !ids.has(x.id));
+    if (key === 'after') S.audio.sfx.push(...e.sfxadd);
+    fxSyncBar(); updateWaves(); scheduleSave(); return null;
+  }
+  if (e.wipe) { await wipeSwap(e.wipe[key === 'before' ? 'old' : 'neu'], e.wipe[key === 'before' ? 'neu' : 'old']); return null; }
   if (e.multi) { let o = null; const list = key === 'before' ? [...e.multi].reverse() : e.multi; for (const x of list) o = (await applyEntry(x, key)) || o; return o; }
   if (e.partpix) { const pt = ppPart(e.pid); if (!pt) return null; const h = e.vi ? pt.alts && pt.alts[e.vi - 1] : pt; if (!h || h.c.width !== e[key].width || h.c.height !== e[key].height) return null; h.c.getContext('2d').putImageData(e[key], 0, 0); encodeHolder(h); S.frames.forEach(fr => { fr.ver++; queueThumbFor(fr); }); scheduleSave(); ppSyncBar(); requestRender(); return null; }
   const o = objByTarget(e.t); if (!o) return null;
@@ -1572,7 +1618,7 @@ async function applyEntry(e, key) {
   else { await ensureLoaded(o); const cv = e.col ? colOf(o, true) : o.canvas; if (e.col) o.colVer++; cv.getContext('2d').putImageData(e[key], e.rect[0], e.rect[1]); }
   markEdited(o); return o;
 }
-const entryAlive = e => e.partpix ? !!ppPart(e.pid) : e.add || e.fdel || e.ford ? true : e.multi ? e.multi.some(entryAlive) : !!objByTarget(e.t);
+const entryAlive = e => e.partpix ? !!ppPart(e.pid) : e.add || e.fdel || e.ford || e.del || e.wipe || e.sfxadd ? true : e.multi ? e.multi.some(entryAlive) : !!objByTarget(e.t);
 async function applyHistory(from, to, key) {
   if (stroke || action) return;
   if (ppSetup && ppSetup.stage === 'paint') { ppLabHistory(key === 'before'); return; }
@@ -1722,19 +1768,33 @@ async function repeatRangeDialog() {
   const c = await repeatRange(a, b, times, v);
   toast(`Đã thêm ${c} frame sau frame ${b + 1} — hoàn tác 1 lần để bỏ`, 3000);
 }
+// Park a frame/background out of the project but keep it restorable for undo: PNG in memory, canvas freed.
+async function parkObj(o) {
+  await ensurePng(o);
+  if (o.canvas) { o.canvas.width = 0; o.canvas = null; }
+  if (o.col) { o.col.width = 0; o.col = null; }
+  if (o.play) { o.play.width = 0; o.play = null; o.playKey = ''; }
+  const li = loaded.indexOf(o); if (li >= 0) loaded.splice(li, 1);
+}
+// Take frame i out of the film (undoable). Returns { f, index, bg } where bg is set if its background was only used by it.
+async function removeFrameAt(i) {
+  const f = S.frames[i];
+  const bg = S.frames.filter(g => g.bgId === f.bgId).length === 1 ? bgOf(f) : null;
+  await parkObj(f);
+  if (bg) await parkObj(bg);
+  S.frames.splice(i, 1);
+  if (bg) S.bgs = S.bgs.filter(b => b !== bg);
+  return { f, index: i, bg };
+}
 async function delFrame() {
   if (playing) stopPlay();
   if (S.frames.length === 1) { toast('Không xoá được frame cuối cùng'); return; }
-  const ok = await modal({ title: `Xoá frame ${S.cur + 1}?`, html: '<p>Frame này sẽ bị xoá và không hoàn tác được.</p>',
-    buttons: [{ label: 'Huỷ', value: false }, { label: 'Xoá', value: true, cls: 'danger' }] });
-  if (!ok) return;
-  commitFloating();
-  const [f] = S.frames.splice(S.cur, 1);
-  const li = loaded.indexOf(f); if (li >= 0) loaded.splice(li, 1);
-  freeFrame(f);
-  gcBgs();
+  if (stroke) strokeEnd(); commitFloating(); motionClose(); rigClose();
+  const n = S.cur + 1, D = await removeFrameAt(S.cur);
+  pushEntry({ del: D, t: targetOf(D.f), bytes: (D.f.png ? D.f.png.byteLength : 0) + (D.f.colPng ? D.f.colPng.byteLength : 0) + (D.bg && D.bg.png ? D.bg.png.byteLength : 0) });
   S.cur = Math.min(S.cur, S.frames.length - 1);
   ppRetween(); buildStrip(); await selectFrame(S.cur); scheduleSave();
+  toast(`Đã xoá frame ${n} — bấm ↶ Hoàn tác để lấy lại`, 2500);
 }
 function moveFrame(d) {
   const j = S.cur + d; if (j < 0 || j >= S.frames.length) return;
@@ -4356,7 +4416,7 @@ const SFX = {
   pop: { label: 'Bụp', dur: 0.25 }, whoosh: { label: 'Vút', dur: 0.6 }, punch: { label: 'Đấm', dur: 0.35 }, boing: { label: 'Boing', dur: 0.7 },
   ting: { label: 'Ting', dur: 1.3 }, whistle: { label: 'Còi trọng tài', dur: 1.3 }, drum: { label: 'Trống', dur: 0.5 }, crowd: { label: 'Khán giả ồ', dur: 2.2 },
   bonk: { label: 'Cốp', dur: 0.3 }, slap: { label: 'Bốp', dur: 0.25 }, bang: { label: 'Bùm', dur: 0.6 }, boom: { label: 'Nổ', dur: 1.2 }, crash: { label: 'Loảng xoảng', dur: 1.3 }, zap: { label: 'Điện giật', dur: 0.45 },
-  splat: { label: 'Bẹp', dur: 0.35 }, poof: { label: 'Phụt khói', dur: 0.5 }, slide: { label: 'Huýt trượt', dur: 0.8 }, swirl: { label: 'Choáng vòng vòng', dur: 1.2 }, tweet: { label: 'Chim kêu', dur: 1.2 }, scuffle: { label: 'Đánh túi bụi', dur: 1.6 }
+  splat: { label: 'Bẹp', dur: 0.35 }, poof: { label: 'Phụt khói', dur: 0.5 }, slide: { label: 'Huýt trượt', dur: 0.8 }, swirl: { label: 'Choáng vòng vòng', dur: 1.2 }, tweet: { label: 'Chim kêu', dur: 1.2 }, scuffle: { label: 'Đánh túi bụi', dur: 1.6 }, kick: { label: 'Sút bóng', dur: 0.3 }
 };
 const sfxCache = {};
 async function sfxBuffer(kind) {
@@ -4383,6 +4443,7 @@ async function sfxBuffer(kind) {
   if (kind === 'zap') { const o = osc('sawtooth', 1800, 120, 0.38), lfo = oc.createOscillator(), lg = oc.createGain(), g = oc.createGain(), lp = oc.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4000; lfo.frequency.value = 45; lg.gain.value = 0.25; lfo.connect(lg).connect(g.gain); env(g, 0.005, 0.35, 0.4); o.connect(lp).connect(g).connect(out); o.start(); lfo.start(); }
   if (kind === 'boom') { thump(0, 90, 28, 1, 0.9); hiss(0, 1.0, 'lowpass', 500, 0.8, 0.01); }
   if (kind === 'bang') { thump(0, 160, 50, 0.7, 0.4); hiss(0, 0.45, 'lowpass', 3000, 0.6, 0.001); }
+  if (kind === 'kick') { thump(0, 230, 60, 1, 0.16); hiss(0, 0.06, 'highpass', 2200, 0.55, 0.001); }
   if (kind === 'slide') { const o = oc.createOscillator(), v = oc.createOscillator(), vg = oc.createGain(), g = oc.createGain(); o.frequency.setValueAtTime(500, 0); o.frequency.exponentialRampToValueAtTime(1700, 0.35); o.frequency.exponentialRampToValueAtTime(420, 0.75); v.frequency.value = 7; vg.gain.value = 25; v.connect(vg).connect(o.frequency); g.gain.setValueAtTime(0.0001, 0); g.gain.exponentialRampToValueAtTime(0.35, 0.03); g.gain.setValueAtTime(0.35, 0.68); g.gain.exponentialRampToValueAtTime(0.0001, 0.78); o.connect(g).connect(out); o.start(); v.start(); }
   if (kind === 'tweet') { for (let i = 0; i < 7; i++) { const s = i * 0.16 + (i % 2) * 0.04, o = oc.createOscillator(), g = oc.createGain(); o.frequency.setValueAtTime(2600, s); o.frequency.exponentialRampToValueAtTime(3900, s + 0.05); o.frequency.exponentialRampToValueAtTime(2900, s + 0.08); envAt(g, s, 0.005, 0.45, 0.08); o.connect(g).connect(out); o.start(s); o.stop(s + 0.12); } }
   if (kind === 'swirl') { const o = oc.createOscillator(), v = oc.createOscillator(), vg = oc.createGain(), g = oc.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(900, 0); o.frequency.exponentialRampToValueAtTime(380, d); v.frequency.value = 9; vg.gain.value = 180; v.connect(vg).connect(o.frequency); g.gain.setValueAtTime(0.0001, 0); g.gain.exponentialRampToValueAtTime(0.4, 0.05); g.gain.exponentialRampToValueAtTime(0.0001, d); o.connect(g).connect(out); o.start(); v.start(); }
@@ -4634,6 +4695,202 @@ async function exportVideo() {
       buttons: [{ label: 'Đóng', value: null }, { label: 'Lưu video', primary: true, action: async () => { await deliverFile(blob, `${(S.projName || 'video').replace(/[^\p{L}\p{N} _-]/gu, '').trim() || 'video'}-${stamp()}.${ext}`); } }] });
   } catch (e) { ov.remove(); if (e.message !== 'cancel') { console.error(e); toast('Lỗi xuất video: ' + e.message, 4000); } else toast('Đã huỷ'); }
 }
+/* ===== ⚽ Ball path + ⚡ one-tap gag combos: everything drawn in code (original), one undo step each ===== */
+SETTINGS_KEYS.push('ballOpt');
+S.ballOpt = { obj: 'ball', n: 8, ease: 'even', size: 1, hit: true, trail: true, sound: true };
+let ballMode = null, gagMode = null;
+// a plain football: white ball with dark patches that turn with `spin`; `sq` squashes it along angle `sqA`
+function aBall(x, cx, cy, r, spin = 0, sq = 0, sqA = 0) {
+  x.save(); x.translate(cx, cy); x.rotate(sqA); x.scale(1 + sq * 0.45, 1 - sq * 0.4); x.rotate(-sqA);
+  x.beginPath(); x.arc(0, 0, r, 0, Math.PI * 2); x.fillStyle = '#fff'; x.fill();
+  x.save(); x.clip(); x.rotate(spin); x.fillStyle = AINK; x.strokeStyle = AINK; x.lineWidth = r * 0.06;
+  const pent = (px, py, z, rot) => { x.beginPath(); for (let i = 0; i < 5; i++) { const a = rot + i * 2 * Math.PI / 5 - Math.PI / 2; x.lineTo(px + Math.cos(a) * z, py + Math.sin(a) * z); } x.closePath(); x.fill(); };
+  pent(0, 0, r * 0.34, 0);
+  for (let i = 0; i < 5; i++) {
+    const a = i * 2 * Math.PI / 5 - Math.PI / 2; pent(Math.cos(a) * r * 0.98, Math.sin(a) * r * 0.98, r * 0.3, a + Math.PI);
+    x.beginPath(); x.moveTo(Math.cos(a) * r * 0.34, Math.sin(a) * r * 0.34); x.lineTo(Math.cos(a) * r * 0.7, Math.sin(a) * r * 0.7);
+    const b = a + Math.PI / 5; x.moveTo(Math.cos(b) * r * 0.28, Math.sin(b) * r * 0.28); x.lineTo(Math.cos(b) * r * 0.75, Math.sin(b) * r * 0.75); x.stroke();
+  }
+  x.restore();
+  const g = x.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.1, 0, 0, r); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(0,0,40,.2)');
+  x.beginPath(); x.arc(0, 0, r, 0, Math.PI * 2); x.fillStyle = g; x.fill(); x.lineWidth = Math.max(3, r * 0.09); x.strokeStyle = AINK; x.stroke();
+  x.restore();
+}
+const BALL_OBJS = { ball: '⚽ Bóng', boot: '👟 Giày' };
+function ballDraw(x, obj, cx, cy, r, spin, sq, sqA) { if (obj === 'boot') aBoot2(x, cx, cy, r / 46, spin); else aBall(x, cx, cy, r, spin, sq, sqA); }
+const ballR = () => W * 0.05 * (S.ballOpt.size || 1);
+const BALL_EASE = { even: t => t, fast: t => t * t, slow: t => 1 - (1 - t) * (1 - t) };
+// n positions along a drawn path, spaced by the chosen speed curve; each with heading + travelled distance
+function ballPlan(pts, n, ease) {
+  const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
+  const L = cum[cum.length - 1] || 1, at = d => { d = clamp(d, 0, L); let i = 1; while (i < cum.length - 1 && cum[i] < d) i++; const a = pts[i - 1], b = pts[i] || a, seg = (cum[i] - cum[i - 1]) || 1, t = (d - cum[i - 1]) / seg; return { x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t), ang: Math.atan2(b.y - a.y, b.x - a.x) }; };
+  const E = BALL_EASE[ease] || BALL_EASE.even, out = [];
+  for (let j = 0; j < n; j++) { const d = E(n > 1 ? j / (n - 1) : 1) * L; out.push({ ...at(d), d, at }); }
+  return out;
+}
+const rectUnion = (a, b) => !a ? b : !b ? a : [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])];
+const rectAround = (x, y, r) => [x - r, y - r, x + r, y + r];
+// one frame of a flying object: speed streaks behind it, the object, an impact burst when it squashes
+function ballItem(P, j, o) {
+  const q = P[j], r = o.r, prev = j ? P[j - 1] : null, spin = o.spin * q.d / r, last = j === P.length - 1, hit = o.hit && last && P.length > 1;
+  let rect = rectAround(q.x, q.y, r * (hit ? 2.2 : 1.6));
+  const trail = o.trail && prev && Math.hypot(q.x - prev.x, q.y - prev.y) > r * 0.6;
+  if (trail) rect = rectUnion(rect, rectAround(prev.x, prev.y, r * 1.2));
+  return { rect, draw: x => {
+    if (trail) {
+      x.save(); x.lineCap = 'round';
+      const back = Math.min(q.d - prev.d, r * 7), steps = 10;
+      for (const off of [-0.55, 0, 0.55]) {
+        x.beginPath();
+        for (let k = 0; k <= steps; k++) { const s = q.at(q.d - r * 0.9 - back * k / steps), nx = -Math.sin(s.ang), ny = Math.cos(s.ang); x.lineTo(s.x + nx * off * r, s.y + ny * off * r); }
+        x.strokeStyle = 'rgba(255,255,255,.85)'; x.lineWidth = r * (off ? 0.16 : 0.26); x.stroke(); x.strokeStyle = 'rgba(27,27,27,.55)'; x.lineWidth = r * (off ? 0.07 : 0.1); x.stroke();
+      }
+      x.restore();
+    }
+    if (hit) { const fx = q.x + Math.cos(q.ang) * r * 0.8, fy = q.y + Math.sin(q.ang) * r * 0.8; aBurst(x, fx, fy, r * 1.6, r * 0.9, 9, '#ffd21f', q.ang, Math.max(3, r * 0.08)); }
+    ballDraw(x, o.obj, q.x, q.y, r, spin, hit ? 0.7 : 0, q.ang);
+  } };
+}
+// an animated library effect (dizzy stars, sound word…) centred at (cx, cy), frame t
+function animItem(cat, key, t, cx, cy, size) {
+  const C = ASSET_CATS[cat], k = size / C.w, w = C.w * k, h = C.h * k;
+  return { rect: [cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2], draw: x => { const c = assetRender(cat, key, k, { ...assetOpt, flip: false, t }); x.drawImage(c, cx - c.width / 2, cy - c.height / 2); c.width = 0; } };
+}
+function confettiItem(j, seed) {
+  const R = aRnd(seed), pcs = []; for (let i = 0; i < 46; i++) pcs.push([R() * W, -R() * H * 0.4, 0.6 + R() * 0.8, R() * 6, ['#ff3b5c', '#ffd21f', '#4cd964', '#2f7bff', '#b36bff', '#fff'][i % 6]]);
+  return { rect: [0, 0, W, H], draw: x => { for (const [px, py, sp, ph, col] of pcs) { const y = py + j * H * 0.07 * sp, xx = px + Math.sin(j * 0.8 + ph) * W * 0.03; if (y < -40 || y > H + 40) continue; x.save(); x.translate(xx, y); x.rotate(ph + j * 0.6 * sp); x.scale(1, Math.cos(j * 0.9 + ph)); x.fillStyle = col; x.fillRect(-W * 0.012, -W * 0.007, W * 0.024, W * 0.014); x.restore(); } } };
+}
+// Apply a plan starting at frame i0 as ONE undo step. plan: { n, pix(j) → [items], fx(j, f) → change f.texts/cam/shake/flash, sfx: [[j, kind]] }
+async function gagApply(i0, plan) {
+  if (playing) stopPlay(); if (stroke) strokeEnd(); commitFloating();
+  const base = S.frames[i0], added = [];
+  // missing frames are copies of the last frame (drawn before anything is stamped)
+  if (i0 + plan.n > S.frames.length) {
+    const last = S.frames[S.frames.length - 1]; await ensureLoaded(last);
+    while (i0 + plan.n > S.frames.length + added.length) { const f = newFrameObj(last.bgId); f.dur = last.dur; f.canvas.getContext('2d').drawImage(last.canvas, 0, 0); copyCol(f, last); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(last.vec); f.pp = ppClone(last.pp); f.texts = JSON.parse(JSON.stringify(last.texts || [])); added.push(f); }
+    S.frames.push(...added); loaded.push(...added);
+  }
+  const camBefore = S.frames.map((f, i) => camAt(i)), multi = [];
+  if (added.length) multi.push({ t: targetOf(S.frames[S.frames.length - added.length - 1]), add: { frames: added, index: S.frames.length - added.length, dur0: S.frames[S.frames.length - added.length - 1].dur, dur1: S.frames[S.frames.length - added.length - 1].dur }, bytes: 0 });
+  for (let j = 0; j < plan.n; j++) {
+    const f = S.frames[i0 + j]; await ensureLoaded(f);
+    const items = (plan.pix && plan.pix(j)) || [];
+    if (items.length) {
+      let R = null; for (const it of items) R = rectUnion(R, it.rect);
+      const x0 = clamp(Math.floor(R[0]) - 2, 0, W), y0 = clamp(Math.floor(R[1]) - 2, 0, H), x1 = clamp(Math.ceil(R[2]) + 2, 0, W), y1 = clamp(Math.ceil(R[3]) + 2, 0, H);
+      if (x1 > x0 && y1 > y0) {
+        const lx = f.canvas.getContext('2d'), rect = [x0, y0, x1 - x0, y1 - y0], before = added.includes(f) ? null : lx.getImageData(...rect);
+        for (const it of items) { lx.save(); it.draw(lx); lx.restore(); }
+        if (before) multi.push(pixEntry(f, rect, before, lx.getImageData(...rect)));
+        f.ver++; queueThumbFor(f);
+      }
+    }
+    if (plan.fx) { const b4 = fxState(f); if (plan.fx(j, f, camBefore) !== false) { const af = fxState(f); if (JSON.stringify(af) !== JSON.stringify(b4)) { multi.push({ t: targetOf(f), fxe: true, before: b4, after: af, bytes: 400 }); f.ver++; } } }
+  }
+  const sfx = (plan.sfx || []).filter(([j, k]) => SFX[k] && S.frames[i0 + j]).map(([j, k]) => ({ id: newId(), frameId: S.frames[i0 + j].id, kind: k, vol: 0.9 }));
+  if (sfx.length) { S.audio = S.audio || {}; S.audio.sfx = S.audio.sfx || []; S.audio.sfx.push(...sfx); multi.push({ t: targetOf(base), sfxadd: sfx, bytes: 200 }); }
+  if (multi.length) pushEntry({ multi, t: targetOf(base) });
+  for (const f of added) await drawThumb(f);
+  buildStrip(); updateFrameUI(); fxSyncBar(); scheduleSave(); evictSoon(); requestRender();
+  return { n: plan.n, added: added.length, sfx };
+}
+async function ballRun(pts) {
+  const o = S.ballOpt, n = clamp(o.n | 0, 2, 60);
+  if (!pts || pts.length < 2 || Math.hypot(pts[pts.length - 1].x - pts[0].x, pts[pts.length - 1].y - pts[0].y) < ballR()) { toast('Đường bay ngắn quá — kéo dài hơn một chút'); return; }
+  const P = ballPlan(pts, n, o.ease), opt = { r: ballR(), obj: o.obj, hit: o.hit, trail: o.trail, spin: pts[pts.length - 1].x >= pts[0].x ? 1 : -1 };
+  const r = await gagApply(S.cur, { n, pix: j => [ballItem(P, j, opt)], sfx: o.sound ? [[0, 'kick'], ...(n > 3 ? [[1, 'whoosh']] : []), ...(o.hit ? [[n - 1, 'bonk']] : [])] : [] });
+  toast(`⚽ Đã cho ${BALL_OBJS[o.obj].slice(2).toLowerCase()} bay qua ${r.n} frame${r.added ? ` (thêm ${r.added} frame mới)` : ''}${r.sfx.length ? ' + tiếng sút' : ''} — bấm Phát để xem, ↶ để làm lại`, 4000);
+}
+// keep camera snaps sharp: a key on the frame before (its current view) so the zoom doesn't drift in slowly
+const camHold = (f, cb, i) => { if (!f.cam) f.cam = { ...cb[i] }; };
+const GAGS = {
+  shock: { label: '😱 Sốc', hint: 'Chạm vào mặt nhân vật bị sốc', run: p => {
+    const i0 = S.cur, n = 6;
+    return gagApply(i0, { n,
+      pix: j => j < 6 ? [animItem('fight', 'shock', j, p.x, p.y - W * 0.02, W * 0.75)] : [],
+      fx: (j, f, cb) => {
+        if (j === 0 && i0 > 0) camHold(S.frames[i0 - 1], cb, i0 - 1);
+        if (j <= 4) f.cam = { z: Math.max(2.2, cb[i0 + j].z), x: p.x, y: p.y }; else f.cam = { ...cb[i0] };
+        f.shake = [30, 20, 12, 6, 0, 0][j]; if (j === 0) f.flash = true;
+        if (j >= 1 && j <= 4) { f.texts = (f.texts || []).filter(t => !t.gag); f.texts.push({ id: 'gag-shock-' + i0, gag: 1, str: '!!', x: p.x + W * 0.12, y: p.y - W * 0.2, size: 90, color: '#ffe14d', style: 'shout', rot: 8 }); }
+      }, sfx: [[0, 'zap'], [1, 'boing']] });
+  } },
+  ballface: { label: '🤕 Bóng vào mặt', hint: 'Chạm vào mặt nhân vật — bóng sẽ bay tới đó', run: p => {
+    const i0 = S.cur, r = ballR() * 1.2, fromL = p.x > W / 2, sx = fromL ? -r * 2 : W + r * 2, sy = p.y - H * 0.08;
+    const pts = [{ x: sx, y: sy }, { x: (sx + p.x) / 2, y: sy - H * 0.05 }, { x: p.x, y: p.y }];
+    const P = ballPlan(pts, 4, 'fast'), opt = { r, obj: 'ball', hit: true, trail: true, spin: fromL ? 1 : -1 };
+    const head = p.y - W * 0.2;
+    return gagApply(i0, { n: 12,
+      pix: j => {
+        const L = [];
+        if (j < 4) L.push(ballItem(P, j, opt));
+        else if (j < 8) { const t = (j - 3) / 4, bx = p.x + (fromL ? -1 : 1) * W * 0.12 * t, by = p.y + H * 0.3 * t * t - H * 0.05 * t; L.push({ rect: rectAround(bx, by, r * 1.2), draw: x => aBall(x, bx, by, r, j * (fromL ? -0.9 : 0.9)) }); }
+        if (j >= 3 && j < 9) L.push(animItem('sound', 'bonk', j - 3, p.x + (fromL ? 1 : -1) * W * 0.18, p.y - W * 0.28, W * 0.42));
+        if (j >= 4) L.push(animItem('dizzy', 'stars', (j - 4) % 8, p.x, head, W * 0.42));
+        return L;
+      },
+      fx: (j, f) => { f.shake = { 3: 28, 4: 16, 5: 8 }[j] || f.shake || 0; if (j === 3) f.flash = true; },
+      sfx: [[0, 'whoosh'], [3, 'bonk'], [4, 'swirl']] });
+  } },
+  goal: { label: '🥅 VÀO!', hint: 'Chạm vào cầu thủ ghi bàn (camera sẽ zoom vào đó)', run: p => {
+    const i0 = S.cur, n = 10, seed = (Math.random() * 1e9) | 0;
+    return gagApply(i0, { n,
+      pix: j => [confettiItem(j, seed), ...(j < 6 ? [animItem('dizzy', 'sparkle', j, p.x, p.y - W * 0.15, W * 0.5)] : [])],
+      fx: (j, f, cb) => {
+        if (j === 0) { if (i0 > 0) camHold(S.frames[i0 - 1], cb, i0 - 1); f.cam = { ...cb[i0] }; f.flash = true; }
+        if (j === n - 1) f.cam = { z: Math.max(1.4, cb[i0].z), x: p.x, y: p.y };
+        f.shake = [22, 14, 8, 4][j] || 0;
+        f.texts = (f.texts || []).filter(t => !t.gag); f.texts.push({ id: 'gag-goal-' + i0, gag: 1, str: 'VÀOOO!', x: W / 2, y: H * 0.22, size: [70, 150, 120, 130][j] || 125, color: '#ffe14d', style: 'shout', rot: j % 2 ? 4 : -4 });
+      }, sfx: [[0, 'whistle'], [0, 'crowd'], [3, 'drum']] });
+  } },
+  dizzy: { label: '💫 Choáng', hint: 'Chạm vào đầu nhân vật', run: p => gagApply(S.cur, { n: 16,
+      pix: j => [animItem('dizzy', 'stars', j % 8, p.x, p.y - W * 0.12, W * 0.42)],
+      fx: (j, f) => { if (j < 3) f.shake = [12, 6, 3][j]; }, sfx: [[0, 'swirl'], [8, 'tweet']] }) },
+  angry: { label: '😡 Tức điên', hint: 'Chạm vào đầu nhân vật', run: p => {
+    const i0 = S.cur, n = 12;
+    return gagApply(i0, { n,
+      pix: j => [animItem('fight', 'steam', j % 6, p.x, p.y - W * 0.14, W * 0.5)],
+      fx: (j, f, cb) => {
+        if (j === 0 && i0 > 0) camHold(S.frames[i0 - 1], cb, i0 - 1);
+        if (j === 0) f.cam = { ...cb[i0] }; if (j === n - 1) f.cam = { z: Math.max(1.5, cb[i0].z), x: p.x, y: p.y };
+        f.shake = 7;
+        if (j >= 2) { f.texts = (f.texts || []).filter(t => !t.gag); f.texts.push({ id: 'gag-angry-' + i0, gag: 1, str: 'GRRR!', x: p.x, y: p.y - W * 0.42, size: 100, color: '#ff3b3b', style: 'comic', rot: -6 }); }
+      }, sfx: [[0, 'whoosh'], [6, 'whoosh']] });
+  } }
+};
+async function gagRun(key, p) {
+  const G = GAGS[key]; if (!G) return;
+  const r = await G.run(p);
+  toast(`${G.label}: xong ${r.n} frame${r.added ? ` (thêm ${r.added} frame mới)` : ''} — bấm Phát để xem, ↶ Hoàn tác nếu chưa ưng`, 4000);
+}
+function ballModeSet(on) { ballMode = on ? { pts: null } : null; if (on) gagMode = null; ballSyncBar(); requestRender(); if (on) toast('Kéo 1 ngón/bút vẽ đường bay: từ chỗ sút → chỗ bóng tới', 3500); }
+function gagModeSet(key) { gagMode = gagMode === key ? null : key; if (gagMode) { ballMode = null; toast(GAGS[key].hint, 3500); } ballSyncBar(); requestRender(); }
+function ballSyncBar() {
+  const o = S.ballOpt; if (!$('#ballGo')) return;
+  $('#ballGo').classList.toggle('on', !!ballMode); $('#ballN').value = o.n;
+  document.querySelectorAll('[data-bobj]').forEach(b => b.classList.toggle('on', b.dataset.bobj === o.obj));
+  document.querySelectorAll('[data-bease]').forEach(b => b.classList.toggle('on', b.dataset.bease === o.ease));
+  $('#ballHit').classList.toggle('on', !!o.hit); $('#ballTrail').classList.toggle('on', !!o.trail); $('#ballSnd').classList.toggle('on', !!o.sound); $('#ballSize').value = o.size;
+  document.querySelectorAll('[data-gag]').forEach(b => b.classList.toggle('active', b.dataset.gag === gagMode));
+}
+function renderBallPath(c, px) {
+  if (!ballMode || !ballMode.pts || ballMode.pts.length < 2) return;
+  const pts = ballMode.pts; c.save(); c.lineWidth = 3 * px; c.setLineDash([12 * px, 8 * px]); c.strokeStyle = '#ffb21e';
+  c.beginPath(); pts.forEach((q, i) => i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y)); c.stroke(); c.setLineDash([]);
+  const P = ballPlan(pts, clamp(S.ballOpt.n | 0, 2, 60), S.ballOpt.ease), r = ballR();
+  c.globalAlpha = 0.45; for (const q of P) { c.beginPath(); c.arc(q.x, q.y, r, 0, Math.PI * 2); c.fillStyle = '#fff'; c.fill(); c.lineWidth = 2 * px; c.strokeStyle = '#111'; c.stroke(); }
+  c.restore();
+}
+function ballWire() {
+  $('#ballGo').addEventListener('click', () => ballModeSet(!ballMode));
+  $('#ballN').addEventListener('change', e => { S.ballOpt.n = clamp(Math.round(+e.target.value || 8), 2, 60); saveSettings(); ballSyncBar(); });
+  $('#ballSize').addEventListener('input', e => { S.ballOpt.size = +e.target.value; saveSettings(); requestRender(); });
+  document.querySelectorAll('[data-bobj]').forEach(b => b.addEventListener('click', () => { S.ballOpt.obj = b.dataset.bobj; saveSettings(); ballSyncBar(); }));
+  document.querySelectorAll('[data-bease]').forEach(b => b.addEventListener('click', () => { S.ballOpt.ease = b.dataset.bease; saveSettings(); ballSyncBar(); requestRender(); }));
+  for (const [id, k] of [['#ballHit', 'hit'], ['#ballTrail', 'trail'], ['#ballSnd', 'sound']]) $(id).addEventListener('click', () => { S.ballOpt[k] = !S.ballOpt[k]; saveSettings(); ballSyncBar(); });
+  document.querySelectorAll('[data-gag]').forEach(b => b.addEventListener('click', () => gagModeSet(b.dataset.gag)));
+}
+
 /* ========= Image → vector strokes (centre-line tracing) ========= */
 function chamferDT(b, w, h) {
   const d = new Float32Array(w * h), INF = 1e9, D = 1.4142;
@@ -4828,23 +5085,44 @@ async function convertPixelsToVector(fromFloating) {
   toast(`Đã chuyển thành ${strokes.length} nét vector — dùng Sửa nét để chỉnh`, 3500);
 }
 /* ========= Delete all frames ========= */
+// Everything "Xoá hết" removes, so one undo brings it all back.
+async function wipeSnap() {
+  for (const o of [...S.frames, ...S.bgs]) { if (o.canvas || o.loading) await ensureLoaded(o); await parkObj(o); }
+  return { frames: S.frames, bgs: S.bgs, cur: S.cur, pp: S.pp, rig: S.rig, ref: { ...REF }, bgVideo: S.bgVideo };
+}
+// Store the current state into `into` (parked) and bring back `from`.
+async function wipeSwap(from, into) {
+  if (playing) stopPlay(); commitFloating(); motionClose(); rigClose();
+  Object.assign(into, await wipeSnap());
+  ppSetup = null; ppSel = null; ppCutMode = false; ppPatchMode = false; vsel.clear();
+  if (S.tool === 'puppet' || S.tool === 'vedit') setTool('brush');
+  S.frames = from.frames; S.bgs = from.bgs; S.pp = from.pp; S.rig = from.rig; S.bgVideo = from.bgVideo; bgVideoSetup();
+  Object.assign(REF, from.ref); refEdit = false; updateRefUI();
+  loaded.length = 0; tintCache.clear();
+  for (const b of S.bgs) await ensureLoaded(b);
+  S.cur = clamp(from.cur, 0, S.frames.length - 1);
+  for (const f of S.frames) if (!f.thumb) await drawThumb(f);
+  buildStrip(); await selectFrame(S.cur); ppSyncBar(); updUndoBtns(); requestRender(); scheduleSave();
+}
 async function deleteAllFrames() {
   if (playing) stopPlay();
-  const ok = await modal({ title: `Xoá hết ${S.frames.length} frame?`, html: '<p>Xoá sạch: toàn bộ frame (nét, màu, nền), <b>ảnh mờ</b>, <b>các mảnh nhân vật ghép</b> và bộ xương. Chỉ còn 1 frame trống. <b>Không hoàn tác được.</b> Nên Xuất ZIP trước nếu muốn giữ.</p>',
+  const ok = await modal({ title: `Xoá hết ${S.frames.length} frame?`, html: '<p>Xoá sạch: toàn bộ frame (nét, màu, nền), <b>ảnh mờ</b>, <b>các mảnh nhân vật ghép</b> và bộ xương. Chỉ còn 1 frame trống.</p><p>Lỡ tay thì bấm <b>↶ Hoàn tác</b> ngay sau đó để lấy lại tất cả.</p>',
     buttons: [{ label: 'Huỷ', value: false }, { label: 'Xoá hết', value: true, cls: 'danger' }] });
   if (!ok) return;
-  commitFloating(); motionClose(); rigClose();
+  if (stroke) strokeEnd(); commitFloating(); motionClose(); rigClose();
+  const old = await wipeSnap();
   clearRef(true); updateRefUI();
   S.pp = null; ppSetup = null; ppSel = null; ppCutMode = false; ppPatchMode = false; S.rig = null; S.bgVideo = null; bgVideoSetup();
   if (S.tool === 'puppet' || S.tool === 'vedit') setTool('brush');
-  S.frames.forEach(freeFrame);
-  S.bgs.forEach(b => { if (b.canvas) b.canvas.width = 0; });
-  loaded.length = 0; undoStack.length = 0; redoStack.length = 0; undoBytes = 0; tintCache.clear();
+  // older history points at the removed frames: drop it (only "Xoá hết" itself can be undone)
+  undoStack.length = 0; redoStack.length = 0; undoBytes = 0; tintCache.clear();
   const b = newBgObj(); S.bgs = [b];
-  const f = newFrameObj(b.id); S.frames = [f]; loaded.push(f); S.cur = 0; vsel.clear();
+  const f = newFrameObj(b.id); S.frames = [f]; loaded.length = 0; loaded.push(f); S.cur = 0; vsel.clear();
+  pushEntry({ wipe: { old, neu: {} }, t: targetOf(f), bytes: old.frames.reduce((a, g) => a + (g.png ? g.png.byteLength : 0) + (g.colPng ? g.colPng.byteLength : 0), 0) });
   await drawThumb(f); buildStrip(); await selectFrame(0); updUndoBtns(); requestRender(); scheduleSave();
-  ppSyncBar(); toast('Đã xoá sạch frame, ảnh mờ và nhân vật ghép');
+  ppSyncBar(); toast('Đã xoá sạch — lỡ tay thì bấm ↶ Hoàn tác để lấy lại', 3500);
 }
+
 /* ========= Input ========= */
 const touches = new Map();
 let action = null;    // {id, touch, kind, t0, rect}
@@ -4869,6 +5147,8 @@ function startAction(e, isTouch) {
     if (bd <= tol) action = { ...base, kind: 'ppjoint', j: best, last: p };
     return;
   }
+  if (S.tool === 'fx' && ballMode) { ballMode.pts = [p]; action = { ...base, kind: 'ballpath' }; requestRender(); return; }
+  if (S.tool === 'fx' && gagMode) { const k = gagMode; gagMode = null; ballSyncBar(); gagRun(k, p); return; }
   if (S.tool === 'fx') {
     const t = fxHit(f, p);
     if (t) { fxSel = t.id; action = { ...base, kind: 'fxmove', t, last: p, before: fxState(f) }; fxSyncBar(); requestRender(); return; }
@@ -4906,6 +5186,10 @@ function moveAction(e) {
     const pr = e.getPredictedEvents ? e.getPredictedEvents() : [];
     stroke.pred = pr.length ? pr.slice(-3).map(ev => toDoc(ev, action.rect)) : null;
   }
+  else if (action.kind === 'ballpath') {
+    if (ballMode && ballMode.pts) for (const ev of list) { const p = toDoc(ev, action.rect), l = ballMode.pts[ballMode.pts.length - 1]; if (Math.hypot(p.x - l.x, p.y - l.y) > 4 / vs) ballMode.pts.push(p); }
+    requestRender();
+  }
   else if (action.kind === 'lasso') {
     const p = toDoc(e, action.rect), l = lasso[lasso.length - 1];
     if (Math.hypot(p.x - l.x, p.y - l.y) > 3 / vs) { lasso.push(p); requestRender(); }
@@ -4941,6 +5225,7 @@ function endAction() {
   else if (action.kind.startsWith('v')) vecEnd();
   else if (action.kind === 'lablasso') { const poly = lasso; lasso = null; if (ppSetup) { ppLabLasso(ppSetup, poly); ppLabSyncBar(); } requestRender(); }
   else if (action.kind === 'labpaint') { if (ppSetup) ppLabSyncBar(); }
+  else if (action.kind === 'ballpath') { const pts = ballMode && ballMode.pts; ballMode = null; ballSyncBar(); requestRender(); ballRun(pts); }
   else if (action.kind === 'lasso') { const poly = lasso; lasso = null; if (poly && poly.length > 2) liftSelection(poly); requestRender(); updUndoBtns(); }
   action = null;
 }
@@ -4948,6 +5233,7 @@ function abortAction() {
   if (!action) return;
   if (action.kind === 'stroke') strokeAbort();
   if (action.kind === 'lasso' || action.kind === 'vlasso') { lasso = null; requestRender(); }
+  if (action.kind === 'ballpath' && ballMode) { ballMode.pts = null; requestRender(); }
   if (action.kind === 'vbend' || action.kind === 'vmove' || action.kind === 'verase' || action.kind === 'vmulti') { curFrame().vec = action.before; if (action.kind === 'vmulti' && action.polyBase) vpoly = action.polyBase; requestRender(); }
   if (action.kind === 'pprot' || action.kind === 'ppmove' || action.kind === 'ppik') { ppSetState(curFrame(), action.before); requestRender(); }
   if (action.kind === 'ppcut' || action.kind === 'pppatch') { lasso = null; requestRender(); }
@@ -5047,7 +5333,7 @@ function setTool(t) {
   if (t !== 'vedit') { vsel.clear(); }
   if (t !== 'puppet') { ppSetup = null; ppCutMode = false; ppPatchMode = false; ppPaint = null; }
   $('#layerPP').classList.toggle('on', t === 'puppet');
-  if (t !== 'fx') fxCamPick = false;
+  if (t !== 'fx') { fxCamPick = false; ballMode = null; gagMode = null; ballSyncBar(); }
   updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); updBrushBtn(); requestRender();
   document.querySelectorAll('.tool[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
   document.body.dataset.tool = t;
@@ -5798,6 +6084,80 @@ function inkAlpha(img, detail) {
   }
   return a;
 }
+/** Split a coloured drawing into two layers: the dark outlines (→ Nhân vật pixels) and the picture's own colours (→ Màu layer).
+ *  Every area keeps its colour, and the colour also runs under the lines (each line pixel takes the nearest clean colour),
+ *  so erasing a line later leaves no hole. fig = figure alpha 0..1 (after background removal) or null for the whole image.
+ *  flat: shading inside each closed area is snapped to its few main colours (like filling with the bucket). */
+function splitLineColor(img, fig, sens, flat) {
+  const w = img.width, h = img.height, n = w * h, d = img.data;
+  const A = i => fig ? fig[i] : d[i * 4 + 3] / 255;
+  const la = inkAlpha(img, sens);
+  for (let i = 0; i < n; i++) la[i] *= A(i);
+  const near = maxFilter(la, w, h, 1), isLine = new Uint8Array(n);   // soft edge next to a line is a mix of line + fill: not a clean colour
+  for (let i = 0; i < n; i++) if (la[i] > 0.08 || near[i] > 0.3) isLine[i] = 1;
+  const rgb = new Uint8ClampedArray(n * 3), has = new Uint8Array(n);
+  for (let i = 0; i < n; i++) if (!isLine[i] && A(i) > 0.5) { has[i] = 1; rgb[i * 3] = d[i * 4]; rgb[i * 3 + 1] = d[i * 4 + 1]; rgb[i * 3 + 2] = d[i * 4 + 2]; }
+  if (flat) {
+    const seen = new Uint8Array(n), cnt = new Int32Array(4096), sr = new Float64Array(4096), sg = new Float64Array(4096), sb = new Float64Array(4096);
+    let comp = new Int32Array(1024);
+    for (let s0 = 0; s0 < n; s0++) {
+      if (!has[s0] || seen[s0]) continue;
+      let len = 0; seen[s0] = 1; comp[len++] = s0;
+      for (let q = 0; q < len; q++) {
+        const i = comp[q], x = i % w;
+        for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w]) if (j >= 0 && j < n && has[j] && !seen[j]) {
+          seen[j] = 1; if (len === comp.length) { const c2 = new Int32Array(comp.length * 2); c2.set(comp); comp = c2; } comp[len++] = j;
+        }
+      }
+      const touched = [];
+      for (let q = 0; q < len; q++) { const j = comp[q] * 3, r = rgb[j], g = rgb[j + 1], b = rgb[j + 2], k = (r >> 4) << 8 | (g >> 4) << 4 | (b >> 4);
+        if (!cnt[k]) touched.push(k); cnt[k]++; sr[k] += r; sg[k] += g; sb[k] += b; }
+      touched.sort((a, b) => cnt[b] - cnt[a]);
+      const seeds = [], minC = Math.max(len * 0.04, 12);
+      for (const k of touched) {
+        if (cnt[k] < minC && seeds.length) break;
+        const c = [sr[k] / cnt[k], sg[k] / cnt[k], sb[k] / cnt[k]];
+        if (seeds.length < 8 && !seeds.some(s => Math.abs(s[0] - c[0]) + Math.abs(s[1] - c[1]) + Math.abs(s[2] - c[2]) < 40)) seeds.push(c);
+      }
+      for (const k of touched) { cnt[k] = 0; sr[k] = sg[k] = sb[k] = 0; }
+      // assign every pixel to its nearest main colour, then paint it with that group's average
+      const asg = new Int8Array(len), acc = seeds.map(() => [0, 0, 0, 0]);
+      for (let q = 0; q < len; q++) {
+        const j = comp[q] * 3; let best = -1, bd = 90;   // far from every main colour (small detail): keep it as it is
+        for (let s = 0; s < seeds.length; s++) { const e = Math.abs(rgb[j] - seeds[s][0]) + Math.abs(rgb[j + 1] - seeds[s][1]) + Math.abs(rgb[j + 2] - seeds[s][2]); if (e < bd) { bd = e; best = s; } }
+        asg[q] = best; if (best >= 0) { const a = acc[best]; a[0] += rgb[j]; a[1] += rgb[j + 1]; a[2] += rgb[j + 2]; a[3]++; }
+      }
+      for (let q = 0; q < len; q++) { const s = asg[q]; if (s < 0) continue; const a = acc[s], j = comp[q] * 3; rgb[j] = a[0] / a[3]; rgb[j + 1] = a[1] / a[3]; rgb[j + 2] = a[2] / a[3]; }
+    }
+  }
+  // colour runs under the lines: breadth-first from every clean pixel into the line pixels of the figure
+  const q = new Int32Array(n); let qh = 0, qt = 0;
+  const filled = has.slice();
+  for (let i = 0; i < n; i++) if (has[i]) { const x = i % w; if ((x > 0 && !has[i - 1]) || (x < w - 1 && !has[i + 1]) || (i >= w && !has[i - w]) || (i + w < n && !has[i + w])) q[qt++] = i; }
+  while (qh < qt) {
+    const i = q[qh++], x = i % w;
+    for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w]) {
+      if (j < 0 || j >= n || filled[j] || !isLine[j] || A(j) < 0.05) continue;
+      filled[j] = 1; rgb[j * 3] = rgb[i * 3]; rgb[j * 3 + 1] = rgb[i * 3 + 1]; rgb[j * 3 + 2] = rgb[i * 3 + 2]; q[qt++] = j;
+    }
+  }
+  const col = makeCanvas(w, h), cx = col.getContext('2d'), ci = cx.createImageData(w, h), cd = ci.data;
+  const line = makeCanvas(w, h), lx = line.getContext('2d'), li = lx.createImageData(w, h), ld = li.data;
+  let nLine = 0;
+  for (let i = 0; i < n; i++) {
+    const j = i * 4;
+    if (filled[i]) { cd[j] = rgb[i * 3]; cd[j + 1] = rgb[i * 3 + 1]; cd[j + 2] = rgb[i * 3 + 2]; cd[j + 3] = isLine[i] ? Math.round(255 * Math.max(A(i), la[i])) : Math.round(255 * A(i)); }
+    if (la[i] > 0.02) {
+      // line colour = the darkest pixel close by (soft edges are mixed with the fill and look washed out)
+      const x = i % w, y = (i - x) / w; let bk = i, bv = 1e9;
+      for (let yy = Math.max(0, y - 1); yy <= Math.min(h - 1, y + 1); yy++) for (let xx = Math.max(0, x - 1); xx <= Math.min(w - 1, x + 1); xx++) {
+        const k = yy * w + xx, v = d[k * 4] + d[k * 4 + 1] + d[k * 4 + 2]; if (v < bv && la[k] > 0.3) { bv = v; bk = k; } }
+      ld[j] = d[bk * 4]; ld[j + 1] = d[bk * 4 + 1]; ld[j + 2] = d[bk * 4 + 2]; ld[j + 3] = Math.round(255 * la[i]); if (la[i] > 0.5) nLine++;
+    }
+  }
+  cx.putImageData(ci, 0, 0); lx.putImageData(li, 0, 0);
+  return { line, col, nLine };
+}
 /** Background removal by border colour flood fill (good for flat cartoon backgrounds). Returns alpha 0..1 */
 function colorBgAlpha(img, tol, holesOut) {
   const w = img.width, h = img.height, d = img.data, n = w * h;
@@ -6291,13 +6651,14 @@ function openImport(bmp) {
   };
   const resampleA = (a, w0, h0, w1, h1) => { const o = new Float32Array(w1 * h1); for (let y = 0; y < h1; y++) for (let x = 0; x < w1; x++) o[y * w1 + x] = a[Math.min(h0 - 1, Math.floor(y * h0 / h1)) * w0 + Math.min(w0 - 1, Math.floor(x * w0 / w1))]; return o; };
   const st = { mode: 'ref', lineKind: 'ink', lineOut: 'vec', vecRes: null, cutMethod: 'ai', edge: 60, tol: 60, detail: 55, thick: 0, onlyChar: false, lineColor: '#111111', aiA: null, result: null, busy: false,
-    colA: null, slits: true, flat: flatBorder(srcImg),
+    colA: null, slits: true, flat: flatBorder(srcImg), split: { sens: 55, flat: true, view: 'both', out: 'float', res: null }, ppClean: false,
     cari: { style: 'flat', head: 1.6, body: 0.75, bulge: 0.3, neck: 0, detail: 50, outline: 5 }, cariOut: 'float', cariC: null };
   const html = `
 <div class="imp-tabs">
   <button class="chip" data-mode="ref">Ảnh mờ để đồ theo</button>
   <button class="chip" data-mode="cut">Tách nhân vật</button>
   <button class="chip" data-mode="line">Chuyển thành nét vẽ</button>
+  <button class="chip" data-mode="split" style="border-color:#34c759">🎨 Tách nét + màu</button>
   <button class="chip" data-mode="raw">Chèn nguyên ảnh</button>
   <button class="chip" data-mode="pp" style="border-color:#ff3b9a">🧩 Nhân vật ghép (cắt mảnh)</button>
   <button class="chip" data-mode="cari" style="border-color:#ffb020">🤪 Biếm hoạ</button>
@@ -6317,6 +6678,8 @@ function openImport(bmp) {
   <button class="chip small ${st.cutMethod === 'color' ? 'on' : ''}" data-cm="color">Theo màu nền</button>
   <button class="chip small ${st.cutMethod === 'none' ? 'on' : ''}" data-cm="none">Ảnh đã tách nền</button></span></div>${flatNote()}
 ${st.cutMethod === 'ai' ? `<div class="row"><span>Viền mềm ↔ sắc</span><input type="range" id="iEdge" min="0" max="100" value="${st.edge}"></div>` : st.cutMethod === 'color' ? `<div class="row"><span>Độ rộng màu nền</span><input type="range" id="iTol" min="5" max="200" value="${st.tol}"></div>` : ''}
+<div class="row"><span>🎨 Làm sạch: nét rõ + màu phẳng</span><input type="checkbox" class="switch" id="iPPClean" ${st.ppClean ? 'checked' : ''}></div>
+${st.ppClean ? `<div class="row"><span>Nhận nét (ít ↔ nhiều)</span><input type="range" id="iSSens" min="0" max="100" value="${st.split.sens}"></div>` : ''}
 <p class="imp-note">Dùng ảnh nhân vật <b>đứng thẳng, thấy rõ tay chân</b> (ảnh AI tạo rất hợp). Bước sau: kéo các khớp cho đúng → app cắt thành Đầu, Thân, Tay, Chân → bạn tự xoay từng mảnh quanh khớp, có Frame giữa và mẫu Đi/Chạy/Vẫy… Ảnh giữ nguyên màu, không bị méo.</p>`,
     cari: () => {
       const c = st.cari, sl = (id, label, min, max, v) => `<div class="row"><span>${label}</span><input type="range" id="${id}" min="${min}" max="${max}" value="${v}"></div>`;
@@ -6340,6 +6703,21 @@ ${sl('iCOut', 'Viền ngoài', 0, 12, c.outline)}
   <button class="chip small ${st.cariOut === 'float' ? 'on' : ''}" data-co="float">Vùng chọn (kéo đặt)</button>
   <button class="chip small ${st.cariOut === 'pp' ? 'on' : ''}" data-co="pp">🧩 Nhân vật ghép (làm động)</button></span></div>
 <p class="imp-note">Hợp nhất với ảnh <b>1 người</b>, thấy rõ đầu và vai. App tự tách người, tìm cổ, phóng to đầu, thu nhỏ thân, phồng giữa mặt. Ảnh chụp thì tô lại kiểu hoạt hình; tranh vẽ sẵn thì <b>Giữ màu gốc</b>. Tất cả chạy ngay trên máy, không gửi ảnh đi đâu. Đầu bị cắt lệch thì chỉnh <b>Vị trí cổ</b>.</p>`;
+    },
+    split: () => {
+      const sp = st.split, ch = (k, v, label) => `<button class="chip small ${sp[k] === v ? 'on' : ''}" data-sp="${k}:${v}">${label}</button>`;
+      return `
+<div class="row"><span>Xoá nền</span><span>
+  <button class="chip small ${st.cutMethod === 'ai' ? 'on' : ''}" data-cm="ai">AI tự động</button>
+  <button class="chip small ${st.cutMethod === 'color' ? 'on' : ''}" data-cm="color">Theo màu nền</button>
+  <button class="chip small ${st.cutMethod === 'none' ? 'on' : ''}" data-cm="none">Giữ nền</button></span></div>${flatNote()}
+${st.cutMethod === 'color' ? `<div class="row"><span>Độ rộng màu nền</span><input type="range" id="iTol" min="5" max="200" value="${st.tol}"></div>` : ''}
+<div class="row"><span>Nhận nét (ít ↔ nhiều)</span><input type="range" id="iSSens" min="0" max="100" value="${sp.sens}"></div>
+<div class="row"><span>Màu</span><span>${ch('flat', true, 'Màu phẳng (như đổ màu)')}${ch('flat', false, 'Giữ sắc độ gốc')}</span></div>
+<div class="row"><span>Xem thử</span><span>${ch('view', 'both', 'Cả hai')}${ch('view', 'line', 'Chỉ nét')}${ch('view', 'col', 'Chỉ màu')}</span></div>
+<div class="row"><span>Đưa vào</span><span>${ch('out', 'float', 'Nét + lớp Màu (kéo đặt)')}${ch('out', 'pp', '🧩 Nhân vật ghép')}</span></div>
+<p class="imp-note" id="iSplitInfo"></p>
+<p class="imp-note">App tự tách <b>nét viền tối</b> vào lớp <b>Nhân vật</b>, còn <b>màu gốc</b> của từng vùng vào lớp <b>Màu</b> bên dưới, tô lấn dưới nét. Tẩy hay vẽ lại nét thì màu vẫn còn nguyên, không bị hở. Hợp với tranh hoạt hình, ảnh 🤖 AI nhân vật. Nét bị thiếu thì kéo <b>Nhận nét</b> lên, nhận nhầm mảng tối thì kéo xuống.</p>`;
     },
     raw: () => `<p class="imp-note">Chèn ảnh vào lớp đang chọn (<b>${S.layer === 'bg' ? 'Nền' : 'Nhân vật'}</b>), rồi kéo, chỉnh cỡ/xoay.</p>`,
     cut: () => `
@@ -6410,6 +6788,14 @@ ${st.lineOut === 'vec'
     const my = ++seq;
     try {
       if (st.mode === 'ref' || st.mode === 'raw') { st.result = src; showCanvas(src); return; }
+      if (st.mode === 'pp' && st.ppClean) {
+        const a = st.cutMethod === 'none' ? null : st.cutMethod === 'ai' ? sharpenMask(await ensureAi(), st.edge) : await colorCut();
+        if (my !== seq) return;
+        setBusy('Đang tách nét và màu…'); await new Promise(r => setTimeout(r, 20));
+        const r = splitLineColor(srcImg, a, st.split.sens, true); setBusy(null);
+        if (my !== seq) return;
+        r.col.getContext('2d').drawImage(r.line, 0, 0); st.result = r.col; showCanvas(r.col); return;
+      }
       if (st.mode === 'pp' && st.cutMethod === 'none') { st.result = src; showCanvas(src); return; }
       if (st.mode === 'cut' || st.mode === 'pp') {
         let a;
@@ -6417,6 +6803,23 @@ ${st.lineOut === 'vec'
         else a = await colorCut();
         if (my !== seq) return;
         st.result = withAlpha(a); showCanvas(st.result); return;
+      }
+      if (st.mode === 'split') {
+        const sp = st.split;
+        const a = st.cutMethod === 'none' ? null : st.cutMethod === 'ai' ? sharpenMask(await ensureAi(), 70) : await colorCut();
+        if (my !== seq) return;
+        setBusy('Đang tách nét và màu…'); await new Promise(r => setTimeout(r, 20));
+        const r = splitLineColor(srcImg, a, sp.sens, sp.flat); setBusy(null);
+        if (my !== seq) return;
+        sp.res = r;
+        const both = makeCanvas(src.width, src.height), bx = both.getContext('2d'); bx.drawImage(r.col, 0, 0); bx.drawImage(r.line, 0, 0);
+        st.result = both;
+        const v = makeCanvas(src.width, src.height), vx = v.getContext('2d');   // preview on a light checker so empty areas show
+        for (let y = 0; y < v.height; y += 16) for (let x = 0; x < v.width; x += 16) { vx.fillStyle = ((x + y) / 16) % 2 ? '#e9e9ee' : '#fff'; vx.fillRect(x, y, 16, 16); }
+        vx.drawImage(sp.view === 'line' ? r.line : sp.view === 'col' ? r.col : both, 0, 0); showCanvas(v);
+        const info = ctrl.querySelector('#iSplitInfo');
+        if (info) info.textContent = r.nLine < 50 ? '⚠ Gần như không thấy nét viền — kéo Nhận nét lên, hoặc ảnh này không có viền tối' : '✓ Đã tách: nét viền + màu từng vùng';
+        return;
       }
       if (st.mode === 'cari') {
         const C = st.cariC || (st.cariC = {}), aKey = st.cutMethod + (st.cutMethod === 'color' ? st.tol + '|' + st.slits : '');
@@ -6466,7 +6869,7 @@ ${st.lineOut === 'vec'
       }
     } catch (e) {
       console.error(e); setBusy(null);
-      if ((st.mode === 'cut' || st.mode === 'cari') && st.cutMethod === 'ai') { st.cutMethod = 'color'; renderCtrl(); toast('AI không chạy được trên trình duyệt này — chuyển sang tách theo màu nền', 3500); recompute(); }
+      if ((st.mode === 'cut' || st.mode === 'cari' || st.mode === 'split' || st.mode === 'pp') && st.cutMethod === 'ai') { st.cutMethod = 'color'; renderCtrl(); toast('AI không chạy được trên trình duyệt này — chuyển sang tách theo màu nền', 3500); recompute(); }
       else if (st.onlyChar) { st.onlyChar = false; renderCtrl(); toast('AI không chạy được — lấy nét toàn ảnh', 3000); recompute(); }
       else toast('Lỗi xử lý ảnh: ' + e.message, 3000);
     }
@@ -6479,6 +6882,7 @@ ${st.lineOut === 'vec'
     ctrl.querySelectorAll('[data-lo]').forEach(b => b.addEventListener('click', () => { st.lineOut = b.dataset.lo; renderCtrl(); recompute(); }));
     ctrl.querySelectorAll('[data-cm]').forEach(b => b.addEventListener('click', () => { st.cutMethod = b.dataset.cm; renderCtrl(); recompute(); }));
     ctrl.querySelectorAll('[data-cs]').forEach(b => b.addEventListener('click', () => { st.cari.style = b.dataset.cs; renderCtrl(); recompute(); }));
+    ctrl.querySelectorAll('[data-sp]').forEach(b => b.addEventListener('click', () => { const [k, v] = b.dataset.sp.split(':'); st.split[k] = v === 'true' ? true : v === 'false' ? false : v; renderCtrl(); if (k !== 'out') recompute(); }));
     ctrl.querySelectorAll('[data-co]').forEach(b => b.addEventListener('click', () => { st.cariOut = b.dataset.co; renderCtrl(); }));
     const on = (id, ev, fn) => { const el = ctrl.querySelector(id); if (el) el.addEventListener(ev, fn); };
     on('#iEdge', 'input', e => { st.edge = +e.target.value; later(); });
@@ -6486,6 +6890,8 @@ ${st.lineOut === 'vec'
     on('#iSlits', 'change', e => { st.slits = e.target.checked; recompute(); });
     on('#iDetail', 'input', e => { st.detail = +e.target.value; later(); });
     on('#iThick', 'input', e => { st.thick = +e.target.value; later(); });
+    on('#iSSens', 'input', e => { st.split.sens = +e.target.value; later(); });
+    on('#iPPClean', 'change', e => { st.ppClean = e.target.checked; renderCtrl(); recompute(); });
     on('#iOnly', 'change', e => { st.onlyChar = e.target.checked; recompute(); });
     on('#iColor', 'input', e => { st.lineColor = e.target.value; later(); });
     const cs = (id, key, div) => on(id, 'input', e => { st.cari[key] = +e.target.value / div; later(); });
@@ -6495,7 +6901,12 @@ ${st.lineOut === 'vec'
     buttons: [{ label: 'Huỷ', value: null }, { label: 'Dùng', primary: true, action: async () => {
       if (st.busy || !st.result) { toast('Đợi xử lý xong'); return false; }
       if (st.mode === 'ref') { await setRef(src); return; }
-      if (st.mode === 'pp' || (st.mode === 'cari' && st.cariOut === 'pp')) { ppStartSetup(st.result); return; }
+      if (st.mode === 'pp' || (st.mode === 'cari' && st.cariOut === 'pp') || (st.mode === 'split' && st.split.out === 'pp')) { ppStartSetup(st.result); return; }
+      if (st.mode === 'split') {
+        if (!st.split.res) { toast('Đợi xử lý xong'); return false; }
+        floatFromImage(st.split.res.line, st.split.res.col);
+        toast('Nét vào lớp Nhân vật, màu vào lớp Màu. Kéo để đặt, chỉnh Cỡ/Xoay rồi bấm Xong', 3500); return;
+      }
       if (st.mode === 'line' && st.lineOut === 'vec') {
         if (!st.vecRes || !st.vecRes.strokes.length) { toast('Chưa có nét nào — tăng Chi tiết'); return false; }
         placeVectors(st.vecRes.strokes, st.vecRes.w, st.vecRes.h, st.lineColor); return;
@@ -6808,7 +7219,7 @@ async function wizard() {
   const html = `<p style="margin-top:0">Làm theo 5 bước, mỗi bước bấm 1 nút. Mở lại bảng này bất cứ lúc nào bằng nút <b>🚀</b> ở thanh trên.</p><div id="wizSteps">
   ${step(1, 'Đưa nhân vật vào', hasChar, 'Tạo ảnh nhân vật bằng AI (đứng thẳng, nhìn thẳng, tay hơi dang, nền trơn) rồi nhập vào. App tự xoá nền, tự đặt khớp — bạn chỉ cần kéo chỉnh chấm trắng rồi bấm <b>✂ Cắt tự động</b>. App tô mỗi phần một màu: chỗ nào chia sai (tay dính vào thân…) thì chọn tên phần rồi tô lại, xong bấm <b>✓ Cắt thành mảnh</b>.', B('char', '📷 Chọn ảnh nhân vật', !hasChar) + B('aichar', '🤖 AI vẽ từ ảnh chụp'))}
   ${step(2, 'Cho nhân vật cử động', hasAnim, 'Chọn một hành động có sẵn — app tự tạo các frame. Muốn tự tạo dáng: dùng tab 🤸 Tạo dáng, kéo tay chân, rồi 🎞 Tạo frame giữa.', [['walk', '🚶 Đi bộ'], ['run', '🏃 Chạy'], ['wave', '👋 Vẫy tay'], ['jump', '🦘 Nhảy'], ['cheer', '🙌 Ăn mừng'], ['nod', '🙂 Gật đầu'], ['talk', '🗣 Nói']].map(([k, l]) => B('act:' + k, l)).join('') + B('pose', '🤸 Tự tạo dáng'))}
-  ${step(3, 'Thêm nền, chữ, camera, âm thanh', hasFx, 'Nền vẽ sẵn (phòng, lớp học, phố, biển…), chữ kiểu truyện tranh, zoom vào mặt, rung khung, nhạc nền, lồng tiếng — app tự nhép miệng theo giọng.', B('scene', '🏞 Nền vẽ sẵn') + B('text', '🔤 Thêm chữ') + B('zoom', '🎥 Zoom vào') + B('music', '🎵 Nhạc nền') + B('voice', '🎤 Lồng tiếng') + B('sfx', '🔊 Âm thanh vui'))}
+  ${step(3, 'Thêm nền, chữ, camera, âm thanh', hasFx, 'Nền vẽ sẵn (phòng, lớp học, phố, biển…), chữ kiểu truyện tranh, zoom vào mặt, rung khung, nhạc nền, lồng tiếng — app tự nhép miệng theo giọng.', B('scene', '🏞 Nền vẽ sẵn') + B('text', '🔤 Thêm chữ') + B('zoom', '🎥 Zoom vào') + B('music', '🎵 Nhạc nền') + B('voice', '🎤 Lồng tiếng') + B('sfx', '🔊 Âm thanh vui') + B('ball', '⚽ Bóng bay') + B('gag', '⚡ Combo hài'))}
   ${step(4, 'Xem lại', false, 'Bấm Phát để xem. Sửa frame nào thì chạm frame đó ở dưới.', B('play', '▶ Phát thử'))}
   ${step(5, 'Xuất video', exported, 'Xuất video có tiếng để đăng YouTube Shorts / TikTok.', B('video', '🎬 Xuất video', hasAnim))}</div>`;
   modal({ title: '🚀 Làm video nhanh', html, buttons: [{ label: 'Đóng', value: null }], onOpen: (ov, close) => {
@@ -6830,6 +7241,8 @@ async function wizard() {
       else if (k === 'zoom') { setTool('fx'); openTab('fx', 'cam'); fxCamPick = true; fxSyncBar(); toast('Chạm lên mặt nhân vật để camera zoom vào frame này', 4000); }
       else if (k === 'music') { setTool('fx'); openTab('fx', 'audio'); $('#musicFile').click(); }
       else if (k === 'voice') { setTool('fx'); openTab('fx', 'audio'); $('#voiceFile').click(); }
+      else if (k === 'ball') { setTool('fx'); openTab('fx', 'gag'); ballModeSet(true); }
+      else if (k === 'gag') { setTool('fx'); openTab('fx', 'gag'); toast('Chọn 1 combo (😱 Sốc, 🤕 Bóng vào mặt, 🥅 VÀO!…) rồi chạm lên khung', 3500); }
       else if (k === 'sfx') { setTool('fx'); openTab('fx', 'audio'); toast('Chạm một âm thanh để gắn vào frame đang xem', 3000); }
       else if (k === 'play') startPlay();
       else if (k === 'video') exportVideo();
@@ -6862,6 +7275,7 @@ function helpHtml() {
 <li><b>✨ Chữ & FX</b>: thêm chữ truyện tranh/bóng thoại/hét/phụ đề (kéo để dời), camera zoom + chạm đặt tâm (tự lia mượt giữa các camera key), rung, chớp sáng; nhạc nền, lồng tiếng + 🗣 tự nhép miệng; âm thanh hiệu ứng có sẵn. <b>🎬 Video</b> xuất MP4/WebM có tiếng.</li>
 <li><b>📁 Dự án</b>: lưu nhiều bài, mở/đổi tên/nhân bản/xoá.</li>
 <li><b>🧩 Nhân vật ghép</b> (công cụ Ghép): Nhập ảnh → Nhân vật ghép → kéo khớp → Cắt tự động. Chạm mảnh, kéo để xoay quanh khớp. Cách làm hoạt hình: đặt tư thế A → Nhân bản frame → đặt tư thế B → quay lại A → <b>Tạo frame giữa</b>. Có mẫu Đi/Chạy/Nhảy/Vẫy/Gật/Lắc đầu/Thở, Nói/Chớp mắt (khoanh tách mảnh Miệng/Mắt rồi đặt vai trò).</li>
+<li><b>🎨 Tách nét + màu</b>: Nhập ảnh → tab <b>🎨 Tách nét + màu</b>. App tự lấy nét viền tối vào lớp <b>Nhân vật</b> và màu gốc của từng vùng vào lớp <b>Màu</b> (tô lấn dưới nét). Hợp với ảnh 🤖 AI nhân vật. Ở tab 🧩 Nhân vật ghép có công tắc <b>Làm sạch</b> để nét rõ, màu phẳng trước khi cắt mảnh.</li>
 <li><b>Tô màu giữ nét</b>: vẽ nét ở lớp <b>Nhân vật</b> hoặc <b>Nét</b>, rồi dùng <b>Đổ màu</b> — màu vào lớp <b>Màu</b> riêng nằm dưới nét, tô lấn tới giữa nét. Tẩy hay sửa nét thì màu vẫn nằm yên chỗ cũ, không loang. Muốn sửa màu bằng bút/tẩy thì chọn lớp Màu. Chọn vùng ở lớp Nhân vật thì màu bên dưới đi theo.</li>
 <li><b>💧 Dò màu</b>: khi đang Đổ màu, bấm 💧 Dò màu (cạnh bảng màu) rồi chạm vào chỗ nào trên hình để lấy đúng màu đó — app tự quay lại Đổ màu, chạm vùng cần tô là xong. Máy tính: giữ Alt + bấm.</li>
 <li><b>🧲 Hút nét</b>: bật để khi đồ lại, nét vẽ lệch tự hút vào nét cũ gần nhất (nét frame này, frame trước khi bật Onion, ảnh mờ). Chỉnh bán kính trong Menu.</li>
@@ -6935,6 +7349,7 @@ $('#menuBtn').addEventListener('click', () => {
 /* ========= Init ========= */
 async function init() {
   loadSettings();
+  S.ballOpt = { obj: 'ball', n: 8, ease: 'even', size: 1, hit: true, trail: true, sound: true, ...(S.ballOpt || {}) }; ballWire(); ballSyncBar();
   $('#sizeIn').value = S.size; $('#sizeVal').textContent = S.size;
   $('#opIn').value = Math.round(S.opacity * 100); $('#opVal').textContent = Math.round(S.opacity * 100) + '%';
   setColor(S.color); renderRecentSw(); updateToggles(); setTool('brush'); setLayer('char');
@@ -6958,7 +7373,7 @@ async function init() {
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }
 /* ========= Installed app (PWA): offline + updates ========= */
-const APP_VERSION = '2026.11.20-2236';
+const APP_VERSION = '2026.11.20-2326';
 let swReg = null, swUpdating = false;
 (function setupPWA() {
   let top = false; try { top = window.top === window; } catch (e) {}
