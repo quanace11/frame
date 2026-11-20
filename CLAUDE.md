@@ -52,6 +52,7 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
 - **Cut-out puppet** (`S.pp.parts`: `{id, role, parent, z, ox, oy, px, py, c, alts[], asset?}`)
   - Mỗi frame có `f.pp[partId] = {r, dx, dy, sx, sy, v, h}`. FK dùng ma trận 2×3 (`ppMats`).
   - Vai trò (`PP_ROLES`): `head`, `torso`, `armL/R`, `foreL/R`, `legL/R`, `shinL/R`, `mouth`, `eyes`.
+  - Cắt tự động 2 bước: `ppFitJoints` (+ `ppFitLimbs`: tìm bàn tay/bàn chân là đầu mút xa nhất khi đi bên trong hình; tay áp sát thân thì tìm theo viền) → `ppLabBegin` chia vùng (`ppAutoLabels`: lan từ xương, qua nét viền tốn thêm) và cho người dùng tô sửa (`ppSetup.hand`, bút / chạm cả mảng / khoanh, giá trị theo `PP_R10`, 10 = bỏ đi) → `ppAutoCut`. Nút "Sửa lại vùng cắt" mở lại từ `ppLastCut` (chỉ trong phiên), cắt lại giữ tư thế theo vai trò.
   - `ppPresetPose` (đi, chạy, nhảy...), `ppTween`/`ppRetween` (frame giữa tự cập nhật theo keyframe 🔑).
 - **Kho hình** (`ASSET_CATS`, `assetDialog`, `assetToPart`, `assetToFrame`)
   - Mắt, miệng, biểu cảm, tay, hiệu ứng.
@@ -64,6 +65,7 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
   - IK, Pose library, Projects
   - Text/camera/FX + SFX tổng hợp + lip sync + xuất video MP4 (MediaRecorder)
   - **Caricature** (tab 🤪 Biếm hoạ trong Import dialog): `cariFindHead` (tìm cổ từ mask u2netp), `cariToon` (bilateral + k-means + nét DoG), `cariCompose` (đầu to/thân nhỏ/phồng mặt/viền ngoài). Kết quả cache trong `st.cariC`: đổi thanh hình dáng chỉ chạy lại `cariCompose`.
+  - **AI tạo nhân vật** (nút 🤖 AI nhân vật, `aiCharDialog`): gửi ảnh mẫu phong cách (image 1, có sẵn vẽ bằng code `aiStyleRefCanvas` hoặc ảnh người dùng chọn, IndexedDB `ai-style-ref`) + ảnh chụp (photo 2) + câu lệnh tới Gemini `generateContent` (`geminiGenerate`, model mặc định `gemini-2.5-flash-image`). Kết quả lưu IndexedDB `ai-chars`, ✂ Cắt mảnh = `openImport` chế độ Nhân vật ghép. **Key Gemini chỉ nằm trong localStorage `fs-gemini-key`** (gửi qua header `x-goog-api-key`), không bao giờ commit/hardcode, không lưu vào dự án/ZIP. Test dùng API giả (test30).
   - Image → vector (centre-line tracing), Snap-to-line, Delete all
   - Input (cử chỉ, phím tắt), Toolbar, Modal, Persistence, ZIP, Import dialog
   - Video nền, Panel tabs, Wizard (🚀 Làm nhanh), Menu/Help, Init, PWA
