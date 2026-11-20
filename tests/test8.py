@@ -29,7 +29,7 @@ async def main():
         await pg.click('.dlg .btns >> text=Dùng'); await pg.wait_for_timeout(500)
         print('setup', await pg.evaluate('!!ppSetup'), await pg.evaluate('JSON.stringify(ppSetup.J.shL)'))
         await pg.screenshot(path='p1.png')
-        t0=time.time(); await pg.click('#ppCutAuto')
+        t0=time.time(); await pg.click('#ppCutAuto'); await pg.click('#ppLabCut')
         try:
             await pg.wait_for_function('S.pp && S.pp.parts.length', timeout=60000)
         except Exception as ex:
