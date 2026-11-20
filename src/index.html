@@ -255,6 +255,8 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <svg viewBox="0 0 24 24"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6" stroke-dasharray="2.5 2"/></svg>Onion</button>
     <button class="tool" id="fitBtn" title="Vừa khung">
       <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Vừa khung</button>
+    <button class="tool" id="safeBtn" title="Vùng an toàn Shorts/TikTok: chỗ bị chữ, nút like, mô tả che khi đăng (Z). Bấm lần nữa để thêm lưới 1/3">
+      <svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="2"/><rect x="8" y="6" width="7" height="10" stroke-dasharray="2 1.5"/></svg>An toàn</button>
     <button class="tool" id="rotBtn" title="Xoay khung vẽ 90° (hoặc xoay bằng 2 ngón)">
       <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></svg>Xoay 90°</button>
     <button class="tool" id="focusBtn" title="Ẩn công cụ để vẽ toàn màn hình">
@@ -623,6 +625,7 @@ function render() {
   { const deg = Math.round(((vr / DEG) % 360 + 360) % 360); $('#zoomLbl').textContent = Math.round(vs / fitS * 100) + '%' + (deg ? ` · ${deg}°` : ''); }
   if (playing) {
     if (playCanvas) { c.save(); c.beginPath(); c.rect(0, 0, W, H); c.clip(); const now = performance.now(); drawFrameFx(c, playIdx, playCanvas, (now - playT0) / 1000, (now - playFT0) / 1000); c.restore(); }
+    if (S.safe) drawSafeZone(c, 1 / vs * DPR);
     requestRender(); return;
   }
   const f = curFrame(); if (!f) return;
@@ -659,6 +662,7 @@ function render() {
   if (rig) renderRig(c, px);
   renderPP(c, f, px);
   if (f.texts && f.texts.length) drawTexts(c, f, S.tool === 'fx' ? fxSel : null);
+  if (S.safe) drawSafeZone(c, px);
   if (S.tool === 'fx') {
     const cam = camAt(S.cur), z = Math.max(1, cam.z), hw = W / (2 * z), hh = H / (2 * z), cx = clamp(cam.x, hw, W - hw), cy = clamp(cam.y, hh, H - hh);
     if (z > 1.001) { c.save(); c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.rect(0, 0, W, H); c.rect(cx - hw, cy - hh, hw * 2, hh * 2); c.fill('evenodd'); c.restore(); }
@@ -682,6 +686,42 @@ function render() {
     c.strokeRect(-floating.c.width / 2, -floating.c.height / 2, floating.c.width, floating.c.height);
     c.restore(); c.setLineDash([]);
   }
+}
+
+/* ========= Shorts safe zone (only on screen, never exported) ========= */
+// Where YouTube Shorts / TikTok cover the video with their own UI. Fractions of the frame for 9:16.
+SETTINGS_KEYS.push('safe'); S.safe = 0;
+const SAFE_916 = { l: 0.055, r: 0.15, t: 0.08, b: 0.22 };
+function safeRect() {
+  if (H > W * 1.4) { const z = SAFE_916; return { x: W * z.l, y: H * z.t, w: W * (1 - z.l - z.r), h: H * (1 - z.t - z.b), tall: true }; }
+  return { x: W * 0.05, y: H * 0.05, w: W * 0.9, h: H * 0.9, tall: false };
+}
+function drawSafeZone(c, px) {
+  const r = safeRect();
+  c.save();
+  c.fillStyle = 'rgba(255,40,90,.13)'; c.beginPath(); c.rect(0, 0, W, H); c.rect(r.x, r.y, r.w, r.h); c.fill('evenodd');
+  c.setLineDash([12 * px, 8 * px]); c.lineWidth = 2.5 * px; c.strokeStyle = 'rgba(255,40,90,.9)'; c.strokeRect(r.x, r.y, r.w, r.h); c.setLineDash([]);
+  if (r.tall) {
+    const fs = Math.max(13 * px, W * 0.022); c.font = `600 ${fs}px system-ui,sans-serif`; c.fillStyle = 'rgba(200,20,70,.85)'; c.textBaseline = 'middle';
+    c.textAlign = 'center'; c.fillText('Thanh tìm kiếm / tiêu đề', W / 2, r.y / 2);
+    c.fillText('Tên kênh · mô tả · nhạc', (r.x + r.x + r.w) / 2, r.y + r.h + (H - r.y - r.h) * 0.45);
+    c.save(); c.translate(r.x + r.w + (W - r.x - r.w) / 2, H * 0.62); c.rotate(-Math.PI / 2); c.fillText('Nút thích · bình luận · chia sẻ', 0, 0); c.restore();
+    // like/comment/share buttons hint
+    c.fillStyle = 'rgba(255,40,90,.25)'; const bx = r.x + r.w + (W - r.x - r.w) / 2, br = Math.min((W - r.x - r.w) * 0.32, W * 0.04);
+    for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(bx, H * 0.48 + i * br * 3.2, br, 0, Math.PI * 2); c.fill(); }
+  }
+  if (S.safe === 2) {
+    c.strokeStyle = 'rgba(40,140,255,.7)'; c.lineWidth = 1.5 * px; c.beginPath();
+    for (let i = 1; i < 3; i++) { c.moveTo(W * i / 3, 0); c.lineTo(W * i / 3, H); c.moveTo(0, H * i / 3); c.lineTo(W, H * i / 3); }
+    c.stroke();
+    c.strokeStyle = 'rgba(40,140,255,.9)'; c.beginPath(); c.moveTo(W / 2 - 18 * px, H / 2); c.lineTo(W / 2 + 18 * px, H / 2); c.moveTo(W / 2, H / 2 - 18 * px); c.lineTo(W / 2, H / 2 + 18 * px); c.stroke();
+  }
+  c.restore();
+}
+$('#safeBtn').addEventListener('click', () => cycleSafe());
+function cycleSafe() {
+  S.safe = ((S.safe || 0) + 1) % 3; updateToggles(); saveSettings(); requestRender();
+  toast(['Đã tắt vùng an toàn', 'Vùng hồng sẽ bị chữ và nút của Shorts/TikTok che: đặt mặt nhân vật và chữ quan trọng trong khung', 'Thêm lưới 1/3 + tâm khung để bố cục'][S.safe], 3000);
 }
 
 /* ========= Strokes ========= */
@@ -3992,7 +4032,7 @@ function setColor(c) {
   saveSettings();
 }
 function updateToggles() {
-  $('#onionBtn').classList.toggle('on', S.onion);
+  $('#onionBtn').classList.toggle('on', S.onion); $('#safeBtn').classList.toggle('on', !!S.safe);
   $('#pressBtn').classList.toggle('on', S.pressure); $('#snapBtn').classList.toggle('on', S.snap);
   $('#loopBtn').classList.toggle('on', S.loop);
   $('#layerBg').classList.toggle('hidden', !S.showBg); $('#layerChar').classList.toggle('hidden', !S.showChar); $('#layerCol').classList.toggle('hidden', !S.showCol); $('[data-eye=col]').textContent = S.showCol ? '👁' : '🚫'; $('#layerVec').classList.toggle('hidden', !S.showVec);
@@ -4084,6 +4124,7 @@ document.addEventListener('keydown', e => {
   else if (k === 'escape' && motion) motionClose();
   else if (k === 'escape' && floating) cancelFloating();
   else if (k === 'o') $('#onionBtn').click();
+  else if (k === 'z') cycleSafe();
   else if (k === 'f') setFocus(!S.focus);
   else if (k === 'r') rotateView90();
 });
