@@ -20,7 +20,7 @@ async def main():
             print(vp['width'], 'no tiny chips', small == 0)
             print(vp['width'], 'bg buttons out of the bar', await pg.evaluate("!document.getElementById('newBgBtn').offsetParent"))
             await pg.click('#bgMenuBtn'); await pg.wait_for_timeout(100)
-            print(vp['width'], 'menu shows 3 options', await pg.evaluate("document.querySelectorAll('.pop.bgm .bgm-row > button').length") == 3,
+            print(vp['width'], 'menu shows 3 options', await pg.evaluate("document.querySelectorAll('.pop.bgm .bgm-row[data-k] > button').length") == 3,
                   'info', await pg.inner_text('.pop.bgm .bgm-info'))
             n0 = await pg.evaluate("new Set(S.frames.map(f=>f.bgId)).size")
             await pg.click('#addBtn')
@@ -33,6 +33,11 @@ async def main():
             # opening the menu again still works after closing by an outside tap
             await pg.click('#bgMenuBtn'); await pg.wait_for_timeout(100); await pg.mouse.click(vp['width']//2, vp['height']//2); await pg.wait_for_timeout(100)
             print(vp['width'], 'outside tap closes, buttons restored', await pg.evaluate("document.querySelectorAll('#bgHold > button').length") == 3)
+            # preset scenes are one tap away from the Nền ▾ menu
+            await pg.click('#bgMenuBtn'); await pg.wait_for_timeout(100); await pg.click('.pop.bgm .bgm-scene'); await pg.wait_for_timeout(300)
+            print(vp['width'], 'Nền ▾ opens scene library', await pg.evaluate("!!document.querySelector('#scGrid') && !document.querySelector('.pop.bgm')"),
+                  'buttons still in holder', await pg.evaluate("document.querySelectorAll('#bgHold > button').length") == 3)
+            await pg.click('.dlg .btns >> text=Đóng'); await pg.wait_for_timeout(100)
             print(vp['width'], 'save state short', await pg.inner_text('#saveState'))
             await pg.screenshot(path=f"t40_{vp['width']}.png")
             print('ERR', errs); await pg.close()
