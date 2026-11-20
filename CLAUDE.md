@@ -64,6 +64,7 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
 - **Còn lại**
   - IK, Pose library, Projects
   - Text/camera/FX + SFX tổng hợp + lip sync + xuất video MP4 (MediaRecorder)
+  - **Caricature** (tab 🤪 Biếm hoạ trong Import dialog): `cariFindHead` (tìm cổ từ mask u2netp), `cariToon` (bilateral + k-means + nét DoG), `cariCompose` (đầu to/thân nhỏ/phồng mặt/viền ngoài). Kết quả cache trong `st.cariC`: đổi thanh hình dáng chỉ chạy lại `cariCompose`.
   - Image → vector (centre-line tracing), Snap-to-line, Delete all
   - Input (cử chỉ, phím tắt), Toolbar, Modal, Persistence, ZIP, Import dialog
   - Video nền, Panel tabs, Wizard (🚀 Làm nhanh), Menu/Help, Init, PWA
