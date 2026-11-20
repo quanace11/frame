@@ -1,6 +1,6 @@
 # Frame Studio
 
-App vẽ và làm hoạt hình Shorts 9:16 trên tablet: vẽ từng frame, nét vector, tách nhân vật từ ảnh thành nhân vật ghép (cut-out), kho mắt/miệng/tay, cử chỉ có sẵn, chữ, camera, âm thanh, nhép miệng và xuất MP4. Chạy offline sau khi cài (PWA).
+App vẽ và làm hoạt hình Shorts 9:16 trên tablet: 🧑‍🎨 tạo nhân vật hoạt hình phong cách "Đầu To" không cần biết vẽ (chọn đầu, tóc, mặt, áo; 13 biểu cảm), vẽ từng frame (có nét mực thon 2 đầu và viền đậm tự động), nét vector, tách nhân vật từ ảnh thành nhân vật ghép (cut-out), kho mắt/miệng/tay, cử chỉ có sẵn, chữ, camera, âm thanh, nhép miệng và xuất MP4. Chạy offline sau khi cài (PWA).
 
 **Link app:** https://quanace11.github.io/frame/
 

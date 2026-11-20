@@ -54,6 +54,10 @@ input[type=range]{width:110px;accent-color:var(--accent);height:28px}
 .chip{border:1px solid var(--line);background:var(--panel2);border-radius:10px;padding:7px 10px;cursor:pointer;white-space:nowrap;font-size:13px}
 .chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .chip.small{padding:5px 8px;font-size:12px}
+.cbwrap{display:flex;gap:14px;align-items:flex-start}.cbprev{flex:0 0 300px}.cbprev canvas{display:block;width:300px;height:540px;background:#f6eedd;border-radius:14px;margin-bottom:6px}
+.cbform{flex:1;max-height:62vh;overflow:auto;padding-right:4px}.cbrow{margin-bottom:9px}.cbopts{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px}.cbopts .chip.small{min-height:40px;padding:6px 11px;font-size:13px}
+.cbsw{width:40px;height:40px;border-radius:50%;border:3px solid var(--line);cursor:pointer}.cbsw.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+@media (max-width:760px){.cbwrap{flex-direction:column;align-items:stretch}.cbprev{flex:none;display:flex;flex-direction:column;align-items:center}.cbprev canvas{width:200px;height:360px}.cbform{max-height:none}}
 .layer{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel2)}
 .layer button{border:0;background:transparent;padding:7px 10px;cursor:pointer;font-size:13px}
 .layer .eye{padding:7px 8px;border-left:1px solid var(--line);color:var(--muted)}
@@ -241,6 +245,8 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <span class="lbl">Độ đậm</span><input type="range" id="opIn" min="5" max="100" step="1"><span class="val" id="opVal"></span>
     </div>
     <button class="chip small" id="pressBtn" title="Nét thay đổi theo lực nhấn bút">Lực nhấn</button>
+    <button class="chip small" id="taperBtn" title="Nét mực: nét thon nhọn 2 đầu như nét vẽ hoạt hình (áp khi nhấc bút)">✒️ Nét mực</button>
+    <button class="chip small" id="boldBtn" title="Thêm viền tối dày quanh mọi hình trên lớp đang vẽ">🖍 Viền đậm</button>
     <button class="chip small" id="snapBtn" title="Hút nét: vẽ lệch sẽ tự kéo vào nét cũ gần nhất (nét frame này, frame trước khi bật Onion, ảnh mờ)">🧲 Hút nét</button>
     <div class="grp" id="palette">
       <label id="curColor" title="Chọn màu tuỳ ý"><input type="color" id="colorIn"></label>
@@ -261,7 +267,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <div class="layer" id="layerRef"><button class="name" id="refEditBtn" title="Chỉnh vị trí/cỡ/độ mờ ảnh mờ">Ảnh mờ</button><button class="eye" id="refEye" title="Ẩn/hiện">👁</button></div>
     </div>
     <span class="spacer"></span>
-    <button class="chip small on" id="wizBtn" title="Trợ lý làm video từng bước">🚀 Làm nhanh</button><button class="chip small" id="assetBtn" title="Kho hình: hiệu ứng động (choáng, đánh nhau, chữ âm thanh), mắt, miệng, tay">🎨 Kho hình</button>
+    <button class="chip small on" id="wizBtn" title="Trợ lý làm video từng bước">🚀 Làm nhanh</button><button class="chip small on" id="cbBtn" title="Tạo nhân vật hoạt hình phong cách Đầu To: chọn đầu, tóc, mặt, áo — không cần biết vẽ">🧑‍🎨 Tạo nhân vật</button><button class="chip small" id="assetBtn" title="Kho hình: hiệu ứng động (choáng, đánh nhau, chữ âm thanh), mắt, miệng, tay">🎨 Kho hình</button>
     <button class="chip small" id="projBtn" title="Danh sách dự án">📁 Dự án</button><span id="saveState"></span>
   </header>
 
@@ -341,7 +347,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
     </div>
     <div id="ppbar" hidden>
       <div class="mrow"><b>🧩 Nhân vật ghép</b><span style="flex:1"></span><button class="chip small" id="ppMini">▾ Thu gọn</button><button class="chip small pclose" data-close="puppet" title="Đóng bảng (công cụ vẫn bật)">✕</button></div>
-      <div id="ppEmpty" class="mrow"><span class="lbl">Chưa có nhân vật ghép. Nhập ảnh (vd. ảnh AI tạo) → chọn <b>Nhân vật ghép</b>.</span><button class="chip small on" id="ppNew">Nhập ảnh</button></div>
+      <div id="ppEmpty" class="mrow"><span class="lbl">Chưa có nhân vật ghép. Bấm <b>🧑‍🎨 Tạo nhân vật</b> (không cần vẽ), hoặc nhập ảnh rồi chọn <b>Nhân vật ghép</b>.</span><button class="chip small on" id="cbNew2">🧑‍🎨 Tạo nhân vật</button><button class="chip small" id="ppNew">Nhập ảnh</button></div>
       <div id="ppSetupSec">
         <div class="mrow"><span class="lbl"><b>Đặt khớp:</b> kéo chấm trắng vào vai, khuỷu, cổ tay, hông, gối, cổ chân (kéo khớp cha kéo cả nhánh)</span></div>
         <div class="mrow"><label class="lbl"><input type="checkbox" id="ppSplit"> Chia tay/chân 2 đoạn (gập khuỷu, gối)</label>
@@ -365,6 +371,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
           <button class="chip small" id="ppCutBtn" title="Khoanh để tách một phần của mảnh đang chọn thành mảnh mới">✂ Khoanh tách mảnh</button><label class="lbl"><input type="checkbox" id="ppKeep"> giữ chỗ cũ</label></div>
         <div class="mrow" data-tab="pose"><span class="lbl"><b>Frame này:</b></span><button class="chip small" id="ppKeyBtn" title="Keyframe = tư thế bạn tự đặt. Frame tự động = app tự tính giữa 2 keyframe">🔑 Keyframe</button>
           <span class="lbl">Chuyển tới keyframe sau:</span><select id="ppEase" class="chip small"></select></div>
+        <div class="mrow" data-tab="pose" id="cbExprWrap" hidden style="flex-wrap:wrap;gap:4px"><span class="lbl"><b>Biểu cảm:</b></span><span id="cbExprRow" class="mrow" style="flex-wrap:wrap;gap:4px"></span><button class="chip small" id="cbEdit" title="Đổi tóc, áo, màu… của nhân vật này, giữ nguyên chuyển động">✏️ Sửa nhân vật</button></div>
         <div class="mrow" data-tab="pose"><button class="chip small on" id="ppAssetBtn" title="Gắn mắt, miệng, biểu cảm, bàn tay có sẵn vào mảnh đang chọn">🎨 Kho mắt/miệng/tay</button><span class="lbl"><b>Tư thế:</b></span><select id="ppPoseSel" class="chip small"></select><button class="chip small on" id="ppPoseApply">Áp</button><button class="chip small" id="ppPoseSave">＋ Lưu tư thế này</button><button class="chip small" id="ppPoseDel" title="Xoá tư thế đã lưu">🗑</button><button class="chip small" id="ppFlipChar" title="Quay nhân vật sang hướng ngược lại">↔ Lật nhân vật</button></div>
         <div class="mrow" data-tab="frames"><span class="lbl"><b>Frame giữa:</b> chèn</span><input type="number" id="ppTweenN" value="3" min="1" max="24" style="width:52px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">frame chuyển tiếp tới frame sau</span><button class="chip small on" id="ppTweenBtn">Tạo frame giữa</button></div>
         <div class="mrow" data-tab="frames"><span class="lbl"><b>Mẫu nhanh:</b></span><span id="ppPresets" class="mrow"></span></div>
@@ -442,7 +449,7 @@ const S = {
   frames: [], bgs: [], cur: 0, layer: 'char', tool: 'brush',
   color: '#111111', size: 8, opacity: 1, pressure: true,
   onion: true, onionAlpha: 0.3, showBg: true, showChar: true, showVec: true, showPP: true, bendR: 160, vdm: 'point', snap: false, snapR: 24,
-  fingerDraw: false, smooth: 0.3, defaultDur: 0.1, loop: true, fillTol: 120
+  fingerDraw: false, taper: false, smooth: 0.3, defaultDur: 0.1, loop: true, fillTol: 120
 };
 let uidN = 1;
 const newId = () => Date.now().toString(36) + (uidN++).toString(36);
@@ -458,7 +465,7 @@ let toastT;
 function toast(msg, ms = 1800) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
 
 /* ========= Settings ========= */
-const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm'];
+const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','taper'];
 function loadSettings() { try { const o = JSON.parse(localStorage.getItem('fs-settings') || '{}'); for (const k of SETTINGS_KEYS) if (k in o) S[k] = o[k]; } catch (e) {} }
 function saveSettings() { try { const o = {}; for (const k of SETTINGS_KEYS) o[k] = S[k]; localStorage.setItem('fs-settings', JSON.stringify(o)); } catch (e) {} }
 
@@ -696,7 +703,7 @@ function rectFromBox(b, pad = 0) {
 }
 function strokeEnd() {
   if (!stroke) return;
-  strokeFinishTail();
+  if (!(S.taper && !stroke.erase && strokeTaper())) strokeFinishTail();
   const o = stroke.o, rect = rectFromBox(stroke.bbox, 2);
   if (rect && o.canvas) {
     const lc = o.canvas.getContext('2d');
@@ -1842,7 +1849,7 @@ function ppImg(p, q) {
 function ppAlphaH(h) { if (!h.alpha && h.c) { const d = h.c.getContext('2d').getImageData(0, 0, h.c.width, h.c.height).data, a = new Uint8Array(h.c.width * h.c.height); for (let i = 0; i < a.length; i++) a[i] = d[i * 4 + 3]; h.alpha = a; } return h.alpha; }
 function drawPuppet(ctx, pose, lip) {
   if (!S.pp || !S.pp.parts.length) return;
-  if (lip && lip.pid) { const mp = ppPart(lip.pid); if (mp) { const q = { ...((pose && pose[mp.id]) || {}) }; if (mp.alts && mp.alts.length) { const v = Math.round(lip.lv * mp.alts.length); if (v) q.v = v; else delete q.v; } else q.sy = (q.sy == null ? 1 : q.sy) * (1 + 0.8 * lip.lv); pose = { ...(pose || {}), [mp.id]: q }; } }
+  if (lip && lip.pid) { const mp = ppPart(lip.pid); if (mp) { const q = { ...((pose && pose[mp.id]) || {}) }; if (mp.alts && mp.alts.length) { const v = Math.round(lip.lv * ((mp.asset && mp.asset.lip) || mp.alts.length)); if (v) q.v = v; else delete q.v; } else q.sy = (q.sy == null ? 1 : q.sy) * (1 + 0.8 * lip.lv); pose = { ...(pose || {}), [mp.id]: q }; } }
   const M = ppMats(pose);
   for (const p of [...S.pp.parts].sort((a, b) => a.z - b.z)) {
     const q = pose && pose[p.id]; if ((q && q.h) || !p.c) continue;
@@ -2201,7 +2208,7 @@ function ppPresetPose(type, k, n, base, hgt) {
     case 'nod': add('head', 'r', 8 * s); break;
     case 'shake': add('head', 'r', 10 * Math.sin(2 * ph)); break;
     case 'breathe': mul('torso', 'sy', 1 + 0.015 * s); add('head', 'dy', -0.006 * hgt * s); add('armL', 'r', 2 * s); add('armR', 'r', -2 * s); break;
-    case 'talk': { const mp = ppByRole('mouth'), open = (1 - Math.cos(2 * ph)) / 2; if (mp && mp.alts && mp.alts.length) { const q = P[mp.id] = P[mp.id] || {}; q.v = Math.round(open * mp.alts.length) || undefined; } else mul('mouth', 'sy', 1 + 0.7 * open); break; }
+    case 'talk': { const mp = ppByRole('mouth'), open = (1 - Math.cos(2 * ph)) / 2; if (mp && mp.alts && mp.alts.length) { const q = P[mp.id] = P[mp.id] || {}; q.v = Math.round(open * ((mp.asset && mp.asset.lip) || mp.alts.length)) || undefined; } else mul('mouth', 'sy', 1 + 0.7 * open); break; }
     case 'blink': { const pulse = Math.exp(-Math.pow((ph - Math.PI) / 0.5, 2)), ep = ppByRole('eyes'); if (ep && ep.alts && ep.alts.length) { const q = P[ep.id] = P[ep.id] || {}; q.v = pulse > 0.5 ? 1 : undefined; } else mul('eyes', 'sy', 1 - 0.9 * pulse); break; }
   }
   return P;
@@ -2243,6 +2250,7 @@ function ppSyncBar() {
   document.querySelectorAll('[data-ppf]').forEach(b => b.classList.toggle('on', b.dataset.ppf === ppFillMode));
   if (ppSetup) { $('#ppSplit').checked = ppSetup.split; return; }
   if (!S.pp) return;
+  cbSyncBar();
   const sel = ppPart(ppSel), list = $('#ppList');
   list.innerHTML = S.pp.parts.slice().sort((a, b) => b.z - a.z).map(p => `<option value="${p.id}" ${p.id === ppSel ? 'selected' : ''}>${p.name.replace(/</g, '&lt;')}</option>`).join('') + (sel ? '' : '<option value="" selected>— chạm chọn mảnh —</option>');
   $('#ppRole').innerHTML = Object.entries(PP_ROLES).map(([k, v]) => `<option value="${k}" ${sel && sel.role === k ? 'selected' : ''}>${v}</option>`).join('');
@@ -2683,6 +2691,406 @@ function assetDialog(startCat) {
       draw();
     } });
 }
+/* ===== Character builder "Đầu To": original big-head cartoon house style (thick outline, flat colours + one shade, tiny skinny body), all drawn in code ===== */
+const CB_INK = '#2a1810';
+const CB_SKINS = ['#ffe0c4', '#f6c59c', '#e3a674', '#c0814f', '#8f5734', '#5f3922'];
+const CB_HAIRS = ['#1f1612', '#4b2c19', '#8b5a2b', '#e3b54d', '#c4521f', '#a3a3a3', '#f2f2f2'];
+const CB_COLS = ['#e8352f', '#1f6fe0', '#ffd21f', '#ffffff', '#1fa95a', '#ff8a1f', '#7d3fd1', '#86c9f6', '#22223a', '#e04e9a', '#7a1430', '#111111'];
+const CB_CHOICES = {
+  head: ['Dáng đầu', { round: 'Tròn', egg: 'Quả trứng', pear: 'Hàm bạnh', square: 'Vuông', long: 'Dài', wide: 'Bè ngang', bean: 'Hạt đậu' }],
+  hair: ['Tóc', { bald: 'Trọc', buzz: 'Húi cua', side: 'Mái vuốt', spiky: 'Dựng đứng', curly: 'Xoăn', afro: 'Xù to', mohawk: 'Mào gà', bun: 'Búi', long: 'Dài', balding: 'Hói đỉnh' }],
+  beard: ['Râu', { none: 'Không', stubble: 'Lún phún', mous: 'Ria mép', goatee: 'Râu dê', full: 'Quai nón' }],
+  nose: ['Mũi', { button: 'Nhỏ', big: 'To tròn', long: 'Khoằm', wide: 'Bè' }],
+  eyes: ['Mắt', { round: 'To tròn', oval: 'Bầu dục', narrow: 'Híp' }],
+  brow: ['Lông mày', { thick: 'Rậm', thin: 'Mảnh', uni: 'Dính liền' }],
+  body: ['Dáng người', { skinny: 'Gầy', normal: 'Vừa', belly: 'Bụng bia' }],
+  outfit: ['Trang phục', { kit: 'Áo đấu', tee: 'Áo phông', suit: 'Com-lê' }],
+  pattern: ['Hoạ tiết áo', { plain: 'Trơn', stripes: 'Sọc dọc', hoops: 'Sọc ngang', halves: 'Chia đôi', sash: 'Vạch chéo' }]
+};
+const CB_DEFAULT = { head: 'pear', hair: 'side', beard: 'stubble', nose: 'big', eyes: 'round', brow: 'thick', body: 'skinny', outfit: 'kit', pattern: 'plain',
+  skin: CB_SKINS[1], hairCol: CB_HAIRS[0], c1: CB_COLS[0], c2: CB_COLS[3], pants: CB_COLS[3], socks: CB_COLS[0], num: '10', headSize: 1 };
+/* expressions: eyes and mouth are separate parts with alternative pictures, so each frame can pick its own face */
+const CB_EYES = { normal: 'Bình thường', closed: 'Nhắm (chớp)', happy: 'Cười híp', angry: 'Giận', sad: 'Buồn', shock: 'Hoảng', sly: 'Gian', crazy: 'Điên', cry: 'Khóc', dizzy: 'Choáng', dead: 'Gục X', heart: 'Mê' };
+const CB_MOUTHS = { closed: 'Ngậm', half: 'Hé', open: 'Há', grin: 'Cười toe', laugh: 'Cười lớn', scream: 'Gào', frown: 'Mếu', smirk: 'Nhếch mép', grit: 'Nghiến răng', tongue: 'Lè lưỡi', o: 'Chữ O', wavy: 'Run run' };
+const CB_EXPR = {
+  normal: ['😐', 'Bình thường', 'normal', 'closed'], grin: ['😁', 'Cười toe', 'happy', 'grin'], laugh: ['🤣', 'Cười lớn', 'happy', 'laugh'], angry: ['😠', 'Giận', 'angry', 'grit'],
+  rage: ['😡', 'Gào', 'angry', 'scream'], sad: ['😢', 'Buồn', 'sad', 'frown'], cry: ['😭', 'Khóc', 'cry', 'scream'], shock: ['😱', 'Sốc', 'shock', 'o'],
+  sly: ['😏', 'Gian', 'sly', 'smirk'], crazy: ['🤪', 'Điên', 'crazy', 'tongue'], dizzy: ['😵', 'Choáng', 'dizzy', 'wavy'], ko: ['💀', 'Gục', 'dead', 'tongue'], love: ['😍', 'Mê', 'heart', 'grin']
+};
+function cbMix(a, b, t) { const A = hexToRgb(a), B = hexToRgb(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join(''); }
+const cbShade = c => cbMix(c, '#3a1a10', 0.22), cbLight = c => cbMix(c, '#ffffff', 0.35);
+function cbInk(x, w) { x.strokeStyle = CB_INK; x.lineWidth = w; x.lineCap = 'round'; x.lineJoin = 'round'; }
+function cbFS(x, col, w = 5) { x.fillStyle = col; x.fill(); cbInk(x, w); x.stroke(); }
+function cbPoly(x, P) { x.beginPath(); P.forEach((p, i) => i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1])); x.closePath(); }
+function cbTube(x, ax, ay, bx, by, w, col) { x.lineCap = 'round'; x.beginPath(); x.moveTo(ax, ay); x.lineTo(bx, by); x.lineWidth = w + 10; x.strokeStyle = CB_INK; x.stroke(); x.lineWidth = w; x.strokeStyle = col; x.stroke(); }
+/* head geometry (design units: hip centre = 0,0; y down; character ≈ 1030 units tall) */
+const CB_HEADS = { round: [1, 1, 2, 1], egg: [1.12, 0.72, 2.1, 1.02], pear: [0.8, 1.16, 2.3, 1], square: [1, 1.04, 4, 0.96], long: [0.8, 0.78, 2.4, 1.14], wide: [1.24, 1.2, 2.3, 0.84], bean: [1.06, 0.9, 2, 0.98] };
+function cbGeo(o) {
+  const hs = o.headSize || 1, sh = CB_HEADS[o.head] || CB_HEADS.round, Hh = 440 * hs * sh[3], B = 190 * hs, neckY = -262, yTop = neckY - Hh * 0.96;
+  const hw = t => { t = clamp(t, 0, 1); const b = Math.pow(Math.max(0, 1 - Math.pow(Math.abs(2 * t - 1), sh[2])), 1 / sh[2]); const s = t * t * (3 - 2 * t); return B * b * (sh[0] + (sh[1] - sh[0]) * s); };
+  const yAt = t => yTop + Hh * t;
+  const sw = { skinny: 74, normal: 88, belly: 92 }[o.body] || 74;
+  return { hs, Hh, B, yTop, neckY, hw, yAt, eyeY: yAt(0.47), noseY: yAt(0.63), mouthY: yAt(0.79), sw };
+}
+function cbHeadPath(x, g, grow = 0, t0 = 0, t1 = 1) {
+  x.beginPath(); const N = 64;
+  for (let i = 0; i <= N; i++) { const t = t0 + (t1 - t0) * i / N; x.lineTo(g.hw(t) + grow, g.yAt(t) - (t === 0 ? grow : 0)); }
+  for (let i = N; i >= 0; i--) { const t = t0 + (t1 - t0) * i / N; x.lineTo(-g.hw(t) - grow, g.yAt(t) + (t === 1 ? grow : 0)); }
+  x.closePath();
+}
+/* hair cap: the part of the head above a hairline (dips at the temples) */
+function cbHairCap(x, g, top, col, sideDip = 0.1) {
+  x.save(); cbHeadPath(x, g, 6); x.clip();
+  x.beginPath(); const w = g.B * 1.6, y0 = g.yAt(top);
+  x.moveTo(-w, g.yTop - 60); x.lineTo(w, g.yTop - 60); x.lineTo(w, g.yAt(top + sideDip + 0.12));
+  x.bezierCurveTo(g.B * 0.9, g.yAt(top + sideDip), g.B * 0.55, y0 + 10, 0, y0); x.bezierCurveTo(-g.B * 0.55, y0 + 10, -g.B * 0.9, g.yAt(top + sideDip), -w, g.yAt(top + sideDip + 0.12)); x.closePath();
+  x.fillStyle = col; x.fill(); cbInk(x, 5); x.stroke(); x.restore();
+}
+function cbHairBack(x, g, o) {
+  const c = o.hairCol, B = g.B;
+  if (o.hair === 'afro') { const L = [[0, g.yAt(0.4), B * 1.15, g.Hh * 0.52, 1]]; for (let i = 0; i <= 14; i++) { const a = Math.PI * (0.85 + 1.3 * i / 14); L.push([Math.cos(a) * B * 1.2, g.yAt(0.4) + Math.sin(a) * g.Hh * 0.56, B * 0.27, B * 0.27, 0]); }
+    const shp = (q, d) => { x.beginPath(); x.ellipse(q[0], q[1], Math.max(1, q[2] - d), Math.max(1, q[3] - d), 0, 0, Math.PI * 2); };
+    for (const q of L) { shp(q, -4); x.fillStyle = CB_INK; x.fill(); } x.fillStyle = c; for (const q of L) { shp(q, 3); x.fill(); }
+    cbInk(x, 4); x.strokeStyle = cbLight(c); for (const q of L.slice(1)) { x.beginPath(); x.arc(q[0], q[1], q[2] * 0.45, 3.6, 5.4); x.stroke(); } }
+  if (o.hair === 'long') { x.beginPath(); x.moveTo(-B * 1.08, g.yAt(0.35)); x.bezierCurveTo(-B * 1.25, g.yAt(0.8), -B * 1.2, g.yAt(1.05), -B * 0.95, g.yAt(1.12)); x.lineTo(B * 0.95, g.yAt(1.12)); x.bezierCurveTo(B * 1.2, g.yAt(1.05), B * 1.25, g.yAt(0.8), B * 1.08, g.yAt(0.35)); x.closePath(); cbFS(x, c); }
+  if (o.hair === 'bun') { x.beginPath(); x.arc(0, g.yTop - B * 0.18, B * 0.3, 0, Math.PI * 2); cbFS(x, c); }
+}
+function cbHairFront(x, g, o) {
+  const c = o.hairCol, B = g.B, cs = cbShade(c);
+  switch (o.hair) {
+    case 'buzz': cbHairCap(x, g, 0.2, c); break;
+    case 'side': cbHairCap(x, g, 0.22, c);
+      x.beginPath(); x.moveTo(-B * 0.95, g.yAt(0.26)); x.bezierCurveTo(-B * 1.1, g.yAt(-0.02), -B * 0.2, g.yAt(-0.14), B * 0.55, g.yAt(-0.08)); x.bezierCurveTo(B * 1.05, g.yAt(-0.03), B * 1.1, g.yAt(0.1), B * 0.95, g.yAt(0.2));
+      x.bezierCurveTo(B * 0.6, g.yAt(0.08), B * 0.1, g.yAt(0.12), -B * 0.3, g.yAt(0.28)); x.closePath(); cbFS(x, c);
+      cbInk(x, 6); x.strokeStyle = cbLight(c); x.beginPath(); x.moveTo(-B * 0.5, g.yAt(0.06)); x.quadraticCurveTo(B * 0.1, g.yAt(-0.1), B * 0.7, g.yAt(-0.04)); x.moveTo(-B * 0.6, g.yAt(0.17)); x.quadraticCurveTo(0, g.yAt(0.0), B * 0.6, g.yAt(0.06)); x.stroke(); break;
+    case 'spiky': cbHairCap(x, g, 0.22, c); { const P = [[-B * 0.98, g.yAt(0.3)]]; for (let i = 0; i <= 8; i++) { const a = Math.PI * (1.08 + 0.84 * i / 8), r = i % 2 ? 1.0 : 1.32; P.push([Math.cos(a) * B * r * 1.02, g.yAt(0.38) + Math.sin(a) * g.Hh * 0.5 * r]); } P.push([B * 0.98, g.yAt(0.3)]); P.push([0, g.yAt(0.2)]); cbPoly(x, P); cbFS(x, c); } break;
+    case 'curly': cbHairCap(x, g, 0.2, c); { x.beginPath(); const L = []; for (let i = 0; i <= 10; i++) { const t = i / 10, a = Math.PI * (1.0 + t); L.push([Math.cos(a) * B * 1.0, g.yAt(0.32) + Math.sin(a) * g.Hh * 0.36, B * 0.2]); } for (const [cx, cy, r] of L) { x.moveTo(cx + r, cy); x.arc(cx, cy, r, 0, Math.PI * 2); } cbFS(x, c); x.fillStyle = c; for (const [cx, cy, r] of L) { x.beginPath(); x.arc(cx, cy + 4, r - 4, 0, Math.PI * 2); x.fill(); } cbInk(x, 3.5); for (const [cx, cy, r] of L) { x.beginPath(); x.arc(cx, cy, r * 0.45, 0.3, 4); x.stroke(); } } break;
+    case 'afro': cbHairCap(x, g, 0.18, c); break;
+    case 'mohawk': cbHairCap(x, g, 0.2, cbMix(c, o.skin, 0.55), 0.12); { const P = [[-B * 0.25, g.yAt(0.25)]]; for (let i = 0; i <= 6; i++) { const t = i / 6, y = g.yAt(0.02 + 0.2 * t) - (i % 2 ? 0 : B * 0.35); P.push([-B * 0.22 + B * 0.44 * t, y - (1 - Math.abs(2 * t - 1)) * B * 0.1]); } P.push([B * 0.25, g.yAt(0.25)]); cbPoly(x, P); cbFS(x, c); } break;
+    case 'bun': cbHairCap(x, g, 0.2, c); cbInk(x, 4); x.beginPath(); x.moveTo(-B * 0.5, g.yAt(0.1)); x.quadraticCurveTo(0, g.yAt(0.0), B * 0.5, g.yAt(0.1)); x.stroke(); break;
+    case 'long': cbHairCap(x, g, 0.2, c); x.beginPath(); x.moveTo(-B * 1.02, g.yAt(0.5)); x.bezierCurveTo(-B * 1.05, g.yAt(0.1), -B * 0.5, g.yAt(0.0), 0, g.yAt(0.02)); x.bezierCurveTo(-B * 0.4, g.yAt(0.15), -B * 0.75, g.yAt(0.3), -B * 0.8, g.yAt(0.55)); x.closePath(); cbFS(x, c);
+      x.beginPath(); x.moveTo(B * 1.02, g.yAt(0.5)); x.bezierCurveTo(B * 1.05, g.yAt(0.1), B * 0.5, g.yAt(0.0), 0, g.yAt(0.02)); x.bezierCurveTo(B * 0.4, g.yAt(0.15), B * 0.75, g.yAt(0.3), B * 0.8, g.yAt(0.55)); x.closePath(); cbFS(x, c); break;
+    case 'balding': for (const s of [-1, 1]) { x.beginPath(); x.moveTo(s * g.hw(0.22), g.yAt(0.22)); x.bezierCurveTo(s * g.hw(0.2) * 1.18, g.yAt(0.3), s * g.hw(0.5) * 1.1, g.yAt(0.45), s * g.hw(0.55) * 0.98, g.yAt(0.56)); x.bezierCurveTo(s * g.hw(0.5) * 0.85, g.yAt(0.45), s * g.hw(0.3) * 0.88, g.yAt(0.3), s * g.hw(0.22), g.yAt(0.22)); x.closePath(); cbFS(x, c); } /* fall through to the shine */
+    case 'bald': x.beginPath(); x.ellipse(-B * 0.35, g.yAt(0.12), B * 0.22, g.Hh * 0.05, -0.5, 0, Math.PI * 2); x.fillStyle = 'rgba(255,255,255,.55)'; x.fill(); break;
+  }
+}
+function cbBeard(x, g, o) {
+  const c = o.hairCol, B = g.B, t0 = (g.noseY - g.yTop) / g.Hh;
+  if (o.beard === 'stubble') { x.save(); cbHeadPath(x, g); x.clip(); x.beginPath(); x.moveTo(-B * 2, g.yAt(t0 + 0.02)); x.bezierCurveTo(-B * 0.6, g.yAt(t0 + 0.12), B * 0.6, g.yAt(t0 + 0.12), B * 2, g.yAt(t0 + 0.02)); x.lineTo(B * 2, g.yAt(1.2)); x.lineTo(-B * 2, g.yAt(1.2)); x.closePath(); x.fillStyle = cbMix(o.skin, c, 0.3); x.fill();
+    x.fillStyle = cbMix(o.skin, c, 0.6); const r = aRnd(7); for (let i = 0; i < 70; i++) { const px = (r() * 2 - 1) * B, py = g.yAt(t0 + 0.08 + r() * 0.3); x.beginPath(); x.arc(px, py, 2.2, 0, Math.PI * 2); x.fill(); } x.restore(); }
+  if (o.beard === 'full') { const ts = (g.mouthY - g.yTop) / g.Hh - 0.13, N = 24; x.beginPath();
+    for (let i = 0; i <= N; i++) { const t = ts + (1 - ts) * i / N; x.lineTo(g.hw(t) * 1.06 + 4, g.yAt(t)); } x.bezierCurveTo(B * 0.6, g.yAt(1.14), -B * 0.6, g.yAt(1.14), -g.hw(1) * 1.06 - 4, g.yAt(1));
+    for (let i = N; i >= 0; i--) { const t = ts + (1 - ts) * i / N; x.lineTo(-g.hw(t) * 1.06 - 4, g.yAt(t)); } x.quadraticCurveTo(0, g.yAt(ts + 0.2), g.hw(ts) * 1.06 + 4, g.yAt(ts)); x.closePath(); cbFS(x, c);
+    cbInk(x, 4); x.strokeStyle = cbLight(c); x.beginPath(); for (const s2 of [-1, 1]) { x.moveTo(s2 * B * 0.75, g.yAt(0.86)); x.quadraticCurveTo(s2 * B * 0.6, g.yAt(0.98), s2 * B * 0.4, g.yAt(1.02)); } x.stroke(); }
+  if (o.beard === 'goatee') { x.beginPath(); x.moveTo(-B * 0.22, g.yAt(0.88)); x.quadraticCurveTo(0, g.yAt(0.86), B * 0.22, g.yAt(0.88)); x.quadraticCurveTo(B * 0.18, g.yAt(1.06), 0, g.yAt(1.12)); x.quadraticCurveTo(-B * 0.18, g.yAt(1.06), -B * 0.22, g.yAt(0.88)); cbFS(x, c); }
+  if (o.beard === 'mous' || o.beard === 'full' || o.beard === 'goatee') { for (const s of [-1, 1]) { x.beginPath(); x.moveTo(s * 4, g.yAt(t0 + 0.06)); x.bezierCurveTo(s * B * 0.3, g.yAt(t0 + 0.02), s * B * 0.55, g.yAt(t0 + 0.08), s * B * 0.62, g.yAt(t0 + 0.17)); x.bezierCurveTo(s * B * 0.4, g.yAt(t0 + 0.12), s * B * 0.2, g.yAt(t0 + 0.14), s * 4, g.yAt(t0 + 0.12)); x.closePath(); cbFS(x, c); } }
+}
+function cbNose(x, g, o) {
+  const B = g.B, y = g.noseY, sk = cbMix(o.skin, '#c0603a', 0.18);
+  switch (o.nose) {
+    case 'button': x.beginPath(); x.ellipse(0, y, B * 0.1, B * 0.08, 0, 0, Math.PI * 2); cbFS(x, sk, 5); break;
+    case 'big': x.beginPath(); x.ellipse(0, y, B * 0.2, B * 0.17, 0, 0, Math.PI * 2); cbFS(x, sk, 5); x.beginPath(); x.ellipse(-B * 0.06, y - B * 0.05, B * 0.05, B * 0.035, -0.5, 0, Math.PI * 2); x.fillStyle = 'rgba(255,255,255,.6)'; x.fill(); break;
+    case 'long': x.beginPath(); x.moveTo(-B * 0.04, y - B * 0.36); x.bezierCurveTo(B * 0.1, y - B * 0.3, B * 0.26, y - B * 0.02, B * 0.16, y + B * 0.1); x.bezierCurveTo(B * 0.08, y + B * 0.16, -B * 0.06, y + B * 0.14, -B * 0.12, y + B * 0.06); x.bezierCurveTo(-B * 0.04, y + B * 0.02, -B * 0.02, y - B * 0.2, -B * 0.04, y - B * 0.36); cbFS(x, sk, 5); break;
+    case 'wide': x.beginPath(); x.moveTo(-B * 0.26, y + B * 0.06); x.bezierCurveTo(-B * 0.3, y - B * 0.1, -B * 0.08, y - B * 0.14, 0, y - B * 0.22); x.bezierCurveTo(B * 0.08, y - B * 0.14, B * 0.3, y - B * 0.1, B * 0.26, y + B * 0.06); x.bezierCurveTo(B * 0.1, y + B * 0.14, -B * 0.1, y + B * 0.14, -B * 0.26, y + B * 0.06); cbFS(x, sk, 5);
+      x.fillStyle = CB_INK; for (const s of [-1, 1]) { x.beginPath(); x.ellipse(s * B * 0.1, y + B * 0.05, B * 0.04, B * 0.025, 0, 0, Math.PI * 2); x.fill(); } break;
+  }
+}
+function cbDrawHead(x, o) {
+  const g = cbGeo(o), B = g.B, sk = o.skin;
+  cbHairBack(x, g, o);
+  for (const s of [-1, 1]) { const ex = s * g.hw(0.53), ey = g.yAt(0.53); x.beginPath(); x.ellipse(ex, ey, B * 0.17, B * 0.22, 0, 0, Math.PI * 2); cbFS(x, sk); cbInk(x, 4); x.beginPath(); x.arc(ex + s * B * 0.02, ey, B * 0.09, s > 0 ? -1.2 : Math.PI - 1.9, s > 0 ? 1.9 : Math.PI + 1.2); x.stroke(); }
+  cbHeadPath(x, g); x.fillStyle = cbShade(sk); x.fill();
+  x.save(); cbHeadPath(x, g); x.clip(); x.translate(B * 0.08, -g.Hh * 0.025); x.scale(0.99, 0.985); cbHeadPath(x, g); x.fillStyle = sk; x.fill(); x.restore();
+  cbHeadPath(x, g); cbInk(x, 5); x.stroke();
+  x.save(); cbHeadPath(x, g); x.clip(); x.beginPath(); for (const s of [-1, 1]) x.ellipse(s * B * 0.55, g.yAt(0.68), B * 0.16, B * 0.08, 0, 0, Math.PI * 2); x.fillStyle = 'rgba(255,120,110,.28)'; x.fill(); x.restore();
+  cbBeard(x, g, o); cbHairFront(x, g, o); cbNose(x, g, o);
+  // cheek / chin creases: the caricature lines
+  cbInk(x, 4); x.beginPath(); x.moveTo(-B * 0.08, g.yAt(0.93)); x.quadraticCurveTo(0, g.yAt(0.95), B * 0.08, g.yAt(0.93)); x.stroke();
+  return g;
+}
+/* brows + eyes for one expression (drawn in head space) */
+function cbBrow(x, g, o, s, inner, outer, bend = 0) {
+  const B = g.B, er = B * 0.2, cx = s * er * 1.0, y = g.eyeY - er * 1.45, col = o.hairCol === '#f2f2f2' || o.hairCol === '#a3a3a3' ? cbMix(o.hairCol, '#555', 0.3) : o.hairCol;
+  const ix = cx - s * er * 0.95, ox2 = cx + s * er * 1.15, w = o.brow === 'thin' ? 9 : 20;
+  x.lineCap = 'round'; x.beginPath(); x.moveTo(o.brow === 'uni' ? 0 : ix, y + inner); x.quadraticCurveTo(cx, y - er * 0.35 + (inner + outer) / 2 - bend, ox2, y + outer);
+  x.lineWidth = w + 9; x.strokeStyle = CB_INK; x.stroke(); x.lineWidth = w; x.strokeStyle = col; x.stroke();
+}
+function cbDrawEyes(x, o, ex) {
+  const g = cbGeo(o), B = g.B, k = { round: [1, 1.12], oval: [0.85, 1.3], narrow: [1.05, 0.72] }[o.eyes] || [1, 1.1], er = B * 0.2;
+  const white = (s, sc = 1) => { x.beginPath(); x.ellipse(s * er * 0.98, g.eyeY, er * k[0] * sc, er * k[1] * sc, 0, 0, Math.PI * 2); cbFS(x, '#fff', 6); };
+  const pupil = (s, dx = 0, dy = 0, r = 0.36) => { const cx = s * er * 0.98 + dx * er, cy = g.eyeY + dy * er; x.beginPath(); x.arc(cx, cy, er * r, 0, Math.PI * 2); x.fillStyle = CB_INK; x.fill(); x.beginPath(); x.arc(cx - er * r * 0.35, cy - er * r * 0.38, er * r * 0.3, 0, Math.PI * 2); x.fillStyle = '#fff'; x.fill(); };
+  const lid = (s, y0, slope) => { x.save(); x.beginPath(); x.ellipse(s * er * 0.98, g.eyeY, er * k[0], er * k[1], 0, 0, Math.PI * 2); x.clip(); x.beginPath(); x.moveTo(s * er * 0.98 - er * 2, g.eyeY + (y0 - slope * 2 * s) * er); x.lineTo(s * er * 0.98 + er * 2, g.eyeY + (y0 + slope * 2 * s) * er); x.lineTo(s * er * 0.98 + er * 2, g.eyeY - er * 3); x.lineTo(s * er * 0.98 - er * 2, g.eyeY - er * 3); x.closePath(); x.fillStyle = cbShade(o.skin); x.fill(); cbInk(x, 7); x.stroke(); x.restore(); x.beginPath(); x.ellipse(s * er * 0.98, g.eyeY, er * k[0], er * k[1], 0, 0, Math.PI * 2); cbInk(x, 6); x.stroke(); };
+  const arc = (s, up) => { cbInk(x, 9); x.beginPath(); const cx = s * er * 0.98; if (up) { x.moveTo(cx - er * 0.8, g.eyeY + er * 0.25); x.quadraticCurveTo(cx, g.eyeY - er * 0.75, cx + er * 0.8, g.eyeY + er * 0.25); } else { x.moveTo(cx - er * 0.8, g.eyeY - er * 0.1); x.quadraticCurveTo(cx, g.eyeY + er * 0.6, cx + er * 0.8, g.eyeY - er * 0.1); } x.stroke(); };
+  for (const s of [-1, 1]) {
+    switch (ex) {
+      case 'normal': cbBrow(x, g, o, s, 0, 0); white(s); pupil(s, -s * 0.12, 0.05); break;
+      case 'closed': cbBrow(x, g, o, s, 4, 4); arc(s, false); break;
+      case 'happy': cbBrow(x, g, o, s, -12, -6, 6); arc(s, true); break;
+      case 'angry': cbBrow(x, g, o, s, 26, -18, -6); white(s); pupil(s, -s * 0.18, 0.15, 0.33); lid(s, -0.25, -0.3); break;
+      case 'sad': cbBrow(x, g, o, s, -22, 16); white(s); pupil(s, 0, 0.3); lid(s, -0.4, 0.25); break;
+      case 'shock': cbBrow(x, g, o, s, -34, -30, 8); white(s, 1.18); pupil(s, 0, 0, 0.14); break;
+      case 'sly': cbBrow(x, g, o, s, s < 0 ? 10 : -16, s < 0 ? 8 : -26); white(s); pupil(s, 0.38, 0.12, 0.33); lid(s, -0.05, 0); break;
+      case 'crazy': cbBrow(x, g, o, s, s < 0 ? -26 : 12, s < 0 ? -10 : 18); white(s, s < 0 ? 1.18 : 0.82); pupil(s, s < 0 ? 0.2 : -0.1, s < 0 ? -0.2 : 0.15, s < 0 ? 0.16 : 0.42); break;
+      case 'cry': cbBrow(x, g, o, s, -20, 16); cbInk(x, 9); x.beginPath(); { const cx = s * er * 0.98; x.moveTo(cx + s * er * 0.7, g.eyeY - er * 0.5); x.lineTo(cx - s * er * 0.6, g.eyeY); x.lineTo(cx + s * er * 0.7, g.eyeY + er * 0.5); x.stroke();
+        x.beginPath(); x.moveTo(cx - er * 0.3, g.eyeY + er * 0.4); x.bezierCurveTo(cx - er * 0.6, g.eyeY + er * 2, cx - er * 0.1, g.eyeY + er * 3.2, cx - er * 0.4, g.eyeY + er * 4.4); x.lineTo(cx + er * 0.5, g.eyeY + er * 4.4); x.bezierCurveTo(cx + er * 0.2, g.eyeY + er * 3.2, cx + er * 0.6, g.eyeY + er * 2, cx + er * 0.3, g.eyeY + er * 0.4); x.closePath(); cbFS(x, '#7cc8ff', 5); } break;
+      case 'dizzy': cbBrow(x, g, o, s, -8, 8); white(s); cbInk(x, 6); x.beginPath(); for (let a = 0; a < Math.PI * 5; a += 0.2) { const r = 2 + a * er * 0.045; x.lineTo(s * er * 0.98 + Math.cos(a * s) * r, g.eyeY + Math.sin(a * s) * r); } x.stroke(); break;
+      case 'dead': cbBrow(x, g, o, s, -4, 10); cbInk(x, 10); { const cx = s * er * 0.98, d = er * 0.55; x.beginPath(); x.moveTo(cx - d, g.eyeY - d); x.lineTo(cx + d, g.eyeY + d); x.moveTo(cx + d, g.eyeY - d); x.lineTo(cx - d, g.eyeY + d); x.stroke(); } break;
+      case 'heart': cbBrow(x, g, o, s, -14, -8); aHeart(x, s * er * 0.98, g.eyeY + er * 0.05, er * 0.85, '#ff3b5c'); break;
+    }
+  }
+}
+function cbDrawMouth(x, o, m) {
+  const g = cbGeo(o), B = g.B, y = g.mouthY, W2 = g.hw(0.79) * 0.78, dark = '#6b1420', tg = '#ff6f7d';
+  const inside = (path, fn) => { x.save(); path(); x.fillStyle = dark; x.fill(); x.clip(); fn(); x.restore(); path(); cbInk(x, 7); x.stroke(); };
+  const teethTop = (y0, h) => { x.fillStyle = '#fff'; x.fillRect(-W2 * 1.5, y0 - 200, W2 * 3, 200 + h); cbInk(x, 3.5); x.beginPath(); x.moveTo(-W2 * 1.5, y0 + h); x.lineTo(W2 * 1.5, y0 + h); x.stroke(); };
+  const tongue = (cy, rx, ry) => { x.beginPath(); x.ellipse(0, cy, rx, ry, 0, 0, Math.PI * 2); x.fillStyle = tg; x.fill(); cbInk(x, 3.5); x.stroke(); };
+  const crease = (s, len = 1) => { cbInk(x, 5); x.beginPath(); x.moveTo(s * (W2 + 6), y - B * 0.12 * len); x.quadraticCurveTo(s * (W2 + 18), y, s * (W2 + 6), y + B * 0.1 * len); x.stroke(); };
+  switch (m) {
+    case 'closed': cbInk(x, 8); x.beginPath(); x.moveTo(-W2 * 0.6, y - 4); x.quadraticCurveTo(0, y + B * 0.12, W2 * 0.6, y - 4); x.stroke(); break;
+    case 'half': inside(() => { x.beginPath(); x.ellipse(0, y + 4, W2 * 0.4, B * 0.1, 0, 0, Math.PI * 2); }, () => { teethTop(y - B * 0.06, 0); tongue(y + B * 0.12, W2 * 0.3, B * 0.07); }); break;
+    case 'open': inside(() => { x.beginPath(); x.moveTo(-W2 * 0.6, y - B * 0.06); x.quadraticCurveTo(0, y - B * 0.1, W2 * 0.6, y - B * 0.06); x.quadraticCurveTo(W2 * 0.5, y + B * 0.3, 0, y + B * 0.32); x.quadraticCurveTo(-W2 * 0.5, y + B * 0.3, -W2 * 0.6, y - B * 0.06); x.closePath(); }, () => { teethTop(y - B * 0.06, B * 0.03); tongue(y + B * 0.3, W2 * 0.35, B * 0.12); }); break;
+    case 'grin': { const P = () => { x.beginPath(); x.moveTo(-W2, y - B * 0.12); x.quadraticCurveTo(0, y - B * 0.02, W2, y - B * 0.12); x.quadraticCurveTo(W2 * 0.85, y + B * 0.36, 0, y + B * 0.4); x.quadraticCurveTo(-W2 * 0.85, y + B * 0.36, -W2, y - B * 0.12); x.closePath(); };
+      x.save(); P(); x.fillStyle = '#fff'; x.fill(); x.clip(); x.beginPath(); x.moveTo(-W2, y + B * 0.12); x.quadraticCurveTo(0, y + B * 0.18, W2, y + B * 0.12); x.lineTo(W2, y + B * 0.16); x.quadraticCurveTo(0, y + B * 0.22, -W2, y + B * 0.16); x.fillStyle = dark; x.fill();
+      cbInk(x, 3.5); x.beginPath(); for (let i = -4; i <= 4; i++) { const tx = i * W2 / 4.6; x.moveTo(tx, y - B * 0.1); x.lineTo(tx, y + B * 0.4); } x.stroke(); x.restore(); P(); cbInk(x, 7); x.stroke(); crease(-1); crease(1); break; }
+    case 'laugh': inside(() => { x.beginPath(); x.moveTo(-W2, y - B * 0.12); x.quadraticCurveTo(0, y - B * 0.06, W2, y - B * 0.12); x.quadraticCurveTo(W2 * 0.8, y + B * 0.5, 0, y + B * 0.52); x.quadraticCurveTo(-W2 * 0.8, y + B * 0.5, -W2, y - B * 0.12); x.closePath(); }, () => { teethTop(y - B * 0.08, B * 0.05); cbInk(x, 3); x.beginPath(); for (let i = -3; i <= 3; i++) { x.moveTo(i * W2 / 3.6, y - B * 0.1); x.lineTo(i * W2 / 3.6, y + B * 0.02); } x.stroke(); tongue(y + B * 0.46, W2 * 0.45, B * 0.16); }); crease(-1); crease(1); break;
+    case 'scream': inside(() => { x.beginPath(); x.ellipse(0, y + B * 0.16, W2 * 0.5, B * 0.42, 0, 0, Math.PI * 2); }, () => { teethTop(y - B * 0.22, B * 0.04); x.fillStyle = '#fff'; x.fillRect(-W2, y + B * 0.5, W2 * 2, 100); tongue(y + B * 0.46, W2 * 0.32, B * 0.13); }); break;
+    case 'frown': inside(() => { x.beginPath(); x.moveTo(-W2 * 0.7, y + B * 0.2); x.quadraticCurveTo(-W2 * 0.3, y - B * 0.12, 0, y - B * 0.1); x.quadraticCurveTo(W2 * 0.3, y - B * 0.12, W2 * 0.7, y + B * 0.2); x.quadraticCurveTo(0, y + B * 0.06, -W2 * 0.7, y + B * 0.2); x.closePath(); }, () => { x.fillStyle = '#fff'; x.fillRect(-W2, y + B * 0.08, W2 * 2, 100); cbInk(x, 3); x.beginPath(); x.moveTo(-W2, y + B * 0.08); x.lineTo(W2, y + B * 0.08); x.stroke(); }); break;
+    case 'smirk': cbInk(x, 8); x.beginPath(); x.moveTo(-W2 * 0.45, y + B * 0.04); x.quadraticCurveTo(W2 * 0.3, y + B * 0.1, W2 * 0.75, y - B * 0.12); x.stroke(); cbInk(x, 5); x.beginPath(); x.moveTo(W2 * 0.68, y - B * 0.2); x.quadraticCurveTo(W2 * 0.9, y - B * 0.1, W2 * 0.8, y - B * 0.0); x.stroke(); break;
+    case 'grit': { const h = B * 0.24; x.beginPath(); x.roundRect(-W2 * 0.85, y - h / 2, W2 * 1.7, h, h * 0.45); cbFS(x, '#fff', 7); cbInk(x, 3.5); x.beginPath(); x.moveTo(-W2 * 0.85, y); x.lineTo(W2 * 0.85, y); for (let i = -4; i <= 4; i++) { x.moveTo(i * W2 / 5, y - h / 2); x.lineTo(i * W2 / 5, y + h / 2); } x.stroke(); crease(-1, 0.8); crease(1, 0.8); break; }
+    case 'tongue': cbInk(x, 8); x.beginPath(); x.moveTo(-W2 * 0.7, y - B * 0.06); x.quadraticCurveTo(0, y + B * 0.16, W2 * 0.7, y - B * 0.06); x.stroke(); x.beginPath(); x.moveTo(W2 * 0.05, y + B * 0.07); x.lineTo(W2 * 0.05, y + B * 0.26); x.arc(W2 * 0.25, y + B * 0.26, W2 * 0.2, Math.PI, 0, true); x.lineTo(W2 * 0.45, y + B * 0.05); cbFS(x, tg, 5); cbInk(x, 3.5); x.beginPath(); x.moveTo(W2 * 0.25, y + B * 0.1); x.lineTo(W2 * 0.25, y + B * 0.3); x.stroke(); break;
+    case 'o': inside(() => { x.beginPath(); x.ellipse(0, y + B * 0.06, W2 * 0.18, B * 0.14, 0, 0, Math.PI * 2); }, () => tongue(y + B * 0.18, W2 * 0.14, B * 0.06)); break;
+    case 'wavy': cbInk(x, 7); x.beginPath(); for (let i = 0; i <= 40; i++) { const t = i / 40; x.lineTo(-W2 * 0.6 + W2 * 1.2 * t, y + Math.sin(t * Math.PI * 4) * B * 0.05); } x.stroke(); break;
+  }
+}
+/* torso (shirt, shorts, neck), origin at hips */
+function cbShirtPath(x, g, o) {
+  const sw = g.sw, b = o.body === 'belly';
+  x.beginPath(); x.moveTo(-sw, -252); x.quadraticCurveTo(0, -268, sw, -252); x.lineTo(sw + 4, -200);
+  if (b) { x.bezierCurveTo(sw * 1.5, -150, sw * 1.45, -10, sw * 0.9, 18); x.lineTo(-sw * 0.9, 18); x.bezierCurveTo(-sw * 1.45, -10, -sw * 1.5, -150, -sw - 4, -200); }
+  else { x.lineTo(sw * 0.84, 18); x.lineTo(-sw * 0.84, 18); x.lineTo(-sw - 4, -200); }
+  x.closePath();
+}
+function cbDrawTorso(x, o) {
+  const g = cbGeo(o), sw = g.sw, suit = o.outfit === 'suit', tee = o.outfit === 'tee';
+  x.beginPath(); x.roundRect(-24, -300, 48, 70, 10); cbFS(x, cbShade(o.skin));
+  // shorts / trousers top
+  const pc = suit ? o.c1 : o.pants; x.beginPath(); x.moveTo(-sw * 0.86, -10); x.lineTo(sw * 0.86, -10); x.lineTo(sw * 0.98, 78); x.lineTo(8, 78); x.lineTo(0, 52); x.lineTo(-8, 78); x.lineTo(-sw * 0.98, 78); x.closePath(); cbFS(x, pc);
+  if (!suit && !tee) { x.fillStyle = o.c2 === pc ? o.c1 : o.c2; x.fillRect(sw * 0.82, 0, 8, 74); x.fillRect(-sw * 0.82 - 8, 0, 8, 74); }
+  cbShirtPath(x, g, o); x.fillStyle = suit ? o.c1 : o.c1; x.fill();
+  x.save(); cbShirtPath(x, g, o); x.clip();
+  if (!suit && !tee) {
+    x.fillStyle = o.c2;
+    if (o.pattern === 'stripes') for (let i = -3; i <= 3; i += 2) x.fillRect(i * sw / 3.5 - sw / 7, -300, sw / 3.5, 340);
+    if (o.pattern === 'hoops') for (let yy = -230; yy < 30; yy += 64) x.fillRect(-200, yy, 400, 30);
+    if (o.pattern === 'halves') x.fillRect(0, -300, 200, 340);
+    if (o.pattern === 'sash') { x.beginPath(); x.moveTo(-sw - 20, -250); x.lineTo(-sw + 40, -260); x.lineTo(sw + 20, 0); x.lineTo(sw - 40, 30); x.closePath(); x.fill(); }
+  }
+  x.fillStyle = 'rgba(40,10,0,.16)'; x.fillRect(-sw * 2, -300, sw * 0.95, 340);
+  if (suit) { x.beginPath(); x.moveTo(-sw * 0.42, -258); x.lineTo(sw * 0.42, -258); x.lineTo(0, -120); x.closePath(); cbFS(x, '#fff', 4); x.beginPath(); x.moveTo(-12, -250); x.lineTo(12, -250); x.lineTo(16, -150); x.lineTo(0, -128); x.lineTo(-16, -150); x.closePath(); cbFS(x, o.c2, 4);
+    cbInk(x, 4); x.beginPath(); x.moveTo(-sw * 0.5, -256); x.lineTo(-sw * 0.25, -190); x.lineTo(0, -110); x.lineTo(0, 18); x.moveTo(sw * 0.5, -256); x.lineTo(sw * 0.25, -190); x.lineTo(0, -110); x.stroke(); x.fillStyle = CB_INK; for (const yy of [-80, -40]) { x.beginPath(); x.arc(-10, yy, 5, 0, Math.PI * 2); x.fill(); } }
+  else if (tee) { x.beginPath(); x.ellipse(0, -258, 34, 22, 0, 0, Math.PI); cbFS(x, cbShade(o.skin), 4); x.beginPath(); x.ellipse(0, -258, 40, 28, 0, 0, Math.PI); cbInk(x, 9); x.strokeStyle = o.c2; x.stroke(); aStar(x, 0, -150, 34, o.c2, 5, 0.45); }
+  else { x.beginPath(); x.moveTo(-38, -262); x.lineTo(0, -214); x.lineTo(38, -262); x.closePath(); cbFS(x, cbShade(o.skin), 4); cbInk(x, 12); x.strokeStyle = o.c2 === o.c1 ? '#fff' : o.c2; x.beginPath(); x.moveTo(-40, -262); x.lineTo(0, -212); x.lineTo(40, -262); x.stroke(); cbInk(x, 4); x.beginPath(); x.moveTo(-46, -264); x.lineTo(0, -204); x.lineTo(46, -264); x.stroke();
+    if (o.num) aWordPlain(x, String(o.num).slice(0, 2), 0, -120, 92, o.c2 === o.c1 ? '#fff' : o.c2); }
+  x.restore(); cbShirtPath(x, g, o); cbInk(x, 5); x.stroke();
+}
+function aWordPlain(x, s, cx, cy, size, col) { x.save(); x.font = `900 ${size}px "Arial Black",Impact,system-ui,sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineJoin = 'round'; x.lineWidth = size * 0.14; x.strokeStyle = CB_INK; x.strokeText(s, cx, cy); x.fillStyle = col; x.fillText(s, cx, cy); x.restore(); }
+/* limbs: s = -1 screen-left, +1 screen-right */
+function cbJoints(o) {
+  const g = cbGeo(o), sw = g.sw, J = {};
+  for (const s of [-1, 1]) { const S2 = s < 0 ? 'L' : 'R', sh = { x: s * (sw - 6), y: -232 }, a1 = (90 + s * -12) * DEG, el = { x: sh.x + Math.cos(a1) * 145, y: sh.y + Math.sin(a1) * 145 }, a2 = (90 + s * -4) * DEG, ha = { x: el.x + Math.cos(a2) * 128, y: el.y + Math.sin(a2) * 128 };
+    const hp = { x: s * 40, y: 30 }, kn = { x: s * 44, y: 168 }, an = { x: s * 46, y: 300 };
+    Object.assign(J, { ['sh' + S2]: sh, ['el' + S2]: el, ['ha' + S2]: ha, ['hp' + S2]: hp, ['kn' + S2]: kn, ['an' + S2]: an }); }
+  return J;
+}
+function cbDrawLimb(x, o, which, s) {
+  const J = cbJoints(o), S2 = s < 0 ? 'L' : 'R', suit = o.outfit === 'suit', tee = o.outfit === 'tee', skin = o.skin, sk2 = cbShade(skin);
+  if (which === 'arm') { const a = J['sh' + S2], b = J['el' + S2]; cbTube(x, a.x, a.y, b.x, b.y, 28, suit ? o.c1 : skin);
+    if (!suit) { const L = Math.hypot(b.x - a.x, b.y - a.y), d = { x: (b.x - a.x) / L, y: (b.y - a.y) / L }, n = { x: -d.y, y: d.x }, P = (t, w) => [a.x + d.x * t + n.x * w, a.y + d.y * t + n.y * w];
+      cbPoly(x, [P(-26, 30), P(-26, -30), P(66, -27), P(70, 0), P(66, 27)]); x.lineJoin = 'round'; cbFS(x, o.c1, 6); if (!tee) { cbInk(x, 10); x.strokeStyle = o.c2 === o.c1 ? '#fff' : o.c2; x.beginPath(); x.moveTo(...P(58, -24)); x.lineTo(...P(60, 24)); x.stroke(); } } }
+  if (which === 'fore') { const a = J['el' + S2], b = J['ha' + S2]; cbTube(x, a.x, a.y, b.x - (b.x - a.x) * 0.1, b.y - (b.y - a.y) * 0.1, 25, suit ? o.c1 : skin); if (suit) { cbTube(x, b.x - (b.x - a.x) * 0.2, b.y - (b.y - a.y) * 0.2, b.x - (b.x - a.x) * 0.12, b.y - (b.y - a.y) * 0.12, 26, '#fff'); }
+    x.beginPath(); x.ellipse(b.x, b.y + 6, 25, 30, 0, 0, Math.PI * 2); cbFS(x, skin); x.beginPath(); x.ellipse(b.x - s * 20, b.y - 4, 10, 15, s * 0.6, 0, Math.PI * 2); cbFS(x, skin, 4); cbInk(x, 3.5); x.beginPath(); for (const dy of [4, 16]) { x.moveTo(b.x + s * 4, b.y + dy); x.lineTo(b.x + s * 20, b.y + dy); } x.stroke(); }
+  if (which === 'leg') { const a = J['hp' + S2], b = J['kn' + S2]; cbTube(x, a.x, a.y, b.x, b.y, 30, suit ? o.c1 : skin); }
+  if (which === 'shin') { const a = J['kn' + S2], b = J['an' + S2], sc = suit ? o.c1 : tee ? skin : o.socks;
+    cbTube(x, a.x, a.y - 4, b.x, b.y, suit ? 30 : 28, sc); if (!suit && !tee) { cbTube(x, a.x, a.y + 8, a.x + (b.x - a.x) * 0.06, a.y + 14, 31, o.c2 === sc ? o.c1 : o.c2); }
+    if (tee) cbTube(x, b.x, b.y - 22, b.x, b.y - 6, 30, '#fff');
+    const shoe = suit ? '#1b1b1b' : tee ? '#ffffff' : '#1d1d1d'; x.beginPath(); x.moveTo(b.x - s * 20, b.y - 12); x.lineTo(b.x + s * 18, b.y - 10); x.quadraticCurveTo(b.x + s * 70, b.y + 2, b.x + s * 70, b.y + 28); x.lineTo(b.x - s * 26, b.y + 30); x.quadraticCurveTo(b.x - s * 30, b.y + 6, b.x - s * 20, b.y - 12); x.closePath(); cbFS(x, shoe);
+    x.fillStyle = suit ? '#3a3a3a' : tee ? '#e8352f' : '#ffd21f'; x.beginPath(); x.moveTo(b.x - s * 24, b.y + 22); x.lineTo(b.x + s * 68, b.y + 20); x.lineTo(b.x + s * 70, b.y + 28); x.lineTo(b.x - s * 26, b.y + 30); x.closePath(); x.fill(); cbInk(x, 5); x.beginPath(); x.moveTo(b.x - s * 24, b.y + 22); x.lineTo(b.x + s * 68, b.y + 20); x.stroke(); }
+}
+/* render a draw function into a cropped canvas with the bold outer outline; returns {c, x, y} in doc px */
+function cbOutline(c, r, col = CB_INK) {
+  const t = makeCanvas(c.width, c.height), tx = t.getContext('2d'); tx.drawImage(c, 0, 0); tx.globalCompositeOperation = 'source-in'; tx.fillStyle = col; tx.fillRect(0, 0, t.width, t.height);
+  const o = makeCanvas(c.width, c.height), ox = o.getContext('2d'), n = Math.max(12, Math.ceil(r * 2.2));
+  for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; ox.drawImage(t, Math.cos(a) * r, Math.sin(a) * r); } ox.drawImage(t, 0, 0); ox.drawImage(c, 0, 0); return o;
+}
+function cbAlphaBox(cs) {
+  let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
+  for (const c of cs) { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+  return x1 < 0 ? null : [x0, y0, x1 - x0 + 1, y1 - y0 + 1];
+}
+/* place: {cx, base, k}: doc x of hip centre, doc y of hip centre, px per unit */
+function cbRenderSet(fns, box, pl, olR) {
+  const k = pl.k, pad = olR + 4, w = Math.ceil(box[2] * k + pad * 2), h = Math.ceil(box[3] * k + pad * 2);
+  const cs = fns.map(fn => { const c = makeCanvas(w, h), x = c.getContext('2d'); x.translate(pad - box[0] * k, pad - box[1] * k); x.scale(k, k); fn(x); return cbOutline(c, olR); });
+  const bb = cbAlphaBox(cs) || [0, 0, 1, 1];
+  const out = cs.map(c => { const o = makeCanvas(bb[2], bb[3]); o.getContext('2d').drawImage(c, -bb[0], -bb[1]); return o; });
+  return { cs: out, x: pl.cx + box[0] * k - pad + bb[0], y: pl.base + box[1] * k - pad + bb[1] };
+}
+/* build every piece of a character: returns part specs in doc coords */
+function cbBuild(o, pl) {
+  const g = cbGeo(o), J = cbJoints(o), k = pl.k, olR = Math.max(3, 7 * k), D = (u, v) => ({ x: pl.cx + u * k, y: pl.base + v * k });
+  const B = g.B, hb = [-B * 2, g.yTop - B * 1.1, B * 4, g.Hh * 1.5 + B * 1];
+  const er = B * 0.2, eb = [-B * 0.85, g.eyeY - er * 2.6, B * 1.7, er * 7.4], mb = [-B * 1.0, g.mouthY - B * 0.35, B * 2.0, B * 0.95];
+  const eyeKeys = Object.keys(CB_EYES), mouthKeys = ['closed', 'half', 'open', ...Object.keys(CB_MOUTHS).filter(m => !['closed', 'half', 'open'].includes(m))];
+  const P = [];
+  const add = (key, role, name, parent, z, fns, box, pv, tip, asset) => { const r = cbRenderSet(fns, box, pl, olR); const p0 = D(pv.x, pv.y); P.push({ key, role, name, parent, z, c: r.cs[0], alts: r.cs.slice(1).map(c => ({ c, dx: 0, dy: 0 })), ox: r.x, oy: r.y, px: p0.x, py: p0.y, tip: tip ? D(tip.x, tip.y) : null, asset }); };
+  add('torso', 'torso', 'Thân', null, 4, [x => cbDrawTorso(x, o)], [-g.sw * 1.6, -310, g.sw * 3.2, 400], { x: 0, y: 0 }, { x: 0, y: -250 }, { cat: 'cb', part: 'torso', cb: { ...o } });
+  add('head', 'head', 'Đầu', 'torso', 8, [x => cbDrawHead(x, o)], hb, { x: 0, y: g.neckY }, { x: 0, y: g.yTop }, null);
+  add('eyes', 'eyes', 'Mắt', 'head', 9, eyeKeys.map(e => x => cbDrawEyes(x, o, e)), eb, { x: 0, y: g.eyeY }, null, { cat: 'cbEyes', keys: eyeKeys });
+  add('mouth', 'mouth', 'Miệng', 'head', 9, mouthKeys.map(m => x => cbDrawMouth(x, o, m)), mb, { x: 0, y: g.mouthY }, null, { cat: 'cbMouth', keys: mouthKeys, lip: 2 });
+  for (const s of [-1, 1]) {
+    const S2 = s < 0 ? 'L' : 'R', nm = s < 0 ? 'trái' : 'phải';
+    add('leg' + S2, 'leg' + S2, 'Đùi ' + nm, 'torso', 1, [x => cbDrawLimb(x, o, 'leg', s)], [s * 44 - 60, 0, 120, 200], J['hp' + S2], J['kn' + S2], null);
+    add('shin' + S2, 'shin' + S2, 'Ống chân ' + nm, 'leg' + S2, 0, [x => cbDrawLimb(x, o, 'shin', s)], [s * 44 - 110, 140, 220, 210], J['kn' + S2], J['an' + S2], null);
+    add('arm' + S2, 'arm' + S2, 'Tay ' + nm + ' (trên)', 'torso', 10, [x => cbDrawLimb(x, o, 'arm', s)], [J['sh' + S2].x - 80, -280, 160, 200], J['sh' + S2], J['el' + S2], null);
+    add('fore' + S2, 'fore' + S2, 'Cẳng tay ' + nm, 'arm' + S2, 11, [x => cbDrawLimb(x, o, 'fore', s)], [J['el' + S2].x - 80, J['el' + S2].y - 40, 160, 200], J['el' + S2], J['ha' + S2], null);
+  }
+  return P;
+}
+function cbRandom() {
+  const pick = a => a[Math.floor(Math.random() * a.length)], o = { ...CB_DEFAULT };
+  for (const k of Object.keys(CB_CHOICES)) o[k] = pick(Object.keys(CB_CHOICES[k][1]));
+  o.skin = pick(CB_SKINS); o.hairCol = pick(CB_HAIRS.slice(0, 6)); o.c1 = pick(CB_COLS); do { o.c2 = pick(CB_COLS); } while (o.c2 === o.c1); o.pants = pick([o.c1, o.c2, '#ffffff', '#111111']); o.socks = pick([o.c1, o.c2]);
+  o.num = String(1 + Math.floor(Math.random() * 23)); o.headSize = +(0.9 + Math.random() * 0.3).toFixed(2); if (o.outfit === 'suit') o.beard = pick(['none', 'mous', 'stubble']);
+  return o;
+}
+/* draw a whole character flat (for previews): parts at rest */
+function cbPreview(o, w, h, expr = 'grin') {
+  const c = makeCanvas(w, h), x = c.getContext('2d'), g = cbGeo(o), top = g.yTop - g.B * 1.0, bot = 360, k = h / (bot - top);
+  const P = cbBuild(o, { cx: w / 2, base: -top * k, k });
+  const E = CB_EXPR[expr] || CB_EXPR.grin;
+  for (const p of P.sort((a, b) => a.z - b.z)) { let im = p.c, dx = 0; if (p.key === 'eyes') { const i = p.asset.keys.indexOf(E[2]); if (i > 0) im = p.alts[i - 1].c; } if (p.key === 'mouth') { const i = p.asset.keys.indexOf(E[3]); if (i > 0) im = p.alts[i - 1].c; } x.drawImage(im, p.ox, p.oy); }
+  return c;
+}
+/* --- character builder dialog → cut-out puppet with roles, so poses / gestures / walk / tween / lip sync all work --- */
+let cbLast = null;
+const cbCharParts = ch => S.pp ? S.pp.parts.filter(p => ppCharOf(p) === ch) : [];
+const cbOptsOf = ch => { const t = cbCharParts(ch).find(p => p.asset && p.asset.cat === 'cb'); return t ? t.asset.cb : null; };
+function cbPlace(o, cx) { const k = H * 0.6 / 1030; return { cx, base: H * 0.93 - 345 * k, k }; }
+async function cbCreate(o, editCh) {
+  const pm = progress('Đang vẽ nhân vật…'); await new Promise(r => setTimeout(r, 30));
+  try {
+    if (editCh) {
+      const old = cbCharParts(editCh), tor = old.find(p => p.asset && p.asset.cat === 'cb');
+      const pl = cbPlace(o, tor && tor.asset.cx != null ? tor.asset.cx : W / 2), P = cbBuild(o, pl), bySpec = {};
+      for (const sp of P) { const p = old.find(q => q.role === sp.role); if (!p) continue; bySpec[sp.key] = p;
+        Object.assign(p, { c: sp.c, ox: sp.ox, oy: sp.oy, px: sp.px, py: sp.py, tip: sp.tip, alts: sp.alts, alpha: null, padded: false });
+        if (sp.asset) p.asset = { ...sp.asset, cx: pl.cx }; await encodePart(p); for (const a of p.alts) await encodeHolder(a); }
+      // frames that used an expression keep the same expression by name
+      S.frames.forEach(f => { f.ver++; queueThumbFor(f); });
+      toast('Đã cập nhật nhân vật — tư thế và chuyển động giữ nguyên', 3000);
+    } else {
+      let addMode = false;
+      if (S.pp && S.pp.parts.length) {
+        const r = await modal({ title: 'Đã có nhân vật ghép', html: '<p><b>Thêm nhân vật</b>: giữ nhân vật cũ, thêm nhân vật này vào cùng cảnh.<br><b>Thay thế</b>: xoá nhân vật cũ và tư thế cũ.</p>', buttons: [{ label: 'Huỷ', value: null }, { label: 'Thay thế', value: 'replace', cls: 'danger' }, { label: '＋ Thêm nhân vật', value: 'add', primary: true }] });
+        if (!r) { pm.close(); return; } addMode = r === 'add';
+      }
+      const nRoot = addMode ? S.pp.parts.filter(q => !q.parent).length : 0, cx = nRoot ? W * (nRoot % 2 ? 0.75 : 0.25) : W / 2;
+      const P = cbBuild(o, cbPlace(o, cx)), ids = {}; P.forEach(sp => ids[sp.key] = newId());
+      const parts = P.map(sp => ({ id: ids[sp.key], name: sp.name, role: sp.role, parent: sp.parent ? ids[sp.parent] : null, z: sp.z, ox: sp.ox, oy: sp.oy, px: sp.px, py: sp.py, tip: sp.tip, c: sp.c, alts: sp.alts, asset: sp.asset ? { ...sp.asset, cx } : null }));
+      ppRenormZ0(parts); for (const p of parts) { await encodePart(p); for (const a of p.alts) await encodeHolder(a); }
+      if (addMode) { const zb = Math.max(...S.pp.parts.map(q => q.z)) + 1; parts.forEach(q => { q.z += zb; q.name += ` (NV${nRoot + 1})`; }); S.pp.parts.push(...parts); }
+      else { S.pp = { parts }; S.frames.forEach(f => { f.pp = {}; f.ppKey = undefined; }); }
+      ppSel = ids.torso; S.showPP = true; updateToggles();
+      // start with a happy face on the current frame
+      const f = curFrame(), e = parts.find(p => p.role === 'eyes'), m = parts.find(p => p.role === 'mouth');
+      if (e && m) { f.pp = f.pp || {}; f.pp[m.id] = { v: m.asset.keys.indexOf('grin') }; f.ppKey = true; ppRetween(); }
+      S.frames.forEach(fr => { fr.ver++; queueThumbFor(fr); });
+      toast('Đã tạo nhân vật! Chạm tay/chân rồi kéo để tạo dáng · chọn biểu cảm ở hàng 😁 · thử Cử chỉ ở tab Tạo frame', 5000);
+    }
+    cbLast = { ...o }; pm.close();
+    setTool('puppet'); showPanel(); openTab('pp', 'pose'); ppSyncBar(); scheduleSave(); requestRender();
+  } catch (err) { pm.close(); console.error(err); toast('Lỗi tạo nhân vật: ' + err.message, 4000); }
+}
+function cbSetExpr(key) {
+  const ch = ppSelChar(), parts = cbCharParts(ch), E = CB_EXPR[key], e = parts.find(p => p.asset && p.asset.cat === 'cbEyes'), m = parts.find(p => p.asset && p.asset.cat === 'cbMouth');
+  if (!E || (!e && !m)) { toast('Biểu cảm nhanh dùng cho nhân vật tạo bằng 🧑‍🎨 Tạo nhân vật'); return; }
+  ppKeyEdit(f => { f.ppKey = true; f.pp = f.pp || {}; for (const [p, k] of [[e, E[2]], [m, E[3]]]) { if (!p) continue; const i = p.asset.keys.indexOf(k), q = f.pp[p.id] = f.pp[p.id] || {}; if (i > 0) q.v = i; else delete q.v; } });
+  toast(`Biểu cảm "${E[1]}" ở frame này — frame khác giữ nguyên`, 2000);
+}
+function cbDialog(editCh) {
+  let o = { ...CB_DEFAULT, ...(editCh ? cbOptsOf(editCh) : cbLast || {}) }, expr = 'grin', tmr = null;
+  const sw = (key, list) => list.map(c => `<button class="cbsw ${o[key] === c ? 'on' : ''}" data-cbc="${key}" data-v="${c}" title="${c}" style="background:${c}"></button>`).join('');
+  const chips = key => Object.entries(CB_CHOICES[key][1]).map(([k, v]) => `<button class="chip small ${o[key] === k ? 'on' : ''}" data-cbk="${key}" data-v="${k}">${v}</button>`).join('');
+  const row = (label, inner) => `<div class="cbrow"><span class="lbl">${label}</span><div class="cbopts">${inner}</div></div>`;
+  modal({ title: editCh ? '✏️ Sửa nhân vật' : '🧑‍🎨 Tạo nhân vật — phong cách Đầu To', html: `<div class="cbwrap"><div class="cbprev"><canvas id="cbCv" width="300" height="540"></canvas>
+      <div class="mrow" style="flex-wrap:wrap;gap:4px;justify-content:center" id="cbExprPick"></div>
+      <button class="btn" id="cbRand" style="width:100%;margin-top:6px">🎲 Ngẫu nhiên</button></div><div class="cbform" id="cbForm"></div></div>`,
+    buttons: [{ label: 'Huỷ', value: null }, ...(editCh ? [] : [{ label: '📋 Dán vào frame để tô/vẽ tiếp', value: 'stamp' }]), { label: editCh ? '✓ Cập nhật nhân vật' : '✓ Tạo nhân vật cử động được', value: 'make', primary: true }],
+    onOpen: (ov) => {
+      ov.querySelector('.dlg').style.maxWidth = '900px';
+      const form = ov.querySelector('#cbForm'), cv = ov.querySelector('#cbCv');
+      const paint = () => { clearTimeout(tmr); tmr = setTimeout(() => { const c = cbPreview(o, 300, 540, expr), x = cv.getContext('2d'); x.clearRect(0, 0, 300, 540); x.drawImage(c, 0, 0); }, 30); };
+      const draw = () => {
+        form.innerHTML = ['head', 'hair'].map(k => row(CB_CHOICES[k][0], chips(k))).join('') + row('Màu tóc', sw('hairCol', CB_HAIRS)) + row('Màu da', sw('skin', CB_SKINS))
+          + ['eyes', 'brow', 'nose', 'beard', 'body', 'outfit'].map(k => row(CB_CHOICES[k][0], chips(k))).join('')
+          + (o.outfit === 'kit' ? row(CB_CHOICES.pattern[0], chips('pattern')) : '')
+          + row(o.outfit === 'suit' ? 'Màu com-lê' : 'Màu áo', sw('c1', CB_COLS)) + row(o.outfit === 'suit' ? 'Màu cà vạt' : 'Màu phụ', sw('c2', CB_COLS))
+          + (o.outfit !== 'suit' ? row('Màu quần', sw('pants', CB_COLS)) : '') + (o.outfit === 'kit' ? row('Màu tất', sw('socks', CB_COLS)) + row('Số áo', `<input id="cbNum" value="${o.num || ''}" maxlength="2" inputmode="numeric" style="width:64px;padding:8px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text)">`) : '')
+          + row('Cỡ đầu', `<input type="range" id="cbHead" min="0.85" max="1.3" step="0.01" value="${o.headSize}" style="width:180px">`);
+        ov.querySelector('#cbExprPick').innerHTML = Object.entries(CB_EXPR).map(([k, v]) => `<button class="chip small ${k === expr ? 'on' : ''}" data-cbe="${k}" title="${v[1]}" style="min-width:44px;min-height:42px;font-size:18px">${v[0]}</button>`).join('');
+        const n = form.querySelector('#cbNum'); if (n) n.addEventListener('input', e => { o.num = e.target.value.replace(/[^0-9]/g, '').slice(0, 2); paint(); });
+        form.querySelector('#cbHead').addEventListener('input', e => { o.headSize = +e.target.value; paint(); });
+        paint();
+      };
+      ov.addEventListener('click', e => {
+        const t = e.target.closest('[data-cbk],[data-cbc],[data-cbe],#cbRand'); if (!t) return;
+        if (t.id === 'cbRand') o = cbRandom(); else if (t.dataset.cbe) expr = t.dataset.cbe; else o[t.dataset.cbk || t.dataset.cbc] = t.dataset.v;
+        const sc = form.scrollTop; draw(); form.scrollTop = sc;
+      });
+      draw();
+    } }).then(async v => {
+    if (v === 'make') await cbCreate(o, editCh);
+    else if (v === 'stamp') { cbLast = { ...o }; if (S.layer === 'bg') setLayer('char'); const c = cbPreview(o, Math.round(W * 0.62), Math.round(H * 0.62), expr); floatFromImage(c); toast('Kéo đặt chỗ, chỉnh cỡ rồi bấm Xong — sau đó tô/vẽ thêm lên lớp Nhân vật', 3500); }
+  });
+}
+$('#cbBtn').addEventListener('click', () => cbDialog());
+$('#cbNew2').addEventListener('click', () => cbDialog());
+$('#cbEdit').addEventListener('click', () => { const ch = ppSelChar(); if (!cbOptsOf(ch)) { toast('Chỉ sửa được nhân vật tạo bằng 🧑‍🎨 Tạo nhân vật'); return; } cbDialog(ch); });
+Object.entries(CB_EXPR).forEach(([k, v]) => { const b = document.createElement('button'); b.className = 'chip small'; b.textContent = v[0]; b.title = v[1]; b.style.minWidth = "44px"; b.style.minHeight = "42px"; b.style.fontSize = "18px"; b.addEventListener('click', () => cbSetExpr(k)); $('#cbExprRow').append(b); });
+function cbSyncBar() { const ch = S.pp && ppSelChar(), ok = !!(ch && cbCharParts(ch).some(p => p.asset && /^cb/.test(p.asset.cat))); $('#cbExprWrap').hidden = !ok; }
+
+/* ========= Drawing aids: ink-taper lines and auto bold outline ========= */
+/* redraw the finished stroke so both ends get thin, like an inked cartoon line */
+function strokeTaper() {
+  const pts = [...stroke.pts, { ...stroke.raw, p: stroke.pts[stroke.pts.length - 1].p }], n = pts.length; if (n < 3) return false;
+  const acc = [0]; for (let i = 1; i < n; i++) acc.push(acc[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
+  const L = acc[n - 1]; if (L < 6) return false; growDirty(stroke.raw.x, stroke.raw.y, widthFor(1) / 2 + 3); const T = Math.min(L * 0.4, Math.max(24, S.size * 5));
+  const fac = s => Math.max(0.12, Math.min(1, Math.pow(Math.min(s, L - s) / T, 0.65)));
+  sctx.save(); sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.clearRect(0, 0, W, H); sctx.lineCap = 'round'; sctx.lineJoin = 'round';
+  for (let i = 1; i < n; i++) { const a = i > 1 ? mid(pts[i - 2], pts[i - 1]) : pts[0], b = mid(pts[i - 1], pts[i]); sctx.lineWidth = widthFor(pts[i - 1].p) * fac(acc[i - 1]); sctx.beginPath(); sctx.moveTo(a.x, a.y); sctx.quadraticCurveTo(pts[i - 1].x, pts[i - 1].y, i === n - 1 ? pts[i].x : b.x, i === n - 1 ? pts[i].y : b.y); sctx.stroke(); }
+  sctx.restore(); return true;
+}
+/* thick dark outline around every shape of the layer (or the floating selection) */
+async function boldOutlineDialog() {
+  let r = 8, col = CB_INK, all = false;
+  const v = await modal({ title: '🖍 Viền đậm tự động', html: `<p class="lbl" style="margin-top:0">Thêm viền tối dày quanh mọi hình trên lớp <b>${S.layer === 'bg' ? 'Nền' : 'Nhân vật'}</b>. Hợp khi bạn tô mảng màu trước rồi muốn có nét viền kiểu hoạt hình.</p>
+    <div class="mrow" style="gap:6px;flex-wrap:wrap"><span class="lbl">Độ dày</span>${[['4', 'Mảnh'], ['8', 'Vừa'], ['14', 'Dày'], ['22', 'Rất dày']].map(([k, n]) => `<button class="chip small ${+k === r ? 'on' : ''}" data-bor="${k}">${n}</button>`).join('')}</div>
+    <div class="mrow" style="gap:6px;margin-top:8px"><span class="lbl">Màu viền</span><button class="chip small on" data-boc="${CB_INK}">Nâu đen</button><button class="chip small" data-boc="cur">Màu đang chọn</button></div>
+    <label class="lbl" style="display:block;margin-top:8px"><input type="checkbox" id="boAll"> Áp cho tất cả frame</label>`,
+    buttons: [{ label: 'Huỷ', value: null }, { label: '✓ Thêm viền', value: true, primary: true }],
+    onOpen: ov => ov.addEventListener('click', e => { const t = e.target.closest('[data-bor],[data-boc]'); if (t) { if (t.dataset.bor) r = +t.dataset.bor; else col = t.dataset.boc === 'cur' ? S.color : CB_INK; ov.querySelectorAll(t.dataset.bor ? '[data-bor]' : '[data-boc]').forEach(b => b.classList.toggle('on', b === t)); } if (e.target.id === 'boAll') all = e.target.checked; }) });
+  if (!v) return;
+  if (floating) commitFloating(); if (S.layer === 'vec') setLayer('char');
+  const objs = S.layer === 'bg' ? [bgOf(curFrame())] : all ? S.frames : [curFrame()], pm = progress('Đang thêm viền…'), multi = [];
+  for (const o of objs) { await ensureLoaded(o); const lc = o.canvas.getContext('2d'), bb = cbAlphaBox([o.canvas]); if (!bb) continue;
+    const rect = rectFromBox([bb[0], bb[1], bb[0] + bb[2], bb[1] + bb[3]], r + 3), before = lc.getImageData(...rect), out = cbOutline(o.canvas, r, col);
+    lc.clearRect(0, 0, W, H); lc.drawImage(out, 0, 0); multi.push(pixEntry(o, rect, before, lc.getImageData(...rect))); o.ver++; queueThumbFor(o); if (all) evictSoon(); }
+  if (!multi.length) { pm.close(); toast('Lớp này chưa có hình để thêm viền'); return; }
+  pushEntry(multi.length === 1 ? multi[0] : { multi, t: targetOf(objs[0]) }); objs.forEach(o => markEdited(o)); pm.close(); requestRender();
+  toast(`Đã thêm viền cho ${objs.length} ${S.layer === 'bg' ? 'nền' : 'frame'} — Hoàn tác nếu chưa ưng`, 2500);
+}
+$('#boldBtn').addEventListener('click', boldOutlineDialog);
+$('#taperBtn').addEventListener('click', () => { S.taper = !S.taper; updateToggles(); saveSettings(); toast(S.taper ? 'Nét mực: BẬT — nét thon nhọn 2 đầu khi nhấc bút' : 'Nét mực: TẮT'); });
 /* ===== body gestures: keyframed, by role & absolute limb angle → works on any cut-out character ===== */
 const GESTURES = {
   hello: ['👋 Vẫy chào', [{ a: { armR: -50, foreR: -95 }, n: 3 }, { a: { foreR: -60 }, n: 2 }, { a: { foreR: -110 }, n: 2 }, { a: { foreR: -60 }, n: 2 }, { a: { foreR: -110 }, n: 2 }, { n: 3, back: 1 }]],
@@ -3585,7 +3993,7 @@ function setColor(c) {
 }
 function updateToggles() {
   $('#onionBtn').classList.toggle('on', S.onion);
-  $('#pressBtn').classList.toggle('on', S.pressure); $('#snapBtn').classList.toggle('on', S.snap);
+  $('#pressBtn').classList.toggle('on', S.pressure); $('#snapBtn').classList.toggle('on', S.snap); $('#taperBtn').classList.toggle('on', !!S.taper);
   $('#loopBtn').classList.toggle('on', S.loop);
   $('#layerBg').classList.toggle('hidden', !S.showBg); $('#layerChar').classList.toggle('hidden', !S.showChar); $('#layerVec').classList.toggle('hidden', !S.showVec);
   $('[data-eye=bg]').textContent = S.showBg ? '👁' : '🚫'; $('[data-eye=char]').textContent = S.showChar ? '👁' : '🚫'; $('[data-eye=vec]').textContent = S.showVec ? '👁' : '🚫'; $('[data-eye=pp]').textContent = S.showPP ? '👁' : '🚫'; $('#layerPP').classList.toggle('hidden', !S.showPP);
@@ -4356,7 +4764,7 @@ async function wizard() {
   const step = (n, title, done, desc, btns) => `<div class="wstep ${done ? 'done' : ''}"><h4>${done ? '✅' : n + '.'} ${title}</h4><div class="lbl" style="font-size:13px;line-height:1.45">${desc}</div><div class="wb">${btns}</div></div>`;
   const B = (id, label, primary) => `<button class="btn ${primary ? 'primary' : ''}" data-wz="${id}">${label}</button>`;
   const html = `<p style="margin-top:0">Làm theo 5 bước, mỗi bước bấm 1 nút. Mở lại bảng này bất cứ lúc nào bằng nút <b>🚀</b> ở thanh trên.</p><div id="wizSteps">
-  ${step(1, 'Đưa nhân vật vào', hasChar, 'Tạo ảnh nhân vật bằng AI (đứng thẳng, nhìn thẳng, tay hơi dang, nền trơn) rồi nhập vào. App tự xoá nền, tự đặt khớp — bạn chỉ cần kéo chỉnh chấm trắng rồi bấm <b>✂ Cắt tự động</b>.', B('char', '📷 Chọn ảnh nhân vật', !hasChar))}
+  ${step(1, 'Đưa nhân vật vào', hasChar, 'Cách dễ nhất: bấm <b>🧑‍🎨 Tạo nhân vật</b>, chọn dáng đầu, tóc, mặt, áo — nhân vật tự cử động được. Hoặc tạo ảnh nhân vật bằng AI (đứng thẳng, nhìn thẳng, tay hơi dang, nền trơn) rồi nhập vào. App tự xoá nền, tự đặt khớp — bạn chỉ cần kéo chỉnh chấm trắng rồi bấm <b>✂ Cắt tự động</b>.', B('cb', '🧑‍🎨 Tạo nhân vật (không cần vẽ)', !hasChar) + B('char', '📷 Chọn ảnh nhân vật'))}
   ${step(2, 'Cho nhân vật cử động', hasAnim, 'Chọn một hành động có sẵn — app tự tạo các frame. Muốn tự tạo dáng: dùng tab 🤸 Tạo dáng, kéo tay chân, rồi 🎞 Tạo frame giữa.', [['walk', '🚶 Đi bộ'], ['run', '🏃 Chạy'], ['wave', '👋 Vẫy tay'], ['jump', '🦘 Nhảy'], ['cheer', '🙌 Ăn mừng'], ['nod', '🙂 Gật đầu'], ['talk', '🗣 Nói']].map(([k, l]) => B('act:' + k, l)).join('') + B('pose', '🤸 Tự tạo dáng'))}
   ${step(3, 'Thêm chữ, camera, âm thanh', hasFx, 'Chữ kiểu truyện tranh, zoom vào mặt, rung khung, nhạc nền, lồng tiếng — app tự nhép miệng theo giọng.', B('text', '🔤 Thêm chữ') + B('zoom', '🎥 Zoom vào') + B('music', '🎵 Nhạc nền') + B('voice', '🎤 Lồng tiếng') + B('sfx', '🔊 Âm thanh vui'))}
   ${step(4, 'Xem lại', false, 'Bấm Phát để xem. Sửa frame nào thì chạm frame đó ở dưới.', B('play', '▶ Phát thử'))}
@@ -4365,7 +4773,8 @@ async function wizard() {
     ov.querySelector('.dlg').classList.add('wide');
     ov.querySelectorAll('[data-wz]').forEach(b => b.addEventListener('click', async () => {
       const k = b.dataset.wz; close();
-      if (k === 'char') { wizImport = true; $('#imgFile').click(); }
+      if (k === 'cb') cbDialog();
+      else if (k === 'char') { wizImport = true; $('#imgFile').click(); }
       else if (k.startsWith('act:')) {
         if (!S.pp) { toast('Làm bước 1 trước: đưa nhân vật vào'); return; }
         const a = k.slice(4); setTool('puppet'); openTab('pp', 'frames');
@@ -4491,7 +4900,7 @@ async function init() {
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }
 /* ========= Installed app (PWA): offline + updates ========= */
-const APP_VERSION = '2026.11.20-0834';
+const APP_VERSION = '2026.11.20-0958';
 let swReg = null, swUpdating = false;
 (function setupPWA() {
   let top = false; try { top = window.top === window; } catch (e) {}

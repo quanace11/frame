@@ -57,6 +57,10 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
   - Mắt, miệng, biểu cảm, tay, hiệu ứng.
   - Hiệu ứng động (`ANIM_CATS`: 💫 Choáng, 🥊 Đánh nhau, 💥 Chữ âm thanh): mỗi hình là vòng lặp nhiều frame, hàm vẽ nhận `o.t`, số frame + âm thanh ở `items[k][2]` = `{n, sfx}`. `assetToFrameAnim` đặt frame 0, bấm ✓ thì `assetStampAnim` vẽ tiếp lên các frame sau (thiếu thì thêm frame), gắn SFX và ghi undo.
   - Gắn vào mảnh thì tạo mảnh con có `alts` (hình thay thế theo frame). Bộ nhép miệng = 3 hình, dùng với `fxLipSync`.
+- **Tạo nhân vật — phong cách "Đầu To"** (`CB_CHOICES`, `cbBuild`, `cbDialog`, `cbCreate`)
+  - Vẽ bằng code theo đơn vị thiết kế (gốc = giữa hông, nhân vật cao ~1030), mỗi mảnh render rồi `cbOutline` thêm viền ngoài dày.
+  - Tạo ra nhân vật ghép đủ vai trò; mảnh Mắt/Miệng có `alts` theo `asset.keys` (`cbEyes`/`cbMouth`), miệng có `asset.lip = 2` (nhép miệng chỉ dùng ngậm/hé/há). Lựa chọn lưu ở `asset.cb` của mảnh Thân để ✏️ Sửa nhân vật mà giữ tư thế.
+  - Biểu cảm nhanh `CB_EXPR` → `cbSetExpr`. Hỗ trợ vẽ: `S.taper` (`strokeTaper`, nét mực) và `boldOutlineDialog` (viền đậm).
 - **Cử chỉ** (`GESTURES`, `ppGesture`)
   - Keyframe theo vai trò và góc tuyệt đối của tay (`ppApplyAbs`), nên áp được cho mọi nhân vật đã gán vai trò.
   - Trong `BUILTIN_POSES`/`GESTURES`, góc tính theo độ trên màn hình: 0 = sang phải, 90 = xuống dưới.
