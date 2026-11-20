@@ -6013,7 +6013,7 @@ async function init() {
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }
 /* ========= Installed app (PWA): offline + updates ========= */
-const APP_VERSION = '2026.11.20-1849';
+const APP_VERSION = '2026.11.20-1904';
 let swReg = null, swUpdating = false;
 (function setupPWA() {
   let top = false; try { top = window.top === window; } catch (e) {}
