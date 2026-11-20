@@ -98,6 +98,17 @@ input[type=range]{width:110px;accent-color:var(--accent);height:28px}
 #focusBar button{border:0;background:var(--panel2);color:var(--text);border-radius:10px;min-width:44px;height:44px;font-size:16px;cursor:pointer;padding:0 10px}
 #focusBar button.on{background:var(--accent);color:var(--accent-ink)}
 #tl.collapsed #strip{display:none}
+/* Collapsible regions: each one folds into a small floating button on the stage */
+#app.hide-rail #rail,#app.hide-top #top,#app.hide-tl #tl{display:none}
+.dockb{position:absolute;z-index:7;display:flex;align-items:center;gap:6px;min-height:46px;min-width:46px;padding:0 12px;border:1px solid var(--accent);
+  background:var(--panel);color:var(--text);border-radius:14px;font-size:14px;box-shadow:0 6px 20px #0008;cursor:pointer;opacity:.92}
+.dockb:active{background:var(--panel2)}
+.dockb .di{font-size:18px;line-height:1}
+#dockTop{left:10px;top:10px}
+#dockRail{left:10px;top:50%;transform:translateY(-50%);flex-direction:column;padding:8px 6px;gap:2px;font-size:11px}
+#dockTl{left:10px;bottom:10px}
+#app.focus .dockb{display:none!important}
+.hidebtn{min-height:40px;min-width:44px}
 @media (orientation:landscape) and (max-height:820px){
   #tl{padding:5px 8px;gap:4px} #strip{padding:2px} .fr canvas{height:62px;width:auto}
   .tool{min-height:42px;padding:2px} .tool svg{width:20px;height:20px}
@@ -231,6 +242,8 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <svg viewBox="0 0 24 24"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/><path d="M9 9l-5-5M15 9l5-5M9 15l-5 5M15 15l5 5"/></svg>Ẩn công cụ</button>
     <button class="tool" id="menuBtn" title="Menu">
       <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Menu</button>
+    <button class="tool" id="railHide" title="Thu thanh công cụ thành 1 nút nhỏ để vùng vẽ rộng hơn">
+      <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/><path d="M20 4v16"/></svg>Thu gọn</button>
   </nav>
 
   <header id="top">
@@ -263,6 +276,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
     <span class="spacer"></span>
     <button class="chip small on" id="wizBtn" title="Trợ lý làm video từng bước">🚀 Làm nhanh</button><button class="chip small" id="assetBtn" title="Kho hình: hiệu ứng động (choáng, đánh nhau, chữ âm thanh), mắt, miệng, tay">🎨 Kho hình</button>
     <button class="chip small" id="projBtn" title="Danh sách dự án">📁 Dự án</button><span id="saveState"></span>
+    <button class="chip small hidebtn" id="topHide" title="Thu thanh này thành 1 nút nhỏ để vùng vẽ rộng hơn">▴ Thu gọn</button>
   </header>
 
   <main id="stage">
@@ -393,6 +407,9 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <div class="mrow" data-tab="audio"><span class="lbl">Đã gắn ở frame này:</span><span id="fxSfxList" class="mrow"></span><span style="flex:1"></span><button class="chip small on" id="fxExport">🎬 Xuất video</button></div>
     </div>
     <button id="panelPill" hidden></button>
+    <button class="dockb" id="dockTop" hidden title="Mở lại thanh cỡ bút, màu, lớp"><span class="di">🎨</span>Cọ & lớp ▾</button>
+    <button class="dockb" id="dockRail" hidden title="Mở lại thanh công cụ"><span class="di">🛠</span>Công cụ</button>
+    <button class="dockb" id="dockTl" hidden title="Mở lại thanh frame"><span class="di">🎞</span><span id="dockTlLbl">Frame</span> ▴</button>
     <div id="focusBar" hidden>
       <button id="fbShow" title="Hiện lại công cụ">☰ Công cụ</button><button id="fbUndo" title="Hoàn tác">↶</button><button id="fbRedo" title="Làm lại">↷</button>
       <button id="fbPen" title="Bút">✏️</button><button id="fbEraser" title="Tẩy">🩹</button><button id="fbPlay" title="Phát">▶</button><button id="fbPrev" title="Frame trước">◀</button><button id="fbNext" title="Frame sau">▶|</button>
@@ -419,6 +436,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <button class="tbtn" id="delAllBtn" style="color:var(--danger)" title="Xoá toàn bộ frame">Xoá hết</button>
       <span id="totalLbl"></span>
       <button class="chip small" id="tlCollapse" title="Ẩn/hiện dòng hình frame">▾ Ẩn dòng frame</button>
+      <button class="chip small hidebtn" id="tlHide" title="Thu cả thanh frame thành 1 nút nhỏ để vùng vẽ rộng hơn">⌄ Thu nhỏ</button>
     </div>
     <div id="strip"></div>
   </footer>
@@ -442,7 +460,8 @@ const S = {
   frames: [], bgs: [], cur: 0, layer: 'char', tool: 'brush',
   color: '#111111', size: 8, opacity: 1, pressure: true,
   onion: true, onionAlpha: 0.3, showBg: true, showChar: true, showVec: true, showPP: true, bendR: 160, vdm: 'point', snap: false, snapR: 24,
-  fingerDraw: false, smooth: 0.3, defaultDur: 0.1, loop: true, fillTol: 120
+  fingerDraw: false, smooth: 0.3, defaultDur: 0.1, loop: true, fillTol: 120,
+  uiHide: { rail: false, top: false, tl: false }
 };
 let uidN = 1;
 const newId = () => Date.now().toString(36) + (uidN++).toString(36);
@@ -458,8 +477,9 @@ let toastT;
 function toast(msg, ms = 1800) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
 
 /* ========= Settings ========= */
-const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm'];
-function loadSettings() { try { const o = JSON.parse(localStorage.getItem('fs-settings') || '{}'); for (const k of SETTINGS_KEYS) if (k in o) S[k] = o[k]; } catch (e) {} }
+const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','uiHide','panelHidden'];
+function loadSettings() { try { const o = JSON.parse(localStorage.getItem('fs-settings') || '{}'); for (const k of SETTINGS_KEYS) if (k in o) { if (k === 'panelHidden') Object.assign(panelHidden, o[k]); else S[k] = o[k]; } } catch (e) {}
+  S.uiHide = Object.assign({ rail: false, top: false, tl: false }, S.uiHide); }
 function saveSettings() { try { const o = {}; for (const k of SETTINGS_KEYS) o[k] = S[k]; localStorage.setItem('fs-settings', JSON.stringify(o)); } catch (e) {} }
 
 /* ========= Objects (frames + backgrounds), lazy loading ========= */
@@ -979,6 +999,7 @@ function updateFrameUI() {
   document.querySelectorAll('#durChips .chip').forEach(ch => ch.classList.toggle('on', Math.abs(+ch.dataset.s * 1000 - f.dur) < 1));
   const total = S.frames.reduce((a, g) => a + g.dur, 0);
   $('#totalLbl').textContent = `${S.frames.length} frame · ${(total / 1000).toFixed(1)}s`;
+  $('#dockTlLbl').textContent = `Frame ${S.cur + 1}/${S.frames.length}`;
   const shared = S.frames.filter(g => g.bgId === f.bgId).length;
   $('#bgInfo').textContent = shared > 1 ? `Nền dùng chung ${shared} frame` : 'Nền riêng';
   $('#moveL').disabled = S.cur === 0; $('#moveR').disabled = S.cur === S.frames.length - 1;
@@ -2226,15 +2247,15 @@ async function ppBake() {
   toast('Đã chốt nhân vật ghép vào lớp Nhân vật (frame này)');
 }
 /* --- UI --- */
-const panelHidden = { vedit: false, puppet: false, fx: false };
+const panelHidden = S.panelHidden = { vedit: false, puppet: false, fx: false };
 const PANEL_NAME = { vedit: 'Sửa nét', puppet: 'Nhân vật ghép', fx: 'Chữ & FX' };
 function updPanelPill() {
   const t = S.tool, pill = $('#panelPill');
   const hidden = panelHidden[t] === true && !(t === 'vedit' && (motion || rig)) && !(t === 'puppet' && ppSetup);
   pill.hidden = !hidden; if (hidden) pill.textContent = '☰ Mở bảng ' + PANEL_NAME[t];
 }
-function hidePanel(t) { panelHidden[t] = true; updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
-function showPanel() { panelHidden[S.tool] = false; updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
+function hidePanel(t) { panelHidden[t] = true; saveSettings(); updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
+function showPanel() { panelHidden[S.tool] = false; saveSettings(); updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
 function ppSyncBar() {
   const bar = $('#ppbar'), show = S.tool === 'puppet' && (!panelHidden.puppet || !!ppSetup);
   bar.hidden = !show; updPanelPill(); if (!show) return;
@@ -2756,6 +2777,22 @@ $('#fbEraser').addEventListener('click', () => { setTool('eraser'); setFocus(tru
 $('#fbPlay').addEventListener('click', startPlay);
 $('#fbPrev').addEventListener('click', () => selectFrame(S.cur - 1)); $('#fbNext').addEventListener('click', () => selectFrame(S.cur + 1));
 $('#tlCollapse').addEventListener('click', () => { const tl = $('#tl'); tl.classList.toggle('collapsed'); S.tlCollapsed = tl.classList.contains('collapsed'); $('#tlCollapse').textContent = S.tlCollapsed ? '▴ Hiện dòng frame' : '▾ Ẩn dòng frame'; saveSettings(); setTimeout(resizeView, 30); });
+/* collapsible regions (rail / top bar / timeline) → small floating button on the stage */
+function setUiHide(k, on, quiet) {
+  S.uiHide[k] = !!on; const app = $('#app');
+  ['rail', 'top', 'tl'].forEach(n => { app.classList.toggle('hide-' + n, !!S.uiHide[n]); });
+  $('#dockRail').hidden = !S.uiHide.rail; $('#dockTop').hidden = !S.uiHide.top; $('#dockTl').hidden = !S.uiHide.tl;
+  // keep the timeline button clear of the top button when both are on the left
+  $('#dockRail').style.top = S.uiHide.top ? 'calc(50% + 20px)' : '';
+  if (!quiet) { saveSettings(); if (on) toast('Đã thu gọn — chạm nút nhỏ ở góc để mở lại', 2200); }
+  setTimeout(() => { resizeView(); if (!quiet) fitView(); }, 30);   // refit so the drawing really gets bigger
+}
+$('#railHide').addEventListener('click', () => setUiHide('rail', true));
+$('#topHide').addEventListener('click', () => setUiHide('top', true));
+$('#tlHide').addEventListener('click', () => setUiHide('tl', true));
+$('#dockRail').addEventListener('click', () => setUiHide('rail', false));
+$('#dockTop').addEventListener('click', () => setUiHide('top', false));
+$('#dockTl').addEventListener('click', () => setUiHide('tl', false));
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => hidePanel(b.dataset.close)));
 $('#panelPill').addEventListener('click', showPanel);
 $('#bgVidBtn').addEventListener('click', bgVideoDialog);
@@ -4401,7 +4438,7 @@ function helpHtml() {
 <li><b>Kéo tay chân (IK)</b>: kéo bàn tay/bàn chân, cánh tay tự gập theo. <b>Tư thế</b>: chọn tư thế có sẵn (⭐) hoặc lưu tư thế của bạn. <b>↔ Lật nhân vật</b>: quay hướng.</li>
 <li><b>Hình của mảnh</b>: mỗi mảnh có nhiều hình (miệng há/ngậm, mắt mở/nhắm, tay xoè/nắm) — ＋ Nhập hình (ảnh AI), ⧉ Nhân bản rồi ✎ Vẽ lên mảnh để sửa; chạm hình nhỏ để đổi ở frame đang xem. Mẫu Nói/Chớp mắt tự đổi hình nếu có.</li>
 <li><b>Nhiều nhân vật</b>: nhập ảnh nhân vật thứ 2 → Nhân vật ghép → chọn ＋ Thêm nhân vật. Mẫu và tư thế áp cho nhân vật đang chọn.</li>
-<li><b>Xoay & toàn màn hình</b>: tablet xoay ngang/dọc đều dùng được. Xoay khung vẽ bằng 2 ngón (tự hít góc thẳng) hoặc nút <b>⟲ Xoay 90°</b>; <b>Vừa khung</b> để thẳng lại. <b>Ẩn công cụ</b> để vẽ toàn màn hình (còn cụm nút nhỏ góc trên); <b>▾ Ẩn dòng frame</b> để thu gọn thanh frame.</li>
+<li><b>Xoay & toàn màn hình</b>: tablet xoay ngang/dọc đều dùng được. Xoay khung vẽ bằng 2 ngón (tự hít góc thẳng) hoặc nút <b>⟲ Xoay 90°</b>; <b>Vừa khung</b> để thẳng lại. <b>Ẩn công cụ</b> để vẽ toàn màn hình (còn cụm nút nhỏ góc trên); <b>▾ Ẩn dòng frame</b> để thu gọn thanh frame. Nút <b>Thu gọn</b> (cuối thanh công cụ, cuối thanh trên) và <b>⌄ Thu nhỏ</b> (thanh frame) gập từng thanh thành 1 nút nhỏ trên khung vẽ, chạm nút đó để mở lại. Bảng nổi (Ghép, Chữ & FX, Sửa nét) bấm ✕ để gập thành nút <b>☰</b>. Trạng thái gập được nhớ cho lần sau.</li>
 <li>Bảng công cụ che khung? Bấm <b>✕</b> để đóng bảng (công cụ vẫn bật), bấm <b>☰ Mở bảng</b> góc dưới hoặc chạm lại biểu tượng công cụ để mở lại.</li>
 <li><b>Nền</b>: vẽ/nhập nền 1 lần ở lớp Nền (dùng chung cho các frame), hoặc <b>🎞 Nền video</b> để đặt một đoạn video chạy phía sau nhân vật. Không cần vẽ nền từng frame — khi xuất video app tự ghép tất cả.</li>
 <li><b>✨ Chữ & FX</b>: thêm chữ truyện tranh/bóng thoại/hét/phụ đề (kéo để dời), camera zoom + chạm đặt tâm (tự lia mượt giữa các camera key), rung, chớp sáng; nhạc nền, lồng tiếng + 🗣 tự nhép miệng; âm thanh hiệu ứng có sẵn. <b>🎬 Video</b> xuất MP4/WebM có tiếng.</li>
@@ -4473,6 +4510,7 @@ async function init() {
   $('#opIn').value = Math.round(S.opacity * 100); $('#opVal').textContent = Math.round(S.opacity * 100) + '%';
   setColor(S.color); updateToggles(); setTool('brush'); setLayer('char');
   if (S.tlCollapsed) { $('#tl').classList.add('collapsed'); $('#tlCollapse').textContent = '▴ Hiện dòng frame'; }
+  setUiHide('rail', S.uiHide.rail, true);
   new ResizeObserver(() => resizeView()).observe(stage);
   window.addEventListener('orientationchange', () => setTimeout(resizeView, 250));
   let p = null, list = [];
@@ -4491,7 +4529,7 @@ async function init() {
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }
 /* ========= Installed app (PWA): offline + updates ========= */
-const APP_VERSION = '2026.11.20-0834';
+const APP_VERSION = '2026.11.20-1555';
 let swReg = null, swUpdating = false;
 (function setupPWA() {
   let top = false; try { top = window.top === window; } catch (e) {}
