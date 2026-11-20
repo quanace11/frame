@@ -89,6 +89,8 @@ input[type=range]{width:110px;accent-color:var(--accent);height:28px}
 #bgInfo{font-size:11px;color:var(--muted)}
 .spacer{flex:1}
 #saveState{font-size:11px;color:var(--muted);white-space:nowrap}
+.pop.bgm{width:min(360px,92vw)} .bgm-row{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:12px;color:var(--muted)} .bgm-row > button{flex:none;min-width:110px;min-height:42px}
+#projBtn{max-width:170px;overflow:hidden;text-overflow:ellipsis} #top .chip.small,#top .layer{min-height:38px} #top .layer .name,#top .layer .eye{min-height:36px}
 /* Stage */
 #stage{grid-area:stage;position:relative;overflow:hidden;touch-action:none;background:#0f1013}
 #view{position:absolute;left:0;top:0;touch-action:none;display:block}
@@ -125,6 +127,8 @@ input[type=range]{width:110px;accent-color:var(--accent);height:28px}
 #focusBar{position:absolute;right:10px;top:10px;display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:5px;box-shadow:0 6px 20px #0008;z-index:6}
 #focusBar button{border:0;background:var(--panel2);color:var(--text);border-radius:10px;min-width:44px;height:44px;font-size:16px;cursor:pointer;padding:0 10px}
 #focusBar button.on{background:var(--accent);color:var(--accent-ink)}
+#top .tico{font-weight:inherit}#shapeBtn,#symBtn,#clipBtn,#snapBtn{min-width:44px}
+@media (max-width:1400px){ #top .tlbl{display:none} #pressBtn{display:none} }   /* narrow bar: Lực nhấn is in the Bút ▾ menu */
 body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:not([data-tool=brush]):not([data-tool=eraser]) #symBtn{display:none}
 #tl.collapsed #strip{display:none}
 /* Collapsible regions: each one folds into a small floating button on the stage */
@@ -141,7 +145,7 @@ body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:
 @media (orientation:landscape) and (max-height:820px){
   #tl{padding:5px 8px;gap:4px} #strip{padding:2px} .fr canvas{height:62px;width:auto}
   .tool{min-height:42px;padding:2px} .tool svg{width:20px;height:20px}
-  #top{padding:4px 8px;gap:4px 10px} #ppbar,#fxbar,#rigbar,#motionbar{max-height:55%}
+  #top{padding:4px 8px;gap:4px 8px} #top input[type=range]{width:88px} #top .grp{gap:4px} #ppbar,#fxbar,#rigbar,#motionbar{max-height:55%}
 }
 @media (orientation:portrait){ #rail{gap:2px} }
 #panelPill{position:absolute;right:12px;bottom:12px;border:1px solid var(--accent);background:var(--panel);color:var(--text);border-radius:999px;padding:10px 16px;font-size:14px;box-shadow:0 6px 20px #0008;cursor:pointer;z-index:5}
@@ -291,9 +295,9 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
     <button class="chip small" id="brushBtn" title="Chọn loại bút, kiểu tẩy, độ chống run tay"><span id="brushName">Bút tròn</span> ▾</button>
     <button class="chip small" id="shapeBtn" title="Vẽ hình nhanh: đường thẳng, chữ nhật, hình tròn. Mẹo: vẽ tự do rồi giữ yên bút một chút cũng tự thành đường thẳng / hình tròn">✏ Tự do</button>
     <button class="chip small" id="symBtn" title="Vẽ đối xứng: nét vẽ bên này tự hiện ở bên kia (mặt, thân nhân vật)">⇋ Đối xứng</button>
-    <button class="chip small" id="clipBtn" title="Chỉ vẽ lên chỗ đã có nét/màu ở lớp đang chọn: tô bóng, đổi màu nét mà không lem ra ngoài">🔒 Vẽ trong vùng</button>
+    <button class="chip small" id="clipBtn" title="Chỉ vẽ lên chỗ đã có nét/màu ở lớp đang chọn: tô bóng, đổi màu nét mà không lem ra ngoài" aria-label="Vẽ trong vùng"><b class="tico">🔒</b><span class="tlbl"> Vẽ trong vùng</span></button>
     <button class="chip small" id="pressBtn" title="Nét thay đổi theo lực nhấn bút">Lực nhấn</button>
-    <button class="chip small" id="snapBtn" title="Hút nét: vẽ lệch sẽ tự kéo vào nét cũ gần nhất (nét frame này, frame trước khi bật Onion, ảnh mờ)">🧲 Hút nét</button>
+    <button class="chip small" id="snapBtn" title="Hút nét: vẽ lệch sẽ tự kéo vào nét cũ gần nhất (nét frame này, frame trước khi bật Onion, ảnh mờ)" aria-label="Hút nét"><b class="tico">🧲</b><span class="tlbl"> Hút nét</span></button>
     <div class="grp" id="palette">
       <button id="curColor" title="Bảng màu đầy đủ: chọn màu tuỳ ý, mã màu, màu vừa dùng"></button>
       <button class="chip small" id="dropBtn" hidden title="Dò màu: chạm vào bất kỳ chỗ nào trên hình để lấy đúng màu đó, rồi đổ màu (máy tính: giữ Alt + bấm)">💧 Dò màu</button>
@@ -306,7 +310,8 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <div class="layer" id="layerPP"><button class="name" id="ppLayerBtn" title="Nhân vật ghép từ mảnh ảnh">Ghép</button><button class="eye" data-eye="pp" title="Ẩn/hiện">👁</button></div>
       <div class="layer" id="layerVec"><button class="name" data-layer="vec" title="Lớp nét vector: chỉnh sửa được từng nét">Nét</button><button class="eye" data-eye="vec" title="Ẩn/hiện">👁</button></div>
     </div>
-    <div class="grp">
+    <button class="chip small" id="bgMenuBtn" title="Nền của frame này: nền mới, nền video, tách nền">🖼 Nền ▾</button>
+    <div id="bgHold" hidden>
       <button class="chip small" id="newBgBtn" title="Cho frame này một nền trống riêng (cảnh mới)">Nền mới</button>
       <button class="chip small" id="bgVidBtn" title="Dùng một đoạn video làm nền phía sau nhân vật">🎞 Nền video</button>
       <button class="chip small" id="splitBgBtn" title="Tách nền thành bản sao riêng để sửa mà không ảnh hưởng frame khác">Tách nền</button>
@@ -318,7 +323,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
     <span class="spacer"></span>
     <button class="chip small on" id="wizBtn" title="Trợ lý làm video từng bước">🚀 Làm nhanh</button><button class="chip small" id="aiCharBtn" title="AI tạo nhân vật hoạt hình từ ảnh chụp (Google Gemini, dùng key của bạn)">🤖 AI nhân vật</button><button class="chip small" id="assetBtn" title="Kho hình: hiệu ứng động (choáng, đánh nhau, chữ âm thanh), mắt, miệng, tay">🎨 Kho hình</button>
     <button class="chip small" id="projBtn" title="Danh sách dự án">📁 Dự án</button><span id="saveState"></span>
-    <button class="chip small hidebtn" id="topHide" title="Thu thanh này thành 1 nút nhỏ để vùng vẽ rộng hơn">▴ Thu gọn</button>
+    <button class="chip small hidebtn" id="topHide" title="Thu gọn thanh này thành 1 nút nhỏ để vùng vẽ rộng hơn" aria-label="Thu gọn thanh trên">▴</button>
   </header>
 
   <main id="stage">
@@ -1003,10 +1008,12 @@ function shapeRedraw() {
 // drawing helpers for the brush: quick shapes, symmetry, draw-inside (lock alpha); remembered in settings
 SETTINGS_KEYS.push('shapeMode', 'sym', 'clipIn'); S.shapeMode = ''; S.sym = 0; S.clipIn = false;
 const SHAPES = [['', '✏ Tự do'], ['line', '╱ Thẳng'], ['rect', '▭ Chữ nhật'], ['ellipse', '◯ Tròn']], SYMS = ['⇋ Đối xứng', '⇋ Đối xứng: trái–phải', '⇋ Đối xứng: trên–dưới', '⇋ Đối xứng: 4 góc'];
-function syncShapeBtns() { const sh = SHAPES.find(x => x[0] === (S.shapeMode || '')) || SHAPES[0]; $('#shapeBtn').textContent = sh[1]; $('#shapeBtn').classList.toggle('on', !!S.shapeMode); $('#symBtn').textContent = SYMS[S.sym | 0]; $('#symBtn').classList.toggle('on', !!S.sym); $('#clipBtn').classList.toggle('on', !!S.clipIn); }
+// icon + words; on a narrow top bar only the icon shows (the words stay in the tooltip and in the toast on tap)
+function setIconLabel(el, t) { const k = t.indexOf(' '); el.innerHTML = '<b class="tico">' + t.slice(0, k) + '</b><span class="tlbl"> ' + t.slice(k + 1) + '</span>'; el.setAttribute('aria-label', t); }
+function syncShapeBtns() { const sh = SHAPES.find(x => x[0] === (S.shapeMode || '')) || SHAPES[0]; setIconLabel($('#shapeBtn'), sh[1]); $('#shapeBtn').classList.toggle('on', !!S.shapeMode); setIconLabel($('#symBtn'), SYMS[S.sym | 0]); $('#symBtn').classList.toggle('on', !!S.sym); $('#clipBtn').classList.toggle('on', !!S.clipIn); }
 setTimeout(syncShapeBtns, 0);   // after loadSettings()
-$('#shapeBtn').addEventListener('click', () => { const i = SHAPES.findIndex(x => x[0] === (S.shapeMode || '')); S.shapeMode = SHAPES[(i + 1) % SHAPES.length][0]; syncShapeBtns(); saveSettings(); if (S.shapeMode) toast('Kéo từ điểm đầu tới điểm cuối để vẽ ' + SHAPES.find(x => x[0] === S.shapeMode)[1].slice(2).toLowerCase(), 2200); });
-$('#symBtn').addEventListener('click', () => { S.sym = ((S.sym | 0) + 1) % 4; syncShapeBtns(); saveSettings(); requestRender(); });
+$('#shapeBtn').addEventListener('click', () => { const i = SHAPES.findIndex(x => x[0] === (S.shapeMode || '')); S.shapeMode = SHAPES[(i + 1) % SHAPES.length][0]; syncShapeBtns(); saveSettings(); if (S.shapeMode) toast('Kéo từ điểm đầu tới điểm cuối để vẽ ' + SHAPES.find(x => x[0] === S.shapeMode)[1].slice(2).toLowerCase(), 2200); else toast('Vẽ tự do', 1500); });
+$('#symBtn').addEventListener('click', () => { S.sym = ((S.sym | 0) + 1) % 4; syncShapeBtns(); saveSettings(); requestRender(); toast(S.sym ? SYMS[S.sym].replace('⇋ ', '') : 'Tắt vẽ đối xứng', 1800); });
 $('#clipBtn').addEventListener('click', () => { S.clipIn = !S.clipIn; syncShapeBtns(); saveSettings(); toast(S.clipIn ? 'Nét mới chỉ hiện trên chỗ đã vẽ ở lớp này (tô bóng, đổi màu nét)' : 'Vẽ bình thường', 2500); });
 let quickShapeHint = false;
 function quickShape(st) {
@@ -5105,7 +5112,7 @@ function renderRecentSw() {
   pal.querySelectorAll('.sw').forEach(s => s.classList.toggle('on', s.dataset.c.toLowerCase() === S.color.toLowerCase()));
 }
 let popEl = null;
-function closePop() { if (!popEl) return; popEl.remove(); popEl = null; document.removeEventListener('pointerdown', popOutside, true); }
+function closePop() { if (!popEl) return; if (popEl._onClose) popEl._onClose(); popEl.remove(); popEl = null; document.removeEventListener('pointerdown', popOutside, true); }
 function popOutside(e) {
   if (!popEl || popEl.contains(e.target) || (popEl._anchor && popEl._anchor.contains(e.target))) return;
   if (e.target === view) e.stopPropagation(); // a tap on the canvas only closes the popover, it does not draw
@@ -5217,7 +5224,8 @@ function brushPop() {
     <div class="br-grid">${Object.entries(ERASERS).map(([k, o]) => card(k, o, 'e')).join('')}</div>
     <div class="br-tip"></div>
     <div class="set-row"><span>Cỡ nét</span><input type="range" class="bp-size" min="1" max="150" step="1"><span class="val bp-sizev"></span></div>
-    <div class="set-row"><span title="Kéo lên cao để nét thẳng và mượt hơn khi tay run (nét đi chậm hơn bút một chút)">Chống run tay</span><input type="range" class="bp-smooth" min="0" max="90" step="1"><span class="val bp-smoothv"></span></div>`, 'wide');
+    <div class="set-row"><span title="Kéo lên cao để nét thẳng và mượt hơn khi tay run (nét đi chậm hơn bút một chút)">Chống run tay</span><input type="range" class="bp-smooth" min="0" max="90" step="1"><span class="val bp-smoothv"></span></div>
+    <label class="set-row"><span title="Nét to nhỏ theo lực nhấn bút">Nét theo lực nhấn bút</span><input type="checkbox" class="bp-press"></label>`, 'wide');
   const tip = d.querySelector('.br-tip');
   function sync() {
     const isE = S.tool === 'eraser';
@@ -5235,8 +5243,25 @@ function brushPop() {
   sm.value = Math.round(S.smooth * 100); d.querySelector('.bp-smoothv').textContent = sm.value + '%';
   sz.addEventListener('input', () => { S.size = +sz.value; d.querySelector('.bp-sizev').textContent = S.size; $('#sizeIn').value = S.size; $('#sizeVal').textContent = S.size; saveSettings(); });
   sm.addEventListener('input', () => { S.smooth = sm.value / 100; d.querySelector('.bp-smoothv').textContent = sm.value + '%'; saveSettings(); });
+  const pr = d.querySelector('.bp-press'); pr.checked = !!S.pressure;
+  pr.addEventListener('change', () => { S.pressure = pr.checked; updateToggles(); saveSettings(); });
   sync();
 }
+// background options live in a small menu so the top bar stays short; the real buttons are moved in and back out
+function bgMenuPop() {
+  const btn = $('#bgMenuBtn');
+  if (popEl && popEl._anchor === btn) { closePop(); return; }
+  const d = openPop(btn, `<div class="cp-lbl">Nền của frame này: <b class="bgm-info"></b></div>
+    <div class="bgm-row" data-k="newBgBtn"><span>Cho frame này nền trống riêng, dùng khi sang cảnh mới</span></div>
+    <div class="bgm-row" data-k="splitBgBtn"><span>Sửa nền ở frame này mà không đổi các frame khác</span></div>
+    <div class="bgm-row" data-k="bgVidBtn"><span>Dùng một đoạn video làm nền phía sau nhân vật</span></div>`, 'bgm');
+  const hold = $('#bgHold'), info = $('#bgInfo');
+  d.querySelector('.bgm-info').textContent = info.textContent;
+  d.querySelectorAll('.bgm-row').forEach(r => r.prepend($('#' + r.dataset.k)));
+  d._onClose = () => d.querySelectorAll('.bgm-row > button').forEach(b => hold.insertBefore(b, info));
+  d.addEventListener('click', e => { if (e.target.closest('.bgm-row > button')) setTimeout(closePop, 0); });
+}
+$('#bgMenuBtn').addEventListener('click', bgMenuPop);
 $('#curColor').addEventListener('click', colorPop);
 $('#brushBtn').addEventListener('click', brushPop);
 
@@ -5278,7 +5303,7 @@ function idbOpen() {
 }
 async function idbPut(k, v) { const db = await idbOpen(); return new Promise((res, rej) => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(v, k); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error); }); }
 async function idbGet(k) { const db = await idbOpen(); return new Promise((res, rej) => { const tx = db.transaction('kv', 'readonly'); const r = tx.objectStore('kv').get(k); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
-function setSaveState(t) { $('#saveState').textContent = t || (storageOk ? 'Đã tự lưu trên máy này' : '⚠ Chưa lưu được — sẽ thử lại, nên Xuất ZIP để giữ bài'); }
+function setSaveState(t) { const el = $('#saveState'); el.textContent = t || (storageOk ? '✓ Đã lưu' : '⚠ Chưa lưu được'); el.title = storageOk ? 'Bài được tự lưu trên máy này' : 'Chưa lưu được, app sẽ thử lại. Nên Xuất ZIP để giữ bài'; }
 // Big data (frame PNGs, audio, background video) lives in its own keys "blob:<project>:<name>" and is only
 // rewritten when it changed. The project record keeps { ref: key } in its place, so an autosave after a
 // stroke writes one PNG + a small JSON record instead of the whole project.
@@ -6416,7 +6441,7 @@ function drawVideoCover(ctx, v) {
   const k = Math.max(W / v.videoWidth, H / v.videoHeight), w = v.videoWidth * k, h = v.videoHeight * k;
   ctx.drawImage(v, (W - w) / 2, (H - h) / 2, w, h);
 }
-function updateBgVideoBtn() { const b = document.getElementById('bgVidBtn'); if (b) { b.classList.toggle('on', !!S.bgVideo); b.textContent = S.bgVideo ? '🎞 Nền video ✓' : '🎞 Nền video'; } }
+function updateBgVideoBtn() { const b = document.getElementById('bgVidBtn'); if (b) { b.classList.toggle('on', !!S.bgVideo); b.textContent = S.bgVideo ? '🎞 Nền video ✓' : '🎞 Nền video'; } const m = document.getElementById('bgMenuBtn'); if (m) m.textContent = S.bgVideo ? '🖼 Nền: video ▾' : '🖼 Nền ▾'; }
 async function bgVideoDialog() {
   if (!S.bgVideo) { $('#bgVidFile').click(); return; }
   const V = S.bgVideo, dur = bgVid.el && bgVid.el.duration ? bgVid.el.duration.toFixed(1) + 's' : '';
