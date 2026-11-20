@@ -298,7 +298,8 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <span class="lbl">Dày</span><input type="range" id="vecW" min="0.5" max="60" step="0.5" value="6">
       <span class="lbl">Xoay</span><input type="range" id="vecRot" min="-180" max="180" step="1" value="0">
       <span class="lbl">Cỡ</span><input type="range" id="vecScale" min="20" max="300" step="1" value="100">
-      <span class="lbl">Kéo chấm:</span><button class="chip small" data-vdm="point" title="Chỉ di chuyển đúng chấm đang cầm">1 chấm</button><button class="chip small" data-vdm="soft" title="Kéo theo phần nét lân cận (uốn mềm)">Uốn mềm</button><button class="chip small" data-vdm="move" title="Chạm vào nét để di chuyển cả nét">Cả nét</button><input type="range" id="vecBend" min="10" max="800" step="5" value="160" title="Độ rộng uốn mềm">
+      <span class="lbl">Kéo chấm:</span><button class="chip small" data-vdm="point" title="Chỉ di chuyển đúng chấm đang cầm">1 chấm</button><button class="chip small" data-vdm="soft" title="Kéo theo phần nét lân cận (uốn mềm)">Uốn mềm</button><button class="chip small" data-vdm="move" title="Chạm vào nét để di chuyển cả nét">Cả nét</button><button class="chip small" data-vdm="multi" title="Khoanh vùng để chọn nhiều chấm (kể cả trên nhiều nét), kéo thì các chấm được chọn đi theo, chấm còn lại đứng yên làm mốc">Nhiều chấm</button><input type="range" id="vecBend" min="10" max="800" step="5" value="160" title="Độ rộng uốn mềm"><span class="lbl" id="vecMBendL">Mềm</span><input type="range" id="vecMBend" min="0" max="400" step="5" value="0" title="0 = chấm không chọn đứng yên hẳn; tăng lên thì phần nét gần chỗ kéo cũng uốn theo một chút">
+      <button class="chip small" id="vecDense" title="Chèn thêm chấm dọc các nét đang chọn để chọn và uốn được chi tiết hơn">Thêm chấm</button>
       <button class="chip small" id="vecColor" title="Áp màu đang chọn cho các nét">Áp màu</button>
       <button class="chip small" id="vecSmooth">Làm mượt</button>
       <button class="chip small" id="vecAll">Chọn hết</button>
@@ -307,7 +308,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <button class="chip small" id="vecNone">Bỏ chọn</button>
       <button class="chip small on" id="vecRig" title="Gắn xương để đi, chạy, lăn... và tạo biểu cảm mặt">🦴 Xương & biểu cảm</button>
       <button class="chip small on" id="vecMotion" title="Tự sinh frame chuyển động cho các nét đang chọn">🎬 Tạo chuyển động</button>
-      <span class="lbl" style="flex-basis:100%;font-size:11px">Chạm nét để chọn · kéo nét để dời · kéo chấm để uốn · khoanh vùng trống để chọn nhiều nét</span>
+      <span class="lbl" style="flex-basis:100%;font-size:11px">Chạm nét để chọn · kéo nét để dời · kéo chấm để uốn · khoanh vùng trống để chọn nhiều nét · chế độ Nhiều chấm: khoanh các chấm rồi kéo, chấm không chọn đứng yên</span>
     </div>
     <div id="motionbar" hidden>
       <div class="mrow"><b>🎬 Tạo chuyển động</b><span class="lbl" id="mInfo"></span><span style="flex:1"></span><button class="chip small" id="mMini" title="Thu gọn để nhìn rõ khung">▾ Thu gọn</button></div>
@@ -452,7 +453,7 @@ const PALETTE = ['#111111','#ffffff','#e53935','#fb8c00','#fdd835','#43a047','#1
 const S = {
   frames: [], bgs: [], cur: 0, layer: 'char', tool: 'brush',
   color: '#111111', size: 8, opacity: 1, pressure: true,
-  onion: true, onionAlpha: 0.3, showBg: true, showChar: true, showVec: true, showPP: true, bendR: 160, vdm: 'point', snap: false, snapR: 24,
+  onion: true, onionAlpha: 0.3, showBg: true, showChar: true, showVec: true, showPP: true, bendR: 160, mbendR: 0, vdm: 'point', snap: false, snapR: 24,
   fingerDraw: false, smooth: 0.3, defaultDur: 0.1, loop: true, fillTol: 120,
   uiHide: { rail: false, top: false, tl: false }
 };
@@ -470,7 +471,7 @@ let toastT;
 function toast(msg, ms = 1800) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
 
 /* ========= Settings ========= */
-const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','uiHide','panelHidden'];
+const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','uiHide','panelHidden'];
 function loadSettings() { try { const o = JSON.parse(localStorage.getItem('fs-settings') || '{}'); for (const k of SETTINGS_KEYS) if (k in o) { if (k === 'panelHidden') Object.assign(panelHidden, o[k]); else S[k] = o[k]; } } catch (e) {}
   S.uiHide = Object.assign({ rail: false, top: false, tl: false }, S.uiHide); }
 function saveSettings() { try { const o = {}; for (const k of SETTINGS_KEYS) o[k] = S[k]; localStorage.setItem('fs-settings', JSON.stringify(o)); } catch (e) {} }
@@ -1114,6 +1115,10 @@ function stopPlay() {
 
 /* ========= Vector line layer ========= */
 const vsel = new Set();
+const vpsel = new Map();   // "Nhiều chấm" mode: stroke id -> Set of selected point indices (only counts while the stroke is in vsel)
+let vpoly = null;          // lasso outline of the current point selection: dragging inside it moves the selected points
+const vpGet = id => vsel.has(id) ? vpsel.get(id) : null;
+function vpCount() { let n = 0; for (const [id, s] of vpsel) if (vsel.has(id)) n += s.size; return n; }
 const cloneVec = v => (v || []).map(st => ({ id: st.id, c: st.c, w: st.w, pts: st.pts.map(q => ({ x: q.x, y: q.y })) }));
 function strokePath(ctx, pts) {
   ctx.beginPath(); const n = pts.length; if (!n) return;
@@ -1143,11 +1148,17 @@ function renderVec(c, f, px) {
   }
   if (S.tool === 'vedit' && vsel.size && !motion && !rig) {
     c.save(); c.lineWidth = 1.5 * px;
-    for (const st of f.vec) if (vsel.has(st.id)) st.pts.forEach((q, i) => {
+    const multi = S.vdm === 'multi';
+    if (multi && vpoly && vpCount() && !(action && action.kind === 'vlasso')) {
+      c.save(); c.setLineDash([6 * px, 6 * px]); c.strokeStyle = 'rgba(255,138,0,.8)'; c.fillStyle = 'rgba(255,138,0,.07)';
+      c.beginPath(); vpoly.forEach((q, i) => i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y)); c.closePath(); c.fill(); c.stroke(); c.restore();
+    }
+    for (const st of f.vec) if (vsel.has(st.id)) { const ps = multi ? vpGet(st.id) : null; st.pts.forEach((q, i) => {
+      if (ps && ps.has(i)) { c.beginPath(); c.arc(q.x, q.y, 6.5 * px, 0, Math.PI * 2); c.fillStyle = '#ff8a00'; c.fill(); c.strokeStyle = '#fff'; c.stroke(); return; }
       const end = i === 0 || i === st.pts.length - 1;
       c.beginPath(); c.arc(q.x, q.y, (end ? 6 : 4.5) * px, 0, Math.PI * 2);
       c.fillStyle = end ? '#2f7bff' : '#fff'; c.fill(); c.strokeStyle = end ? '#fff' : '#2f7bff'; c.stroke();
-    });
+    }); }
     c.restore();
   }
 }
@@ -1185,6 +1196,7 @@ function vecStart(p, base) {
   const f = curFrame(), tol = 14 * DPR / vs;
   if (!S.showVec) { toast('Lớp Nét đang ẩn'); return; }
   const mode = S.vdm || 'point', ptol = (mode === 'move' ? 14 : 22) * DPR / vs;
+  if (mode === 'multi') { vecMultiStart(p, base, f); return; }
   let best = null, bd = ptol;   // nearest point wins, not the first one in range
   for (const st of f.vec) if (vsel.has(st.id)) for (let i = 0; i < st.pts.length; i++) { const d = Math.hypot(st.pts[i].x - p.x, st.pts[i].y - p.y); if (d <= bd) { bd = d; best = { st, i }; } }
   const startBend = (st, i, before) => { action = { ...base, kind: 'vbend', st, i, start: p, basePts: st.pts.map(q => ({ ...q })), cum: cumLen(st.pts), before: before || cloneVec(f.vec), moved: false }; };
@@ -1200,6 +1212,67 @@ function vecStart(p, base) {
   }
   lasso = [p]; action = { ...base, kind: 'vlasso' }; requestRender();
 }
+/* --- "Nhiều chấm": lasso many points (across strokes), drag them together, unselected points stay as anchors --- */
+function vecMultiStart(p, base, f) {
+  let best = null, bd = 22 * DPR / vs;
+  for (const st of f.vec) if (vsel.has(st.id)) for (let i = 0; i < st.pts.length; i++) { const d = Math.hypot(st.pts[i].x - p.x, st.pts[i].y - p.y); if (d <= bd) { bd = d; best = { st, i }; } }
+  const inPoly = !best && vpoly && vpCount() && pip(p, vpoly);
+  if (best || inPoly) { action = { ...base, kind: 'vmulti', start: p, tap: best, before: cloneVec(f.vec), polyBase: vpoly && vpoly.map(q => ({ ...q })), moved: false }; return; }
+  lasso = [p]; action = { ...base, kind: 'vlasso', multi: true }; requestRender();
+}
+function vpWeights(f) {     // per stroke: base points + weight (1 = selected, 0 = anchor, in between = optional soft falloff)
+  const R = +S.mbendR || 0, out = [];
+  for (const st of f.vec) {
+    const s = vpGet(st.id); if (!s || !s.size) continue;
+    const n = st.pts.length, w = new Float32Array(n), sel = [...s].filter(i => i < n);
+    if (R > 0) { const c = cumLen(st.pts); for (let j = 0; j < n; j++) { let d = Infinity; for (const i of sel) d = Math.min(d, Math.abs(c[j] - c[i])); const t = d / R; w[j] = t < 1 ? (1 - t * t) * (1 - t * t) : 0; } }
+    else for (const i of sel) w[i] = 1;
+    out.push({ st, base: st.pts.map(q => ({ x: q.x, y: q.y })), w });
+  }
+  return out;
+}
+function vecMultiMove(a, p, f) {
+  const dx = p.x - a.start.x, dy = p.y - a.start.y;
+  if (!a.moved) {
+    if (Math.hypot(dx, dy) < 6 * DPR / vs) return;
+    if (a.tap) { const s = vpGet(a.tap.st.id); if (!s || !s.has(a.tap.i)) { if (!vpsel.has(a.tap.st.id) || !vsel.has(a.tap.st.id)) vpsel.set(a.tap.st.id, new Set()); vpsel.get(a.tap.st.id).add(a.tap.i); } }
+    a.moved = true; a.w = vpWeights(f); updVecBar();
+  }
+  for (const e of a.w) for (let j = 0; j < e.base.length; j++) { const k = e.w[j]; if (!k) continue; e.st.pts[j].x = e.base[j].x + dx * k; e.st.pts[j].y = e.base[j].y + dy * k; }
+  if (a.polyBase) vpoly = a.polyBase.map(q => ({ x: q.x + dx, y: q.y + dy }));
+  requestRender();
+}
+function vecMultiTap(a) {      // tap on a point toggles it in/out of the selection
+  if (!a.tap) return; const id = a.tap.st.id;
+  let s = vpGet(id); if (!s) { s = new Set(); vpsel.set(id, s); }
+  s.has(a.tap.i) ? s.delete(a.tap.i) : s.add(a.tap.i);
+}
+function vecMultiLasso(poly, f) {
+  let area = 0; if (poly.length > 2) for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) area += (poly[j].x + poly[i].x) * (poly[j].y - poly[i].y);
+  vpsel.clear(); vpoly = null; vsel.clear();
+  if (Math.abs(area / 2) < 200) { const hit = hitStroke(f.vec, poly[0], 14 * DPR / vs); if (hit) vsel.add(hit.id); return; }   // tap: show one stroke's points
+  for (const st of f.vec) { const idx = []; st.pts.forEach((q, i) => { if (pip(q, poly)) idx.push(i); }); if (idx.length) { vsel.add(st.id); vpsel.set(st.id, new Set(idx)); } }
+  if (vsel.size) vpoly = poly; else toast('Không có chấm nào trong vùng khoanh');
+}
+function densifyPts(P, L, map) {   // add points along the drawn curve (same shape), map[old index] = new index
+  if (P.length < 2) { map[0] = 0; return P.map(q => ({ x: q.x, y: q.y })); }
+  const out = [{ x: P[0].x, y: P[0].y }]; map[0] = 0;
+  for (let i = 0; i < P.length - 1; i++) {
+    const p0 = P[i - 1] || P[i], p1 = P[i], p2 = P[i + 1], p3 = P[i + 2] || p2, lin = P.length === 2;
+    const c1 = lin ? p1 : { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 }, c2 = lin ? p2 : { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
+    const k = Math.ceil(Math.hypot(p2.x - p1.x, p2.y - p1.y) / L);
+    for (let s = 1; s < k; s++) { const t = s / k, u = 1 - t, a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, d = t * t * t; out.push({ x: a * p1.x + b * c1.x + c * c2.x + d * p2.x, y: a * p1.y + b * c1.y + c * c2.y + d * p2.y }); }
+    out.push({ x: p2.x, y: p2.y }); map[i + 1] = out.length - 1;
+  }
+  return out;
+}
+function vecDensify() {
+  vecOp((f, sel) => sel.forEach(st => {
+    const map = [], s = vpGet(st.id); st.pts = densifyPts(st.pts, 28, map);
+    if (s) { const ns = new Set(); for (let i = 0; i < map.length - 1; i++) if (s.has(i)) { ns.add(map[i]); if (s.has(i + 1)) for (let j = map[i] + 1; j < map[i + 1]; j++) ns.add(j); } if (s.has(map.length - 1)) ns.add(map[map.length - 1]); vpsel.set(st.id, ns); }
+  }));
+  toast('Đã thêm chấm dọc nét');
+}
 function vecEraseAt(p) {
   const f = curFrame(), r = Math.max(S.size / 2, 6 * DPR / vs);
   const n0 = f.vec.length; f.vec = f.vec.filter(st => strokeDist(st, p) - st.w / 2 > r);
@@ -1214,6 +1287,7 @@ function vecMove(p) {
     a.sp = q; a.pts.push(q); a.last = p; requestRender();
   } else if (a.kind === 'verase') vecEraseAt(p);
   else if (a.kind === 'vlasso') { const l = lasso[lasso.length - 1]; if (Math.hypot(p.x - l.x, p.y - l.y) > 3 / vs) { lasso.push(p); requestRender(); } }
+  else if (a.kind === 'vmulti') vecMultiMove(a, p, f);
   else if (a.kind === 'vmove') {
     const dx = p.x - a.last.x, dy = p.y - a.last.y; a.last = p; a.moved = true;
     for (const st of f.vec) if (vsel.has(st.id)) for (const q of st.pts) { q.x += dx; q.y += dy; }
@@ -1237,6 +1311,8 @@ function vecEnd() {
     f.vec.push({ id: newId(), c: S.color, w: vecBrushW(a.pts), pts });
     pushVecUndo(f, before); markEdited(f);
   } else if (a.kind === 'verase') { if (a.removed) { pushVecUndo(f, a.before); markEdited(f); } }
+  else if (a.kind === 'vlasso' && a.multi) { const poly = lasso; lasso = null; vecMultiLasso(poly, f); }
+  else if (a.kind === 'vmulti') { if (a.moved) { pushVecUndo(f, a.before); markEdited(f); } else vecMultiTap(a); }
   else if (a.kind === 'vlasso') {
     const poly = lasso; lasso = null;
     let area = 0; if (poly.length > 2) for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) area += (poly[j].x + poly[i].x) * (poly[j].y - poly[i].y);
@@ -1248,9 +1324,12 @@ function vecEnd() {
 function updVecBar() {
   const show = S.tool === 'vedit' && !motion && !rig && !panelHidden.vedit;
   $('#vecbar').hidden = !show; updPanelPill(); if (!show) return;
-  const f = curFrame(), sel = selStrokes();
-  $('#vecInfo').textContent = sel.length ? `Đã chọn ${sel.length} nét` : `${f ? f.vec.length : 0} nét · chưa chọn`;
-  ['#vecW', '#vecRot', '#vecScale', '#vecColor', '#vecSmooth', '#vecDel', '#vecMotion'].forEach(id => $(id).disabled = !sel.length);
+  for (const id of [...vpsel.keys()]) if (!vsel.has(id)) vpsel.delete(id);
+  if (!vsel.size) vpoly = null;
+  const f = curFrame(), sel = selStrokes(), multi = S.vdm === 'multi', np = multi ? vpCount() : 0;
+  $('#vecInfo').textContent = np ? `Đã chọn ${np} chấm trên ${vpsel.size} nét` : sel.length ? `Đã chọn ${sel.length} nét` : multi ? 'Khoanh vùng quanh các chấm cần kéo' : `${f ? f.vec.length : 0} nét · chưa chọn`;
+  ['#vecW', '#vecRot', '#vecScale', '#vecColor', '#vecSmooth', '#vecDel', '#vecMotion', '#vecDense'].forEach(id => $(id).disabled = !sel.length);
+  $('#vecMBend').value = S.mbendR || 0; $('#vecMBend').hidden = $('#vecMBendL').hidden = !multi;
   if (sel.length && !vx) $('#vecW').value = sel[0].w;
   $('#vecBend').value = S.bendR; $('#vecBend').hidden = S.vdm !== 'soft';
   document.querySelectorAll('[data-vdm]').forEach(b => b.classList.toggle('on', b.dataset.vdm === S.vdm));
@@ -1297,10 +1376,13 @@ $('#vecW').addEventListener('input', e => { if (!vxBegin()) return; const w = +e
 $('#vecW').addEventListener('change', vxEnd);
 ['#vecRot', '#vecScale'].forEach(id => { $(id).addEventListener('input', () => { if (vxBegin()) vxApply(); }); $(id).addEventListener('change', vxEnd); });
 $('#vecBend').addEventListener('input', e => { S.bendR = +e.target.value; });
-document.querySelectorAll('[data-vdm]').forEach(b => b.addEventListener('click', () => { S.vdm = b.dataset.vdm; saveSettings(); updVecBar(); toast({ point: 'Kéo chấm nào chỉ chấm đó di chuyển. Chạm giữa 2 chấm để thêm chấm mới.', soft: 'Kéo chấm sẽ uốn cong cả đoạn nét lân cận', move: 'Chạm vào nét rồi kéo để dời cả nét' }[S.vdm], 2500); }));
+$('#vecMBend').addEventListener('input', e => { S.mbendR = +e.target.value; });
+$('#vecMBend').addEventListener('change', saveSettings);
+$('#vecDense').addEventListener('click', vecDensify);
+document.querySelectorAll('[data-vdm]').forEach(b => b.addEventListener('click', () => { S.vdm = b.dataset.vdm; saveSettings(); updVecBar(); toast({ point: 'Kéo chấm nào chỉ chấm đó di chuyển. Chạm giữa 2 chấm để thêm chấm mới.', soft: 'Kéo chấm sẽ uốn cong cả đoạn nét lân cận', move: 'Chạm vào nét rồi kéo để dời cả nét', multi: 'Khoanh vùng quanh các chấm (vd cả cẳng chân) rồi kéo bên trong vùng. Chấm không chọn đứng yên làm mốc. Chạm 1 chấm để thêm/bớt.' }[S.vdm], 4000); requestRender(); }));
 $('#vecColor').addEventListener('click', () => vecOp((f, sel) => sel.forEach(st => st.c = S.color)));
 $('#vecSmooth').addEventListener('click', () => vecOp((f, sel) => sel.forEach(st => { st.pts = smoothPts(smoothPts(st.pts)); })));
-$('#vecAll').addEventListener('click', () => { const f = curFrame(); vsel.clear(); f.vec.forEach(st => vsel.add(st.id)); updVecBar(); requestRender(); });
+$('#vecAll').addEventListener('click', () => { const f = curFrame(); vsel.clear(); vpsel.clear(); vpoly = null; f.vec.forEach(st => { vsel.add(st.id); if (S.vdm === 'multi') vpsel.set(st.id, new Set(st.pts.map((_, i) => i))); }); updVecBar(); requestRender(); });
 $('#vecDel').addEventListener('click', vecDelete);
 $('#vecNone').addEventListener('click', () => { vsel.clear(); updVecBar(); requestRender(); });
 $('#vecBake').addEventListener('click', vecBake);
@@ -3502,7 +3584,7 @@ function abortAction() {
   if (!action) return;
   if (action.kind === 'stroke') strokeAbort();
   if (action.kind === 'lasso' || action.kind === 'vlasso') { lasso = null; requestRender(); }
-  if (action.kind === 'vbend' || action.kind === 'vmove' || action.kind === 'verase') { curFrame().vec = action.before; requestRender(); }
+  if (action.kind === 'vbend' || action.kind === 'vmove' || action.kind === 'verase' || action.kind === 'vmulti') { curFrame().vec = action.before; if (action.kind === 'vmulti' && action.polyBase) vpoly = action.polyBase; requestRender(); }
   if (action.kind === 'pprot' || action.kind === 'ppmove' || action.kind === 'ppik') { ppSetState(curFrame(), action.before); requestRender(); }
   if (action.kind === 'ppcut' || action.kind === 'pppatch') { lasso = null; requestRender(); }
   action = null;
