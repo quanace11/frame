@@ -446,6 +446,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <button class="tbtn primary" id="playBtn"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></svg><span>Phát</span></button>
       <button class="tbtn on" id="loopBtn" title="Lặp lại">Lặp</button>
       <button class="tbtn" id="videoBtn" title="Xuất video có tiếng, chữ, camera">🎬 Video</button>
+      <button class="tbtn" id="gifBtn" title="Xuất GIF động, chuỗi ảnh PNG hoặc ảnh frame đang xem">🖼 GIF/PNG</button>
       <span class="lbl" style="margin-left:6px">Thời lượng frame</span>
       <input type="number" id="durIn" min="0.02" max="30" step="0.05"><span class="lbl">giây</span>
       <span id="durChips" class="grp"></span>
@@ -3508,6 +3509,127 @@ function drawFrameFx(ctx, i, baseImg, tsec, tInFrame, vid) {
   drawTexts(ctx, f, null);
   if (f.flash) { const a = Math.max(0, 0.9 * (1 - tInFrame / Math.max(0.05, f.dur / 1000))); ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(0, 0, W, H); }
 }
+/* --- GIF / PNG export (no sound): sticker loops, previews, frames for other editors --- */
+// median-cut palette (≤256 colours) on a 15-bit histogram; cartoons have flat colours so no dithering
+function gifPalette(d) {
+  const hist = new Uint32Array(32768);
+  for (let i = 0; i < d.length; i += 4) hist[((d[i] >> 3) << 10) | ((d[i + 1] >> 3) << 5) | (d[i + 2] >> 3)]++;
+  const bins = []; for (let k = 0; k < 32768; k++) if (hist[k]) bins.push(k);
+  const ch = (k, c) => c === 0 ? k >> 10 : c === 1 ? (k >> 5) & 31 : k & 31;
+  const mk = list => { let lo = [31, 31, 31], hi = [0, 0, 0], n = 0; for (const k of list) { for (let c = 0; c < 3; c++) { const v = ch(k, c); if (v < lo[c]) lo[c] = v; if (v > hi[c]) hi[c] = v; } n += hist[k]; } return { list, lo, hi, n }; };
+  const boxes = [mk(bins)];
+  while (boxes.length < 256) {
+    let bi = -1, bs = 0;
+    boxes.forEach((b, i) => { if (b.list.length < 2) return; const r = Math.max(b.hi[0] - b.lo[0], b.hi[1] - b.lo[1], b.hi[2] - b.lo[2]); const sc = r * Math.sqrt(b.n); if (sc > bs) { bs = sc; bi = i; } });
+    if (bi < 0) break;
+    const b = boxes[bi], r = [0, 1, 2].map(c => b.hi[c] - b.lo[c]), c = r.indexOf(Math.max(...r));
+    b.list.sort((x, y) => ch(x, c) - ch(y, c));
+    let acc = 0, cut = 1; for (let i = 0; i < b.list.length - 1; i++) { acc += hist[b.list[i]]; if (acc >= b.n / 2) { cut = i + 1; break; } }
+    boxes.splice(bi, 1, mk(b.list.slice(0, cut)), mk(b.list.slice(cut)));
+  }
+  const pal = new Uint8Array(768), lut = new Uint8Array(32768);
+  boxes.forEach((b, i) => {
+    let r = 0, g = 0, bl = 0; for (const k of b.list) { const w = hist[k]; r += ((k >> 10) * 8 + 4) * w; g += (((k >> 5) & 31) * 8 + 4) * w; bl += ((k & 31) * 8 + 4) * w; }
+    pal[i * 3] = Math.round(r / b.n); pal[i * 3 + 1] = Math.round(g / b.n); pal[i * 3 + 2] = Math.round(bl / b.n);
+    for (const k of b.list) lut[k] = i;
+  });
+  return { pal, lut };
+}
+function gifLzw(idx, out) {
+  const MIN = 8, CLEAR = 256, EOI = 257, table = new Int16Array(4096 * 256).fill(-1);
+  let size = MIN + 1, next = EOI + 1, cur = 0, nb = 0, blk = [];
+  const flush = () => { if (blk.length) { out.push(new Uint8Array([blk.length, ...blk])); blk = []; } };
+  const emit = c => { cur |= c << nb; nb += size; while (nb >= 8) { blk.push(cur & 255); cur >>>= 8; nb -= 8; if (blk.length === 255) flush(); } };
+  out.push(new Uint8Array([MIN]));
+  emit(CLEAR); let pre = idx[0];
+  for (let i = 1; i < idx.length; i++) {
+    const k = idx[i], key = pre * 256 + k, v = table[key];
+    if (v >= 0) { pre = v; continue; }
+    emit(pre);
+    if (next === 4096) { emit(CLEAR); table.fill(-1); next = EOI + 1; size = MIN + 1; }
+    else { if (next >= (1 << size)) size++; table[key] = next++; }
+    pre = k;
+  }
+  emit(pre); emit(EOI); if (nb > 0) { blk.push(cur & 255); if (blk.length === 255) flush(); }
+  flush(); out.push(new Uint8Array([0]));
+}
+function gifEncoder(w, h) {
+  const out = [], u16 = v => [v & 255, (v >> 8) & 255];
+  out.push(new Uint8Array([...'GIF89a'].map(c => c.charCodeAt(0)).concat(u16(w), u16(h), [0, 0, 0])));
+  out.push(new Uint8Array([0x21, 0xFF, 11, ...[...'NETSCAPE2.0'].map(c => c.charCodeAt(0)), 3, 1, 0, 0, 0]));   // loop forever
+  return {
+    add(d, delayCs) {
+      const { pal, lut } = gifPalette(d), n = w * h, idx = new Uint8Array(n);
+      for (let i = 0, j = 0; i < n; i++, j += 4) idx[i] = lut[((d[j] >> 3) << 10) | ((d[j + 1] >> 3) << 5) | (d[j + 2] >> 3)];
+      out.push(new Uint8Array([0x21, 0xF9, 4, 0x04, ...u16(Math.max(2, Math.round(delayCs))), 0, 0]));
+      out.push(new Uint8Array([0x2C, 0, 0, 0, 0, ...u16(w), ...u16(h), 0x87]), pal);
+      gifLzw(idx, out);
+    },
+    finish() { out.push(new Uint8Array([0x3B])); return new Blob(out, { type: 'image/gif' }); }
+  };
+}
+// one finished frame (background, colour, lines, puppet, vector, camera, texts, flash) drawn into ctx at W×H
+async function renderFinalFrame(ctx, i, base) {
+  const f = S.frames[i]; await ensureLoaded(f); const bg = bgOf(f); if (bg) await ensureLoaded(bg);
+  const bx = base.getContext('2d'); drawFrameBase(bx, f, bg);
+  if (S.bgVideo && bgVid.ready) { const v = bgVid.el; try { v.currentTime = bgVideoTimeAt(i); await new Promise(r => { v.onseeked = r; setTimeout(r, 600); }); } catch (e) {} }
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.restore();
+  drawFrameFx(ctx, i, base, frameStartTimes()[i], 0);
+}
+async function exportImagesDialog() {
+  if (playing) stopPlay(); if (stroke) strokeEnd(); commitFloating();
+  const n = S.frames.length, secs = (frameStartTimes()[n]).toFixed(1);
+  const v = await modal({ title: '🖼 Xuất GIF / ảnh PNG', html: `<p class="lbl">Không có tiếng. Có chữ, camera, hiệu ứng như video. ${n} frame · ${secs}s.</p>
+<div class="set-row"><span>GIF động — cỡ chiều ngang</span><span class="grp"><button class="chip small" data-gw="320">320</button><button class="chip small on" data-gw="480">480</button><button class="chip small" data-gw="720">720</button></span></div>`,
+    buttons: [{ label: 'Huỷ', value: null }, { label: '🖼 Ảnh frame này (PNG)', value: 'one' }, { label: '🗂 Mọi frame (ZIP PNG)', value: 'seq' }, { label: '🎞 GIF động', value: 'gif', primary: true }],
+    onOpen: ov => ov.querySelectorAll('[data-gw]').forEach(b => b.addEventListener('click', () => { ov.querySelectorAll('[data-gw]').forEach(x => x.classList.toggle('on', x === b)); exportGifW = +b.dataset.gw; })) });
+  if (v === 'gif') return exportGif(exportGifW);
+  if (v === 'seq') return exportPngSeq();
+  if (v === 'one') return exportPngOne();
+}
+let exportGifW = 480, exportBusy = false;
+async function exportGif(gw) {
+  if (exportBusy) return; exportBusy = true;
+  const k = Math.min(1, gw / W), w = Math.round(W * k) & ~1, h = Math.round(H * k) & ~1;
+  const big = makeCanvas(), bctx = big.getContext('2d'), base = makeCanvas(), small = makeCanvas(w, h), sx = small.getContext('2d', { willReadFrequently: true });
+  const enc = gifEncoder(w, h), pm = progress('Đang tạo GIF…');
+  try {
+    for (let i = 0; i < S.frames.length; i++) {
+      pm.set(`Đang tạo GIF ${i + 1}/${S.frames.length}…`); await new Promise(r => setTimeout(r, 0));
+      await renderFinalFrame(bctx, i, base);
+      sx.imageSmoothingQuality = 'high'; sx.drawImage(big, 0, 0, w, h);
+      enc.add(sx.getImageData(0, 0, w, h).data, S.frames[i].dur / 10);
+      evictSoon();
+    }
+    const blob = enc.finish(); pm.close();
+    await deliverFile(blob, `frame-studio-${stamp()}.gif`);
+    toast(`GIF ${w}×${h} · ${(blob.size / 1e6).toFixed(1)} MB`, 3000);
+  } catch (e) { pm.close(); console.error(e); toast('Không tạo được GIF: ' + e.message, 4000); }
+  finally { big.width = base.width = small.width = 0; exportBusy = false; }
+}
+async function exportPngSeq() {
+  if (exportBusy) return; exportBusy = true;
+  const big = makeCanvas(), bctx = big.getContext('2d'), base = makeCanvas(), files = [], pm = progress('Đang xuất ảnh…'), enc = new TextEncoder();
+  try {
+    let list = 'frame\tthoi_luong_ms\n';
+    for (let i = 0; i < S.frames.length; i++) {
+      pm.set(`Đang xuất ảnh ${i + 1}/${S.frames.length}…`); await new Promise(r => setTimeout(r, 0));
+      await renderFinalFrame(bctx, i, base);
+      const name = `frame_${String(i + 1).padStart(4, '0')}.png`;
+      files.push({ name, data: new Uint8Array(await (await toBlob(big)).arrayBuffer()) }); list += `${name}\t${S.frames[i].dur}\n`;
+      evictSoon();
+    }
+    files.push({ name: 'thoi-luong.txt', data: enc.encode(list) });
+    const blob = makeZip(files); pm.close();
+    await deliverFile(blob, `frame-studio-png-${stamp()}.zip`);
+  } catch (e) { pm.close(); console.error(e); toast('Không xuất được: ' + e.message, 4000); }
+  finally { big.width = base.width = 0; exportBusy = false; }
+}
+async function exportPngOne() {
+  const big = makeCanvas(), base = makeCanvas();
+  await renderFinalFrame(big.getContext('2d'), S.cur, base);
+  await deliverFile(await toBlob(big), `frame-${S.cur + 1}-${stamp()}.png`); big.width = base.width = 0;
+}
 /* --- video export (MediaRecorder, real time) --- */
 async function exportVideo() {
   if (playing) stopPlay(); if (stroke) strokeEnd(); commitFloating();
@@ -4021,6 +4143,7 @@ $('#dupBtn').addEventListener('click', dupFrame);
 $('#delBtn').addEventListener('click', delFrame);
 $('#delAllBtn').addEventListener('click', deleteAllFrames);
 $('#videoBtn').addEventListener('click', exportVideo);
+$('#gifBtn').addEventListener('click', exportImagesDialog);
 $('#fxExport').addEventListener('click', exportVideo);
 $('#fxMini').addEventListener('click', () => { const b = $('#fxbar'); b.classList.toggle('mini'); $('#fxMini').textContent = b.classList.contains('mini') ? '▴ Mở rộng' : '▾ Thu gọn'; });
 $('#fxAddTxt').addEventListener('click', fxAddText);
@@ -5218,6 +5341,7 @@ $('#menuBtn').addEventListener('click', () => {
   <button class="btn" data-m="projects">📁 Dự án của bạn</button>
   <button class="btn" data-m="update">🔄 Kiểm tra cập nhật</button>
   <button class="btn primary" data-m="video">🎬 Xuất video (MP4)</button>
+  <button class="btn" data-m="gif">🖼 Xuất GIF / ảnh PNG</button>
   <button class="btn primary" data-m="export">⬇ Xuất ZIP (gửi Claude)</button>
   <button class="btn" data-m="open">📂 Mở dự án từ ZIP</button>
   <button class="btn" data-m="img">🖼 Nhập ảnh (đồ theo / tách nhân vật / lấy nét)</button>
@@ -5246,6 +5370,7 @@ $('#menuBtn').addEventListener('click', () => {
       if (m === 'wizard') wizard();
       else if (m === 'update') checkUpdate();
       else if (m === 'video') exportVideo();
+      else if (m === 'gif') exportImagesDialog();
       else if (m === 'projects') projectsDialog();
       else if (m === 'export') exportZip();
       else if (m === 'open') $('#zipFile').click();
