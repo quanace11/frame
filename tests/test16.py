@@ -19,7 +19,7 @@ async def main():
         ch = await fc.value; await ch.set_files(os.path.join(ASSETS,'mit.png')); await pg.wait_for_timeout(600)
         print('import tab pp', await pg.evaluate("document.querySelector('[data-mode=pp]').classList.contains('on')"))
         await pg.click('[data-cm=color]'); await pg.wait_for_timeout(1200); await pg.click('.dlg .btns >> text=Dùng'); await pg.wait_for_timeout(500)
-        await pg.click('#ppCutAuto'); await pg.wait_for_function('S.pp && S.pp.parts.length', timeout=60000); await pg.wait_for_timeout(300)
+        await pg.click('#ppCutAuto'); await pg.click('#ppLabCut'); await pg.wait_for_function('S.pp && S.pp.parts.length', timeout=60000); await pg.wait_for_timeout(300)
         await pg.screenshot(path='d2.png')
         await pg.click('#wizBtn'); await pg.wait_for_timeout(300); await pg.click('[data-wz="act:walk"]'); await pg.wait_for_timeout(1500)
         print('frames after walk', await pg.evaluate('S.frames.length'), 'playing', await pg.evaluate('playing'))
