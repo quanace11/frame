@@ -1,5 +1,5 @@
-// Frame Studio service worker — version 2026.11.20-1413
-const VERSION = '2026.11.20-1413';
+// Frame Studio service worker — version 2026.11.20-1434
+const VERSION = '2026.11.20-1434';
 const CORE = 'fs-core-' + VERSION, RUNTIME = 'fs-runtime';
 const CORE_FILES = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './ort.wasm.min.js', './ort-wasm-simd-threaded.mjs'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CORE).then(c => c.addAll(CORE_FILES))); });

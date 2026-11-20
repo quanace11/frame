@@ -92,6 +92,18 @@ input[type=range]{width:110px;accent-color:var(--accent);height:28px}
 #ppbar select{max-width:190px}
 #ppbar.mini > :not(:first-child){display:none!important}
 #layerPP .name{color:inherit}
+#app.focus{grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"stage"}
+#app.focus #rail,#app.focus #top,#app.focus #tl{display:none}
+#focusBar{position:absolute;right:10px;top:10px;display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:5px;box-shadow:0 6px 20px #0008;z-index:6}
+#focusBar button{border:0;background:var(--panel2);color:var(--text);border-radius:10px;min-width:44px;height:44px;font-size:16px;cursor:pointer;padding:0 10px}
+#focusBar button.on{background:var(--accent);color:var(--accent-ink)}
+#tl.collapsed #strip{display:none}
+@media (orientation:landscape) and (max-height:820px){
+  #tl{padding:5px 8px;gap:4px} #strip{padding:2px} .fr canvas{height:62px;width:auto}
+  .tool{min-height:42px;padding:2px} .tool svg{width:20px;height:20px}
+  #top{padding:4px 8px;gap:4px 10px} #ppbar,#fxbar,#rigbar,#motionbar{max-height:55%}
+}
+@media (orientation:portrait){ #rail{gap:2px} }
 #panelPill{position:absolute;right:12px;bottom:12px;border:1px solid var(--accent);background:var(--panel);color:var(--text);border-radius:999px;padding:10px 16px;font-size:14px;box-shadow:0 6px 20px #0008;cursor:pointer;z-index:5}
 .pclose{font-weight:700}
 .tabs{gap:4px!important;border-bottom:1px solid var(--line);padding-bottom:6px}
@@ -213,6 +225,10 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <svg viewBox="0 0 24 24"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6" stroke-dasharray="2.5 2"/></svg>Onion</button>
     <button class="tool" id="fitBtn" title="Vừa khung">
       <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Vừa khung</button>
+    <button class="tool" id="rotBtn" title="Xoay khung vẽ 90° (hoặc xoay bằng 2 ngón)">
+      <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></svg>Xoay 90°</button>
+    <button class="tool" id="focusBtn" title="Ẩn công cụ để vẽ toàn màn hình">
+      <svg viewBox="0 0 24 24"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/><path d="M9 9l-5-5M15 9l5-5M9 15l-5 5M15 15l5 5"/></svg>Ẩn công cụ</button>
     <button class="tool" id="menuBtn" title="Menu">
       <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Menu</button>
   </nav>
@@ -376,6 +392,10 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <div class="mrow" data-tab="audio"><span class="lbl">Đã gắn ở frame này:</span><span id="fxSfxList" class="mrow"></span><span style="flex:1"></span><button class="chip small on" id="fxExport">🎬 Xuất video</button></div>
     </div>
     <button id="panelPill" hidden></button>
+    <div id="focusBar" hidden>
+      <button id="fbShow" title="Hiện lại công cụ">☰ Công cụ</button><button id="fbUndo" title="Hoàn tác">↶</button><button id="fbRedo" title="Làm lại">↷</button>
+      <button id="fbPen" title="Bút">✏️</button><button id="fbEraser" title="Tẩy">🩹</button><button id="fbPlay" title="Phát">▶</button><button id="fbPrev" title="Frame trước">◀</button><button id="fbNext" title="Frame sau">▶|</button>
+    </div>
     <div id="playHint" hidden>Đang phát — chạm vào khung để dừng</div>
     <span id="zoomLbl"></span>
   </main>
@@ -397,6 +417,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <button class="tbtn" id="delBtn" style="color:var(--danger)">Xoá</button>
       <button class="tbtn" id="delAllBtn" style="color:var(--danger)" title="Xoá toàn bộ frame">Xoá hết</button>
       <span id="totalLbl"></span>
+      <button class="chip small" id="tlCollapse" title="Ẩn/hiện dòng hình frame">▾ Ẩn dòng frame</button>
     </div>
     <div id="strip"></div>
   </footer>
@@ -436,7 +457,7 @@ let toastT;
 function toast(msg, ms = 1800) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
 
 /* ========= Settings ========= */
-const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR'];
+const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture'];
 function loadSettings() { try { const o = JSON.parse(localStorage.getItem('fs-settings') || '{}'); for (const k of SETTINGS_KEYS) if (k in o) S[k] = o[k]; } catch (e) {} }
 function saveSettings() { try { const o = {}; for (const k of SETTINGS_KEYS) o[k] = S[k]; localStorage.setItem('fs-settings', JSON.stringify(o)); } catch (e) {} }
 
@@ -492,13 +513,20 @@ function resizeView() {
   view.style.width = r.width + 'px'; view.style.height = r.height + 'px';
   fitView();
 }
-function fitView() {
-  const m = 18 * DPR;
-  fitS = Math.min((view.width - 2 * m) / W, (view.height - 2 * m) / H);
+let vr = 0;   // view rotation (radians)
+const viewMat = () => { const c = Math.cos(vr) * vs, s2 = Math.sin(vr) * vs; return [c, s2, -s2, c, vtx, vty]; };
+function scrToDocWith(px, py, s0, r0, tx, ty) { const dx = px - tx, dy = py - ty, c = Math.cos(r0), s2 = Math.sin(r0); return { x: (c * dx + s2 * dy) / s0, y: (-s2 * dx + c * dy) / s0 }; }
+const scrToDoc = (px, py) => scrToDocWith(px, py, vs, vr, vtx, vty);
+function setViewAnchor(dx, dy, px, py) { const c = Math.cos(vr) * vs, s2 = Math.sin(vr) * vs; vtx = px - (c * dx - s2 * dy); vty = py - (s2 * dx + c * dy); }
+function fitView(resetRot) {
+  if (resetRot) vr = 0;
+  const m = 18 * DPR, ac = Math.abs(Math.cos(vr)), as = Math.abs(Math.sin(vr)), bw = ac * W + as * H, bh = as * W + ac * H;
+  fitS = Math.min((view.width - 2 * m) / bw, (view.height - 2 * m) / bh);
   if (!(fitS > 0)) fitS = 0.1;
-  vs = fitS; vtx = (view.width - W * vs) / 2; vty = (view.height - H * vs) / 2;
+  vs = fitS; setViewAnchor(W / 2, H / 2, view.width / 2, view.height / 2);
   requestRender();
 }
+function rotateView90() { vr = (Math.round(vr / (Math.PI / 2)) + 1) % 4 * (Math.PI / 2); fitView(); toast('Xoay khung ' + Math.round(vr / DEG) + '° — bấm Vừa khung để thẳng lại', 1800); }
 function requestRender() { if (!rq) { rq = true; requestAnimationFrame(render); } }
 
 /* ========= Working canvases ========= */
@@ -535,12 +563,12 @@ function render() {
   const c = vctx;
   c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
   c.fillStyle = '#0f1013'; c.fillRect(0, 0, view.width, view.height);
-  c.setTransform(vs, 0, 0, vs, vtx, vty);
+  c.setTransform(...viewMat());
   c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = 20 * DPR / vs;
   c.fillStyle = '#fff'; c.fillRect(0, 0, W, H);
   c.shadowBlur = 0; c.shadowColor = 'transparent';
   c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
-  $('#zoomLbl').textContent = Math.round(vs / fitS * 100) + '%';
+  { const deg = Math.round(((vr / DEG) % 360 + 360) % 360); $('#zoomLbl').textContent = Math.round(vs / fitS * 100) + '%' + (deg ? ` · ${deg}°` : ''); }
   if (playing) {
     if (playCanvas) { c.save(); c.beginPath(); c.rect(0, 0, W, H); c.clip(); const now = performance.now(); drawFrameFx(c, playIdx, playCanvas, (now - playT0) / 1000, (now - playFT0) / 1000); c.restore(); }
     requestRender(); return;
@@ -2313,6 +2341,19 @@ $('#ppPresetGo').addEventListener('click', ppMakePreset);
 $('#ppBake').addEventListener('click', ppBake);
 $('#projBtn').addEventListener('click', projectsDialog);
 $('#wizBtn').addEventListener('click', wizard);
+function setFocus(on) {
+  $('#app').classList.toggle('focus', on); $('#focusBar').hidden = !on; S.focus = on;
+  $('#fbPen').classList.toggle('on', S.tool === 'brush'); $('#fbEraser').classList.toggle('on', S.tool === 'eraser');
+  setTimeout(() => { resizeView(); }, 30); if (on) toast('Chế độ vẽ toàn màn hình — bấm ☰ Công cụ để hiện lại', 2500);
+}
+$('#focusBtn').addEventListener('click', () => setFocus(true));
+$('#fbShow').addEventListener('click', () => setFocus(false));
+$('#fbUndo').addEventListener('click', undo); $('#fbRedo').addEventListener('click', redo);
+$('#fbPen').addEventListener('click', () => { setTool('brush'); setFocus(true); });
+$('#fbEraser').addEventListener('click', () => { setTool('eraser'); setFocus(true); });
+$('#fbPlay').addEventListener('click', startPlay);
+$('#fbPrev').addEventListener('click', () => selectFrame(S.cur - 1)); $('#fbNext').addEventListener('click', () => selectFrame(S.cur + 1));
+$('#tlCollapse').addEventListener('click', () => { const tl = $('#tl'); tl.classList.toggle('collapsed'); S.tlCollapsed = tl.classList.contains('collapsed'); $('#tlCollapse').textContent = S.tlCollapsed ? '▴ Hiện dòng frame' : '▾ Ẩn dòng frame'; saveSettings(); setTimeout(resizeView, 30); });
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => hidePanel(b.dataset.close)));
 $('#panelPill').addEventListener('click', showPanel);
 $('#bgVidBtn').addEventListener('click', bgVideoDialog);
@@ -2927,7 +2968,7 @@ let action = null;    // {id, touch, kind, t0, rect}
 let gesture = null;   // touch pan/pinch
 let mousePan = null;
 function toDoc(ev, rect) {
-  const x = ((ev.clientX - rect.left) * DPR - vtx) / vs, y = ((ev.clientY - rect.top) * DPR - vty) / vs;
+  const { x, y } = scrToDoc((ev.clientX - rect.left) * DPR, (ev.clientY - rect.top) * DPR);
   let p = 1;
   if (ev.pointerType === 'pen') p = ev.pressure > 0 ? ev.pressure : 0.5;
   return { x, y, p };
@@ -3021,8 +3062,8 @@ function gestureBase() {
   const rect = view.getBoundingClientRect(), pts = [...touches.values()];
   const g = gesture || { t0: performance.now(), max: 0, moved: false, starts: new Map() };
   for (const [id, p] of touches) if (!g.starts.has(id)) g.starts.set(id, { x: p.x, y: p.y });
-  g.max = Math.max(g.max, touches.size); g.rect = rect; g.s0 = vs; g.tx0 = vtx; g.ty0 = vty;
-  if (pts.length >= 2) { g.m0 = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 }; g.d0 = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1; }
+  g.max = Math.max(g.max, touches.size); g.rect = rect; g.s0 = vs; g.r0 = vr; g.tx0 = vtx; g.ty0 = vty; g.rotating = false;
+  if (pts.length >= 2) { g.m0 = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 }; g.d0 = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1; g.a0 = Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x); }
   else if (pts.length === 1) { g.m0 = { x: pts[0].x, y: pts[0].y }; g.d0 = 1; }
   gesture = g;
 }
@@ -3033,8 +3074,10 @@ function gestureMove() {
   else {
     const m = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 }, d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
     const ns = clamp(g.s0 * d / g.d0, fitS * 0.25, fitS * 16);
-    const docX = ((g.m0.x - g.rect.left) * DPR - g.tx0) / g.s0, docY = ((g.m0.y - g.rect.top) * DPR - g.ty0) / g.s0;
-    vs = ns; vtx = (m.x - g.rect.left) * DPR - docX * ns; vty = (m.y - g.rect.top) * DPR - docY * ns;
+    const doc = scrToDocWith((g.m0.x - g.rect.left) * DPR, (g.m0.y - g.rect.top) * DPR, g.s0, g.r0, g.tx0, g.ty0);
+    let dr = wrapRad(Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x) - g.a0);
+    if (S.rotGesture !== false && (g.rotating || Math.abs(dr) > 12 * DEG)) { g.rotating = true; let nr = g.r0 + dr; const q = Math.round(nr / (Math.PI / 2)) * (Math.PI / 2); if (Math.abs(nr - q) < 6 * DEG) nr = q; vr = nr; } else vr = g.r0;
+    vs = ns; setViewAnchor(doc.x, doc.y, (m.x - g.rect.left) * DPR, (m.y - g.rect.top) * DPR);
   }
   requestRender();
 }
@@ -3088,8 +3131,8 @@ view.addEventListener('wheel', e => {
   e.preventDefault();
   const rect = view.getBoundingClientRect(), mx = (e.clientX - rect.left) * DPR, my = (e.clientY - rect.top) * DPR;
   if (e.ctrlKey || e.metaKey || Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-    const ns = clamp(vs * Math.exp(-e.deltaY * 0.0015), fitS * 0.25, fitS * 16);
-    vtx = mx - (mx - vtx) * ns / vs; vty = my - (my - vty) * ns / vs; vs = ns;
+    const ns = clamp(vs * Math.exp(-e.deltaY * 0.0015), fitS * 0.25, fitS * 16), doc = scrToDoc(mx, my);
+    vs = ns; setViewAnchor(doc.x, doc.y, mx, my);
   } else { vtx -= e.deltaX * DPR; }
   requestRender();
 }, { passive: false });
@@ -3141,7 +3184,8 @@ $('#pressBtn').addEventListener('click', () => { S.pressure = !S.pressure; updat
 $('#snapBtn').addEventListener('click', () => { S.snap = !S.snap; snapField = null; updateToggles(); saveSettings(); toast(S.snap ? `Hút nét: BẬT (bán kính ${S.snapR}px — chỉnh trong Menu)` : 'Hút nét: TẮT'); });
 $('#onionBtn').addEventListener('click', () => { S.onion = !S.onion; updateToggles(); saveSettings(); requestRender(); });
 $('#loopBtn').addEventListener('click', () => { S.loop = !S.loop; updateToggles(); saveSettings(); });
-$('#fitBtn').addEventListener('click', fitView);
+$('#fitBtn').addEventListener('click', () => fitView(true));
+$('#rotBtn').addEventListener('click', rotateView90);
 $('#undoBtn').addEventListener('click', undo);
 $('#redoBtn').addEventListener('click', redo);
 $('#playBtn').addEventListener('click', startPlay);
@@ -3213,6 +3257,8 @@ document.addEventListener('keydown', e => {
   else if (k === 'escape' && motion) motionClose();
   else if (k === 'escape' && floating) cancelFloating();
   else if (k === 'o') $('#onionBtn').click();
+  else if (k === 'f') setFocus(!S.focus);
+  else if (k === 'r') rotateView90();
 });
 
 /* ========= Modal ========= */
@@ -3936,6 +3982,7 @@ function helpHtml() {
 <li><b>Kéo tay chân (IK)</b>: kéo bàn tay/bàn chân, cánh tay tự gập theo. <b>Tư thế</b>: chọn tư thế có sẵn (⭐) hoặc lưu tư thế của bạn. <b>↔ Lật nhân vật</b>: quay hướng.</li>
 <li><b>Hình của mảnh</b>: mỗi mảnh có nhiều hình (miệng há/ngậm, mắt mở/nhắm, tay xoè/nắm) — ＋ Nhập hình (ảnh AI), ⧉ Nhân bản rồi ✎ Vẽ lên mảnh để sửa; chạm hình nhỏ để đổi ở frame đang xem. Mẫu Nói/Chớp mắt tự đổi hình nếu có.</li>
 <li><b>Nhiều nhân vật</b>: nhập ảnh nhân vật thứ 2 → Nhân vật ghép → chọn ＋ Thêm nhân vật. Mẫu và tư thế áp cho nhân vật đang chọn.</li>
+<li><b>Xoay & toàn màn hình</b>: tablet xoay ngang/dọc đều dùng được. Xoay khung vẽ bằng 2 ngón (tự hít góc thẳng) hoặc nút <b>⟲ Xoay 90°</b>; <b>Vừa khung</b> để thẳng lại. <b>Ẩn công cụ</b> để vẽ toàn màn hình (còn cụm nút nhỏ góc trên); <b>▾ Ẩn dòng frame</b> để thu gọn thanh frame.</li>
 <li>Bảng công cụ che khung? Bấm <b>✕</b> để đóng bảng (công cụ vẫn bật), bấm <b>☰ Mở bảng</b> góc dưới hoặc chạm lại biểu tượng công cụ để mở lại.</li>
 <li><b>Nền</b>: vẽ/nhập nền 1 lần ở lớp Nền (dùng chung cho các frame), hoặc <b>🎞 Nền video</b> để đặt một đoạn video chạy phía sau nhân vật. Không cần vẽ nền từng frame — khi xuất video app tự ghép tất cả.</li>
 <li><b>✨ Chữ & FX</b>: thêm chữ truyện tranh/bóng thoại/hét/phụ đề (kéo để dời), camera zoom + chạm đặt tâm (tự lia mượt giữa các camera key), rung, chớp sáng; nhạc nền, lồng tiếng + 🗣 tự nhép miệng; âm thanh hiệu ứng có sẵn. <b>🎬 Video</b> xuất MP4/WebM có tiếng.</li>
@@ -3968,6 +4015,7 @@ $('#menuBtn').addEventListener('click', () => {
   <button class="btn" data-m="new169">＋ Dự án mới 16:9</button>
 </div>
 <div class="set-row"><span>Ngón tay cũng vẽ (khi không có bút)</span><input type="checkbox" class="switch" id="sFinger" ${S.fingerDraw ? 'checked' : ''}></div>
+<div class="set-row"><span>Xoay khung bằng 2 ngón</span><input type="checkbox" class="switch" id="sRotG" ${S.rotGesture !== false ? 'checked' : ''}></div>
 <div class="set-row"><span>🧲 Bán kính hút nét (px)</span><input type="range" id="sSnapR" min="6" max="80" value="${S.snapR}"></div>
 <div class="set-row"><span>Làm mượt nét</span><input type="range" id="sSmooth" min="0" max="80" value="${Math.round(S.smooth * 100)}"></div>
 <div class="set-row"><span>Độ mờ onion skin</span><input type="range" id="sOnion" min="5" max="70" value="${Math.round(S.onionAlpha * 100)}"></div>
@@ -3975,6 +4023,7 @@ $('#menuBtn').addEventListener('click', () => {
 <div class="set-row"><span>Kích thước khung</span><span class="lbl">${W} × ${H}</span></div>`;
   modal({ title: 'Menu', html, buttons: [{ label: 'Đóng', value: null, primary: true }], onOpen: (ov, close) => {
     ov.querySelector('#sFinger').addEventListener('change', e => { S.fingerDraw = e.target.checked; saveSettings(); });
+    ov.querySelector('#sRotG').addEventListener('change', e => { S.rotGesture = e.target.checked; saveSettings(); });
     ov.querySelector('#sSnapR').addEventListener('input', e => { S.snapR = +e.target.value; snapField = null; saveSettings(); });
     ov.querySelector('#sSmooth').addEventListener('input', e => { S.smooth = e.target.value / 100; saveSettings(); });
     ov.querySelector('#sOnion').addEventListener('input', e => { S.onionAlpha = e.target.value / 100; saveSettings(); requestRender(); });
@@ -4004,7 +4053,9 @@ async function init() {
   $('#sizeIn').value = S.size; $('#sizeVal').textContent = S.size;
   $('#opIn').value = Math.round(S.opacity * 100); $('#opVal').textContent = Math.round(S.opacity * 100) + '%';
   setColor(S.color); updateToggles(); setTool('brush'); setLayer('char');
+  if (S.tlCollapsed) { $('#tl').classList.add('collapsed'); $('#tlCollapse').textContent = '▴ Hiện dòng frame'; }
   new ResizeObserver(() => resizeView()).observe(stage);
+  window.addEventListener('orientationchange', () => setTimeout(resizeView, 250));
   let p = null, list = [];
   try {
     list = await projIndex();
@@ -4021,7 +4072,7 @@ async function init() {
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }
 /* ========= Installed app (PWA): offline + updates ========= */
-const APP_VERSION = '2026.11.20-1413';
+const APP_VERSION = '2026.11.20-1434';
 let swReg = null, swUpdating = false;
 (function setupPWA() {
   let top = false; try { top = window.top === window; } catch (e) {}
