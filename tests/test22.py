@@ -38,7 +38,7 @@ async def main():
         await pg.set_input_files('#imgFile',os.path.join(ASSETS,'mit.png')); await pg.wait_for_timeout(400)
         await pg.click('[data-mode=pp]'); await pg.click('[data-cm=color]'); await pg.wait_for_timeout(1200)
         await pg.click('.dlg .btns >> text=Dùng'); await pg.wait_for_timeout(500)
-        await pg.click('#ppCutAuto'); await pg.wait_for_function('S.pp && S.pp.parts.length', timeout=60000)
+        await pg.click('#ppCutAuto'); await pg.click('#ppLabCut'); await pg.wait_for_function('S.pp && S.pp.parts.length', timeout=60000)
         print('roles', await pg.evaluate("S.pp.parts.map(p=>p.role).join(',')"))
         await pg.evaluate("()=>{ppSel=S.pp.parts.find(x=>x.role==='head').id; ppSyncBar();}")
         await pg.click('#ppAssetBtn'); await pg.wait_for_timeout(200)
