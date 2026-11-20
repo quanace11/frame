@@ -1,13 +1,13 @@
 # Frame Studio — bản cài lên tablet (PWA)
 
-Phiên bản: 2026.11.20-1434
+Phiên bản: 2026.11.20-1455
 
 ## 1. Đưa lên GitHub Pages (miễn phí, ~5 phút)
 1. Vào https://github.com/new → tạo repo, ví dụ `frame-studio`, chọn **Public**.
 2. Bấm **uploading an existing file** → kéo **toàn bộ nội dung thư mục này** (index.html, sw.js, manifest.webmanifest, icons/, các file .js/.mjs/.wasm, .nojekyll) vào → **Commit changes**.
    - Hoặc dùng git:
      ```
-     git init && git add . && git commit -m "Frame Studio 2026.11.20-1434"
+     git init && git add . && git commit -m "Frame Studio 2026.11.20-1455"
      git branch -M main && git remote add origin https://github.com/<tên-bạn>/frame-studio.git && git push -u origin main
      ```
 3. Repo → **Settings → Pages** → Source: **Deploy from a branch**, Branch: **main** / **(root)** → Save.

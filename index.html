@@ -261,7 +261,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <div class="layer" id="layerRef"><button class="name" id="refEditBtn" title="Chỉnh vị trí/cỡ/độ mờ ảnh mờ">Ảnh mờ</button><button class="eye" id="refEye" title="Ẩn/hiện">👁</button></div>
     </div>
     <span class="spacer"></span>
-    <button class="chip small on" id="wizBtn" title="Trợ lý làm video từng bước">🚀 Làm nhanh</button>
+    <button class="chip small on" id="wizBtn" title="Trợ lý làm video từng bước">🚀 Làm nhanh</button><button class="chip small" id="assetBtn" title="Kho mắt, miệng, biểu cảm, bàn tay, hiệu ứng">🎨 Kho hình</button>
     <button class="chip small" id="projBtn" title="Danh sách dự án">📁 Dự án</button><span id="saveState"></span>
   </header>
 
@@ -291,7 +291,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <span class="lbl">Dày</span><input type="range" id="vecW" min="0.5" max="60" step="0.5" value="6">
       <span class="lbl">Xoay</span><input type="range" id="vecRot" min="-180" max="180" step="1" value="0">
       <span class="lbl">Cỡ</span><input type="range" id="vecScale" min="20" max="300" step="1" value="100">
-      <span class="lbl" title="Kéo một chấm sẽ kéo theo phần nét lân cận trong bán kính này">Uốn mềm</span><input type="range" id="vecBend" min="10" max="800" step="5" value="160">
+      <span class="lbl">Kéo chấm:</span><button class="chip small" data-vdm="point" title="Chỉ di chuyển đúng chấm đang cầm">1 chấm</button><button class="chip small" data-vdm="soft" title="Kéo theo phần nét lân cận (uốn mềm)">Uốn mềm</button><button class="chip small" data-vdm="move" title="Chạm vào nét để di chuyển cả nét">Cả nét</button><input type="range" id="vecBend" min="10" max="800" step="5" value="160" title="Độ rộng uốn mềm">
       <button class="chip small" id="vecColor" title="Áp màu đang chọn cho các nét">Áp màu</button>
       <button class="chip small" id="vecSmooth">Làm mượt</button>
       <button class="chip small" id="vecAll">Chọn hết</button>
@@ -365,9 +365,10 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
           <button class="chip small" id="ppCutBtn" title="Khoanh để tách một phần của mảnh đang chọn thành mảnh mới">✂ Khoanh tách mảnh</button><label class="lbl"><input type="checkbox" id="ppKeep"> giữ chỗ cũ</label></div>
         <div class="mrow" data-tab="pose"><span class="lbl"><b>Frame này:</b></span><button class="chip small" id="ppKeyBtn" title="Keyframe = tư thế bạn tự đặt. Frame tự động = app tự tính giữa 2 keyframe">🔑 Keyframe</button>
           <span class="lbl">Chuyển tới keyframe sau:</span><select id="ppEase" class="chip small"></select></div>
-        <div class="mrow" data-tab="pose"><span class="lbl"><b>Tư thế:</b></span><select id="ppPoseSel" class="chip small"></select><button class="chip small on" id="ppPoseApply">Áp</button><button class="chip small" id="ppPoseSave">＋ Lưu tư thế này</button><button class="chip small" id="ppPoseDel" title="Xoá tư thế đã lưu">🗑</button><button class="chip small" id="ppFlipChar" title="Quay nhân vật sang hướng ngược lại">↔ Lật nhân vật</button></div>
+        <div class="mrow" data-tab="pose"><button class="chip small on" id="ppAssetBtn" title="Gắn mắt, miệng, biểu cảm, bàn tay có sẵn vào mảnh đang chọn">🎨 Kho mắt/miệng/tay</button><span class="lbl"><b>Tư thế:</b></span><select id="ppPoseSel" class="chip small"></select><button class="chip small on" id="ppPoseApply">Áp</button><button class="chip small" id="ppPoseSave">＋ Lưu tư thế này</button><button class="chip small" id="ppPoseDel" title="Xoá tư thế đã lưu">🗑</button><button class="chip small" id="ppFlipChar" title="Quay nhân vật sang hướng ngược lại">↔ Lật nhân vật</button></div>
         <div class="mrow" data-tab="frames"><span class="lbl"><b>Frame giữa:</b> chèn</span><input type="number" id="ppTweenN" value="3" min="1" max="24" style="width:52px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">frame chuyển tiếp tới frame sau</span><button class="chip small on" id="ppTweenBtn">Tạo frame giữa</button></div>
         <div class="mrow" data-tab="frames"><span class="lbl"><b>Mẫu nhanh:</b></span><span id="ppPresets" class="mrow"></span></div>
+        <div class="mrow" data-tab="frames" style="flex-wrap:wrap"><span class="lbl"><b>Cử chỉ:</b></span><span id="ppGests" class="mrow" style="flex-wrap:wrap;gap:4px"></span><label class="lbl" title="Làm bằng tay bên kia"><input type="checkbox" id="gestMir"> Tay kia</label></div>
         <div class="mrow" data-tab="frames"><span class="lbl">Hướng</span><button class="chip small" data-ppdir="-1">◀</button><button class="chip small" data-ppdir="1">▶</button>
           <span class="lbl">Số frame</span><input type="number" id="ppPN" value="8" min="2" max="24" style="width:52px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px">
           <span class="lbl">Mỗi frame</span><input type="number" id="ppPDur" value="0.1" step="0.02" min="0.03" max="2" style="width:60px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">s</span>
@@ -440,7 +441,7 @@ const PALETTE = ['#111111','#ffffff','#e53935','#fb8c00','#fdd835','#43a047','#1
 const S = {
   frames: [], bgs: [], cur: 0, layer: 'char', tool: 'brush',
   color: '#111111', size: 8, opacity: 1, pressure: true,
-  onion: true, onionAlpha: 0.3, showBg: true, showChar: true, showVec: true, showPP: true, bendR: 160, snap: false, snapR: 24,
+  onion: true, onionAlpha: 0.3, showBg: true, showChar: true, showVec: true, showPP: true, bendR: 160, vdm: 'point', snap: false, snapR: 24,
   fingerDraw: false, smooth: 0.3, defaultDur: 0.1, loop: true, fillTol: 120
 };
 let uidN = 1;
@@ -457,7 +458,7 @@ let toastT;
 function toast(msg, ms = 1800) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
 
 /* ========= Settings ========= */
-const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture'];
+const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm'];
 function loadSettings() { try { const o = JSON.parse(localStorage.getItem('fs-settings') || '{}'); for (const k of SETTINGS_KEYS) if (k in o) S[k] = o[k]; } catch (e) {} }
 function saveSettings() { try { const o = {}; for (const k of SETTINGS_KEYS) o[k] = S[k]; localStorage.setItem('fs-settings', JSON.stringify(o)); } catch (e) {} }
 
@@ -1168,17 +1169,19 @@ function selStrokes() { const f = curFrame(); return f ? f.vec.filter(st => vsel
 function vecStart(p, base) {
   const f = curFrame(), tol = 14 * DPR / vs;
   if (!S.showVec) { toast('Lớp Nét đang ẩn'); return; }
-  for (const st of f.vec) if (vsel.has(st.id)) for (let i = 0; i < st.pts.length; i++) {
-    if (Math.hypot(st.pts[i].x - p.x, st.pts[i].y - p.y) <= tol) {
-      action = { ...base, kind: 'vbend', st, i, start: p, basePts: st.pts.map(q => ({ ...q })), cum: cumLen(st.pts), before: cloneVec(f.vec), moved: false };
-      return;
-    }
-  }
+  const mode = S.vdm || 'point', ptol = (mode === 'move' ? 14 : 22) * DPR / vs;
+  let best = null, bd = ptol;   // nearest point wins, not the first one in range
+  for (const st of f.vec) if (vsel.has(st.id)) for (let i = 0; i < st.pts.length; i++) { const d = Math.hypot(st.pts[i].x - p.x, st.pts[i].y - p.y); if (d <= bd) { bd = d; best = { st, i }; } }
+  const startBend = (st, i, before) => { action = { ...base, kind: 'vbend', st, i, start: p, basePts: st.pts.map(q => ({ ...q })), cum: cumLen(st.pts), before: before || cloneVec(f.vec), moved: false }; };
+  if (best) { startBend(best.st, best.i); return; }
   const hit = hitStroke(f.vec, p, tol);
   if (hit) {
-    if (!vsel.has(hit.id)) { vsel.clear(); vsel.add(hit.id); }
-    action = { ...base, kind: 'vmove', last: p, before: cloneVec(f.vec), moved: false };
-    updVecBar(); requestRender(); return;
+    if (mode === 'move') { if (!vsel.has(hit.id)) { vsel.clear(); vsel.add(hit.id); } action = { ...base, kind: 'vmove', last: p, before: cloneVec(f.vec), moved: false }; updVecBar(); requestRender(); return; }
+    if (!vsel.has(hit.id)) { vsel.clear(); vsel.add(hit.id); updVecBar(); requestRender(); return; }   // first tap only selects
+    // on a selected stroke between points: insert a new point there and drag just that one
+    const before = cloneVec(f.vec), P = hit.pts; let si = 0, sd = Infinity;
+    for (let i = 0; i < P.length - 1; i++) { const d = segDist(p, P[i], P[i + 1]); if (d < sd) { sd = d; si = i; } }
+    P.splice(si + 1, 0, { x: p.x, y: p.y }); startBend(hit, si + 1, before); action.moved = true; requestRender(); return;
   }
   lasso = [p]; action = { ...base, kind: 'vlasso' }; requestRender();
 }
@@ -1204,7 +1207,7 @@ function vecMove(p) {
     const dx = p.x - a.start.x, dy = p.y - a.start.y, R = S.bendR, ci = a.cum[a.i]; a.moved = true;
     const st = f.vec.find(x => x.id === a.st.id); if (!st) return;
     for (let j = 0; j < st.pts.length; j++) {
-      const t = Math.abs(a.cum[j] - ci) / R, wgt = j === a.i ? 1 : t >= 1 ? 0 : (1 - t * t) * (1 - t * t);
+      const t = Math.abs(a.cum[j] - ci) / R, wgt = j === a.i ? 1 : (S.vdm || 'point') !== 'soft' || t >= 1 ? 0 : (1 - t * t) * (1 - t * t);
       st.pts[j].x = a.basePts[j].x + dx * wgt; st.pts[j].y = a.basePts[j].y + dy * wgt;
     }
     requestRender();
@@ -1234,7 +1237,8 @@ function updVecBar() {
   $('#vecInfo').textContent = sel.length ? `Đã chọn ${sel.length} nét` : `${f ? f.vec.length : 0} nét · chưa chọn`;
   ['#vecW', '#vecRot', '#vecScale', '#vecColor', '#vecSmooth', '#vecDel', '#vecMotion'].forEach(id => $(id).disabled = !sel.length);
   if (sel.length && !vx) $('#vecW').value = sel[0].w;
-  $('#vecBend').value = S.bendR;
+  $('#vecBend').value = S.bendR; $('#vecBend').hidden = S.vdm !== 'soft';
+  document.querySelectorAll('[data-vdm]').forEach(b => b.classList.toggle('on', b.dataset.vdm === S.vdm));
 }
 let vx = null;    // pending slider edit: {before, center, base}
 function vxBegin() {
@@ -1278,6 +1282,7 @@ $('#vecW').addEventListener('input', e => { if (!vxBegin()) return; const w = +e
 $('#vecW').addEventListener('change', vxEnd);
 ['#vecRot', '#vecScale'].forEach(id => { $(id).addEventListener('input', () => { if (vxBegin()) vxApply(); }); $(id).addEventListener('change', vxEnd); });
 $('#vecBend').addEventListener('input', e => { S.bendR = +e.target.value; });
+document.querySelectorAll('[data-vdm]').forEach(b => b.addEventListener('click', () => { S.vdm = b.dataset.vdm; saveSettings(); updVecBar(); toast({ point: 'Kéo chấm nào chỉ chấm đó di chuyển. Chạm giữa 2 chấm để thêm chấm mới.', soft: 'Kéo chấm sẽ uốn cong cả đoạn nét lân cận', move: 'Chạm vào nét rồi kéo để dời cả nét' }[S.vdm], 2500); }));
 $('#vecColor').addEventListener('click', () => vecOp((f, sel) => sel.forEach(st => st.c = S.color)));
 $('#vecSmooth').addEventListener('click', () => vecOp((f, sel) => sel.forEach(st => { st.pts = smoothPts(smoothPts(st.pts)); })));
 $('#vecAll').addEventListener('click', () => { const f = curFrame(); vsel.clear(); f.vec.forEach(st => vsel.add(st.id)); updVecBar(); requestRender(); });
@@ -2341,12 +2346,302 @@ $('#ppPresetGo').addEventListener('click', ppMakePreset);
 $('#ppBake').addEventListener('click', ppBake);
 $('#projBtn').addEventListener('click', projectsDialog);
 $('#wizBtn').addEventListener('click', wizard);
+/* ===== asset library: eyes, mouths, faces, hands, effects (all drawn in code, original) ===== */
+const AINK = '#1b1b1b';
+function aInk(x, lw) { x.strokeStyle = AINK; x.lineWidth = lw; x.lineCap = 'round'; x.lineJoin = 'round'; }
+function aHeart(x, cx, cy, r, col) { x.beginPath(); x.moveTo(cx, cy + r * 0.9); x.bezierCurveTo(cx - r * 1.6, cy - r * 0.1, cx - r * 0.7, cy - r * 1.3, cx, cy - r * 0.45); x.bezierCurveTo(cx + r * 0.7, cy - r * 1.3, cx + r * 1.6, cy - r * 0.1, cx, cy + r * 0.9); x.closePath(); x.fillStyle = col; x.fill(); aInk(x, r * 0.16); x.stroke(); }
+function aStar(x, cx, cy, r, col, pts = 5, inner = 0.45) { x.beginPath(); for (let i = 0; i < pts * 2; i++) { const a = -Math.PI / 2 + i * Math.PI / pts, rr = i % 2 ? r * inner : r; x.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } x.closePath(); x.fillStyle = col; x.fill(); aInk(x, r * 0.12); x.stroke(); }
+function aDrop(x, cx, cy, r, col) { x.beginPath(); x.moveTo(cx, cy - r * 1.6); x.bezierCurveTo(cx + r * 0.3, cy - r * 0.9, cx + r, cy - r * 0.2, cx + r, cy + r * 0.3); x.arc(cx, cy + r * 0.3, r, 0, Math.PI); x.bezierCurveTo(cx - r, cy - r * 0.2, cx - r * 0.3, cy - r * 0.9, cx, cy - r * 1.6); x.fillStyle = col; x.fill(); aInk(x, r * 0.18); x.stroke(); x.beginPath(); x.ellipse(cx - r * 0.35, cy + r * 0.15, r * 0.18, r * 0.32, 0.3, 0, Math.PI * 2); x.fillStyle = '#fff'; x.fill(); }
+/* one eye; side=-1 screen-left, +1 screen-right */
+function aEye(x, cx, cy, t, side, look = 0) {
+  const lw = 5;
+  const white = (rx, ry, clip) => { x.beginPath(); x.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); x.fillStyle = '#fff'; x.fill(); aInk(x, lw); x.stroke(); };
+  const pupil = (r, dx = 0, dy = 0, hl = true) => { x.beginPath(); x.ellipse(cx + dx, cy + dy, r * 0.82, r, 0, 0, Math.PI * 2); x.fillStyle = AINK; x.fill(); if (hl) { x.beginPath(); x.arc(cx + dx - r * 0.3, cy + dy - r * 0.38, r * 0.3, 0, Math.PI * 2); x.fillStyle = '#fff'; x.fill(); } };
+  const lidClip = (fn, y0, slope = 0) => { x.save(); x.beginPath(); x.moveTo(cx - 60, y0 - slope * 60); x.lineTo(cx + 60, y0 + slope * 60); x.lineTo(cx + 60, cy + 80); x.lineTo(cx - 60, cy + 80); x.closePath(); x.clip(); fn(); x.restore(); aInk(x, lw * 1.4); x.beginPath(); const hw = 30; x.moveTo(cx - hw, y0 - slope * hw); x.lineTo(cx + hw, y0 + slope * hw); x.stroke(); };
+  switch (t) {
+    case 'open': white(24, 32); pupil(15, look * 9, 3); break;
+    case 'big': white(29, 38); pupil(20, look * 8, 4); x.beginPath(); x.arc(cx + 7, cy + 13, 4, 0, Math.PI * 2); x.fillStyle = '#fff'; x.fill(); break;
+    case 'down': white(24, 32); pupil(14, 0, 13); break;
+    case 'half': lidClip(() => { white(24, 32); pupil(15, 0, 6); }, cy - 2); break;
+    case 'sleepy': lidClip(() => { white(24, 32); pupil(14, 0, 10); }, cy + 8); break;
+    case 'angry': lidClip(() => { white(24, 30); pupil(13, -side * 3, 4); }, cy - 12, -side * 0.45); break;
+    case 'shock': white(28, 36); pupil(6, 0, 0, false); break;
+    case 'closed': aInk(x, lw * 1.3); x.beginPath(); x.moveTo(cx - 24, cy); x.quadraticCurveTo(cx, cy + 20, cx + 24, cy); x.stroke(); break;
+    case 'happy': aInk(x, lw * 1.3); x.beginPath(); x.moveTo(cx - 24, cy + 8); x.quadraticCurveTo(cx, cy - 22, cx + 24, cy + 8); x.stroke(); break;
+    case 'squint': aInk(x, lw * 1.4); x.beginPath(); x.moveTo(cx + side * 22, cy - 18); x.lineTo(cx - side * 18, cy); x.lineTo(cx + side * 22, cy + 18); x.stroke(); break;
+    case 'cry': aInk(x, lw * 1.3); x.beginPath(); x.moveTo(cx - 24, cy + 6); x.quadraticCurveTo(cx, cy - 16, cx + 24, cy + 6); x.stroke();
+      x.beginPath(); x.moveTo(cx - 12, cy + 8); x.bezierCurveTo(cx - 20, cy + 40, cx - 8, cy + 70, cx - 14, cy + 100); x.lineTo(cx + 14, cy + 100); x.bezierCurveTo(cx + 8, cy + 70, cx + 20, cy + 40, cx + 12, cy + 8); x.closePath(); x.fillStyle = '#7cc8ff'; x.fill(); aInk(x, 3); x.stroke(); break;
+    case 'dizzy': aInk(x, lw); x.beginPath(); for (let a = 0; a < Math.PI * 6; a += 0.2) { const r = 2 + a * 1.4; x.lineTo(cx + Math.cos(a * side) * r, cy + Math.sin(a * side) * r); } x.stroke(); break;
+    case 'heart': aHeart(x, cx, cy + 2, 22, '#ff3b5c'); break;
+    case 'star': aStar(x, cx, cy, 30, '#ffd23f'); break;
+    case 'x': aInk(x, lw * 1.4); x.beginPath(); x.moveTo(cx - 18, cy - 18); x.lineTo(cx + 18, cy + 18); x.moveTo(cx + 18, cy - 18); x.lineTo(cx - 18, cy + 18); x.stroke(); break;
+    case 'dot': x.beginPath(); x.ellipse(cx, cy, 8, 11, 0, 0, Math.PI * 2); x.fillStyle = AINK; x.fill(); break;
+  }
+}
+function aBrow(x, cx, cy, t, side) {
+  if (!t || t === 'none') return; aInk(x, 7); x.beginPath();
+  const o = side * 30, i = -side * 26; // outer / inner x offsets
+  if (t === 'neutral') { x.moveTo(cx + i, cy - 46); x.quadraticCurveTo(cx, cy - 56, cx + o, cy - 46); }
+  else if (t === 'up') { x.moveTo(cx + i, cy - 56); x.quadraticCurveTo(cx, cy - 68, cx + o, cy - 54); }
+  else if (t === 'angry') { x.moveTo(cx + i, cy - 30); x.lineTo(cx + o, cy - 54); }
+  else if (t === 'sad') { x.moveTo(cx + i, cy - 56); x.lineTo(cx + o, cy - 38); }
+  else if (t === 'scrunch') { x.moveTo(cx + i, cy - 28); x.quadraticCurveTo(cx + side * 4, cy - 48, cx + o, cy - 40); }
+  x.stroke();
+}
+/* pair of eyes in a 300x140 box */
+function aEyes(x, t, brow, look = 0) { aBrow(x, 95, 82, brow, -1); aBrow(x, 205, 82, brow, 1); aEye(x, 95, 82, t, -1, look); aEye(x, 205, 82, t, 1, look); }
+/* mouth in a 200x120 box, centre (100,60) */
+function aMouth(x, t) {
+  const lw = 5, dark = '#4a1414', tongue = '#ff6b7f';
+  const fillShape = (path, teethTop, tng) => { x.save(); path(); x.fillStyle = dark; x.fill(); x.clip(); if (teethTop) { x.fillStyle = '#fff'; x.fillRect(0, 0, 200, teethTop); } if (tng) { x.beginPath(); x.ellipse(100, tng, 34, 18, 0, 0, Math.PI * 2); x.fillStyle = tongue; x.fill(); } x.restore(); path(); aInk(x, lw); x.stroke(); };
+  switch (t) {
+    case 'closed': aInk(x, lw * 1.2); x.beginPath(); x.moveTo(62, 58); x.quadraticCurveTo(100, 66, 138, 58); x.stroke(); break;
+    case 'smile': aInk(x, lw * 1.2); x.beginPath(); x.moveTo(52, 46); x.quadraticCurveTo(100, 96, 148, 46); x.stroke(); break;
+    case 'half': fillShape(() => { x.beginPath(); x.ellipse(100, 60, 26, 11, 0, 0, Math.PI * 2); }, 0, 70); break;
+    case 'open': fillShape(() => { x.beginPath(); x.moveTo(56, 42); x.quadraticCurveTo(100, 36, 144, 42); x.quadraticCurveTo(138, 100, 100, 102); x.quadraticCurveTo(62, 100, 56, 42); x.closePath(); }, 52, 96); break;
+    case 'o': fillShape(() => { x.beginPath(); x.ellipse(100, 62, 20, 27, 0, 0, Math.PI * 2); }, 0, 84); break;
+    case 'e': fillShape(() => { x.beginPath(); x.moveTo(50, 48); x.quadraticCurveTo(100, 40, 150, 48); x.quadraticCurveTo(146, 80, 100, 82); x.quadraticCurveTo(54, 80, 50, 48); x.closePath(); }, 58, 0);
+      x.save(); x.beginPath(); x.moveTo(50, 48); x.quadraticCurveTo(100, 40, 150, 48); x.quadraticCurveTo(146, 80, 100, 82); x.quadraticCurveTo(54, 80, 50, 48); x.clip(); x.fillStyle = '#fff'; x.fillRect(0, 72, 200, 20); x.restore(); break;
+    case 'grin': fillShape(() => { x.beginPath(); x.moveTo(46, 38); x.lineTo(154, 38); x.quadraticCurveTo(150, 104, 100, 106); x.quadraticCurveTo(50, 104, 46, 38); x.closePath(); }, 52, 98); break;
+    case 'frown': aInk(x, lw * 1.2); x.beginPath(); x.moveTo(58, 80); x.quadraticCurveTo(100, 36, 142, 80); x.stroke(); break;
+    case 'grit': x.beginPath(); x.roundRect(48, 40, 104, 44, 16); x.fillStyle = '#fff'; x.fill(); aInk(x, lw); x.stroke(); aInk(x, 3); x.beginPath(); x.moveTo(52, 62); x.lineTo(148, 62); for (let i = 1; i < 6; i++) { x.moveTo(48 + i * 104 / 6, 42); x.lineTo(48 + i * 104 / 6, 82); } x.stroke(); break;
+    case 'tongue': aInk(x, lw * 1.2); x.beginPath(); x.moveTo(52, 44); x.quadraticCurveTo(100, 80, 148, 44); x.stroke(); x.beginPath(); x.moveTo(82, 62); x.lineTo(82, 86); x.arc(100, 86, 18, Math.PI, 0, true); x.lineTo(118, 62); x.fillStyle = tongue; x.fill(); aInk(x, 4); x.stroke(); x.beginPath(); x.moveTo(100, 66); x.lineTo(100, 88); x.stroke(); break;
+    case 'wavy': aInk(x, lw * 1.1); x.beginPath(); for (let i = 0; i <= 40; i++) { const xx = 50 + i * 2.5; x.lineTo(xx, 60 + Math.sin(i / 40 * Math.PI * 4) * 8); } x.stroke(); break;
+    case 'scream': fillShape(() => { x.beginPath(); x.ellipse(100, 62, 40, 52, 0, 0, Math.PI * 2); }, 26, 104); break;
+    case 'smirk': aInk(x, lw * 1.2); x.beginPath(); x.moveTo(64, 62); x.quadraticCurveTo(112, 70, 140, 44); x.stroke(); break;
+    case 'cat': aInk(x, lw * 1.1); x.beginPath(); x.moveTo(60, 52); x.quadraticCurveTo(78, 76, 100, 56); x.quadraticCurveTo(122, 76, 140, 52); x.stroke(); break;
+  }
+}
+function aBlush(x, y) { for (const cx of [62, 238]) { x.beginPath(); x.ellipse(cx, y, 24, 12, 0, 0, Math.PI * 2); x.fillStyle = 'rgba(255,110,140,.55)'; x.fill(); aInk(x, 2.5); x.strokeStyle = 'rgba(220,60,90,.8)'; x.beginPath(); for (let k = -1; k <= 1; k++) { x.moveTo(cx + k * 10 - 4, y + 5); x.lineTo(cx + k * 10 + 4, y - 5); } x.stroke(); } }
+function aVein(x, cx, cy, r) { x.strokeStyle = '#e8213a'; x.lineWidth = r * 0.28; x.lineCap = 'round'; for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4; x.beginPath(); const px = cx + Math.cos(a) * r * 0.8, py = cy + Math.sin(a) * r * 0.8; x.arc(px, py, r * 0.55, a + Math.PI * 0.75, a + Math.PI * 1.25); x.stroke(); } }
+function aSweat(x, cx, cy, r) { aDrop(x, cx, cy, r, '#8fd3ff'); }
+function aZzz(x, cx, cy, s) { x.font = `900 ${s}px system-ui,sans-serif`; x.lineJoin = 'round'; [[0, 0, 1], [s * 0.7, -s * 0.6, 0.75], [s * 1.25, -s * 1.1, 0.55]].forEach(([dx, dy, k]) => { x.save(); x.translate(cx + dx, cy + dy); x.scale(k, k); x.lineWidth = s * 0.14; x.strokeStyle = AINK; x.strokeText('Z', 0, 0); x.fillStyle = '#fff'; x.fillText('Z', 0, 0); x.restore(); }); }
+/* full face features in a 300x260 box: eyes at top, mouth below */
+function aFace(x, o) {
+  x.save(); x.translate(0, 10); aEyes(x, o.e, o.b, o.look || 0); x.restore();
+  x.save(); x.translate(50, 140); aMouth(x, o.m); x.restore();
+  if (o.blush) aBlush(x, 150);
+  if (o.vein) aVein(x, 262, 34, 20);
+  if (o.sweat) aSweat(x, 268, 70, 13);
+  if (o.lines) { aInk(x, 4); x.beginPath(); x.moveTo(132, 30); x.lineTo(140, 44); x.moveTo(168, 30); x.lineTo(160, 44); x.moveTo(150, 24); x.lineTo(150, 40); x.stroke(); }
+  if (o.zzz) aZzz(x, 220, 40, 34);
+}
+/* hands, 200x200, palm/finger shapes are thick round strokes → one clean merged outline */
+function aHand(x, kind, skin) {
+  const sh = [], cap = (x1, y1, x2, y2, r) => sh.push({ t: 'c', x1, y1, x2, y2, r }), box = (x0, y0, w, h, r) => sh.push({ t: 'b', x0, y0, w, h, r }), ring = (cx, cy, rr, w) => sh.push({ t: 'r', cx, cy, rr, w });
+  const det = []; const line = (...p) => det.push(p);
+  switch (kind) {
+    case 'point': box(56, 78, 64, 70, 24); cap(112, 92, 176, 92, 12); cap(116, 112, 130, 112, 10); cap(116, 129, 128, 129, 10); cap(112, 145, 122, 145, 9); cap(74, 102, 118, 108, 10); cap(28, 114, 60, 114, 27);
+      line(112, 121, 132, 121); line(110, 138, 128, 137); break;
+    case 'thumb': box(62, 92, 74, 68, 20); cap(128, 102, 148, 102, 10); cap(128, 120, 148, 120, 10); cap(128, 138, 146, 138, 10); cap(126, 154, 140, 154, 9); cap(80, 98, 80, 30, 14); cap(100, 160, 100, 196, 27);
+      line(126, 111, 150, 111); line(126, 129, 150, 129); line(126, 147, 146, 147); break;
+    case 'fist': box(50, 76, 100, 74, 24); cap(64, 74, 64, 100, 13); cap(89, 70, 89, 100, 13); cap(114, 70, 114, 100, 13); cap(138, 76, 138, 100, 12); cap(58, 124, 116, 122, 12); cap(100, 150, 100, 196, 28);
+      line(76, 66, 76, 100); line(101, 62, 101, 100); line(126, 64, 126, 100); break;
+    case 'open': box(60, 90, 80, 76, 24); cap(72, 96, 60, 32, 11); cap(92, 90, 88, 18, 11); cap(112, 90, 118, 22, 11); cap(132, 98, 148, 42, 10); cap(64, 142, 26, 108, 12); cap(100, 166, 100, 198, 26);
+      line(80, 140, 120, 126); break;
+    case 'peace': box(64, 102, 76, 64, 20); cap(86, 108, 70, 26, 11); cap(110, 108, 126, 26, 11); cap(124, 112, 142, 112, 9); cap(124, 128, 142, 128, 9); cap(70, 140, 116, 124, 10); cap(102, 166, 102, 198, 26);
+      line(122, 120, 144, 120); break;
+    case 'ok': box(62, 96, 84, 70, 22); ring(72, 86, 20, 20); cap(100, 98, 106, 26, 10); cap(120, 100, 134, 32, 10); cap(138, 108, 156, 52, 9); cap(104, 166, 104, 198, 26); break;
+    case 'wave': x.save(); x.translate(100, 110); x.rotate(-0.25); x.translate(-100, -110); aHand(x, 'open', skin); x.restore();
+      aInk(x, 5); x.beginPath(); x.arc(100, 110, 96, Math.PI * 1.08, Math.PI * 1.32); x.moveTo(30, 150); x.arc(100, 110, 84, Math.PI * 1.1, Math.PI * 1.3); x.stroke(); x.beginPath(); x.arc(100, 110, 96, -Math.PI * 0.32, -Math.PI * 0.08); x.stroke(); return;
+    case 'up': x.save(); x.translate(100, 100); x.rotate(-Math.PI / 2); x.translate(-100, -100); aHand(x, 'point', skin); x.restore(); return;
+  }
+  const pass = (stroke) => {
+    for (const s of sh) {
+      if (s.t === 'c') { x.beginPath(); x.moveTo(s.x1, s.y1); x.lineTo(s.x2, s.y2); x.lineCap = 'round'; x.lineWidth = s.r * 2 + (stroke ? 10 : 0); x.strokeStyle = stroke ? AINK : skin; x.stroke(); }
+      else if (s.t === 'b') { x.beginPath(); x.roundRect(s.x0, s.y0, s.w, s.h, s.r); if (stroke) { x.lineWidth = 10; x.strokeStyle = AINK; x.stroke(); } x.fillStyle = stroke ? AINK : skin; x.fill(); }
+      else { x.beginPath(); x.arc(s.cx, s.cy, s.rr, 0, Math.PI * 2); x.lineWidth = s.w + (stroke ? 10 : 0); x.strokeStyle = stroke ? AINK : skin; x.stroke(); }
+    }
+  };
+  pass(true); pass(false); aInk(x, 3.5); x.beginPath(); for (const [a, b, c2, d] of det) { x.moveTo(a, b); x.lineTo(c2, d); } x.stroke();
+}
+const ASSET_CATS = {
+  eyes: { name: '👀 Mắt', w: 300, h: 140, rel: 0.55, at: 0.42, items: {
+    open: ['Mở', x => aEyes(x, 'open', 'neutral')], big: ['Mở to', x => aEyes(x, 'big', 'up')], half: ['Lim dim', x => aEyes(x, 'half', 'neutral')], closed: ['Nhắm', x => aEyes(x, 'closed', 'neutral')],
+    happy: ['Cười híp', x => aEyes(x, 'happy', 'up')], angry: ['Giận', x => aEyes(x, 'angry', 'angry')], sad: ['Buồn', x => aEyes(x, 'down', 'sad')], shock: ['Hoảng', x => aEyes(x, 'shock', 'up')],
+    squint: ['Nhăn > <', x => aEyes(x, 'squint', 'scrunch')], cry: ['Khóc', x => aEyes(x, 'cry', 'sad')], lookL: ['Liếc trái', x => aEyes(x, 'open', 'neutral', -1)], lookR: ['Liếc phải', x => aEyes(x, 'open', 'neutral', 1)],
+    sleepy: ['Buồn ngủ', x => aEyes(x, 'sleepy', 'none')], dizzy: ['Choáng', x => aEyes(x, 'dizzy', 'none')], heart: ['Mắt tim', x => aEyes(x, 'heart', 'none')], star: ['Mắt sao', x => aEyes(x, 'star', 'none')], x: ['X X', x => aEyes(x, 'x', 'none')], dot: ['Chấm', x => aEyes(x, 'dot', 'neutral')] },
+    sets: { blink: ['Bộ chớp mắt (mở → lim dim → nhắm)', ['open', 'half', 'closed']] } },
+  mouth: { name: '👄 Miệng', w: 200, h: 120, rel: 0.32, at: 0.74, items: {
+    closed: ['Ngậm', x => aMouth(x, 'closed')], half: ['Hé', x => aMouth(x, 'half')], open: ['Há (A)', x => aMouth(x, 'open')], o: ['Tròn (O)', x => aMouth(x, 'o')], e: ['Nhe (E)', x => aMouth(x, 'e')],
+    smile: ['Cười', x => aMouth(x, 'smile')], grin: ['Cười to', x => aMouth(x, 'grin')], frown: ['Mếu', x => aMouth(x, 'frown')], grit: ['Nghiến răng', x => aMouth(x, 'grit')], tongue: ['Lè lưỡi', x => aMouth(x, 'tongue')],
+    wavy: ['Run run', x => aMouth(x, 'wavy')], scream: ['Gào', x => aMouth(x, 'scream')], smirk: ['Nhếch mép', x => aMouth(x, 'smirk')], cat: ['Miệng mèo', x => aMouth(x, 'cat')] },
+    sets: { lip: ['Bộ nhép miệng (ngậm → hé → há) — dùng cho Nhép miệng theo giọng', ['closed', 'half', 'open']], vowel: ['Bộ nói rõ (ngậm → E → O → A)', ['closed', 'e', 'o', 'open']] } },
+  face: { name: '😠 Biểu cảm', w: 300, h: 260, rel: 0.72, at: 0.55, items: {
+    happy: ['Vui', x => aFace(x, { e: 'open', b: 'neutral', m: 'smile', blush: 1 })], laugh: ['Cười lớn', x => aFace(x, { e: 'happy', b: 'up', m: 'grin' })], angry: ['Giận', x => aFace(x, { e: 'angry', b: 'angry', m: 'grit', vein: 1 })],
+    grimace: ['Nhăn nhó', x => aFace(x, { e: 'squint', b: 'scrunch', m: 'grit', lines: 1, sweat: 1 })], wail: ['Khóc to', x => aFace(x, { e: 'cry', b: 'sad', m: 'scream' })], sad: ['Buồn', x => aFace(x, { e: 'down', b: 'sad', m: 'frown' })],
+    shock: ['Sốc', x => aFace(x, { e: 'shock', b: 'up', m: 'scream', sweat: 1 })], smug: ['Tự mãn', x => aFace(x, { e: 'half', b: 'neutral', m: 'smirk' })], dizzy: ['Choáng', x => aFace(x, { e: 'dizzy', b: 'none', m: 'wavy' })],
+    scared: ['Sợ', x => aFace(x, { e: 'shock', b: 'sad', m: 'wavy', sweat: 1 })], sleep: ['Ngủ', x => aFace(x, { e: 'closed', b: 'none', m: 'o', zzz: 1 })], love: ['Yêu', x => aFace(x, { e: 'heart', b: 'none', m: 'smile', blush: 1 })],
+    excited: ['Phấn khích', x => aFace(x, { e: 'star', b: 'up', m: 'grin' })], silly: ['Tinh nghịch', x => aFace(x, { e: 'happy', b: 'neutral', m: 'tongue' })], ko: ['Gục', x => aFace(x, { e: 'x', b: 'none', m: 'tongue' })] },
+    sets: { emo: ['Bộ biểu cảm (vui, giận, buồn, sốc, cười, nhăn)', ['happy', 'angry', 'sad', 'shock', 'laugh', 'grimace']] } },
+  hand: { name: '✋ Tay', w: 200, h: 200, rel: 0.9, at: 0.85, skin: true, items: {
+    point: ['Chỉ trỏ', (x, o) => aHand(x, 'point', o.skin)], up: ['Chỉ lên', (x, o) => aHand(x, 'up', o.skin)], thumb: ['Like', (x, o) => aHand(x, 'thumb', o.skin)], fist: ['Nắm đấm', (x, o) => aHand(x, 'fist', o.skin)],
+    open: ['Xoè tay', (x, o) => aHand(x, 'open', o.skin)], wave: ['Vẫy', (x, o) => aHand(x, 'wave', o.skin)], peace: ['Chữ V', (x, o) => aHand(x, 'peace', o.skin)], ok: ['OK', (x, o) => aHand(x, 'ok', o.skin)] },
+    sets: { gest: ['Bộ cử chỉ tay (xoè, nắm, chỉ, like, V, OK)', ['open', 'fist', 'point', 'thumb', 'peace', 'ok']] } },
+  fx: { name: '💦 Hiệu ứng', w: 200, h: 200, rel: 0.4, at: 0.1, items: {
+    sweat: ['Mồ hôi', x => aSweat(x, 100, 104, 40)], vein: ['Gân giận', x => aVein(x, 100, 100, 52)], tears: ['Nước mắt', x => { for (const cx of [60, 140]) { x.beginPath(); x.moveTo(cx - 12, 30); x.bezierCurveTo(cx - 22, 90, cx - 6, 140, cx - 16, 190); x.lineTo(cx + 16, 190); x.bezierCurveTo(cx + 6, 140, cx + 22, 90, cx + 12, 30); x.closePath(); x.fillStyle = '#7cc8ff'; x.fill(); aInk(x, 4); x.stroke(); } }],
+    blush: ['Má hồng', x => { x.save(); x.translate(10, 10); x.scale(0.6, 0.6); aBlush(x, 150); x.restore(); }], sparkle: ['Lấp lánh', x => { aStar(x, 70, 80, 46, '#ffe14d', 4, 0.28); aStar(x, 145, 140, 30, '#ffe14d', 4, 0.28); aStar(x, 150, 50, 18, '#fff3a6', 4, 0.28); }],
+    excl: ['Dấu !', x => { x.font = '900 170px system-ui,sans-serif'; x.textAlign = 'center'; x.lineWidth = 14; x.lineJoin = 'round'; x.strokeStyle = AINK; x.strokeText('!', 100, 170); x.fillStyle = '#ff3b3b'; x.fillText('!', 100, 170); }],
+    quest: ['Dấu ?', x => { x.font = '900 160px system-ui,sans-serif'; x.textAlign = 'center'; x.lineWidth = 14; x.lineJoin = 'round'; x.strokeStyle = AINK; x.strokeText('?', 100, 165); x.fillStyle = '#ffd23f'; x.fillText('?', 100, 165); }],
+    heart: ['Tim', x => aHeart(x, 100, 105, 62, '#ff3b5c')], zzz: ['Zzz', x => aZzz(x, 40, 170, 70)],
+    speed: ['Vệt tốc độ', x => { aInk(x, 6); x.beginPath(); [[20, 40, 150], [40, 75, 180], [10, 110, 160], [50, 145, 185], [25, 175, 120]].forEach(([a, y, b]) => { x.moveTo(a, y); x.lineTo(b, y); }); x.stroke(); }],
+    puff: ['Khói giận', x => { x.beginPath(); [[60, 120, 40], [100, 95, 48], [145, 120, 40], [80, 150, 36], [125, 152, 36]].forEach(([cx, cy, r]) => { x.moveTo(cx + r, cy); x.arc(cx, cy, r, 0, Math.PI * 2); }); x.fillStyle = '#e9e9e9'; x.fill(); aInk(x, 6); x.stroke(); x.fillStyle = '#e9e9e9'; [[60, 120, 34], [100, 95, 42], [145, 120, 34], [80, 150, 30], [125, 152, 30]].forEach(([cx, cy, r]) => { x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fill(); }); }],
+    bulb: ['Ý tưởng', x => { aInk(x, 6); x.beginPath(); for (let k = 0; k < 7; k++) { const a = Math.PI * (1.0 + k / 6); x.moveTo(100 + Math.cos(a) * 66, 88 + Math.sin(a) * 66); x.lineTo(100 + Math.cos(a) * 88, 88 + Math.sin(a) * 88); } x.stroke(); x.beginPath(); x.arc(100, 88, 46, Math.PI * 0.8, Math.PI * 2.2); x.lineTo(118, 150); x.lineTo(82, 150); x.closePath(); x.fillStyle = '#ffe14d'; x.fill(); aInk(x, 6); x.stroke(); x.beginPath(); x.roundRect(80, 150, 40, 26, 6); x.fillStyle = '#bbb'; x.fill(); x.stroke(); }],
+    stars: ['Sao choáng', x => { aInk(x, 4); x.beginPath(); x.ellipse(100, 110, 84, 30, 0, 0, Math.PI * 2); x.stroke(); [[20, 110], [100, 140], [180, 110], [100, 80]].forEach(([cx, cy], i) => aStar(x, cx, cy, i === 1 ? 22 : 17, '#ffd23f')); }] },
+    sets: {} }
+};
+const ASSET_SKINS = ['#ffd9b8', '#f2bf94', '#c98c5e', '#8a5634', '#ffffff', '#ffe14d'];
+let assetOpt = { skin: '#ffd9b8', flip: false, size: 1, cover: true };
+function assetRender(cat, key, k, opt = assetOpt) {
+  const C = ASSET_CATS[cat], it = C.items[key], c = makeCanvas(Math.max(1, Math.round(C.w * k)), Math.max(1, Math.round(C.h * k))), x = c.getContext('2d');
+  x.save(); if (opt.flip) { x.translate(c.width, 0); x.scale(-1, 1); } x.scale(k, k); it[1](x, opt); x.restore(); return c;
+}
+/* colour of the parent part under a rest-space rectangle, for covering the old feature */
+function assetSkinUnder(par, rx, ry, rw, rh) {
+  const im = ppImg(par, null), d = im.c.getContext('2d').getImageData(0, 0, im.c.width, im.c.height).data, cols = [];
+  for (let y = Math.max(0, Math.floor(ry - im.y)); y < Math.min(im.c.height, ry - im.y + rh); y += 2) for (let x = Math.max(0, Math.floor(rx - im.x)); x < Math.min(im.c.width, rx - im.x + rw); x += 2) {
+    const i = (y * im.c.width + x) * 4; if (d[i + 3] < 200) continue; const l = 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2]; if (l > 110) cols.push([l, d[i], d[i + 1], d[i + 2]]);
+  }
+  if (cols.length < 10) return null; cols.sort((a, b) => a[0] - b[0]); const m = cols[cols.length >> 1]; return `rgb(${m[1]},${m[2]},${m[3]})`;
+}
+async function assetToPart(cat, keys) {
+  const C = ASSET_CATS[cat], par = ppPart(ppSel), f = curFrame();
+  if (!par) { toast('Chạm chọn mảnh để gắn vào (vd. Đầu cho mắt/miệng, Cẳng tay cho bàn tay)', 3500); return; }
+  // same-category asset part selected → add/switch a variant instead of a new piece
+  if (par.asset && par.asset.cat === cat && keys.length === 1) {
+    let idx = par.asset.keys.indexOf(keys[0]);
+    if (idx < 0) { const a = { c: assetRender(cat, keys[0], par.asset.k, par.asset.opt), dx: 0, dy: 0 }; if (par.asset.cover) assetCover(a.c, par.asset.cover, par.asset.opt); await encodeHolder(a); par.alts = par.alts || []; par.alts.push(a); par.asset.keys.push(keys[0]); idx = par.asset.keys.length - 1; }
+    ppEdit(q => { if (idx) q.v = idx; else delete q.v; }); S.frames.forEach(fr => { fr.ver++; queueThumbFor(fr); }); scheduleSave(); toast('Đã đổi thành "' + C.items[keys[0]][0] + '" ở frame này (frame khác giữ nguyên)', 2500); return;
+  }
+  const im = ppImg(par, null), pw = im.c.width, ph = im.c.height;
+  const ref = cat === 'hand' ? Math.max(pw, ph) * 0.55 : pw;
+  const k = clamp(ref * C.rel * assetOpt.size / C.w, 0.05, 6), opt = { ...assetOpt }, w = C.w * k, h = C.h * k;
+  let cx = im.x + pw / 2, cy = im.y + ph * C.at;
+  if (cat === 'hand' && par.tip) { cx = par.tip.x; cy = par.tip.y; }
+  if (cat === 'fx') { cx = im.x + pw * 0.85; cy = im.y + ph * 0.12; }
+  const ox = cx - w / 2, oy = cy - h / 2;
+  let cover = null; if (assetOpt.cover && (cat === 'eyes' || cat === 'mouth' || cat === 'face')) cover = assetSkinUnder(par, ox, oy, w, h);
+  const mk = key => { const c = assetRender(cat, key, k, opt); if (cover) assetCover(c, cover, opt); return c; };
+  const p = { id: newId(), name: C.name.replace(/^\S+\s/, '') + ' (kho)', role: '', parent: par.id, z: par.z + 0.5, ox, oy, px: cx, py: cat === 'hand' ? cy : cy, c: mk(keys[0]), alts: [], asset: { cat, keys: [...keys], k, opt, cover } };
+  if (cat === 'mouth' && !ppByRole('mouth')) p.role = 'mouth';
+  if (cat === 'eyes' && !ppByRole('eyes')) p.role = 'eyes';
+  for (const key of keys.slice(1)) { const a = { c: mk(key), dx: 0, dy: 0 }; await encodeHolder(a); p.alts.push(a); }
+  await encodePart(p); S.pp.parts.push(p); ppRenormZ(); ppSel = p.id;
+  S.frames.forEach(fr => { fr.ver++; queueThumbFor(fr); }); ppSyncBar(); scheduleSave(); requestRender();
+  toast(keys.length > 1 ? `Đã gắn ${keys.length} hình — chọn hình ở mục "Hình thay thế" cho từng frame${p.role ? ', đã đặt vai trò ' + PP_ROLES[p.role] : ''}` : 'Đã gắn — kéo chế độ "Di chuyển" để chỉnh chỗ; chọn mảnh này rồi bấm hình khác trong Kho để đổi theo frame', 4500);
+}
+/* paint a soft skin patch behind the drawing so the old eyes/mouth are hidden */
+function assetCover(c, col, opt) { const x = c.getContext('2d'); x.save(); x.globalCompositeOperation = 'destination-over'; x.fillStyle = col; x.beginPath(); x.ellipse(c.width / 2, c.height / 2, c.width * 0.5, c.height * 0.5, 0, 0, Math.PI * 2); x.fill(); x.restore(); }
+function assetToFrame(cat, key) { const c = assetRender(cat, key, (W * 0.3 * assetOpt.size) / ASSET_CATS[cat].w, assetOpt); floatFromImage(c); toast('Kéo để đặt, kéo góc để đổi cỡ — bấm ✓ để dán', 2500); }
+function assetDialog(startCat) {
+  let cat = startCat || 'eyes';
+  const ppOK = () => S.pp && S.pp.parts.length;
+  modal({ title: '🎨 Kho hình', html: `<div class="mrow" id="aCats" style="flex-wrap:wrap;gap:4px"></div>
+    <div class="mrow" style="flex-wrap:wrap;gap:6px;margin:8px 0"><span class="lbl">Đặt vào:</span><button class="chip small" data-adst="pp">Nhân vật ghép (mảnh đang chọn)</button><button class="chip small" data-adst="frame">Frame (lớp nhân vật)</button></div>
+    <div class="mrow" style="flex-wrap:wrap;gap:6px"><span class="lbl">Cỡ</span><input type="range" id="aSize" min="0.4" max="2.5" step="0.05" value="${assetOpt.size}" style="width:110px"><label class="lbl"><input type="checkbox" id="aFlip" ${assetOpt.flip ? 'checked' : ''}> Lật ngang</label><label class="lbl" id="aCoverL"><input type="checkbox" id="aCover" ${assetOpt.cover ? 'checked' : ''}> Che mắt/miệng cũ bằng màu da</label><span id="aSkins" class="mrow" style="gap:3px"></span></div>
+    <div id="aSets" style="margin:8px 0;display:flex;flex-wrap:wrap;gap:6px"></div>
+    <div id="aGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:8px;max-height:46vh;overflow:auto;padding:2px"></div>
+    <p class="lbl" id="aHint" style="margin-top:8px"></p>`,
+    buttons: [{ label: 'Đóng', value: null }],
+    onOpen: (ov, close) => {
+      let dst = ppOK() ? 'pp' : 'frame';
+      const draw = () => {
+        const C = ASSET_CATS[cat];
+        ov.querySelector('#aCats').innerHTML = Object.entries(ASSET_CATS).map(([k, v]) => `<button class="chip small ${k === cat ? 'on' : ''}" data-acat="${k}">${v.name}</button>`).join('');
+        ov.querySelectorAll('[data-adst]').forEach(b => { b.classList.toggle('on', b.dataset.adst === dst); b.disabled = b.dataset.adst === 'pp' && !ppOK(); });
+        ov.querySelector('#aSkins').innerHTML = C.skin ? ASSET_SKINS.map(s => `<button data-skin="${s}" title="Màu da" style="width:26px;height:26px;border-radius:50%;border:3px solid ${s === assetOpt.skin ? 'var(--accent)' : 'var(--line)'};background:${s};cursor:pointer"></button>`).join('') : '';
+        ov.querySelector('#aCoverL').style.display = /eyes|mouth|face/.test(cat) && dst === 'pp' ? '' : 'none';
+        ov.querySelector('#aSets').innerHTML = dst === 'pp' ? Object.entries(C.sets).map(([k, v]) => `<button class="btn" data-aset="${k}">＋ ${v[0]}</button>`).join('') : '';
+        const g = ov.querySelector('#aGrid'); g.innerHTML = '';
+        for (const [key, it] of Object.entries(C.items)) {
+          const b = document.createElement('button'); b.className = 'chip'; b.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px;height:auto;background:#fff;color:#222';
+          const t = assetRender(cat, key, 72 / Math.max(C.w, C.h)); t.style.cssText = 'max-width:72px;max-height:72px'; b.append(t); const s = document.createElement('span'); s.textContent = it[0]; s.style.fontSize = '11px'; b.append(s);
+          b.addEventListener('click', async () => { if (dst === 'pp') { close(null); await assetToPart(cat, [key]); } else { close(null); assetToFrame(cat, key); } });
+          g.append(b);
+        }
+        const sel = ppPart(ppSel);
+        ov.querySelector('#aHint').textContent = dst === 'frame' ? 'Hình dán vào frame đang xem như ảnh — kéo, đổi cỡ, xoay rồi bấm ✓.' : !sel ? 'Chưa chọn mảnh: đóng bảng, chạm vào mảnh (vd. Đầu) rồi mở lại Kho.' : sel.asset && sel.asset.cat === cat ? `Đang chọn mảnh kho "${sel.name}": bấm một hình để đổi hình ở frame này.` : `Sẽ gắn vào mảnh "${sel.name}", tự cử động theo mảnh đó. Gắn bộ nhiều hình để đổi theo frame (nhép miệng, chớp mắt, đổi biểu cảm).`;
+      };
+      ov.addEventListener('click', async e => {
+        const t = e.target.closest('[data-acat],[data-adst],[data-skin],[data-aset]'); if (!t) return;
+        if (t.dataset.acat) cat = t.dataset.acat; else if (t.dataset.adst) dst = t.dataset.adst; else if (t.dataset.skin) assetOpt.skin = t.dataset.skin;
+        else if (t.dataset.aset) { close(null); await assetToPart(cat, ASSET_CATS[cat].sets[t.dataset.aset][1]); return; }
+        draw();
+      });
+      ov.querySelector('#aSize').addEventListener('input', e => { assetOpt.size = +e.target.value; });
+      ov.querySelector('#aFlip').addEventListener('change', e => { assetOpt.flip = e.target.checked; draw(); });
+      ov.querySelector('#aCover').addEventListener('change', e => { assetOpt.cover = e.target.checked; });
+      ov.querySelector('.dlg').style.maxWidth = '760px';
+      draw();
+    } });
+}
+/* ===== body gestures: keyframed, by role & absolute limb angle → works on any cut-out character ===== */
+const REST = { armL: 100, foreL: 95, armR: 80, foreR: 85 };
+const GESTURES = {
+  hello: ['👋 Vẫy chào', [{ a: { armR: -50, foreR: -95 }, n: 3 }, { a: { foreR: -60 }, n: 2 }, { a: { foreR: -110 }, n: 2 }, { a: { foreR: -60 }, n: 2 }, { a: { foreR: -110 }, n: 2 }, { n: 3, back: 1 }]],
+  point: ['👉 Chỉ tay', [{ a: { armR: -10, foreR: -12 }, head: 6, n: 3, hold: 5 }, { n: 3, back: 1 }]],
+  cheer: ['🙌 Ăn mừng', [{ a: { armL: 235, foreL: 248, armR: -55, foreR: -68 }, dy: -0.06, n: 3 }, { a: { armL: 215, foreL: 230, armR: -35, foreR: -50 }, dy: 0, n: 2 }, { a: { armL: 235, foreL: 248, armR: -55, foreR: -68 }, dy: -0.06, n: 2 }, { dy: 0, n: 2, hold: 2 }, { n: 3, back: 1 }]],
+  clap: ['👏 Vỗ tay', [{ a: { armL: 120, foreL: 60, armR: 60, foreR: 120 }, n: 3 }, { a: { foreL: 25, foreR: 155 }, n: 1 }, { a: { foreL: 60, foreR: 120 }, n: 1 }, { a: { foreL: 25, foreR: 155 }, n: 1 }, { a: { foreL: 60, foreR: 120 }, n: 1 }, { a: { foreL: 25, foreR: 155 }, n: 1 }, { n: 3, back: 1 }]],
+  shrug: ['🤷 Nhún vai', [{ a: { armL: 150, foreL: 215, armR: 30, foreR: -35 }, head: -8, dy: -0.015, n: 3, hold: 4 }, { n: 3, back: 1 }]],
+  scratch: ['😅 Gãi đầu', [{ a: { armR: -75, foreR: -150 }, head: -6, n: 3 }, { a: { foreR: -165 }, n: 1 }, { a: { foreR: -145 }, n: 1 }, { a: { foreR: -165 }, n: 1 }, { a: { foreR: -145 }, n: 1 }, { n: 3, back: 1 }]],
+  facepalm: ['🤦 Ôm mặt', [{ a: { armR: 55, foreR: -125 }, head: 14, n: 3, hold: 6 }, { n: 3, back: 1 }]],
+  think: ['🤔 Suy nghĩ', [{ a: { armR: 70, foreR: -110, armL: 110, foreL: 15 }, head: 8, n: 4, hold: 6 }, { n: 3, back: 1 }]],
+  cross: ['🙅 Khoanh tay', [{ a: { armL: 110, foreL: 8, armR: 70, foreR: 172 }, head: -4, n: 3, hold: 6 }, { n: 3, back: 1 }]],
+  hips: ['😤 Chống nạnh', [{ a: { armL: 128, foreL: 38, armR: 52, foreR: 142 }, n: 3 }, { head: 8, n: 2 }, { head: -8, n: 2 }, { head: 0, n: 2, hold: 2 }, { n: 3, back: 1 }]],
+  punch: ['👊 Đấm', [{ a: { armR: 80, foreR: -80, armL: 100, foreL: -100 }, n: 3 }, { a: { armR: -2, foreR: -2 }, torso: -6, n: 1, hold: 1 }, { a: { armR: 80, foreR: -80 }, torso: 0, n: 2 }, { a: { armR: -2, foreR: -2 }, torso: -6, n: 1, hold: 1 }, { a: { armR: 80, foreR: -80 }, torso: 0, n: 2 }, { n: 3, back: 1 }]],
+  thumbs: ['👍 Like', [{ a: { armR: 25, foreR: -45 }, head: 5, n: 3, hold: 5 }, { n: 3, back: 1 }]],
+  bow: ['🙇 Cúi chào', [{ torso: 22, head: 10, a: { armL: 95, foreL: 90, armR: 85, foreR: 90 }, n: 4, hold: 3 }, { n: 4, back: 1 }]],
+  startle: ['😱 Giật mình', [{ a: { armL: 200, foreL: 230, armR: -20, foreR: -50 }, dy: -0.05, n: 1, hold: 1 }, { dy: 0, n: 2, hold: 4 }, { n: 4, back: 1 }]],
+  cry: ['😭 Lau nước mắt', [{ a: { armL: 120, foreL: -55, armR: 60, foreR: -125 }, head: 6, n: 3 }, { head: 2, n: 2 }, { head: 6, n: 2 }, { head: 2, n: 2 }, { n: 3, back: 1 }]],
+  nodyes: ['🙆 Gật đồng ý', [{ head: 10, n: 2 }, { head: -2, n: 2 }, { head: 10, n: 2 }, { head: 0, n: 2, back: 1 }]],
+  nope: ['🙅 Lắc không', [{ head: -10, n: 2 }, { head: 10, n: 2 }, { head: -10, n: 2 }, { head: 10, n: 2 }, { n: 2, back: 1 }]]
+};
+let gestMirror = false;
+function ppCurAbs(f, charId) {
+  const out = {}; const parts = S.pp.parts.filter(p => ppCharOf(p) === charId), M = ppMats(f.pp);
+  for (const role of ['armL', 'armR', 'legL', 'legR', 'foreL', 'foreR', 'shinL', 'shinR']) { const p = parts.find(q => q.role === role); if (!p) continue; const P0 = mApply(M[p.id], p.px, p.py), tip = ppTipOf(p), H0 = mApply(M[p.id], tip.x, tip.y); out[role] = Math.atan2(H0.y - P0.y, H0.x - P0.x) / DEG; }
+  return out;
+}
+const angLerp = (a, b, t) => a + wrapRad((b - a) * DEG) / DEG * t;
+async function ppGesture(id) {
+  if (!S.pp || !S.pp.parts.length) { toast('Cần nhân vật ghép trước — Nhập ảnh → Tách thành nhân vật ghép'); return; }
+  const G = GESTURES[id], f0 = curFrame(), ch = ppSelChar(), parts = S.pp.parts.filter(p => ppCharOf(p) === ch), byRole = r => parts.find(p => p.role === r);
+  if (!byRole('armR') && !byRole('armL') && !byRole('head')) { toast('Nhân vật chưa có vai trò tay/đầu — dùng ✂ Tự cắt hoặc đặt Vai trò cho mảnh', 4000); return; }
+  const mir = gestMirror, mapRole = r => mir ? r.replace(/L$/, '#').replace(/R$/, 'L').replace(/#$/, 'R') : r, mapAng = a => mir ? 180 - a : a, sg = mir ? -1 : 1;
+  const start = ppCurAbs(f0, ch), tor = byRole('torso'), hgt = tor ? Math.max(200, tor.c.height * 2.2) : H * 0.6, dur = Math.round((+$('#ppPDur').value || 0.08) * 1000);
+  const base = ppClone(f0.pp || {}), poses = [], isKey = [];
+  let prev = { a: { ...start }, head: 0, torso: 0, dy: 0 };
+  const mk = st => {
+    const tf = { pp: ppClone(base) }; ppApplyAbs(tf, st.a, ch);
+    const add = (role, prop, v) => { const p = byRole(role); if (!p || !v) return; const q = ppQ(tf, p.id); q[prop] = (q[prop] || 0) + v; };
+    add('head', 'r', st.head * sg); add('torso', 'r', st.torso * sg * (ppDir || 1)); add('torso', 'dy', st.dy * hgt); return tf.pp;
+  };
+  for (const k of G[1]) {
+    const tgt = k.back ? { a: { ...start }, head: 0, torso: 0, dy: 0 } : { a: { ...prev.a }, head: k.head ?? prev.head, torso: k.torso ?? prev.torso, dy: k.dy ?? prev.dy };
+    if (!k.back && k.a) for (const [r, v] of Object.entries(k.a)) tgt.a[mapRole(r)] = mapAng(v);
+    for (let i = 1; i <= k.n; i++) {
+      const t = i / k.n, e = t * t * (3 - 2 * t), st = { a: {}, head: lerp(prev.head, tgt.head, e), torso: lerp(prev.torso, tgt.torso, e), dy: lerp(prev.dy, tgt.dy, e) };
+      for (const r of new Set([...Object.keys(prev.a), ...Object.keys(tgt.a)])) { const a0 = prev.a[r] ?? tgt.a[r], a1 = tgt.a[r] ?? a0; st.a[r] = angLerp(a0, a1, e); }
+      poses.push(mk(st)); isKey.push(i === k.n);
+    }
+    for (let h = 0; h < (k.hold || 0); h++) { poses.push(mk(tgt)); isKey.push(h === k.hold - 1); }
+    prev = tgt;
+  }
+  const c = await ppInsertFrames(poses, dur); f0.dur = dur; f0.ppKey = true;
+  S.frames.slice(S.cur + 1, S.cur + 1 + c).forEach((f, i) => { f.ppKey = isKey[i] || i === c - 1; });
+  updateFrameUI(); toast(`Đã tạo "${G[0].replace(/^\S+\s/, '')}" — ${c} frame. Muốn chỉnh: sửa tư thế ở frame 🔑, frame giữa tự cập nhật. Bấm Phát để xem.`, 4500);
+}
+
 function setFocus(on) {
   $('#app').classList.toggle('focus', on); $('#focusBar').hidden = !on; S.focus = on;
   $('#fbPen').classList.toggle('on', S.tool === 'brush'); $('#fbEraser').classList.toggle('on', S.tool === 'eraser');
   setTimeout(() => { resizeView(); }, 30); if (on) toast('Chế độ vẽ toàn màn hình — bấm ☰ Công cụ để hiện lại', 2500);
 }
 $('#focusBtn').addEventListener('click', () => setFocus(true));
+$('#assetBtn').addEventListener('click', () => assetDialog());
+$('#ppAssetBtn').addEventListener('click', () => { const s = ppPart(ppSel); assetDialog(s && s.asset ? s.asset.cat : (s && s.role === 'head' ? 'face' : /fore|arm/.test(s && s.role || '') ? 'hand' : 'eyes')); });
+Object.entries(GESTURES).forEach(([k, v]) => { const b = document.createElement('button'); b.className = 'chip small'; b.textContent = v[0]; b.title = 'Tạo các frame cử chỉ từ tư thế frame này'; b.addEventListener('click', () => ppGesture(k)); $('#ppGests').append(b); });
+$('#gestMir').addEventListener('change', e => { gestMirror = e.target.checked; });
 $('#fbShow').addEventListener('click', () => setFocus(false));
 $('#fbUndo').addEventListener('click', undo); $('#fbRedo').addEventListener('click', redo);
 $('#fbPen').addEventListener('click', () => { setTool('brush'); setFocus(true); });
@@ -3313,7 +3608,7 @@ async function saveProject() {
       name: S.projName || 'Dự án', poses: S.poses || [],
       frames: S.frames.map(f => ({ id: f.id, dur: f.dur, bgId: f.bgId, png: f.png, vec: f.vec, pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null })),
       audio: S.audio || null, bgVideo: S.bgVideo || null,
-      pp: S.pp ? { parts: S.pp.parts.map(p => ({ id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, png: p.png, alts: (p.alts || []).map(a => ({ png: a.png, dx: a.dx || 0, dy: a.dy || 0 })) })) } : null,
+      pp: S.pp ? { parts: S.pp.parts.map(p => ({ id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null, png: p.png, alts: (p.alts || []).map(a => ({ png: a.png, dx: a.dx || 0, dy: a.dy || 0 })) })) } : null,
       rig: S.rig || null,
       ref: REF.c && REF.png ? { png: REF.png, cx: REF.cx, cy: REF.cy, scale: REF.scale, rot: REF.rot, opacity: REF.opacity, show: REF.show } : null
     };
@@ -3492,7 +3787,7 @@ async function exportZip() {
       for (const pt of S.pp.parts) {
         const name = `puppet/part_${pt.id}.png`; files.push({ name, data: new Uint8Array(pt.png) });
         const alts = (pt.alts || []).map((a, k) => { const an = `puppet/part_${pt.id}_v${k + 1}.png`; files.push({ name: an, data: new Uint8Array(a.png) }); return { file: an, dx: a.dx || 0, dy: a.dy || 0 }; });
-        ppMeta.parts.push({ id: pt.id, name: pt.name, role: pt.role, parent: pt.parent, z: pt.z, ox: pt.ox, oy: pt.oy, px: pt.px, py: pt.py, tip: pt.tip || null, file: name, alts });
+        ppMeta.parts.push({ id: pt.id, name: pt.name, role: pt.role, parent: pt.parent, z: pt.z, ox: pt.ox, oy: pt.oy, px: pt.px, py: pt.py, tip: pt.tip || null, asset: pt.asset || null, file: name, alts });
       }
     }
     const timing = { app: 'frame-studio', version: 1, width: W, height: H, total_ms: total, frames: meta, backgrounds: bgOrder.map(id => bgFile.get(id)), puppet: ppMeta };
@@ -4072,7 +4367,7 @@ async function init() {
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }
 /* ========= Installed app (PWA): offline + updates ========= */
-const APP_VERSION = '2026.11.20-1434';
+const APP_VERSION = '2026.11.20-1455';
 let swReg = null, swUpdating = false;
 (function setupPWA() {
   let top = false; try { top = window.top === window; } catch (e) {}
