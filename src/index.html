@@ -106,7 +106,9 @@ input[type=range]{width:110px;accent-color:var(--accent);height:28px}
 #ppbar{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);background:var(--panel);border:1px solid #ff3b9a;
   border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;box-shadow:0 8px 30px #0008;width:min(780px,calc(100% - 20px));max-height:60%;overflow-y:auto}
 #ppbar .mrow{display:flex;flex-wrap:wrap;align-items:center;gap:5px 7px}
-#ppbar #ppSetupSec,#ppbar #ppPoseSec{display:flex;flex-direction:column;gap:6px}
+#ppbar #ppSetupSec,#ppbar #ppPoseSec,#ppbar #ppJointSec,#ppbar #ppLabSec{display:flex;flex-direction:column;gap:6px}
+#ppbar #ppJointSec[hidden],#ppbar #ppLabSec[hidden]{display:none}
+#ppLabParts .chip i{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:5px;vertical-align:-2px;border:1px solid rgba(0,0,0,.35)}
 #ppbar input[type=range]{width:90px}
 #ppbar select{max-width:190px}
 #ppbar.mini > :not(:first-child){display:none!important}
@@ -380,13 +382,20 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
     <div id="ppbar" hidden>
       <div class="mrow"><b>🧩 Nhân vật ghép</b><span style="flex:1"></span><button class="chip small" id="ppMini">▾ Thu gọn</button><button class="chip small pclose" data-close="puppet" title="Đóng bảng (công cụ vẫn bật)">✕</button></div>
       <div id="ppEmpty" class="mrow"><span class="lbl">Chưa có nhân vật ghép. Nhập ảnh (vd. ảnh AI tạo) → chọn <b>Nhân vật ghép</b>.</span><button class="chip small on" id="ppNew">Nhập ảnh</button></div>
-      <div id="ppSetupSec">
-        <div class="mrow"><span class="lbl"><b>Đặt khớp:</b> kéo chấm trắng vào vai, khuỷu, cổ tay, hông, gối, cổ chân (kéo khớp cha kéo cả nhánh)</span></div>
+      <div id="ppSetupSec"><div id="ppJointSec">
+        <div class="mrow"><span class="lbl"><b>Bước 1 — Đặt khớp:</b> kéo chấm trắng vào vai, khuỷu, cổ tay, hông, gối, cổ chân (kéo khớp cha kéo cả nhánh)</span></div>
         <div class="mrow"><label class="lbl"><input type="checkbox" id="ppSplit"> Chia tay/chân 2 đoạn (gập khuỷu, gối)</label>
           <span class="lbl">Vá khớp</span><button class="chip small" data-ppf="fast">Nhanh</button><button class="chip small" data-ppf="ai" title="MI-GAN: AI vẽ bù miễn phí, chạy trên máy, lần đầu tải ~50 MB">AI (đẹp hơn)</button><button class="chip small" data-ppf="off">Tắt</button>
           <button class="chip small" id="ppRefit">Tự khớp lại</button><span style="flex:1"></span>
-          <button class="chip small" id="ppSetupCancel">Huỷ</button><button class="chip small" id="ppCutWhole" title="Giữ cả ảnh là 1 mảnh, tự khoanh tách sau">Cả ảnh 1 mảnh</button><button class="chip small on" id="ppCutAuto">✂ Cắt tự động</button></div>
-      </div>
+          <button class="chip small" id="ppSetupCancel">Huỷ</button><button class="chip small" id="ppCutWhole" title="Giữ cả ảnh là 1 mảnh, tự khoanh tách sau">Cả ảnh 1 mảnh</button><button class="chip small on" id="ppCutAuto" title="Tự chia tay, chân, đầu… rồi cho bạn xem và tô sửa trước khi cắt">✂ Cắt tự động</button></div>
+      </div><div id="ppLabSec" hidden>
+        <div class="mrow"><span class="lbl"><b>Bước 2 — Sửa vùng:</b> mỗi màu là một mảnh. Chỗ nào sai: chọn tên mảnh bên dưới rồi tô lên hình.</span></div>
+        <div class="mrow" id="ppLabParts"></div>
+        <div class="mrow"><span class="lbl">Cách tô</span><button class="chip small" data-plt="brush">🖌 Bút tô</button><button class="chip small" data-plt="bucket" title="Chạm 1 lần: lấy cả mảng cùng màu, vd. cả ống tay áo">🪣 Chạm lấy cả mảng</button><button class="chip small" data-plt="lasso" title="Khoanh quanh một vùng để gán cả vùng cho mảnh đang chọn">➰ Khoanh vùng</button>
+          <span class="lbl">Cỡ bút</span><input type="range" id="ppLabSize" min="4" max="120" step="1"><label class="lbl"><input type="checkbox" id="ppLabSplit"> Chia tay/chân 2 đoạn</label></div>
+        <div class="mrow"><button class="chip small" id="ppLabUndo" title="Hoàn tác (hoặc chạm 2 ngón)">↶ Hoàn tác</button><button class="chip small" id="ppLabRedo">↷</button><button class="chip small" id="ppLabReset" title="Bỏ hết chỗ đã tô, quay về cách chia tự động">Bỏ chỗ đã tô</button><button class="chip small" id="ppLabBack" title="Quay lại kéo chấm khớp (chỗ đã tô vẫn giữ)">← Sửa khớp</button>
+          <span style="flex:1"></span><button class="chip small" id="ppLabCancel">Huỷ</button><button class="chip small on" id="ppLabCut">✓ Cắt thành mảnh</button></div>
+      </div></div>
       <div id="ppPoseSec">
         <div class="mrow tabs" data-tabs="pp"><button class="tabb" data-t="pose">🤸 Tạo dáng</button><button class="tabb" data-t="frames">🎞 Tạo frame</button><button class="tabb" data-t="parts">🧩 Mảnh & hình</button></div>
         <div class="mrow" data-tab="parts"><select id="ppList" class="chip small"></select><button class="chip small" id="ppRename">Đổi tên</button>
@@ -400,7 +409,8 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
         <div class="mrow" data-tab="pose"><button class="chip small" id="ppFlip">Lật</button><button class="chip small" id="ppHide">Ẩn</button><button class="chip small" id="ppReset">Về gốc mảnh</button><button class="chip small" id="ppResetAll">Về gốc tất cả</button>
         </div><div class="mrow" data-tab="parts">
           <button class="chip small" id="ppPatchBtn" title="Khoanh chỗ bị hở/đứt trên mảnh đang chọn để tự vẽ bù">🩹 Vá chỗ hở</button>
-          <button class="chip small" id="ppCutBtn" title="Khoanh để tách một phần của mảnh đang chọn thành mảnh mới">✂ Khoanh tách mảnh</button><label class="lbl"><input type="checkbox" id="ppKeep"> giữ chỗ cũ</label></div>
+          <button class="chip small" id="ppCutBtn" title="Khoanh để tách một phần của mảnh đang chọn thành mảnh mới">✂ Khoanh tách mảnh</button><label class="lbl"><input type="checkbox" id="ppKeep"> giữ chỗ cũ</label>
+          <button class="chip small" id="ppRecut" title="Mở lại bước tô vùng tay, chân, đầu để cắt lại cho chuẩn — tư thế đã làm vẫn giữ">🖌 Sửa lại vùng cắt</button></div>
         <div class="mrow" data-tab="pose"><span class="lbl"><b>Frame này:</b></span><button class="chip small" id="ppKeyBtn" title="Keyframe = tư thế bạn tự đặt. Frame tự động = app tự tính giữa 2 keyframe">🔑 Keyframe</button>
           <span class="lbl">Chuyển tới keyframe sau:</span><select id="ppEase" class="chip small"></select></div>
         <div class="mrow" data-tab="pose"><button class="chip small on" id="ppAssetBtn" title="Gắn mắt, miệng, biểu cảm, bàn tay có sẵn vào mảnh đang chọn">🎨 Kho mắt/miệng/tay</button><span class="lbl"><b>Tư thế:</b></span><select id="ppPoseSel" class="chip small"></select><button class="chip small on" id="ppPoseApply">Áp</button><button class="chip small" id="ppPoseSave">＋ Lưu tư thế này</button><button class="chip small" id="ppPoseDel" title="Xoá tư thế đã lưu">🗑</button><button class="chip small" id="ppFlipChar" title="Quay nhân vật sang hướng ngược lại">↔ Lật nhân vật</button></div>
@@ -1287,6 +1297,7 @@ async function applyEntry(e, key) {
 const entryAlive = e => e.partpix ? !!ppPart(e.pid) : e.add ? true : e.multi ? e.multi.some(entryAlive) : !!objByTarget(e.t);
 async function applyHistory(from, to, key) {
   if (stroke || action) return;
+  if (ppSetup && ppSetup.stage === 'paint') { ppLabHistory(key === 'before'); return; }
   if (floating) { cancelFloating(); updUndoBtns(); return; }
   let e;
   while ((e = from.pop())) { if (entryAlive(e)) break; undoBytes -= e.bytes; }
@@ -2324,6 +2335,11 @@ async function encodeHolder(h) { h.png = await (await toBlob(h.c)).arrayBuffer()
 function ppFitJoints(src, pts) {
   const J = rigAutoFit([{ id: 'img', pts }]); if (!J) return J;
   const d = src.getContext('2d').getImageData(0, 0, W, H).data, op = (x, y) => x >= 0 && y >= 0 && x < W && y < H && d[(Math.round(y) * W + Math.round(x)) * 4 + 3] > 100;
+  { // the body's centre line goes through the head (the box centre is pulled sideways by a raised or stretched arm)
+    const t0 = J.head.y, hg = Math.max(J.ftL.y, J.ftR.y) - t0; let sx = 0, c = 0, mn = W, mx = 0;
+    for (let y = Math.round(t0); y < t0 + 0.1 * hg; y += 2) for (let x = 0; x < W; x += 2) if (op(x, y)) { sx += x; c++; mn = Math.min(mn, x); mx = Math.max(mx, x); }
+    if (c > 20 && mx - mn < 0.35 * hg) { const dx = sx / c - J.root.x; for (const k of ['head', 'neck', 'chest', 'root', 'shL', 'shR', 'hpL', 'hpR']) J[k].x += dx; }
+  }
   const top = J.head.y, hgt = Math.max(J.ftL.y, J.ftR.y) - top, cx = J.root.x;
   let crotch = null;
   for (let y = Math.round(top + 0.42 * hgt); y < top + 0.85 * hgt; y += 2) {
@@ -2340,6 +2356,15 @@ function ppFitJoints(src, pts) {
       if (J.chest.y > J.root.y - 0.1 * hgt) J.chest.y = J.root.y - 0.25 * hgt;
     }
   }
+  { // neck = narrowest row under the head; the torso starts where the body gets wide again
+    const runW = y => { const x0 = Math.round(cx); if (!op(x0, y)) return 0; let a = x0, b = x0; while (op(a - 1, y) && x0 - a < W) a--; while (op(b + 1, y) && b - x0 < W) b++; return b - a; };
+    let ny = null, nw = Infinity; for (let y = Math.round(top + 0.1 * hgt); y < top + 0.33 * hgt; y += 2) { const w = runW(y); if (w < nw) { nw = w; ny = y; } }
+    if (ny != null) for (let y = ny; y < top + 0.42 * hgt; y += 2) if (runW(y) > Math.max(nw * 1.6, nw + 0.04 * hgt)) {
+      if (Math.abs(y - J.chest.y) < 0.12 * hgt) { J.chest.y = y; J.neck.y = Math.min(J.neck.y, (ny + y) / 2); for (const k of ['shL', 'shR']) J[k].y = Math.max(J[k].y, y + 0.03 * hgt); }
+      break;
+    }
+  }
+  try { ppFitLimbs(src, J); } catch (e) { console.warn(e); }
   // centre limb joints inside the limb (scan across the limb at each joint)
   const runMid = (x0, y0, horiz, range) => {   // horiz=true: scan a column (limb runs horizontally) ; else scan a row
     const at = t => horiz ? op(x0, t) : op(t, y0), c0 = horiz ? y0 : x0;
@@ -2350,11 +2375,11 @@ function ppFitJoints(src, pts) {
   for (const sd of ['L', 'R']) {
     const sh = J['sh' + sd], el = J['el' + sd], ha = J['ha' + sd], sgn = sd === 'L' ? -1 : 1;
     const horiz = Math.abs(ha.x - sh.x) > Math.abs(ha.y - sh.y);
-    for (const [jt, xoff] of [[el, 0], [ha, -sgn * 0.02 * hgt]]) { const m = runMid(jt.x + (horiz ? xoff : 0), jt.y, horiz, rng); if (m != null) { if (horiz) jt.y = m; else jt.x = m; } }
+    if (!(J._out && J._out[sd])) for (const [jt, xoff] of [[el, 0], [ha, -sgn * 0.02 * hgt]]) { const m = runMid(jt.x + (horiz ? xoff : 0), jt.y, horiz, rng); if (m != null) { if (horiz) jt.y = m; else jt.x = m; } }
     if (horiz) { const m = runMid(sh.x + sgn * 0.03 * hgt, sh.y, true, rng); if (m != null) sh.y = m; }
     for (const k of ['kn' + sd, 'ft' + sd]) { const jt = J[k]; const m = runMid(jt.x, jt.y - (k[0] === 'f' ? 0.02 * hgt : 0), false, rng); if (m != null) jt.x = m; }
   }
-  return J;
+  delete J._out; return J;
 }
 function ppStartSetup(img) {
   if (playing) stopPlay(); commitFloating(); motionClose(); rigClose();
@@ -2385,47 +2410,247 @@ const PP_GROUPS = split => split ? [
   { role: 'armL', name: 'Tay trái', bones: ['elL', 'haL'], pivot: 'shL', tip: 'elL', parent: 'torso', z: 5 },
   { role: 'armR', name: 'Tay phải', bones: ['elR', 'haR'], pivot: 'shR', tip: 'elR', parent: 'torso', z: 5 }
 ];
+/* --- part regions: auto split (geodesic, follows drawn outlines) + hand painting before the cut --- */
+const PP_R10 = ['torso', 'head', 'legL', 'shinL', 'legR', 'shinR', 'armL', 'foreL', 'armR', 'foreR'], PP_NONE = 10;
+const PP_RCOL = ['#ff2d55', '#ffd60a', '#0a84ff', '#64d2ff', '#34c759', '#b4f05a', '#ff8a00', '#a0522d', '#af52de', '#ff7fe0'];
+const PP_BONE_R = { chest: 0, shL: 0, shR: 0, hpL: 0, hpR: 0, neck: 1, head: 1, knL: 2, ftL: 3, knR: 4, ftR: 5, elL: 6, haL: 7, elR: 8, haR: 9 };
+const ppRoleMap = (r, split) => split || r < 0 || r >= PP_NONE ? r : r === 3 || r === 5 || r === 7 || r === 9 ? r - 1 : r;
+const ppInk = (d, i) => { const r = d[i * 4], g = d[i * 4 + 1], b = d[i * 4 + 2], mx = Math.max(r, g, b); return (255 - mx) - (mx - Math.min(r, g, b)) * 0.7 > 110; };
+// Each opaque pixel goes to the bone it can reach first by walking INSIDE the drawing; crossing a dark outline costs extra,
+// so a region stops at the line between an arm and the body instead of cutting straight through.
+function ppAutoLabels(src, J) {
+  const d = src.getContext('2d').getImageData(0, 0, W, H).data, n = W * H, lab = new Int8Array(n).fill(-1), dist = new Int32Array(n).fill(2147483647);
+  const bin = new Uint8Array(n), ink = new Uint8Array(n);
+  for (let i = 0; i < n; i++) if (d[i * 4 + 3] > 20) { bin[i] = 1; if (ppInk(d, i)) ink[i] = 1; }
+  const RB = RBONES.map(j => { const a = J[RP[j]], b = J[j], dx = b.x - a.x, dy = b.y - a.y; return { j, r: PP_BONE_R[j], a, dx, dy, L: dx * dx + dy * dy || 1 }; });
+  const byRole = {}; RB.forEach(s => (byRole[s.r] = byRole[s.r] || []).push(s));
+  const chestY = J.chest.y - 2;
+  const allowed = (r, x, y) => {
+    if (r === 0 && y < chestY) return false;                                       // torso never above the chest line
+    if (r === 2 || r === 4 || r === 6 || r === 8) {                                 // upper arm / thigh: not on the body side of its joint
+      const s = byRole[r][0]; if ((x - s.a.x) * s.dx + (y - s.a.y) * s.dy < 0.02 * s.L) return false;
+    }
+    return true;
+  };
+  const Q = []; const push = (i, dd, r) => { if (dd >= dist[i]) return; dist[i] = dd; lab[i] = r; (Q[dd] || (Q[dd] = [])).push(i); };
+  for (const s of RB) {
+    const len = Math.sqrt(s.L), steps = Math.max(2, Math.ceil(len)), t0 = s.j === 'neck' ? 0.3 : (s.r === 2 || s.r === 4 || s.r === 6 || s.r === 8) ? 0.06 : 0;
+    for (let k = Math.round(t0 * steps); k <= steps; k++) { const x = Math.round(s.a.x + s.dx * k / steps), y = Math.round(s.a.y + s.dy * k / steps); if (x < 0 || y < 0 || x >= W || y >= H) continue; const i = y * W + x; if (bin[i] && allowed(s.r, x, y)) push(i, 0, s.r); }
+  }
+  const NB = [[1, 0, 2], [-1, 0, 2], [0, 1, 2], [0, -1, 2], [1, 1, 3], [1, -1, 3], [-1, 1, 3], [-1, -1, 3]], INK = 14;
+  for (let dd = 0; dd < Q.length; dd++) {
+    const b = Q[dd]; if (!b) continue; Q[dd] = null;
+    for (const i of b) {
+      if (dist[i] !== dd) continue; const x = i % W, y = (i / W) | 0, r = lab[i];
+      for (const [ox, oy, c] of NB) {
+        const X = x + ox, Y = y + oy; if (X < 0 || Y < 0 || X >= W || Y >= H) continue; const k = Y * W + X;
+        if (!bin[k] || !allowed(r, X, Y)) continue; push(k, dd + c + (ink[k] ? INK : 0), r);
+      }
+    }
+  }
+  // pieces not connected to any bone (a detached hand, a loose hair strand): nearest bone in a straight line
+  for (let i = 0; i < n; i++) if (bin[i] && lab[i] < 0) {
+    const q = { x: i % W, y: (i / W) | 0 }; let best = 0, bd = Infinity;
+    for (const s of RB) { if (!allowed(s.r, q.x, q.y)) continue; const dd = segDist(q, s.a, { x: s.a.x + s.dx, y: s.a.y + s.dy }); if (dd < bd) { bd = dd; best = s.r; } }
+    lab[i] = best;
+  }
+  return lab;
+}
+// Joints from the drawing's shape: hands & feet are the tips farthest from the hips when walking inside the drawing.
+function ppFitLimbs(src, J) {
+  const S4 = 4, gw = Math.ceil(W / S4), gh = Math.ceil(H / S4), d = src.getContext('2d').getImageData(0, 0, W, H).data;
+  const occ = new Uint8Array(gw * gh);
+  for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) for (const [ox, oy] of [[1, 1], [3, 3], [1, 3], [3, 1]]) { const X = x * S4 + ox, Y = y * S4 + oy; if (X < W && Y < H && d[(Y * W + X) * 4 + 3] > 100) { occ[y * gw + x] = 1; break; } }
+  const bfs = (sx, sy) => {
+    const g = new Float32Array(gw * gh).fill(Infinity); let s = Math.round(sy / S4) * gw + Math.round(sx / S4);
+    if (!occ[s]) { let bd = Infinity; for (let i = 0; i < occ.length; i++) if (occ[i]) { const dd = Math.hypot(i % gw - sx / S4, ((i / gw) | 0) - sy / S4); if (dd < bd) { bd = dd; s = i; } } }
+    if (!occ[s]) return null; g[s] = 0; let cur = [s];
+    while (cur.length) { const nx = []; for (const i of cur) { const x = i % gw, y = (i / gw) | 0; for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + ox, Y = y + oy; if (X < 0 || Y < 0 || X >= gw || Y >= gh) continue; const k = Y * gw + X; if (occ[k] && g[k] > g[i] + 1) { g[k] = g[i] + 1; nx.push(k); } } } cur = nx; }
+    return g;
+  };
+  const g = bfs(J.root.x, J.root.y); if (!g) return;
+  const hgt = Math.max(80, Math.max(J.ftL.y, J.ftR.y) - J.head.y), hc = hgt / S4, tol = 0.12 * hc;
+  const sup = new Uint8Array(gw * gh), ext = [];
+  for (let k = 0; k < 7; k++) {
+    let best = -1, bg = 0.22 * hc; for (let i = 0; i < g.length; i++) if (!sup[i] && occ[i] && g[i] !== Infinity && g[i] > bg) { bg = g[i]; best = i; }
+    if (best < 0) break; ext.push({ x: (best % gw) * S4 + 2, y: ((best / gw) | 0) * S4 + 2, g: g[best], i: best });
+    const ge = bfs(best % gw * S4, ((best / gw) | 0) * S4); for (let i = 0; i < g.length; i++) if (ge && ge[i] < g[best] - g[i] + tol) sup[i] = 1;
+  }
+  const P = (x, y) => ({ x, y }), cx = J.root.x, used = new Set();
+  // along the walk from a tip back to the hips, the point whose distance-from-hips is `gt`
+  const pathTo = (e, gt, stop) => { const out = []; let i = e.i; for (;;) { const q = P((i % gw) * S4 + 2, ((i / gw) | 0) * S4 + 2); out.push(q); if (g[i] <= gt || (stop && Math.hypot(q.x - stop.x, q.y - stop.y) < 0.04 * hgt)) break; const x = i % gw, y = (i / gw) | 0; let nb = i; for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) { const X = x + ox, Y = y + oy; if (X < 0 || Y < 0 || X >= gw || Y >= gh) continue; const k = Y * gw + X; if (g[k] < g[nb]) nb = k; } if (nb === i) break; i = nb; } return out; };
+  // point at fraction f of the walk's length (0 = the tip)
+  const along = (pts, f) => { let L = 0; for (let k = 1; k < pts.length; k++) L += Math.hypot(pts[k].x - pts[k - 1].x, pts[k].y - pts[k - 1].y); let acc = 0; const T = f * L; for (let k = 1; k < pts.length; k++) { const s2 = Math.hypot(pts[k].x - pts[k - 1].x, pts[k].y - pts[k - 1].y); if (acc + s2 >= T) { const u = s2 ? (T - acc) / s2 : 0; return P(pts[k - 1].x + (pts[k].x - pts[k - 1].x) * u, pts[k - 1].y + (pts[k].y - pts[k - 1].y) * u); } acc += s2; } return pts[pts.length - 1]; };
+  const gAt = p => { const i = Math.round(p.y / S4) * gw + Math.round(p.x / S4); return g[i] === Infinity || g[i] == null ? null : g[i]; };
+  // feet: the two lowest tips below the hips
+  const feet = ext.filter(e => e.y > J.root.y + 0.15 * hgt).sort((a, b) => b.y - a.y).slice(0, 2);
+  if (feet.length === 2) {
+    feet.sort((a, b) => a.x - b.x);
+    [['L', feet[0]], ['R', feet[1]]].forEach(([sd, e]) => { used.add(e); const pts = pathTo(e, gAt(J['hp' + sd]) || 0, J['hp' + sd]); J['ft' + sd] = along(pts, 0.04); J['kn' + sd] = along(pts, 0.5); });
+  }
+  // an arm drawn against the body is not a "tip": find it as a long colour patch inside its own outline, beside the torso
+  let comps = null;
+  const ppFitArmByOutline = sd => {
+    if (!comps) {
+      const fill = new Uint8Array(gw * gh); for (let i = 0; i < fill.length; i++) if (occ[i]) { const X = (i % gw) * S4 + 2, Y = ((i / gw) | 0) * S4 + 2; if (X < W && Y < H && !ppInk(d, Y * W + X)) fill[i] = 1; }
+      const cid = new Int32Array(gw * gh).fill(-1); comps = [];
+      for (let i = 0; i < fill.length; i++) if (fill[i] && cid[i] < 0) {
+        const cm = { n: 0, sx: 0, x0: gw, x1: 0, y0: gh, y1: 0, cells: [] }, st = [i]; cid[i] = comps.length;
+        while (st.length) { const k = st.pop(), x = k % gw, y = (k / gw) | 0; cm.n++; cm.sx += x; cm.cells.push(k); if (x < cm.x0) cm.x0 = x; if (x > cm.x1) cm.x1 = x; if (y < cm.y0) cm.y0 = y; if (y > cm.y1) cm.y1 = y;
+          for (const q of [x > 0 ? k - 1 : -1, x < gw - 1 ? k + 1 : -1, y > 0 ? k - gw : -1, y < gh - 1 ? k + gw : -1]) if (q >= 0 && fill[q] && cid[q] < 0) { cid[q] = comps.length; st.push(q); } }
+        comps.push(cm);
+      }
+    }
+    const sgn = sd === 'L' ? -1 : 1, ch = J.chest.y / S4, H4 = hgt / S4, rootCell = Math.round(J.root.y / S4) * gw + Math.round(cx / S4);
+    const arm = comps.filter(cm => (cm.sx / cm.n * S4 - cx) * sgn > 0.1 * hgt && cm.y0 < ch + 0.2 * H4 && cm.y1 > ch + 0.15 * H4 && cm.y1 - cm.y0 >= 0.15 * H4 && (cm.x1 - cm.x0) < 0.6 * (cm.y1 - cm.y0) && !cm.cells.includes(rootCell)).sort((a, b) => b.n - a.n)[0];
+    if (!arm) return;
+    const rowMid = y => { let sx = 0, c = 0; for (const k of arm.cells) if (((k / gw) | 0) === y) { sx += k % gw; c++; } return c ? sx / c * S4 + 2 : null; };
+    const yt = arm.y0 + Math.max(1, Math.round(0.03 * H4)), yb = arm.y1, xt = rowMid(yt), xb = rowMid(yb); if (xt == null || xb == null) return;
+    let hand = P(xb, yb * S4 + 2);
+    const below = comps.filter(cm => cm !== arm && cm.y0 >= arm.y1 - 2 && cm.y0 <= arm.y1 + 4 && cm.x1 >= arm.x0 - 2 && cm.x0 <= arm.x1 + 2 && cm.y1 - cm.y0 < 0.15 * H4).sort((a, b) => b.n - a.n)[0];
+    if (below) { let sy = 0; below.cells.forEach(k => sy += (k / gw) | 0); hand = P(below.sx / below.n * S4 + 2, sy / below.n * S4 + 2); }
+    (J._out = J._out || {})[sd] = true; J['sh' + sd] = P(xt, yt * S4 + 2); J['ha' + sd] = hand; J['el' + sd] = P((xt + hand.x) / 2, (yt * S4 + 2 + hand.y) / 2);
+  };
+  // hands: tips left / right of the body, not the head, not the feet
+  for (const sd of ['L', 'R']) {
+    const sgn = sd === 'L' ? -1 : 1, sh = J['sh' + sd], gs = gAt(sh);
+    const c = ext.filter(e => !used.has(e) && (e.x - cx) * sgn > 0.06 * hgt && e.y < J.root.y + 0.3 * hgt && !(Math.abs(e.x - cx) < 0.12 * hgt && e.y < J.chest.y)).sort((a, b) => b.g - a.g)[0];
+    if (!c || gs == null || c.g - gs < 0.12 * hc) { ppFitArmByOutline(sd); continue; } used.add(c);
+    const pts = pathTo(c, gs, sh); J['ha' + sd] = along(pts, 0.1); J['el' + sd] = along(pts, 0.55);
+  }
+}
+let ppLabTool = 'brush', ppLabSize = 26, ppLabPick = 6, ppLastCut = null;
+function ppLabEff(st) { const n = W * H, out = new Int8Array(n); for (let i = 0; i < n; i++) out[i] = st.hand[i] >= 0 ? st.hand[i] : st.auto[i]; return out; }
+function ppLabBegin() {
+  const st = ppSetup; if (!st) return;
+  const pm = progress('Đang chia vùng tay, chân, đầu…');
+  setTimeout(() => {
+    try {
+      if (!st.auto || st.autoJ !== JSON.stringify(st.J)) { st.auto = ppAutoLabels(st.src, st.J); st.autoJ = JSON.stringify(st.J); }
+      if (!st.hand) st.hand = new Int8Array(W * H).fill(-1);
+      st.bin = new Uint8Array(W * H); const d = st.src.getContext('2d').getImageData(0, 0, W, H).data; for (let i = 0; i < W * H; i++) st.bin[i] = d[i * 4 + 3] > 20 ? 1 : 0;
+      st.stage = 'paint'; st.undo = st.undo || []; st.redo = st.redo || [];
+      if (!st.ov) st.ov = makeCanvas();
+      if (!st.gray) { st.gray = makeCanvas(); const gx = st.gray.getContext('2d'); gx.filter = 'grayscale(1) contrast(1.2)'; gx.drawImage(st.src, 0, 0); gx.filter = 'none'; }
+      ppLabOverlay(st);
+    } finally { pm.close(); }
+    ppSyncBar(); requestRender();
+    toast('Mỗi màu là một mảnh. Chỗ nào sai: chọn tên mảnh rồi tô lên hình', 4500);
+  }, 30);
+}
+function ppLabOverlay(st, x0 = 0, y0 = 0, x1 = W - 1, y1 = H - 1) {
+  x0 = Math.max(0, x0 | 0); y0 = Math.max(0, y0 | 0); x1 = Math.min(W - 1, x1 | 0); y1 = Math.min(H - 1, y1 | 0); if (x1 < x0 || y1 < y0) return;
+  const w = x1 - x0 + 1, h = y1 - y0 + 1, im = new ImageData(w, h), o = im.data, cols = PP_RCOL.map(hexToRgb);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = (y0 + y) * W + x0 + x; if (!st.bin[i]) continue; const k = (y * w + x) * 4;
+    const v = st.hand[i] >= 0 ? st.hand[i] : st.auto[i];
+    if (v === PP_NONE) { const s = ((x0 + x + y0 + y) >> 3) & 1; o[k] = o[k + 1] = o[k + 2] = s ? 40 : 200; o[k + 3] = 200; continue; }
+    const c = cols[ppRoleMap(v, st.split)] || cols[0]; o[k] = c[0]; o[k + 1] = c[1]; o[k + 2] = c[2]; o[k + 3] = 255;
+  }
+  st.ov.getContext('2d').putImageData(im, x0, y0);
+}
+function ppLabSnap(st) { st.undo.push(st.hand.slice()); if (st.undo.length > 15) st.undo.shift(); st.redo.length = 0; }
+function ppLabHistory(back) {
+  const st = ppSetup; const from = back ? st.undo : st.redo, to = back ? st.redo : st.undo;
+  if (!from.length) { toast(back ? 'Không còn gì để hoàn tác' : 'Không còn gì để làm lại'); return; }
+  to.push(st.hand); st.hand = from.pop(); ppLabOverlay(st); ppLabSyncBar(); requestRender(); toast(back ? 'Hoàn tác' : 'Làm lại', 700);
+}
+function ppLabDab(st, a, b) {
+  const r = ppLabSize, v = ppLabPick, x0 = Math.floor(Math.min(a.x, b.x) - r), y0 = Math.floor(Math.min(a.y, b.y) - r), x1 = Math.ceil(Math.max(a.x, b.x) + r), y1 = Math.ceil(Math.max(a.y, b.y) + r);
+  for (let y = Math.max(0, y0); y <= Math.min(H - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(W - 1, x1); x++) {
+    const i = y * W + x; if (!st.bin[i] || segDist({ x, y }, a, b) > r) continue; st.hand[i] = v;
+  }
+  ppLabOverlay(st, x0, y0, x1, y1); requestRender();
+}
+// tap = take the whole patch of similar colour under the finger (+ the outline around it)
+function ppLabBucket(st, p) {
+  const X = Math.round(p.x), Y = Math.round(p.y); if (X < 0 || Y < 0 || X >= W || Y >= H || !st.bin[Y * W + X]) { toast('Chạm lên hình nhân vật'); return false; }
+  const d = st.src.getContext('2d').getImageData(0, 0, W, H).data, s = Y * W + X, T = 48, seen = new Uint8Array(W * H);
+  const r0 = d[s * 4], g0 = d[s * 4 + 1], b0 = d[s * 4 + 2], seedInk = ppInk(d, s);
+  const ok = i => st.bin[i] && (seedInk ? ppInk(d, i) : !ppInk(d, i)) && Math.abs(d[i * 4] - r0) + Math.abs(d[i * 4 + 1] - g0) + Math.abs(d[i * 4 + 2] - b0) < T * 2;
+  let stack = [s], x0 = X, y0 = Y, x1 = X, y1 = Y, cnt = 0; seen[s] = 1; const got = [];
+  while (stack.length) { const i = stack.pop(); got.push(i); cnt++; const x = i % W, y = (i / W) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    for (const k of [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, y > 0 ? i - W : -1, y < H - 1 ? i + W : -1]) if (k >= 0 && !seen[k] && ok(k)) { seen[k] = 1; stack.push(k); } }
+  // grow a few pixels into the dark outline so the line goes with the patch
+  let front = got;
+  if (!seedInk) for (let it = 0; it < 6; it++) { const nx = []; for (const i of front) { const x = i % W; for (const k of [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, i - W, i + W]) if (k >= 0 && k < W * H && !seen[k] && st.bin[k] && ppInk(d, k)) { seen[k] = 1; nx.push(k); got.push(k); } } front = nx; }
+  for (const i of got) st.hand[i] = ppLabPick;
+  ppLabOverlay(st, x0 - 8, y0 - 8, x1 + 8, y1 + 8); requestRender(); return true;
+}
+function ppLabLasso(st, poly) {
+  if (!poly || poly.length < 3) return;
+  const m = makeCanvas(), mx = m.getContext('2d'); mx.beginPath(); mx.moveTo(poly[0].x, poly[0].y); poly.forEach(q => mx.lineTo(q.x, q.y)); mx.closePath(); mx.fillStyle = '#000'; mx.fill();
+  let x0 = W, y0 = H, x1 = 0, y1 = 0; poly.forEach(q => { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y); });
+  x0 = Math.max(0, Math.floor(x0)); y0 = Math.max(0, Math.floor(y0)); x1 = Math.min(W - 1, Math.ceil(x1)); y1 = Math.min(H - 1, Math.ceil(y1)); if (x1 < x0 || y1 < y0) return;
+  const a = mx.getImageData(x0, y0, x1 - x0 + 1, y1 - y0 + 1).data;
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = y * W + x; if (st.bin[i] && a[((y - y0) * (x1 - x0 + 1) + x - x0) * 4 + 3] > 127) st.hand[i] = ppLabPick; }
+  ppLabOverlay(st, x0, y0, x1, y1);
+}
+function ppLabStart(p, base) {
+  const st = ppSetup; ppLabSnap(st);
+  if (ppLabTool === 'bucket') { if (!ppLabBucket(st, p)) st.undo.pop(); ppLabSyncBar(); return; }
+  if (ppLabTool === 'lasso') { lasso = [p]; action = { ...base, kind: 'lablasso' }; requestRender(); return; }
+  action = { ...base, kind: 'labpaint', last: p }; ppLabDab(st, p, p);
+}
+function ppLabPartList(st) {
+  const gs = PP_GROUPS(st.split).map(g => [PP_R10.indexOf(g.role), g.name]);
+  return [...gs, [PP_NONE, '🚫 Bỏ đi (nền thừa)']];
+}
+function ppLabSyncBar() {
+  const st = ppSetup, list = ppLabPartList(st), box = $('#ppLabParts');
+  if (!list.some(([v]) => v === ppLabPick)) ppLabPick = list[0][0];
+  box.innerHTML = list.map(([v, name]) => `<button class="chip small ${v === ppLabPick ? 'on' : ''}" data-plp="${v}"><i style="background:${v === PP_NONE ? 'repeating-linear-gradient(45deg,#333 0 4px,#ccc 4px 8px)' : PP_RCOL[v]}"></i>${name}</button>`).join('');
+  box.querySelectorAll('[data-plp]').forEach(b => b.addEventListener('click', () => { ppLabPick = +b.dataset.plp; ppLabSyncBar(); }));
+  document.querySelectorAll('[data-plt]').forEach(b => b.classList.toggle('on', b.dataset.plt === ppLabTool));
+  $('#ppLabSize').value = ppLabSize; $('#ppLabSplit').checked = st.split;
+  $('#ppLabUndo').disabled = !(st.undo && st.undo.length); $('#ppLabRedo').disabled = !(st.redo && st.redo.length);
+}
 async function ppAutoCut(whole) {
   const st = ppSetup; if (!st) return;
   let addMode = false;
-  if (S.pp && S.pp.parts.length) {
+  const recut = st.recut && S.pp && st.recut.ids.some(id => ppPart(id)) ? st.recut : null;
+  if (S.pp && S.pp.parts.length && !recut) {
     const r = await modal({ title: 'Đã có nhân vật ghép', html: '<p><b>Thêm nhân vật</b>: giữ nhân vật cũ, thêm nhân vật này vào cùng cảnh.<br><b>Thay thế</b>: xoá nhân vật cũ và tư thế cũ.</p>', buttons: [{ label: 'Huỷ', value: null }, { label: 'Thay thế', value: 'replace', cls: 'danger' }, { label: '＋ Thêm nhân vật', value: 'add', primary: true }] });
     if (!r) return; addMode = r === 'add';
   }
   const pm = progress('Đang cắt mảnh…'); await new Promise(r => setTimeout(r, 30));
   const x = st.src.getContext('2d'), img = x.getImageData(0, 0, W, H), d = img.data, n = W * H;
+  // regions: what the user painted wins, else the automatic split (recomputed if the joints moved since)
+  if (!whole && (!st.auto || st.autoJ !== JSON.stringify(st.J))) { st.auto = ppAutoLabels(st.src, st.J); st.autoJ = JSON.stringify(st.J); }
+  const eff = whole ? null : st.hand ? ppLabEff(st) : st.auto;
   const bin = new Uint8Array(n); let bx0 = W, by0 = H, bx1 = 0, by1 = 0;
-  for (let i = 0; i < n; i++) if (d[i * 4 + 3] > 20) { bin[i] = 1; const xx = i % W, yy = (i / W) | 0; if (xx < bx0) bx0 = xx; if (xx > bx1) bx1 = xx; if (yy < by0) by0 = yy; if (yy > by1) by1 = yy; }
+  for (let i = 0; i < n; i++) if (d[i * 4 + 3] > 20 && !(eff && eff[i] === PP_NONE)) { bin[i] = 1; const xx = i % W, yy = (i / W) | 0; if (xx < bx0) bx0 = xx; if (xx > bx1) bx1 = xx; if (yy < by0) by0 = yy; if (yy > by1) by1 = yy; }
   let groups;
   if (whole) groups = [{ role: 'torso', name: 'Cả người', bones: RBONES, pivot: 'root', parent: null, z: 2 }];
   else groups = PP_GROUPS(st.split);
-  const boneToG = {}; groups.forEach((g, gi) => g.bones.forEach(b => boneToG[b] = gi));
-  const label = new Int8Array(n).fill(-1), J = st.J;
+  const label = new Int8Array(n).fill(-1), J = JSON.parse(JSON.stringify(st.J));
   const dt = chamferDT(bin, W, H);
   const hgt0 = Math.max(80, by1 - by0);
+  const gIndex = {}; groups.forEach((g, gi) => gIndex[g.role] = gi);
+  for (let i = 0; i < n; i++) if (bin[i]) { if (whole) label[i] = 0; else { const gi = gIndex[PP_R10[ppRoleMap(eff[i], st.split)]]; label[i] = gi == null ? 0 : gi; } }
+  // when a region was painted away from its joint, put the pivot where the piece really meets its parent (centre of the seam)
+  if (!whole) for (let gi = 0; gi < groups.length; gi++) {
+    const g = groups[gi]; if (!g.parent) continue; const par = gIndex[g.parent];
+    const seam = [], pv = J[g.pivot];
+    for (let y = Math.max(1, by0); y <= Math.min(H - 2, by1); y++) for (let xx = Math.max(1, bx0); xx <= Math.min(W - 2, bx1); xx++) { const i = y * W + xx; if (label[i] === gi && (label[i - 1] === par || label[i + 1] === par || label[i - W] === par || label[i + W] === par)) seam.push(xx, y); }
+    if (seam.length < 10) continue;
+    // the part of the seam nearest the old joint (a long seam, e.g. an arm drawn against the body, pivots at its top end)
+    let nx = 0, ny = 0, nd = Infinity; for (let k = 0; k < seam.length; k += 2) { const dd = Math.hypot(seam[k] - pv.x, seam[k + 1] - pv.y); if (dd < nd) { nd = dd; nx = seam[k]; ny = seam[k + 1]; } }
+    const rr = Math.max(8, 0.05 * hgt0); let sx = 0, sy = 0, c = 0; for (let k = 0; k < seam.length; k += 2) if (Math.hypot(seam[k] - nx, seam[k + 1] - ny) <= rr) { sx += seam[k]; sy += seam[k + 1]; c++; }
+    const bc = { x: sx / c, y: sy / c };
+    if (Math.hypot(bc.x - pv.x, bc.y - pv.y) <= 0.035 * hgt0) continue;
+    J[g.pivot] = bc;
+    let far = null, fd = -1; for (let y = by0; y <= by1; y++) for (let xx = bx0; xx <= bx1; xx++) { const i = y * W + xx; if (label[i] === gi) { const dd = (xx - bc.x) ** 2 + (y - bc.y) ** 2; if (dd > fd) { fd = dd; far = { x: xx, y }; } } }
+    if (!far || g.role === 'head') continue;
+    const end = { x: bc.x + (far.x - bc.x) * 0.9, y: bc.y + (far.y - bc.y) * 0.9 }, bn = g.bones;
+    J[bn[bn.length - 1]] = end; if (bn.length === 2) J[bn[0]] = { x: (bc.x + end.x) / 2, y: (bc.y + end.y) / 2 };
+  }
   const hw = {};
   for (const j of RBONES) {
     const a = J[RP[j]], b = J[j], vals = [];
     for (let t = 0.3; t <= 0.71; t += 0.1) { const x = Math.round(a.x + (b.x - a.x) * t), y = Math.round(a.y + (b.y - a.y) * t); if (x >= 0 && y >= 0 && x < W && y < H && bin[y * W + x]) vals.push(dt[y * W + x]); }
     vals.sort((p, q) => p - q); hw[j] = vals.length ? vals[vals.length >> 1] : 0.03 * hgt0;
   }
-  const LIMB = new Set(['elL', 'elR', 'haL', 'haR', 'knL', 'knR', 'ftL', 'ftR']);
-  const segs = RBONES.map(j => ({ j, a: J[RP[j]], b: J[j], g: boneToG[j] }));
-  for (let y = by0; y <= by1; y++) for (let xx = bx0; xx <= bx1; xx++) {
-    const i = y * W + xx; if (!bin[i]) continue;
-    let best = -1, bd = Infinity; const q = { x: xx, y };
-    for (const s of segs) {
-      if (s.g == null) continue;
-      if ((s.j === 'chest' || s.j === 'shL' || s.j === 'shR') && !whole && y < J.chest.y - 2) continue;
-      const dx = s.b.x - s.a.x, dy = s.b.y - s.a.y, L = dx * dx + dy * dy, t = L ? ((xx - s.a.x) * dx + (y - s.a.y) * dy) / L : 0;
-      if (RLIMB_ROOT.has(s.j) && t < 0.02) continue;
-      const dd = segDist(q, s.a, s.b);
-      if (!whole && LIMB.has(s.j) && t < 0.6 && dd > hw[s.j] * 1.5 + 4) continue;
-      if (dd < bd) { bd = dd; best = s.g; }
-    }
-    label[i] = best < 0 ? 0 : best;
-  }
-  const gIndex = {}; groups.forEach((g, gi) => gIndex[g.role] = gi);
   const capR = groups.map(g => { if (whole || !g.parent) return 0; return Math.max(10, Math.min(0.08 * hgt0, (hw[g.tip] || 0.025 * hgt0) * 1.3)); });
   // descendants of each group (for joint fill: the child and everything hanging off it)
   const desc = groups.map((g, gi) => { const s = new Set([gi]); let grew = true; while (grew) { grew = false; groups.forEach((h, hi) => { if (h.parent && s.has(gIndex[h.parent]) && !s.has(hi)) { s.add(hi); grew = true; } }); } return s; });
@@ -2491,10 +2716,23 @@ async function ppAutoCut(whole) {
   }
   ppRenormZ0(parts);
   for (const p of parts) await encodePart(p);
-  if (addMode) {
+  if (recut) {
+    // cut again after fixing regions: swap this character's pieces, keep its poses, other characters and attached extras
+    const old = S.pp.parts.filter(q => recut.ids.includes(q.id)), oldIds = new Set(old.map(q => q.id));
+    const zb = old.length ? Math.min(...old.map(q => q.z)) : 0, suf = ((old.find(q => !q.parent) || old[0] || { name: '' }).name.match(/ \(NV\d+\)$/) || [''])[0];
+    parts.forEach(q => { q.z = zb + q.z * 0.01; q.name += suf; });
+    const map = {}; for (const [role, oid] of Object.entries(recut.roleId)) map[oid] = idOf[role] || idOf[PP_R10[ppRoleMap(PP_R10.indexOf(role), st.split)]] || idOf.torso;
+    S.pp.parts.forEach(q => { if (!oldIds.has(q.id) && oldIds.has(q.parent)) q.parent = map[q.parent] || null; });
+    const carry = {}; for (const [role, oid] of Object.entries(recut.roleId)) if (idOf[role]) carry[oid] = idOf[role];
+    S.frames.forEach(f => { if (!f.pp) return; for (const oid of oldIds) { const q = f.pp[oid]; delete f.pp[oid]; if (q && carry[oid]) f.pp[carry[oid]] = q; } f.ver++; });
+    S.pp.parts = S.pp.parts.filter(q => !oldIds.has(q.id)); S.pp.parts.push(...parts); ppRenormZ();
+  } else if (addMode) {
     const zb = Math.max(...S.pp.parts.map(q => q.z)) + 1, nv = S.pp.parts.filter(q => !q.parent).length + 1;
     parts.forEach(q => { q.z += zb; q.name += ` (NV${nv})`; }); S.pp.parts.push(...parts);
   } else { S.pp = { parts }; S.frames.forEach(f => { f.pp = {}; f.ppKey = undefined; }); }
+  // remember how this character was cut, so "Sửa lại vùng cắt" can reopen it (this session only)
+  const roleId = {}; parts.forEach(q => { if (q.role) roleId[q.role] = q.id; });
+  ppLastCut = whole ? null : { src: st.src, J: st.J, split: st.split, auto: st.auto, autoJ: st.autoJ, hand: st.hand || null, ids: parts.map(q => q.id), roleId };
   ppSetup = null; ppSel = parts[0] ? parts[0].id : null; pm.close();
   S.showPP = true; updateToggles(); openTab('pp', 'pose'); ppSyncBar(); S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); scheduleSave(); requestRender();
   toast(whole ? 'Đã tạo 1 mảnh — dùng ✂ Khoanh cắt để tách tay, chân…' : `Đã cắt ${parts.length} mảnh — chạm mảnh rồi kéo để xoay quanh khớp`, 4000);
@@ -2699,7 +2937,7 @@ function ppSyncBar() {
   $('#ppSetupSec').hidden = !ppSetup; $('#ppPoseSec').hidden = !!ppSetup || !S.pp;
   $('#ppEmpty').hidden = !!ppSetup || !!S.pp;
   document.querySelectorAll('[data-ppf]').forEach(b => b.classList.toggle('on', b.dataset.ppf === ppFillMode));
-  if (ppSetup) { $('#ppSplit').checked = ppSetup.split; return; }
+  if (ppSetup) { $('#ppSplit').checked = ppSetup.split; const lab = ppSetup.stage === 'paint'; $('#ppJointSec').hidden = lab; $('#ppLabSec').hidden = !lab; if (lab) ppLabSyncBar(); return; }
   if (!S.pp) return;
   const sel = ppPart(ppSel), list = $('#ppList');
   list.innerHTML = S.pp.parts.slice().sort((a, b) => b.z - a.z).map(p => `<option value="${p.id}" ${p.id === ppSel ? 'selected' : ''}>${p.name.replace(/</g, '&lt;')}</option>`).join('') + (sel ? '' : '<option value="" selected>— chạm chọn mảnh —</option>');
@@ -2718,6 +2956,7 @@ function ppSyncBar() {
   { const f = curFrame(), k = ppIsKey(f); const kb = $('#ppKeyBtn'); kb.textContent = k ? '🔑 Keyframe' : '∿ Tự động (bấm để khoá)'; kb.classList.toggle('on', k);
     $('#ppEase').innerHTML = Object.entries(EASE_LABEL).map(([k2, v]) => `<option value="${k2}" ${(f.ppEase || 'inout') === k2 ? 'selected' : ''}>${v}</option>`).join(''); $('#ppEase').disabled = !k;
     const ps = $('#ppPoseSel'), cur = ps.value; ps.innerHTML = ppPoseList().map(o => `<option value="${o.id}">${o.name.replace(/</g, '&lt;')}</option>`).join(''); if (cur) ps.value = cur; }
+  $('#ppRecut').disabled = !(ppLastCut && ppLastCut.ids.some(id => ppPart(id)));
   $('#ppCutBtn').classList.toggle('on', ppCutMode); $('#ppPatchBtn').classList.toggle('on', ppPatchMode);
   document.querySelectorAll('[data-ppp]').forEach(b => b.classList.toggle('on', b.dataset.ppp === ppPreset));
   document.querySelectorAll('[data-ppdir]').forEach(b => b.classList.toggle('on', +b.dataset.ppdir === ppDir));
@@ -2725,6 +2964,7 @@ function ppSyncBar() {
 function renderPP(c, f, px) {
   if (ppSetup) {
     c.drawImage(ppSetup.src, 0, 0);
+    if (ppSetup.stage === 'paint') { c.save(); if (ppSetup.gray) c.drawImage(ppSetup.gray, 0, 0); c.globalAlpha = 0.62; c.drawImage(ppSetup.ov, 0, 0); c.restore(); return; }
     const J = ppSetup.J; c.save(); c.lineCap = 'round';
     for (const j of RBONES) { const p = RP[j]; c.strokeStyle = /L$/.test(j) ? '#ffb21e' : /R$/.test(j) ? '#00c7be' : '#ff3b9a'; c.lineWidth = 5 * px; c.beginPath(); c.moveTo(J[p].x, J[p].y); c.lineTo(J[j].x, J[j].y); c.stroke(); }
     for (const j of RJ) { c.beginPath(); c.arc(J[j].x, J[j].y, 8 * px, 0, Math.PI * 2); c.fillStyle = '#fff'; c.fill(); c.lineWidth = 2 * px; c.strokeStyle = '#222'; c.stroke(); }
@@ -2738,7 +2978,22 @@ function renderPP(c, f, px) {
   const wp = mApply(M[sel.id], sel.px, sel.py);
   c.save(); c.beginPath(); c.arc(wp.x, wp.y, (ppDrag === 'pivot' ? 11 : 8) * px, 0, Math.PI * 2); c.fillStyle = '#ff3b9a'; c.fill(); c.lineWidth = 2 * px; c.strokeStyle = '#fff'; c.stroke(); c.restore();
 }
-$('#ppCutAuto').addEventListener('click', () => ppAutoCut(false));
+$('#ppCutAuto').addEventListener('click', ppLabBegin);
+$('#ppLabCut').addEventListener('click', () => ppAutoCut(false));
+$('#ppLabBack').addEventListener('click', () => { if (!ppSetup) return; ppSetup.stage = 'joints'; ppSyncBar(); requestRender(); toast('Kéo chấm khớp, rồi bấm ✂ Cắt tự động để xem lại vùng (chỗ đã tô vẫn giữ)', 3500); });
+$('#ppLabCancel').addEventListener('click', () => { ppSetup = null; ppSyncBar(); requestRender(); });
+$('#ppLabReset').addEventListener('click', () => { const st = ppSetup; if (!st || !st.hand) return; ppLabSnap(st); st.hand.fill(-1); ppLabOverlay(st); ppLabSyncBar(); requestRender(); });
+$('#ppLabUndo').addEventListener('click', () => ppSetup && ppLabHistory(true));
+$('#ppLabRedo').addEventListener('click', () => ppSetup && ppLabHistory(false));
+$('#ppLabSize').addEventListener('input', e => { ppLabSize = +e.target.value; });
+$('#ppLabSplit').addEventListener('change', e => { if (!ppSetup) return; ppSetup.split = e.target.checked; ppLabPick = ppRoleMap(ppLabPick, ppSetup.split); ppLabOverlay(ppSetup); ppSyncBar(); requestRender(); });
+document.querySelectorAll('[data-plt]').forEach(b => b.addEventListener('click', () => { ppLabTool = b.dataset.plt; ppSyncBar(); if (ppLabTool === 'bucket') toast('Chạm lên một mảng màu (vd. ống tay áo) để gán cả mảng', 3000); }));
+$('#ppRecut').addEventListener('click', () => {
+  const L = ppLastCut; if (!L || !L.ids.some(id => ppPart(id))) { toast('Chỉ sửa lại được nhân vật vừa cắt trong lần mở app này'); return; }
+  if (playing) stopPlay();
+  ppSetup = { src: L.src, J: JSON.parse(JSON.stringify(L.J)), split: L.split, auto: L.auto, autoJ: L.autoJ, hand: L.hand ? L.hand.slice() : null, recut: { ids: L.ids, roleId: L.roleId } };
+  ppLabBegin();
+});
 $('#ppCutWhole').addEventListener('click', () => ppAutoCut(true));
 $('#ppSplit').addEventListener('change', e => { if (ppSetup) ppSetup.split = e.target.checked; });
 $('#ppRefit').addEventListener('click', () => { if (!ppSetup) return; const d = ppSetup.src.getContext('2d').getImageData(0, 0, W, H).data, pts = []; for (let y = 0; y < H; y += 4) for (let x = 0; x < W; x += 4) if (d[(y * W + x) * 4 + 3] > 100) pts.push({ x, y }); ppSetup.J = ppFitJoints(ppSetup.src, pts); requestRender(); });
@@ -3873,6 +4128,7 @@ function startAction(e, isTouch) {
   const rect = view.getBoundingClientRect();
   const p = toDoc(e, rect);
   const base = { id: e.pointerId, touch: isTouch, t0: performance.now(), rect };
+  if (ppSetup && ppSetup.stage === 'paint') { ppLabStart(p, base); return; }
   if (ppSetup) {
     const J = ppSetup.J, tol = 24 * DPR / vs; let best = null, bd = Infinity;
     for (const j of RJ) { const d = Math.hypot(J[j].x - p.x, J[j].y - p.y); if (d < bd) { bd = d; best = j; } }
@@ -3923,6 +4179,11 @@ function moveAction(e) {
     for (const ev of list) vecMove(toDoc(ev, action.rect));
   } else if (action.kind === 'fxmove') {
     const p = toDoc(e, action.rect); action.t.x += p.x - action.last.x; action.t.y += p.y - action.last.y; action.last = p; requestRender();
+  } else if (action.kind === 'labpaint') {
+    if (ppSetup) for (const ev of list) { const p = toDoc(ev, action.rect); ppLabDab(ppSetup, action.last, p); action.last = p; }
+  } else if (action.kind === 'lablasso') {
+    const p = toDoc(e, action.rect), l = lasso[lasso.length - 1];
+    if (Math.hypot(p.x - l.x, p.y - l.y) > 3 / vs) { lasso.push(p); requestRender(); }
   } else if (action.kind === 'ppjoint') {
     const p = toDoc(e, action.rect), mv = (j, dx, dy) => { ppSetup.J[j].x += dx; ppSetup.J[j].y += dy; (RKIDS[j] || []).forEach(k => mv(k, dx, dy)); };
     mv(action.j, p.x - action.last.x, p.y - action.last.y); action.last = p; requestRender();
@@ -3944,6 +4205,8 @@ function endAction() {
   else if (action.kind === 'fxmove') { const f = curFrame(); pushEntry({ t: targetOf(f), fxe: true, before: action.before, after: fxState(f), bytes: 400 }); f.ver++; scheduleSave(); }
   else if (action.kind.startsWith('pp') && action.kind !== 'ppjoint') ppEnd();
   else if (action.kind.startsWith('v')) vecEnd();
+  else if (action.kind === 'lablasso') { const poly = lasso; lasso = null; if (ppSetup) { ppLabLasso(ppSetup, poly); ppLabSyncBar(); } requestRender(); }
+  else if (action.kind === 'labpaint') { if (ppSetup) ppLabSyncBar(); }
   else if (action.kind === 'lasso') { const poly = lasso; lasso = null; if (poly && poly.length > 2) liftSelection(poly); requestRender(); updUndoBtns(); }
   action = null;
 }
@@ -3954,6 +4217,7 @@ function abortAction() {
   if (action.kind === 'vbend' || action.kind === 'vmove' || action.kind === 'verase' || action.kind === 'vmulti') { curFrame().vec = action.before; if (action.kind === 'vmulti' && action.polyBase) vpoly = action.polyBase; requestRender(); }
   if (action.kind === 'pprot' || action.kind === 'ppmove' || action.kind === 'ppik') { ppSetState(curFrame(), action.before); requestRender(); }
   if (action.kind === 'ppcut' || action.kind === 'pppatch') { lasso = null; requestRender(); }
+  if ((action.kind === 'labpaint' || action.kind === 'lablasso') && ppSetup) { lasso = null; if (ppSetup.undo.length) ppSetup.hand = ppSetup.undo.pop(); ppLabOverlay(ppSetup); requestRender(); }
   action = null;
 }
 function gestureBase() {
@@ -5228,7 +5492,7 @@ async function wizard() {
   const step = (n, title, done, desc, btns) => `<div class="wstep ${done ? 'done' : ''}"><h4>${done ? '✅' : n + '.'} ${title}</h4><div class="lbl" style="font-size:13px;line-height:1.45">${desc}</div><div class="wb">${btns}</div></div>`;
   const B = (id, label, primary) => `<button class="btn ${primary ? 'primary' : ''}" data-wz="${id}">${label}</button>`;
   const html = `<p style="margin-top:0">Làm theo 5 bước, mỗi bước bấm 1 nút. Mở lại bảng này bất cứ lúc nào bằng nút <b>🚀</b> ở thanh trên.</p><div id="wizSteps">
-  ${step(1, 'Đưa nhân vật vào', hasChar, 'Tạo ảnh nhân vật bằng AI (đứng thẳng, nhìn thẳng, tay hơi dang, nền trơn) rồi nhập vào. App tự xoá nền, tự đặt khớp — bạn chỉ cần kéo chỉnh chấm trắng rồi bấm <b>✂ Cắt tự động</b>.', B('char', '📷 Chọn ảnh nhân vật', !hasChar))}
+  ${step(1, 'Đưa nhân vật vào', hasChar, 'Tạo ảnh nhân vật bằng AI (đứng thẳng, nhìn thẳng, tay hơi dang, nền trơn) rồi nhập vào. App tự xoá nền, tự đặt khớp — bạn chỉ cần kéo chỉnh chấm trắng rồi bấm <b>✂ Cắt tự động</b>. App tô mỗi phần một màu: chỗ nào chia sai (tay dính vào thân…) thì chọn tên phần rồi tô lại, xong bấm <b>✓ Cắt thành mảnh</b>.', B('char', '📷 Chọn ảnh nhân vật', !hasChar))}
   ${step(2, 'Cho nhân vật cử động', hasAnim, 'Chọn một hành động có sẵn — app tự tạo các frame. Muốn tự tạo dáng: dùng tab 🤸 Tạo dáng, kéo tay chân, rồi 🎞 Tạo frame giữa.', [['walk', '🚶 Đi bộ'], ['run', '🏃 Chạy'], ['wave', '👋 Vẫy tay'], ['jump', '🦘 Nhảy'], ['cheer', '🙌 Ăn mừng'], ['nod', '🙂 Gật đầu'], ['talk', '🗣 Nói']].map(([k, l]) => B('act:' + k, l)).join('') + B('pose', '🤸 Tự tạo dáng'))}
   ${step(3, 'Thêm chữ, camera, âm thanh', hasFx, 'Chữ kiểu truyện tranh, zoom vào mặt, rung khung, nhạc nền, lồng tiếng — app tự nhép miệng theo giọng.', B('text', '🔤 Thêm chữ') + B('zoom', '🎥 Zoom vào') + B('music', '🎵 Nhạc nền') + B('voice', '🎤 Lồng tiếng') + B('sfx', '🔊 Âm thanh vui'))}
   ${step(4, 'Xem lại', false, 'Bấm Phát để xem. Sửa frame nào thì chạm frame đó ở dưới.', B('play', '▶ Phát thử'))}
