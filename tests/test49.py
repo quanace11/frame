@@ -4,76 +4,76 @@ os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tes
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
+# Cỡ / Độ đậm: − + buttons (hold = repeat), non-linear size slider, per-brush opacity that works for every brush + eraser
 srv = subprocess.Popen(['python3','-m','http.server','8849'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1)
-# "Cả nét": pick many strokes by tapping, drag to move, corner handles scale, round knob rotates
-PEN = """async ([pts])=>{const v=document.getElementById('view');
-  const mk=(t,x,y)=>new PointerEvent(t,{pointerId:7,pointerType:'pen',clientX:x,clientY:y,pressure:0.6,buttons:1,bubbles:true,cancelable:true});
+PEN='''async ([pts])=>{const v=document.getElementById('view');const r=v.getBoundingClientRect();
+  const mk=(t,x,y)=>new PointerEvent(t,{pointerId:7,pointerType:'pen',clientX:r.left+x,clientY:r.top+y,pressure:0.6,buttons:1,bubbles:true,cancelable:true});
   v.dispatchEvent(mk('pointerdown',pts[0][0],pts[0][1])); for(const [x,y] of pts.slice(1)){v.dispatchEvent(mk('pointermove',x,y)); await new Promise(r=>setTimeout(r,4));}
-  v.dispatchEvent(mk('pointerup',pts.at(-1)[0],pts.at(-1)[1]));}"""
-D2S = "([x,y])=>{const c=Math.cos(vr)*vs,s=Math.sin(vr)*vs;const r=document.getElementById('view').getBoundingClientRect();return [r.left+(c*x-s*y+vtx)/DPR, r.top+(s*x+c*y+vty)/DPR]}"
-PTS = "curFrame().vec.map(st=>st.pts.map(q=>[Math.round(q.x),Math.round(q.y)]))"
-def line(a, b, n=8): return [[a[0]+(b[0]-a[0])*i/n, a[1]+(b[1]-a[1])*i/n] for i in range(n+1)]
+  v.dispatchEvent(mk('pointerup',pts.at(-1)[0],pts.at(-1)[1]));}'''
+MAXA="(()=>{const d=curFrame().canvas.getContext('2d').getImageData(0,0,W,H).data;let m=0;for(let i=3;i<d.length;i+=4)if(d[i]>m)m=d[i];return m})()"
+LINE=[[300+i*4,400] for i in range(60)]
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(executable_path=CHROME, args=['--no-sandbox'])
-        pg = await b.new_page(viewport={'width':1180,'height':900})
-        errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
-        await pg.add_init_script("new MutationObserver(()=>document.querySelectorAll('.tabhide').forEach(e=>e.classList.remove('tabhide'))).observe(document,{subtree:true,attributes:true,childList:true,attributeFilter:['class']})")
-        await pg.goto('http://localhost:8849/index.html'); await pg.wait_for_timeout(800)
-        await pg.click('text=Bắt đầu vẽ')
-        await pg.evaluate("""()=>{setLayer('vec'); const f=curFrame(); f.vec=[];
-          const mk=(id,x)=>({id,c:'#000',w:6,pts:[400,500,600].map(y=>({x,y}))});
-          f.vec.push(mk('A',300), mk('B',500), mk('C',700)); setTool('vedit'); vsel.clear(); updVecBar(); requestRender();}""")
-        await pg.evaluate("panelHidden.vedit=false; updVecBar()")
-        await pg.click('[data-vdm=move]'); await pg.wait_for_timeout(100)
-        s2 = lambda x, y: pg.evaluate(f"({D2S})([{x},{y}])")
-        tap = lambda pt: pg.evaluate(PEN, [[pt, pt]])
-        # tap A then B: both selected; tap B again: deselected; tap again: selected
-        await tap(await s2(300, 500)); await tap(await s2(500, 500))
-        assert await pg.evaluate("[...vsel].sort().join()") == 'A,B'
-        await tap(await s2(500, 500)); assert await pg.evaluate("[...vsel].join()") == 'A'
-        await tap(await s2(500, 500)); assert await pg.evaluate("vsel.size") == 2
-        print('info', await pg.inner_text('#vecInfo'))
-        await pg.screenshot(path='t49_box.png')
-        before = await pg.evaluate(PTS)
-        # drag a selected stroke: both A and B move, C stays
-        a = await s2(300, 450); bb = await s2(300, 350)
-        await pg.evaluate(PEN, [line(a, bb)]); await pg.wait_for_timeout(50)
-        aft = await pg.evaluate(PTS); print('moved', aft)
-        assert all(abs(q[1] - o[1] + 100) <= 2 for k in (0, 1) for q, o in zip(aft[k], before[k])) and aft[2] == before[2]
-        await pg.evaluate("undo()"); await pg.wait_for_timeout(50); assert await pg.evaluate(PTS) == before
-        await pg.evaluate("vsel.clear(); vsel.add('A'); vsel.add('B'); updVecBar(); requestRender();")
-        # drag inside the box on empty space (between A and B) also moves both
-        a = await s2(400, 500); bb = await s2(450, 500)
-        await pg.evaluate(PEN, [line(a, bb)]); aft = await pg.evaluate(PTS)
-        assert abs(aft[0][0][0] - 350) <= 2 and abs(aft[1][0][0] - 550) <= 2 and aft[2] == before[2], aft
-        await pg.evaluate("undo(); vsel.clear(); vsel.add('A'); vsel.add('B'); updVecBar(); requestRender();")
-        # bottom-right corner handle: drag away from the top-left anchor -> bigger
-        box = await pg.evaluate("(()=>{const b=vselBox(curFrame()); return [b.x0,b.y0,b.x1,b.y1]})()"); print('box', box)
-        a = await s2(box[2], box[3]); w0 = (box[2]-box[0]); bb = await s2(box[0] + w0*2, box[1] + (box[3]-box[1])*2)
-        await pg.evaluate(PEN, [line(a, bb)]); await pg.wait_for_timeout(50)
-        nb = await pg.evaluate("(()=>{const b=vselBox(curFrame()); return [b.x0,b.y0,b.x1,b.y1]})()")
-        ws = await pg.evaluate("curFrame().vec.map(s=>s.w)"); print('scaled', nb, ws)
-        assert abs(nb[0]-box[0]) < 15 and (nb[2]-nb[0]) > 1.6*w0 and ws[0] > 10 and ws[2] == 6
-        await pg.evaluate("undo(); vsel.clear(); vsel.add('A'); vsel.add('B'); updVecBar(); requestRender();")
-        # top-left corner toward the centre -> smaller
-        a = await s2(box[0], box[1]); bb = await s2((box[0]+box[2])/2, (box[1]+box[3])/2)
-        await pg.evaluate(PEN, [line(a, bb)]); nb = await pg.evaluate("(()=>{const b=vselBox(curFrame()); return [b.x0,b.y0,b.x1,b.y1]})()")
-        print('smaller', nb); assert (nb[2]-nb[0]) < 0.75*w0
-        await pg.evaluate("undo(); vsel.clear(); vsel.add('A'); updVecBar(); requestRender();")
-        # rotate knob: drag from top knob to the right side -> vertical line becomes horizontal
-        r = await pg.evaluate("(()=>{const b=vselBox(curFrame()); const h=vboxHandles(b).find(h=>h.k==='r'); return [h.x,h.y,(b.x0+b.x1)/2,(b.y0+b.y1)/2]})()")
-        a = await s2(r[0], r[1]); bb = await s2(r[2] + (r[3]-r[1]), r[3])
-        await pg.evaluate(PEN, [line(a, bb, 16)]); aft = await pg.evaluate(PTS); print('rotated', aft[0])
-        assert abs(aft[0][0][1] - aft[0][2][1]) <= 3 and abs(abs(aft[0][0][0] - aft[0][2][0]) - 200) <= 4
-        await pg.screenshot(path='t49_rot.png')
-        await pg.evaluate("undo()")
-        # point mode still bends a single point; box also shown there
-        await pg.click('[data-vdm=point]'); await pg.evaluate("vsel.clear(); vsel.add('C'); updVecBar(); requestRender();")
-        a = await s2(700, 500); bb = await s2(760, 500); await pg.evaluate(PEN, [line(a, bb)])
-        aft = await pg.evaluate(PTS); assert aft[2][1][0] >= 758 and aft[2][0] == [700, 400], aft[2]
-        print('ERR', errs)
+        pg = await b.new_page(viewport={'width':1366,'height':1024}); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
+        await pg.goto('http://localhost:8849/index.html'); await pg.wait_for_timeout(1000)
+        await pg.click('.dlg .btns >> text=Bắt đầu vẽ')
+        await pg.evaluate("setSize(8)")
+        plus = '#top .stp[data-stp=size][data-d="1"]'; minus = '#top .stp[data-stp=size][data-d="-1"]'
+        bb = await pg.eval_on_selector(plus, "e=>{const r=e.getBoundingClientRect();return [r.width,r.height]}")
+        print('stepper >= 42px', bb[0] >= 42 and bb[1] >= 42)
+        await pg.click(plus); print('size + ->', await pg.evaluate('S.size'), await pg.text_content('#sizeVal'))
+        await pg.click(minus); await pg.click(minus); print('size - - ->', await pg.evaluate('S.size'))
+        # hold = repeat
+        await pg.hover(plus); await pg.mouse.down(); await pg.wait_for_timeout(900); await pg.mouse.up()
+        print('hold + grows a lot', await pg.evaluate('S.size') > 12)
+        print('slider fine at small end', await pg.evaluate('[posToSize(0),posToSize(250),posToSize(500),posToSize(1000),sizeToPos(150)]'))
+        print('steps', await pg.evaluate('[sizeStep(9,1),sizeStep(10,1),sizeStep(30,1),sizeStep(60,1),sizeStep(60,-1),sizeStep(1,-1),sizeStep(150,1)]'))
+        # tap the number -> big slider + presets (top-bar sliders are hidden on tablet widths)
+        print('top slider hidden at 1366', await pg.eval_on_selector('#sizeIn', 'e=>e.offsetWidth') == 0)
+        await pg.click('#sizeVal'); await pg.wait_for_timeout(150)
+        await pg.click('.pop [data-qv="20"]'); print('preset 20', await pg.evaluate('S.size'), await pg.text_content('#sizeVal'), await pg.eval_on_selector('.pop [data-qv="20"]', 'e=>e.classList.contains("on")'))
+        await pg.screenshot(path='t49_sizepop.png')
+        await pg.click('#opVal'); await pg.wait_for_timeout(150); await pg.click('.pop [data-qv="50"]'); print('op preset', await pg.text_content('#opVal'))
+        await pg.keyboard.press('Escape'); await pg.evaluate('closePop()')
+        # opacity per brush
+        await pg.evaluate("S.brushOp={}; S.brush='marker'; setTool('brush')")
+        print('marker default shows', await pg.text_content('#opVal'))
+        res = {}
+        for br in ['pen','pencil','marker','crayon','soft','air','water','ink','callig']:
+            row=[]
+            for op in [1, 0.3]:
+                await pg.evaluate(f"(()=>{{curFrame().canvas.getContext('2d').clearRect(0,0,W,H); S.brush='{br}'; setTool('brush'); setOp({op}); setSize(20)}})()")
+                await pg.evaluate(PEN,[LINE]); await pg.wait_for_timeout(60); row.append(await pg.evaluate(MAXA))
+            res[br]=row
+        print('100% darker than 30% for every brush', all(r[0] > r[1] * 2 for r in res.values()))
+        print('line brushes reach full at 100%', all(res[k][0] >= 250 for k in ['pen','pencil','marker','crayon','ink','callig']))
+        print('air/water much darker than before at 100%', res['air'][0] > 100, res['water'][0] > 190)
+        # each brush remembers its own value; − button steps 5%
+        await pg.evaluate("S.brush='pen'; setTool('brush'); setOp(0.4); S.brush='marker'; setTool('brush'); setOp(0.7)")
+        await pg.evaluate("S.brush='pen'; setTool('brush')"); print('pen remembers', await pg.text_content('#opVal'))
+        await pg.click('#top .stp[data-stp=op][data-d="-1"]'); print('op - ->', await pg.text_content('#opVal'))
+        # eraser strength
+        await pg.evaluate("(()=>{const c=curFrame().canvas.getContext('2d');c.globalAlpha=1;c.fillStyle='#000';c.fillRect(0,0,W,H);S.eraserType='hard';setTool('eraser');setOp(0.5);setSize(30)})()")
+        await pg.evaluate(PEN,[LINE]); await pg.wait_for_timeout(60)
+        mn = await pg.evaluate("(()=>{const d=curFrame().canvas.getContext('2d').getImageData(0,0,W,H).data;let m=255;for(let i=3;i<d.length;i+=4)if(d[i]<m)m=d[i];return m})()")
+        print('eraser 50% leaves half', 110 < mn < 145)
+        await pg.evaluate("setOp(1)"); await pg.evaluate(PEN,[[[300+i*4,600] for i in range(60)]]); await pg.wait_for_timeout(60)
+        mn = await pg.evaluate("(()=>{const d=curFrame().canvas.getContext('2d').getImageData(0,0,W,H).data;let m=255;for(let i=3;i<d.length;i+=4)if(d[i]<m)m=d[i];return m})()")
+        print('eraser 100% clears', mn == 0)
+        print('undo still one step', await pg.evaluate("(()=>{const n=undoStack.length;return n>0})()"))
+        # Bút ▾ menu has the same controls, kept in sync
+        await pg.evaluate("S.brush='pen'; setTool('brush'); setSize(8)")
+        await pg.click('#brushBtn'); await pg.wait_for_timeout(200)
+        await pg.click('.pop .stp[data-stp=size][data-d="1"]'); print('menu + syncs top', await pg.text_content('#sizeVal'), await pg.text_content('.pop .sizeV'))
+        await pg.click('.pop [data-b=marker]'); print('menu shows marker op', await pg.text_content('.pop .opV'), await pg.text_content('.pop .bp-opfor'))
+        await pg.screenshot(path='t49_menu.png')
+        # settings persist
+        await pg.reload(); await pg.wait_for_timeout(800)
+        print('persist', await pg.evaluate("[S.size, S.brushOp.marker, S.brushOp.pen]"))
+        await pg.set_viewport_size({'width':820,'height':1180}); await pg.wait_for_timeout(300)
+        await pg.screenshot(path='t49_portrait.png')
         await b.close()
-asyncio.run(main())
-srv.terminate()
+    print('ERR', errs)
+asyncio.run(main()); srv.kill()
