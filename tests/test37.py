@@ -25,7 +25,7 @@ async def main():
         # changing a frame duration redraws
         k0 = await pg.evaluate("waveKey"); await pg.evaluate("S.frames[0].dur=500; updateFrameUI()"); print('redraw on duration change', await pg.evaluate("waveKey") != k0)
         await pg.screenshot(path='t34_wave.png')
-        await pg.click('#fxVoiceDel') if await pg.evaluate("!!document.getElementById('fxVoiceDel').offsetParent") else await pg.evaluate("S.audio.voice=null; fxSyncBar()")
+        await pg.evaluate("voiceDel(0)")
         await pg.wait_for_timeout(200)
         print('removed → hidden', await pg.evaluate("[...document.querySelectorAll('.fr .wave')].every(c=>c.hidden)"))
         print('ERR', errs); await b.close()
