@@ -466,7 +466,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <div class="mrow"><b>🧩 Nhân vật ghép</b><span style="flex:1"></span><button class="chip small" id="ppMini">▾ Thu gọn</button><button class="chip small pclose" data-close="puppet" title="Đóng bảng (công cụ vẫn bật)">✕</button></div>
       <div id="ppEmpty" class="mrow"><span class="lbl">Chưa có nhân vật ghép. Nhập ảnh (vd. ảnh AI tạo) → chọn <b>Nhân vật ghép</b>.</span><button class="chip small on" id="ppNew">Nhập ảnh</button></div>
       <div id="ppSetupSec"><div id="ppJointSec">
-        <div class="mrow"><span class="lbl"><b>Bước 1 — Đặt khớp:</b> kéo chấm trắng vào vai, khuỷu, cổ tay, hông, gối, cổ chân (kéo khớp cha kéo cả nhánh)</span></div>
+        <div class="mrow"><span class="lbl"><b>Bước 1 — Đặt khớp:</b> kéo chấm trắng vào vai, khuỷu, cổ tay, hông, gối, cổ chân (kéo khớp cha kéo cả nhánh). Cắt xong, nút <b>✎ Vẽ đường đi</b> và <b>🛷 Trượt gối</b> ở tab 🎞 Tạo frame</span></div>
         <div class="mrow"><label class="lbl"><input type="checkbox" id="ppSplit"> Chia tay/chân 2 đoạn (gập khuỷu, gối)</label>
           <span class="lbl">Vá khớp</span><button class="chip small" data-ppf="fast">Nhanh</button><button class="chip small" data-ppf="ai" title="MI-GAN: AI vẽ bù miễn phí, chạy trên máy, lần đầu tải ~50 MB">AI (đẹp hơn)</button><button class="chip small" data-ppf="off">Tắt</button>
           <button class="chip small" id="ppRefit">Tự khớp lại</button><span style="flex:1"></span>
@@ -501,6 +501,9 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
         <div class="mrow" data-tab="frames"><span class="lbl"><b>Frame giữa:</b> chèn</span><input type="number" id="ppTweenN" value="3" min="1" max="24" style="width:52px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">frame chuyển tiếp tới frame sau</span><button class="chip small on" id="ppTweenBtn">Tạo frame giữa</button></div>
         <div class="mrow" data-tab="frames"><span class="lbl"><b>〰 Đường đi:</b></span><button class="chip small on" id="ppPathBtn" title="Vẽ một đường trên màn hình: nhân vật đi theo đường đó qua các frame (như motion path của Animate). Đang có chu kỳ đi bộ thì nó lặp lại cho đủ frame">✎ Vẽ đường đi</button>
           <span class="lbl">qua</span><input type="number" id="ppPathN" value="24" min="2" max="240" style="width:56px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">frame</span><select id="ppPathEase" class="chip small"><option value="linear">Đều</option><option value="inout">Mượt (chậm–nhanh–chậm)</option><option value="in">Nhanh dần</option><option value="out">Chậm dần</option></select><button class="chip small" id="ppPathClear" title="Bỏ đường đi của nhân vật đang chọn trên mọi frame">Bỏ đường đi</button></div>
+        <div class="mrow" data-tab="frames" style="flex-wrap:wrap"><span class="lbl"><b>🛷 Trượt gối:</b></span><button class="chip small" data-slide="-1" title="Nhân vật lao từ bên phải vào, trượt chậm dần rồi dừng ở chỗ đang đứng">◀ Trượt sang trái</button><button class="chip small" data-slide="1" title="Nhân vật lao từ bên trái vào, trượt chậm dần rồi dừng ở chỗ đang đứng">Trượt sang phải ▶</button>
+          <span class="lbl">qua</span><input type="number" id="slideN" value="20" min="4" max="120" style="width:52px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">frame</span>
+          <label class="lbl"><input type="checkbox" id="slideDust" checked> Bụi + cỏ</label><label class="lbl"><input type="checkbox" id="slideLean" checked> Ngả người</label><label class="lbl"><input type="checkbox" id="slideCam" checked> Camera đẩy vào</label><label class="lbl"><input type="checkbox" id="slideSfx" checked> Âm thanh</label></div>
         <div class="mrow" data-tab="frames"><span class="lbl"><b>Mẫu nhanh:</b></span><span id="ppPresets" class="mrow"></span></div>
         <div class="mrow" data-tab="frames" style="flex-wrap:wrap"><span class="lbl"><b>Cử chỉ:</b></span><span id="ppGests" class="mrow" style="flex-wrap:wrap;gap:4px"></span><label class="lbl" title="Làm bằng tay bên kia"><input type="checkbox" id="gestMir"> Tay kia</label></div>
         <div class="mrow" data-tab="frames" style="flex-wrap:wrap"><span class="lbl"><b>⭐ Chuyển động của tôi:</b></span><select id="myMoSel" class="chip small"></select><button class="chip small on" id="myMoApply" title="Tạo lại chuyển động đã lưu từ tư thế frame này, dùng được cho mọi nhân vật đã cắt tự động (như Motion preset của Animate)">Áp</button><button class="chip small" id="myMoSave" title="Lưu các frame từ frame này trở đi thành một chuyển động để dùng lại cho nhân vật khác, dự án khác">＋ Lưu chuyển động</button><button class="chip small" id="myMoDel" title="Xoá chuyển động đã lưu">🗑</button></div>
@@ -3645,10 +3648,11 @@ function ppFitJoints(src, pts) {
   }
   // image-aware axis, neck and shoulders: the bounding-box centre is off when feet are spread or one arm sticks out,
   // and arms hanging beside the body put the generic shoulders out in the air
-  var armsDown = false, headFit = false;
+  var armsDown = false, headFit = false, armsHead = null;
   {
     const A = new Float32Array(W * H); for (let i = 0; i < A.length; i++) A[i] = d[i * 4 + 3] > 100 ? 1 : 0;
-    const hd = cariFindHead(A, W, H);
+    let hd = cariFindHead(A, W, H);
+    if (hd) { const rn = ppRunNeck(op, hd); if (rn != null && rn < hd.neck - 0.06 * (hd.bot - hd.top)) hd = { ...hd, neck: rn }; }   // arms raised beside the head make whole rows wide: use the run through the head
     if (hd && hd.neck < hd.bot - 0.3 * (hd.bot - hd.top)) {
       const H0 = hd.bot - hd.top;
       const rowRun = (y, x0) => {   // opaque run on row y that contains (or is nearest to) x0
@@ -3677,6 +3681,7 @@ function ppFitJoints(src, pts) {
           }
         }
       }
+      if (!armsDown && nr) { armsHead = ppArmsToHead(op, J, hd, nr, neckX); for (const sd in armsHead) Object.assign(J, armsHead[sd]); }
     }
   }
   const top = J.head.y, hgt = Math.max(J.ftL.y, J.ftR.y) - top, cx = J.root.x;
@@ -3702,7 +3707,7 @@ function ppFitJoints(src, pts) {
         if (J.chest.y > J.root.y - 0.1 * hgt) J.chest.y = J.root.y - 0.25 * hgt;
       }
       else rL = null;
-      if (rL) return ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit);
+      if (rL) return ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit, armsHead);
     }
   }
   let crotch = null;
@@ -3720,10 +3725,69 @@ function ppFitJoints(src, pts) {
       if (J.chest.y > J.root.y - 0.1 * hgt) J.chest.y = J.root.y - 0.25 * hgt;
     }
   }
-  return ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit);
+  if (!crotch) ppKneelHips(J, op, hgt, top);
+  return ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit, armsHead);
+}
+/** neck from the run of pixels through the head (not whole rows): hands on the head / raised arms widen whole rows */
+function ppRunNeck(op, hd) {
+  const H0 = hd.bot - hd.top, y1 = Math.round(hd.top + 0.6 * H0), y0 = Math.round(hd.top + 0.08 * H0), R = Math.round(0.05 * H0);
+  const run = (y, x0) => { x0 = Math.round(x0); let x = null; for (let k = 0; k < R && x == null; k++) { if (op(x0 - k, y)) x = x0 - k; else if (op(x0 + k, y)) x = x0 + k; } if (x == null) return 0; let a = x, b = x; while (op(a - 1, y)) a--; while (op(b + 1, y)) b++; return b - a + 1; };
+  const w = []; for (let y = hd.top; y <= y1; y++) w.push(run(y, hd.cx));
+  const r = Math.max(2, Math.round(H0 * 0.012)), sm = w.map((_, i) => { let s = 0, n = 0; for (let k = -r; k <= r; k++) if (w[i + k] != null) { s += w[i + k]; n++; } return s / n; });
+  let best = Infinity, neck = null, runMax = 0;
+  for (let i = 0; i < sm.length; i++) {
+    runMax = Math.max(runMax, sm[i]); if (hd.top + i < y0 || !sm[i]) continue;
+    let below = 0; for (let k = i; k < Math.min(sm.length, i + 0.25 * H0); k++) below = Math.max(below, sm[k]);
+    const q = sm[i] / Math.max(1, Math.min(runMax, below)); if (q < best) { best = q; neck = i; }
+  }
+  if (neck == null || best > 0.7) return null;
+  // the narrow part here is the chin between the forearms (the real neck already joins the arms): cut at its bottom
+  const lim = sm[neck] * 1.15; while (neck < sm.length - 1 && sm[neck + 1] <= lim) neck++;
+  return hd.top + neck;
+}
+/** hands resting on the head (celebrating, shocked): the elbows stick out sideways and the forearms reach back to the head.
+ *  A side is such an arm when the shortest walk inside the drawing from its outermost point to the top of the head
+ *  goes up the forearm instead of through the neck. Returns { L: {shL, elL, haL}, R: ... } for those sides. */
+function ppArmsToHead(op, J, hd, nr, neckX) {
+  const H0 = hd.bot - hd.top, S4 = 4, gw = Math.ceil(W / S4), gh = Math.ceil(H / S4), occ = new Uint8Array(gw * gh);
+  for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) if (op(x * S4 + 2, y * S4 + 2)) occ[y * gw + x] = 1;
+  const cell = p => Math.min(gh - 1, Math.max(0, Math.round((p.y - 2) / S4))) * gw + Math.min(gw - 1, Math.max(0, Math.round((p.x - 2) / S4)));
+  const pt = i => ({ x: (i % gw) * S4 + 2, y: ((i / gw) | 0) * S4 + 2 });
+  let s = cell({ x: J.head.x, y: hd.top + 0.04 * H0 });
+  if (!occ[s]) { let bd = Infinity; for (let i = 0; i < occ.length; i++) if (occ[i]) { const q = pt(i), d = Math.hypot(q.x - J.head.x, q.y - hd.top - 0.04 * H0); if (d < bd) { bd = d; s = i; } } }
+  const prev = new Int32Array(gw * gh).fill(-1); prev[s] = s; let cur = [s];
+  while (cur.length) { const nx = []; for (const i of cur) { const x = i % gw, y = (i / gw) | 0; for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + ox, Y = y + oy; if (X < 0 || Y < 0 || X >= gw || Y >= gh) continue; const k = Y * gw + X; if (occ[k] && prev[k] < 0) { prev[k] = i; nx.push(k); } } } cur = nx; }
+  const out = {}, earY = hd.top + 0.55 * (hd.neck - hd.top), yMax = J.chest.y + 0.25 * H0, neckRow = Math.round((hd.neck - 2) / S4);
+  const edge = (y, sgn) => { y = Math.round(y); let x = Math.round(neckX); if (!op(x, y)) return null; while (op(x + sgn, y)) x += sgn; return x; };
+  for (const sd of ['L', 'R']) {
+    const sgn = sd === 'L' ? -1 : 1; let E = -1, ex = -Infinity;
+    for (let y = Math.round(hd.top / S4); y < Math.min(gh, yMax / S4); y++) for (let x = 0; x < gw; x++) { const i = y * gw + x; if (occ[i] && prev[i] >= 0 && x * sgn > ex) { ex = x * sgn; E = i; } }
+    if (E < 0) continue; const e = pt(E); if ((e.x - neckX) * sgn < 0.15 * H0) continue;
+    const path = []; for (let i = E; ; i = prev[i]) { path.push(i); if (i === s || path.length > gw * gh) break; }
+    const cross = path.filter(i => ((i / gw) | 0) === neckRow).map(i => pt(i).x);
+    if (!cross.length || cross.some(x => x >= nr[0] - 0.02 * H0 && x <= nr[1] + 0.02 * H0)) continue;   // went through the neck: a normal arm
+    const hi = path.find(i => pt(i).y <= earY); if (hi == null) continue;
+    // armpit: going down from the elbow, the side edge first runs fast along the upper arm, then slowly along the torso
+    let ap = null; for (let y = e.y + 0.03 * H0; y < yMax + 0.2 * H0; y += 4) { const a = edge(y, sgn), b = edge(y + 12, sgn); if (a == null || b == null) break; if (Math.abs(b - a) < 12 * 0.6) { ap = { x: a, y }; break; } }
+    if (!ap) continue;
+    const sh = { x: ap.x - sgn * 0.02 * H0, y: ap.y - 0.05 * H0 }, L = Math.hypot(sh.x - e.x, sh.y - e.y) || 1, k = Math.min(0.4, 0.03 * H0 / L);
+    out[sd] = { ['sh' + sd]: sh, ['el' + sd]: { x: e.x + (sh.x - e.x) * k, y: e.y + (sh.y - e.y) * k }, ['ha' + sd]: pt(hi) };
+  }
+  return Object.keys(out).length ? out : null;
+}
+/** kneeling (no gap between the legs, knees and shins on the ground): hips sit well below the middle of the figure */
+function ppKneelHips(J, op, hgt, top) {
+  const bot = top + hgt; let x0 = W, x1 = 0;
+  for (let y = Math.round(bot - 0.06 * hgt); y <= bot; y += 2) for (let x = 0; x < W; x += 3) if (op(x, y)) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); }
+  if (x1 - x0 < 0.45 * hgt) return;
+  const hy = J.chest.y + 0.55 * (bot - J.chest.y); if (hy < J.root.y) return;
+  const x = Math.round(J.root.x), y = Math.round(hy); if (!op(x, y)) return; let a = x, b = x; while (op(a - 1, y)) a--; while (op(b + 1, y)) b++;
+  const c = (a + b) / 2, hw = Math.min(0.08 * hgt, 0.22 * (b - a));
+  J.hpL = { x: c - hw, y: hy }; J.hpR = { x: c + hw, y: hy }; J.root = { x: c, y: hy - 0.03 * hgt };
+  for (const sd of ['L', 'R']) J['kn' + sd] = { x: (J['hp' + sd].x + J['ft' + sd].x) / 2, y: (hy + J['ft' + sd].y) / 2 };
 }
 /** shared end of joint fitting: neck/torso line, hands & feet from the drawing's shape, then centre the limb joints */
-function ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit) {
+function ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit, armsHead) {
   if (!headFit) { // neck = narrowest row under the head; the torso starts where the body gets wide again
     const runW = y => { const x0 = Math.round(cx); if (!op(x0, y)) return 0; let a = x0, b = x0; while (op(a - 1, y) && x0 - a < W) a--; while (op(b + 1, y) && b - x0 < W) b++; return b - a; };
     let ny = null, nw = Infinity; for (let y = Math.round(top + 0.1 * hgt); y < top + 0.33 * hgt; y += 2) { const w = runW(y); if (w < nw) { nw = w; ny = y; } }
@@ -3734,12 +3798,13 @@ function ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit) {
   }
   // arms already placed against the body (arms-down front view) keep their joints; ppFitLimbs still finds the feet
   // (a side whose hand ppFitLimbs finds raised above that elbow is a raised arm: the shape-based fit wins there)
-  const keep = armsDown ? ['shL', 'elL', 'haL', 'shR', 'elR', 'haR'].map(k => [k, J[k]]) : null, skip = {};
+  // hands resting on the head (ppArmsToHead) are never tips either: those sides always keep their joints
+  const keep = armsDown || armsHead ? ['shL', 'elL', 'haL', 'shR', 'elR', 'haR'].map(k => [k, J[k]]) : null, skip = {};
   try { ppFitLimbs(src, J); } catch (e) { console.warn(e); }
   if (keep) {
     const K = Object.fromEntries(keep);
     for (const sd of ['L', 'R']) {
-      if (J['ha' + sd].y < K['el' + sd].y) continue;
+      if (armsHead ? !armsHead[sd] : J['ha' + sd].y < K['el' + sd].y) continue;
       for (const k of ['sh', 'el', 'ha']) J[k + sd] = K[k + sd];
       skip[sd] = true; if (J._out) delete J._out[sd];
     }
@@ -4150,12 +4215,14 @@ async function ppAutoCut(whole) {
     const zb = Math.max(...S.pp.parts.map(q => q.z)) + 1, nv = S.pp.parts.filter(q => !q.parent).length + 1;
     parts.forEach(q => { q.z += zb; q.name += ` (NV${nv})`; }); S.pp.parts.push(...parts);
   } else { S.pp = { parts }; S.frames.forEach(f => { f.pp = {}; f.ppKey = undefined; }); }
+  // a new character appears from the frame being edited on: frames before it keep showing only what they had
+  if (!recut) for (let i = 0; i < S.cur; i++) { const f = S.frames[i]; f.pp = f.pp || {}; for (const q of parts) f.pp[q.id] = { ...(f.pp[q.id] || {}), h: true }; f.ppKey = true; }
   // remember how this character was cut, so "Sửa lại vùng cắt" can reopen it (this session only)
   const roleId = {}; parts.forEach(q => { if (q.role) roleId[q.role] = q.id; });
   ppLastCut = whole ? null : { src: st.src, J: st.J, split: st.split, auto: st.auto, autoJ: st.autoJ, hand: st.hand || null, ids: parts.map(q => q.id), roleId };
   ppSetup = null; ppSel = parts[0] ? parts[0].id : null; pm.close();
   S.showPP = true; updateToggles(); openTab('pp', 'pose'); ppSyncBar(); S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); scheduleSave(); requestRender();
-  toast(whole ? 'Đã tạo 1 mảnh — dùng ✂ Khoanh cắt để tách tay, chân…' : `Đã cắt ${parts.length} mảnh — chạm mảnh rồi kéo để xoay quanh khớp`, 4000);
+  toast(whole ? 'Đã tạo 1 mảnh — dùng ✂ Khoanh cắt để tách tay, chân…' : `Đã cắt ${parts.length} mảnh — chạm mảnh rồi kéo để xoay quanh khớp. Cho nhân vật di chuyển: tab 🎞 Tạo frame → ✎ Vẽ đường đi / 🛷 Trượt gối`, 6000);
 }
 /* --- lasso cut a new part out of the selected part --- */
 async function ppCutLasso(poly) {
@@ -4573,7 +4640,7 @@ async function ppApplyPath(pts) {
     const cyc = S.frames.slice(i0), last = S.frames[S.frames.length - 1], added = [];
     for (let k = 0; k < n - have; k++) {
       const src = cyc[(have + k) % cyc.length]; await ensureLoaded(src);
-      const f = newFrameObj(src.bgId); f.dur = src.dur; f.canvas.getContext('2d').drawImage(src.canvas, 0, 0); copyCol(f, src); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(src.vec);
+      const f = newFrameObj(cyc[0].bgId);   // the scene stays the one of the frame the path starts on (a blank frame after it must not blink in) f.dur = src.dur; f.canvas.getContext('2d').drawImage(src.canvas, 0, 0); copyCol(f, src); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(src.vec);
       f.pp = ppClone(src.pp); f.ppKey = true; f.ppEase = src.ppEase; f.lip = src.lip ? JSON.parse(JSON.stringify(src.lip)) : null; added.push(f);
     }
     S.frames.push(...added); loaded.push(...added);
@@ -4600,6 +4667,77 @@ function ppClearPath() {
 }
 $('#ppPathBtn').addEventListener('click', () => { if (!S.pp || !S.pp.parts.length) { toast('Chưa có nhân vật ghép'); return; } ppPathMode = !ppPathMode; ppCutMode = ppPatchMode = false; ppPaint = null; ppSyncBar(); if (ppPathMode) toast('Kéo bút/ngón vẽ đường nhân vật sẽ đi, bắt đầu từ chỗ nhân vật đang đứng', 3500); });
 $('#ppPathClear').addEventListener('click', ppClearPath);
+/* --- 🛷 knee slide: the character rushes in, slides with dust and grass flying, stops where it stands now,
+ *  leans back and the camera pushes in. One undo step (gagApply: added frames + path + pose + dust pixels + camera + SFX). --- */
+function ppCharBox(f) {   // bounding box of the cut-out characters as drawn on frame f
+  const k = 0.25, w = Math.ceil(W * k), h = Math.ceil(H * k), c = makeCanvas(w, h), x = c.getContext('2d');
+  x.scale(k, k); drawPuppet(x, f.pp, f.lip);
+  const d = x.getImageData(0, 0, w, h).data; let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y++) for (let xx = 0; xx < w; xx++) if (d[(y * w + xx) * 4 + 3] > 40) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  return x1 < 0 ? null : { x0: x0 / k, y0: y0 / k, x1: (x1 + 1) / k, y1: (y1 + 1) / k };
+}
+const slideRnd = k => { const v = Math.sin(k * 12.9898 + 78.233) * 43758.5453; return v - Math.floor(v); };
+/** one dust puff (a soft cartoon cloud) with a few grass bits, t = 0 (just kicked up) … 1 (gone) */
+function slidePuffItem(P, t, dir) {
+  const r = P.r * (0.6 + 0.9 * t), cx = P.x - dir * P.r * 0.5 * t, cy = P.y - P.r * 0.35 * t, a = 0.85 * Math.pow(1 - t, 1.2);
+  const blobs = [0, 1, 2, 3, 4].map(b => { const an = Math.PI * (0.05 + 0.9 * b / 4); return { x: cx - Math.cos(an) * r * 0.62 + (slideRnd(P.seed + b) - 0.5) * r * 0.15, y: cy - Math.sin(an) * r * 0.32, r: r * (0.38 + 0.18 * slideRnd(P.seed + b * 7)) }; });
+  const bits = [0, 1, 2].map(b => { const vx = -dir * (0.4 + slideRnd(P.seed + 20 + b)) * P.r * 1.6, vy = -(0.9 + slideRnd(P.seed + 30 + b)) * P.r * 2.2, tt = t * 1.2; return { x: P.x + vx * tt, y: P.y + vy * tt + P.r * 3.2 * tt * tt, ang: Math.atan2(vy + P.r * 6.4 * tt, vx), c: b % 2 ? '#7cc35a' : '#4c9a3a' }; });
+  const R = r * 1.3;
+  return {
+    rect: [Math.min(cx - R, ...bits.map(q => q.x)) - 12, Math.min(cy - R, ...bits.map(q => q.y)) - 12, Math.max(cx + R, ...bits.map(q => q.x)) + 12, Math.max(P.y + r * 0.3, ...bits.map(q => q.y)) + 12],
+    draw: x => {
+      if (a <= 0.01) return;
+      x.globalAlpha = a; x.lineWidth = Math.max(2, r * 0.07); x.strokeStyle = '#b9a581'; x.fillStyle = '#f1e8d5';
+      for (const b of blobs) { x.beginPath(); x.arc(b.x, b.y, b.r, 0, Math.PI * 2); x.stroke(); }
+      for (const b of blobs) { x.beginPath(); x.arc(b.x, b.y, b.r, 0, Math.PI * 2); x.fill(); }
+      x.lineCap = 'round'; x.lineWidth = Math.max(3, P.r * 0.1);
+      if (t < 0.8) for (const q of bits) { x.strokeStyle = q.c; x.beginPath(); x.moveTo(q.x, q.y); x.lineTo(q.x - Math.cos(q.ang) * P.r * 0.35, q.y - Math.sin(q.ang) * P.r * 0.35); x.stroke(); }
+    }
+  };
+}
+async function ppSlide(dir) {
+  if (!S.pp || !S.pp.parts.length) { toast('Chưa có nhân vật ghép'); return; }
+  const charId = ppSelChar(); if (!charId) return;
+  if (playing) stopPlay(); ppPathMode = false;
+  const i0 = S.cur, f0 = S.frames[i0]; await ensureLoaded(f0);
+  const n = clamp(+$('#slideN').value || 20, 4, 120), hold = Math.max(6, Math.round(n * 0.5)), N = n + hold;
+  const box = ppCharBox(f0); if (!box) { toast('Không thấy nhân vật trên frame này'); return; }
+  const bw = box.x1 - box.x0, bh = box.y1 - box.y0, base = (f0.lip && f0.lip.mv && f0.lip.mv[charId]) || { x: 0, y: 0 };
+  const opt = { dust: $('#slideDust').checked, lean: $('#slideLean').checked, cam: $('#slideCam').checked, sfx: $('#slideSfx').checked };
+  const D = Math.max(W * 0.6, bw * 1.1);
+  const off = j => j >= n - 1 ? 0 : -dir * D * (1 - EASE.out(j / (n - 1)));   // x offset from where the character stands now
+  const mine = role => S.pp.parts.find(p => p.role === role && ppCharOf(p) === charId);
+  const torso = mine('torso') || ppPart(charId), r0 = id => (f0.pp && f0.pp[id] && f0.pp[id].r) || 0;
+  const leanN = Math.min(6, Math.max(2, Math.round(n / 3))), leanAt = j => EASE.inout(clamp((j - (n - 1 - leanN)) / leanN, 0, 1));
+  // dust: kicked up at the back of the slide (the lines/pixel layer is under the puppet, so dust under the knees would be hidden)
+  // while it moves fast, then left behind on the ground
+  const puffs = [], LIFE = 8, ground = box.y1 - bh * 0.03, back = dir > 0 ? box.x0 + bw * 0.04 : box.x1 - bw * 0.04;
+  if (opt.dust) for (let k = 0; k < n - 1; k++) { const sp = Math.abs(off(k + 1) - off(k)); if (sp < W * 0.004) continue; puffs.push({ k, x: back + off(k), y: ground, r: clamp(sp * 1.3, bh * 0.09, bh * 0.2), seed: k * 31 + 7 }); }
+  const r = await gagApply(i0, {
+    n: N, copyOf: f0,
+    edit: (j, f) => {
+      const out = [ppMvEdit(f, mv => { mv[charId] = { x: Math.round((base.x + off(j)) * 10) / 10, y: base.y }; })];
+      if (opt.lean && torso) {
+        const before = ppState(f), u = leanAt(j);
+        ppQ(f, torso.id).r = r0(torso.id) - dir * 12 * u;   // the head and arms ride along (hands resting on the head stay put)
+        f.ppKey = true; const after = ppState(f); if (JSON.stringify(after) !== JSON.stringify(before)) { out.push(ppEntry(f, before, after)); f.ver++; }
+      }
+      return out;
+    },
+    pix: j => puffs.filter(P => j >= P.k && j - P.k < LIFE).map(P => slidePuffItem(P, (j - P.k) / LIFE, dir)),
+    fx: (j, f, cb) => {
+      if (!opt.cam) return false;
+      if (j === 0 && !f.cam && S.frames.some((g, i) => i < i0 && g.cam)) { f.cam = { ...cb[i0], tr: 'cut' }; return; }
+      if (j !== n - 3 && !(n < 6 && j === n - 1)) return false;
+      f.cam = null; camKeySet(f, { z: 1.6, x: (box.x0 + box.x1) / 2, y: box.y0 + bh * 0.38 }, 'smooth'); f.cam.d = 0.7;
+    },
+    sfx: opt.sfx ? [[0, 'slide'], [n - 1, 'crowd']] : []
+  });
+  ppRetween(); ppSyncBar();
+  toast(`🛷 Đã tạo cảnh trượt gối ${r.n} frame${r.added ? ` (thêm ${r.added} frame)` : ''} — bấm ▶ Phát để xem, ↶ để làm lại`, 4500);
+  return r;
+}
+document.querySelectorAll('[data-slide]').forEach(b => b.addEventListener('click', () => ppSlide(+b.dataset.slide)));
 
 $('#ppBlinkBtn').addEventListener('click', ppAutoBlink);
 $('#ppBake').addEventListener('click', ppBake);
@@ -6278,14 +6416,15 @@ async function gagApply(i0, plan) {
   const base = S.frames[i0], added = [];
   // missing frames are copies of the last frame (drawn before anything is stamped)
   if (i0 + plan.n > S.frames.length) {
-    const last = S.frames[S.frames.length - 1]; await ensureLoaded(last);
-    while (i0 + plan.n > S.frames.length + added.length) { const f = newFrameObj(last.bgId); f.dur = last.dur; f.canvas.getContext('2d').drawImage(last.canvas, 0, 0); copyCol(f, last); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(last.vec); f.pp = ppClone(last.pp); f.texts = JSON.parse(JSON.stringify(last.texts || [])); added.push(f); }
+    const last = plan.copyOf || S.frames[S.frames.length - 1]; await ensureLoaded(last);
+    while (i0 + plan.n > S.frames.length + added.length) { const f = newFrameObj(last.bgId); f.dur = last.dur; f.canvas.getContext('2d').drawImage(last.canvas, 0, 0); copyCol(f, last); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(last.vec); f.pp = ppClone(last.pp); f.texts = JSON.parse(JSON.stringify(last.texts || [])); if (plan.copyOf) { f.ppKey = last.ppKey; f.ppEase = last.ppEase; f.lip = last.lip ? JSON.parse(JSON.stringify(last.lip)) : null; } added.push(f); }
     S.frames.push(...added); loaded.push(...added);
   }
   const camBefore = S.frames.map((f, i) => camAt(i)), multi = [];
   if (added.length) multi.push({ t: targetOf(S.frames[S.frames.length - added.length - 1]), add: { frames: added, index: S.frames.length - added.length, dur0: S.frames[S.frames.length - added.length - 1].dur, dur1: S.frames[S.frames.length - added.length - 1].dur }, bytes: 0 });
   for (let j = 0; j < plan.n; j++) {
     const f = S.frames[i0 + j]; await ensureLoaded(f);
+    if (plan.edit) for (const e of plan.edit(j, f) || []) if (e) multi.push(e);
     const items = (plan.pix && plan.pix(j)) || [];
     if (items.length) {
       let R = null; for (const it of items) R = rectUnion(R, it.rect);
@@ -8343,7 +8482,10 @@ ${st.lineOut === 'vec'
           for (const i of comp) { sum += m[i]; const x = i % sw, y = (i / sw) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
           const len = Math.max(x1 - x0, y1 - y0) + 1, thick = comp.length / len, mean = sum / comp.length;
           const slit = st.slits && len / thick > 8 && len > src.height * 0.08;   // long thin gap (arm held close to the body): the AI blurs these, so trust it less
-          if (mean < 0.4 || (slit && mean < 0.98)) { for (const i of comp) a[i] = 0; cut++; }
+          // a wide closed-in patch the AI is unsure about (gap between a raised arm and the head): eye whites, teeth and
+          // white logos inside the figure score ~1.0, these gaps 0.6–0.75
+          const wide = mean < 0.85 && comp.length > src.width * src.height * 0.001;
+          if (mean < 0.4 || (slit && mean < 0.98) || wide) { for (const i of comp) a[i] = 0; cut++; }
         }
         if (cut) { const b = boxBlur(a, src.width, src.height, 1); for (let i = 0; i < a.length; i++) a[i] = Math.min(a[i], b[i] * 1.5); }
       }
