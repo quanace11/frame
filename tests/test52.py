@@ -38,7 +38,7 @@ async def main():
         await pg.screenshot(path='t46_box.png')
         before = await pg.evaluate(PTS)
         # drag a selected stroke: both A and B move, C stays
-        a = await s2(300, 450); bb = await s2(300, 350)
+        a = await s2(300, 500); bb = await s2(300, 400)   # middle of stroke A: far from the corner handles at any canvas size
         await pg.evaluate(PEN, [line(a, bb)]); await pg.wait_for_timeout(50)
         aft = await pg.evaluate(PTS); print('moved', aft)
         assert all(abs(q[1] - o[1] + 100) <= 2 for k in (0, 1) for q, o in zip(aft[k], before[k])) and aft[2] == before[2]
