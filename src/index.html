@@ -188,6 +188,7 @@ body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:
 .fr .key{position:absolute;right:3px;top:3px;font-size:10px;background:#000b;color:#ffb21e;padding:0 4px;border-radius:6px}
 .fr .key.auto{color:#9ad}
 .fr .camk.held{color:#9ad;opacity:.85}
+.fr .trb{position:absolute;bottom:18px;font-size:11px;background:#000c;color:#fff;padding:0 3px;border-radius:6px;pointer-events:none;border:1px solid #9b7bff} .fr .trb.in{left:2px} .fr .trb.out{right:2px}
 .fr .camk{position:absolute;left:3px;top:18px;font-size:10px;background:#000b;color:#ffb21e;padding:0 4px;border-radius:6px;pointer-events:none}
 #layerRef.on .name{background:#7d6bff;color:#fff}
 .dlg.wide{max-width:760px}
@@ -516,7 +517,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
     </div>
     <div id="fxbar" hidden>
       <div class="mrow"><b>✨ Chữ, camera & âm thanh</b><span class="lbl">(cho frame đang xem)</span><span style="flex:1"></span><button class="chip small on" id="fxExport2">🎬 Xuất video</button><button class="chip small" id="fxMini">▾ Thu gọn</button><button class="chip small pclose" data-close="fx" title="Đóng bảng (công cụ vẫn bật)">✕</button></div>
-      <div class="mrow tabs" data-tabs="fx"><button class="tabb" data-t="text">🔤 Chữ</button><button class="tabb" data-t="cam">🎥 Camera</button><button class="tabb" data-t="audio">🎵 Âm thanh</button><button class="tabb" data-t="gag">⚽ Bóng & combo</button></div>
+      <div class="mrow tabs" data-tabs="fx"><button class="tabb" data-t="text">🔤 Chữ</button><button class="tabb" data-t="cam">🎥 Camera</button><button class="tabb" data-t="audio">🎵 Âm thanh</button><button class="tabb" data-t="gag">⚽ Bóng & combo</button><button class="tabb" data-t="trans">🎞 Chuyển cảnh</button></div>
       <div class="mrow" data-tab="text"><span class="lbl"><b>Chữ:</b></span><button class="chip small on" id="fxAddTxt">＋ Thêm chữ</button><button class="chip small" id="fxQuickSub" title="Dán lời thoại, app tự chia thành phụ đề và đặt theo giọng nói (hoặc chia đều)">📝 Phụ đề nhanh</button>
         <button class="chip small" data-fxs="comic">Truyện tranh</button><button class="chip small" data-fxs="bubble">Bóng thoại</button><button class="chip small" data-fxs="shout">Hét to 💥</button><button class="chip small" data-fxs="caption">Phụ đề</button>
         <button class="chip small" id="fxEditTxt">✎ Sửa</button><span class="lbl">Cỡ</span><input type="range" id="fxSize" min="30" max="300"><span class="lbl">Xoay</span><input type="range" id="fxRot" min="-45" max="45">
@@ -536,6 +537,10 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
         <button class="chip small" data-bease="even" title="Bay đều">Đều</button><button class="chip small" data-bease="fast" title="Càng bay càng nhanh (cú sút mạnh dần, rơi xuống)">Nhanh dần</button><button class="chip small" data-bease="slow" title="Sút mạnh rồi chậm lại (bóng lăn)">Chậm dần</button>
         <button class="chip small" id="ballHit" title="Frame cuối: bóng bẹp lại + tia va chạm">💥 Đập cuối</button><button class="chip small" id="ballTrail" title="Vệt gió phía sau bóng">〰 Vệt bay</button><button class="chip small" id="ballSnd" title="Tiếng sút, vút, cốp">🔊 Tiếng</button></div>
       <div class="mrow" data-tab="gag"><span class="lbl"><b>⚡ Combo hài 1 chạm</b> (chọn rồi chạm lên khung):</span><button class="chip small" data-gag="shock" title="Zoom sát mặt + chớp + rung + sóng sốc + !!">😱 Sốc</button><button class="chip small" data-gag="ballface" title="Bóng bay vào mặt, đập bẹp, chữ BONK, sao quay vòng">🤕 Bóng vào mặt</button><button class="chip small" data-gag="goal" title="Còi + khán giả hò reo + chữ VÀOOO! + pháo giấy + zoom vào cầu thủ">🥅 VÀO!</button><button class="chip small" data-gag="dizzy" title="Sao quay vòng trên đầu + tiếng choáng, chim kêu">💫 Choáng</button><button class="chip small" data-gag="angry" title="Bốc khói trên đầu + GRRR! + rung + zoom chậm vào mặt">😡 Tức điên</button></div>
+      <div class="mrow" data-tab="trans"><span class="lbl"><b>Đặt ở:</b></span><button class="chip small" data-trat="in" title="Chuyển cảnh ở chỗ nối giữa frame trước và frame này (ở frame 1 = mở đầu phim)">⏮ Đầu frame này</button><button class="chip small" data-trat="out" title="Chuyển cảnh ở chỗ nối giữa frame này và frame sau (ở frame cuối = kết thúc phim)">Sau frame này ⏭</button>
+        <span class="lbl">Dài</span><input type="range" id="trD" min="0.2" max="3" step="0.1" style="width:100px"><span class="val" id="trDVal"></span><button class="chip small" id="trSnd" title="Tự thêm tiếng cho chuyển cảnh (tiếng tách tắt TV, vút, rè…)">🔊 Tiếng</button></div>
+      <div class="mrow" data-tab="trans" style="flex-wrap:wrap;gap:4px"><span class="lbl"><b>Chạm 1 kiểu để thêm:</b></span><span id="trKinds" class="mrow" style="flex-wrap:wrap;gap:4px"></span></div>
+      <div class="mrow" data-tab="trans"><span class="lbl" id="trStat" style="flex:1;color:#c9b8ff"></span><button class="chip small" id="trPrev" title="Phát thử đoạn quanh chuyển cảnh">▶ Xem thử</button><button class="chip small" id="trDel" style="color:var(--danger)" title="Bỏ chuyển cảnh ở chỗ đang chọn">🗑 Bỏ</button></div>
       <div class="mrow" data-tab="audio"><span class="lbl"><b>Nhạc nền:</b></span><span class="lbl" id="fxMusicName"></span><button class="chip small" id="fxMusicPick">Chọn file</button><button class="chip small" id="fxMusicDel">✕</button><span class="lbl">Âm lượng</span><input type="range" id="fxMusicVol" min="0" max="100"></div>
       <div class="mrow" data-tab="audio"><span class="lbl"><b>Lồng tiếng:</b></span><button class="chip small" id="fxVoicePick" title="Thêm 1 câu thoại, bắt đầu từ frame đang xem. Thêm nhiều giọng để 2 nhân vật nói chuyện với nhau">＋ Thêm giọng (bắt đầu ở frame này)</button><button class="chip small on" id="fxLip" title="Tự nhép miệng nhân vật ghép theo âm lượng giọng (mỗi giọng nhép miệng nhân vật của nó)">🗣 Tự nhép miệng theo giọng</button></div>
       <div class="mrow" data-tab="audio" id="fxVoiceList" style="flex-wrap:wrap;gap:4px"></div>
@@ -2022,7 +2027,7 @@ const histTok = new WeakMap(); let histTokN = 0;
 const histId = o => { if (!histTok.has(o)) histTok.set(o, ++histTokN); return '#' + histTok.get(o); };
 const histBig = x => x && typeof x === 'object' && (x instanceof ArrayBuffer || ArrayBuffer.isView(x) || typeof x.getContext === 'function' || (typeof ImageBitmap !== 'undefined' && x instanceof ImageBitmap) || (typeof ImageData !== 'undefined' && x instanceof ImageData));
 const histJSON = v => JSON.stringify(v, (k, x) => histBig(x) ? histId(x) : x);
-const H_FKEYS = ['dur', 'bgId', 'pp', 'ppKey', 'ppEase', 'texts', 'cam', 'shake', 'flash', 'lip', 'scene'];
+const H_FKEYS = ['dur', 'bgId', 'pp', 'ppKey', 'ppEase', 'texts', 'cam', 'shake', 'flash', 'lip', 'scene', 'tr', 'tre'];
 const histFrameStr = f => JSON.stringify(H_FKEYS.map(k => f[k] === undefined ? null : f[k]));
 const histPartCopy = p => ({ ...p, alts: (p.alts || []).map(a => ({ ...a })) });
 function histSnap() {
@@ -2130,7 +2135,7 @@ function buildStrip() {
     el.addEventListener('contextmenu', e => e.preventDefault());
     strip.append(el); f.el = el;
   });
-  camBadges();
+  camBadges(); trBadges();
   const add = document.createElement('button'); add.className = 'addfr'; add.textContent = '+';
   const [tw, th] = thumbSize(); add.style.width = Math.max(tw, 44) + 'px'; add.style.height = (th + 4) + 'px';
   add.title = 'Nhân bản frame hiện tại'; add.addEventListener('click', dupFrame);
@@ -2451,7 +2456,7 @@ async function startPlay() {
   if (stroke) strokeEnd(); commitFloating(); motionClose(); rigClose();
   $('#saveState').textContent = 'Đang chuẩn bị phát…';
   await buildPlayCache(); setSaveState();
-  playing = true; playRange = playRangeGet();
+  playing = true; playRange = playRangeGet(); trSrc = playTrSrc;
   playIdx = playRange && (S.cur < playRange[0] || S.cur > playRange[1]) ? playRange[0] : S.cur;
   playT0 = pNow() - frameStartTimes()[playIdx] * 1000; playAudioFrom(playIdx);
   if (playRange) toast(`Phát đoạn frame ${playRange[0] + 1}–${playRange[1] + 1}` + (S.loop ? ' (lặp)' : ''), 1600);
@@ -2473,7 +2478,7 @@ function step() {
   }, f.dur / playSpeed);
 }
 function stopPlay() {
-  playing = false; playRange = null; clearTimeout(playTimer); playCanvas = null; if (bgVid.el) { try { bgVid.el.playbackRate = 1; } catch (e) {} bgVid.el.pause(); bgVid.el.muted = true; setTimeout(() => bgVideoSync(true), 0); } playStopAudio(); playStopAudio = () => {}; if (playAC) { try { playAC.close(); } catch (e) {} playAC = null; }
+  playing = false; trSrc = null; playRange = null; clearTimeout(playTimer); playCanvas = null; if (bgVid.el) { try { bgVid.el.playbackRate = 1; } catch (e) {} bgVid.el.pause(); bgVid.el.muted = true; setTimeout(() => bgVideoSync(true), 0); } playStopAudio(); playStopAudio = () => {}; if (playAC) { try { playAC.close(); } catch (e) {} playAC = null; }
   clearTimeout(playFreeT); playFreeT = setTimeout(() => { if (!playing) freePlayCache(); }, 45000);
   $('#playBtn span').textContent = 'Phát'; $('#playHint').hidden = true; $('#app').classList.remove('playing');
   S.frames.forEach(g => g.el && g.el.classList.remove('playing'));
@@ -5690,7 +5695,7 @@ function camBadges() {
     ck.title = g.cam ? 'Camera key ở frame này' : 'Vẫn đang zoom (giữ từ camera key trước)';
   });
 }
-function fxSyncBar() { updateWaves(); camBadges();
+function fxSyncBar() { updateWaves(); camBadges(); trBadges(); trSyncBar();
   const bar = $('#fxbar'), show = S.tool === 'fx' && !panelHidden.fx; bar.hidden = !show; updPanelPill(); if (!show) return;
   const f = curFrame(), t = (f.texts || []).find(x => x.id === fxSel);
   ['#fxEditTxt', '#fxSize', '#fxRot', '#fxDelTxt', '#fxKeep', '#fxColorTxt'].forEach(id => $(id).disabled = !t);
@@ -5787,7 +5792,8 @@ const SFX = {
   pop: { label: 'Bụp', dur: 0.25 }, whoosh: { label: 'Vút', dur: 0.6 }, punch: { label: 'Đấm', dur: 0.35 }, boing: { label: 'Boing', dur: 0.7 },
   ting: { label: 'Ting', dur: 1.3 }, whistle: { label: 'Còi trọng tài', dur: 1.3 }, drum: { label: 'Trống', dur: 0.5 }, crowd: { label: 'Khán giả ồ', dur: 2.2 },
   bonk: { label: 'Cốp', dur: 0.3 }, slap: { label: 'Bốp', dur: 0.25 }, bang: { label: 'Bùm', dur: 0.6 }, boom: { label: 'Nổ', dur: 1.2 }, crash: { label: 'Loảng xoảng', dur: 1.3 }, zap: { label: 'Điện giật', dur: 0.45 },
-  splat: { label: 'Bẹp', dur: 0.35 }, poof: { label: 'Phụt khói', dur: 0.5 }, slide: { label: 'Huýt trượt', dur: 0.8 }, swirl: { label: 'Choáng vòng vòng', dur: 1.2 }, tweet: { label: 'Chim kêu', dur: 1.2 }, scuffle: { label: 'Đánh túi bụi', dur: 1.6 }, kick: { label: 'Sút bóng', dur: 0.3 }
+  splat: { label: 'Bẹp', dur: 0.35 }, poof: { label: 'Phụt khói', dur: 0.5 }, slide: { label: 'Huýt trượt', dur: 0.8 }, swirl: { label: 'Choáng vòng vòng', dur: 1.2 }, tweet: { label: 'Chim kêu', dur: 1.2 }, scuffle: { label: 'Đánh túi bụi', dur: 1.6 }, kick: { label: 'Sút bóng', dur: 0.3 },
+  tvoff: { label: 'Tắt TV', dur: 0.9 }, tvon: { label: 'Bật TV', dur: 0.9 }, glitch: { label: 'Nhiễu rè', dur: 0.6 }
 };
 const sfxCache = {};
 async function sfxBuffer(kind) {
@@ -5821,6 +5827,10 @@ async function sfxBuffer(kind) {
   if (kind === 'splat') { hiss(0, 0.3, 'lowpass', 900, 0.9, 0.001); thump(0, 200, 60, 0.6, 0.2); }
   if (kind === 'poof') { const n = noise(d), f = oc.createBiquadFilter(), g = oc.createGain(); f.type = 'bandpass'; f.frequency.value = 700; f.Q.value = 0.7; g.gain.setValueAtTime(0.0001, 0); g.gain.exponentialRampToValueAtTime(1, 0.06); g.gain.exponentialRampToValueAtTime(0.0001, d); n.connect(f).connect(g).connect(out); n.start(); }
   if (kind === 'scuffle') { for (let i = 0; i < 11; i++) { const s = i * 0.14 + Math.random() * 0.05; thump(s, 140 + Math.random() * 80, 45, 0.45 + Math.random() * 0.2, 0.16); hiss(s, 0.06, 'lowpass', 1500 + Math.random() * 1500, 0.4); } hiss(0, d, 'bandpass', 500, 0.25, 0.1); }
+  // old TV: relay click, the picture's whine sliding down, a little static crackle (tvon: the reverse, rising hum + static)
+  if (kind === 'tvoff') { hiss(0, 0.035, 'highpass', 2500, 0.9, 0.001); thump(0, 180, 70, 0.5, 0.08); const o = osc('sine', 1500, 55, 0.5), lp = oc.createBiquadFilter(), g = oc.createGain(); lp.type = 'lowpass'; lp.frequency.value = 2500; envAt(g, 0.01, 0.01, 0.3, 0.55); o.connect(lp).connect(g).connect(out); o.start(0.01); o.stop(0.7); hiss(0.02, 0.5, 'bandpass', 4200, 0.12, 0.01); for (let i = 0; i < 6; i++) hiss(0.05 + Math.random() * 0.45, 0.012, 'highpass', 3000, 0.35, 0.001); }
+  if (kind === 'tvon') { hiss(0, 0.03, 'highpass', 2500, 0.8, 0.001); const o = osc('sine', 60, 900, 0.35), g = oc.createGain(); g.gain.setValueAtTime(0.0001, 0.02); g.gain.exponentialRampToValueAtTime(0.28, 0.25); g.gain.exponentialRampToValueAtTime(0.0001, 0.75); o.connect(g).connect(out); o.start(0.02); o.stop(0.8); const n = noise(0.8), bp = oc.createBiquadFilter(), g2 = oc.createGain(); bp.type = 'bandpass'; bp.frequency.value = 3800; g2.gain.setValueAtTime(0.0001, 0.05); g2.gain.exponentialRampToValueAtTime(0.25, 0.3); g2.gain.exponentialRampToValueAtTime(0.0001, 0.85); n.connect(bp).connect(g2).connect(out); n.start(0.05); }
+  if (kind === 'glitch') { for (let i = 0; i < 9; i++) { const s0 = i * 0.06 + Math.random() * 0.02, o = oc.createOscillator(), g = oc.createGain(); o.type = 'square'; o.frequency.setValueAtTime(200 + Math.random() * 1800, s0); envAt(g, s0, 0.002, 0.18, 0.04); o.connect(g).connect(out); o.start(s0); o.stop(s0 + 0.06); hiss(s0, 0.04, 'highpass', 1500 + Math.random() * 4000, 0.3); } }
   const buf = await oc.startRendering(); sfxCache[kind] = buf; return buf;
 }
 async function sfxPreview(kind) { try { const ac = new (window.AudioContext || window.webkitAudioContext)(); const b = await sfxBuffer(kind); const s = ac.createBufferSource(); s.buffer = b; s.connect(ac.destination); s.start(); setTimeout(() => ac.close(), (SFX[kind].dur + 0.3) * 1000); } catch (e) {} }
@@ -5835,6 +5845,8 @@ async function scheduleAudio(ac, dest, offsetSec, totalSec, lead = 0.05) {
     if (A.music) { const b = await decodeAB(ac, A.music.buf); if (offsetSec < b.duration) play(b, now, offsetSec, A.music.vol ?? 0.6); }
     for (const c of voiceClips()) { const vs = T[voiceStart(c)] || 0, b = await decodeAB(ac, c.buf); if (offsetSec < vs + b.duration && vs <= totalSec) play(b, now + Math.max(0, vs - offsetSec), Math.max(0, offsetSec - vs), c.vol ?? 1); }
     for (const x of (A.sfx || [])) { const i = S.frames.findIndex(f => f.id === x.frameId); if (i < 0) continue; const st = T[i]; if (st < offsetSec - 0.01 || st > totalSec) continue; const b = await sfxBuffer(x.kind); play(b, now + st - offsetSec, 0, x.vol ?? 0.9); }
+    // transition sounds (📺 click, whoosh…) start with the transition itself, which can begin inside an earlier frame
+    for (const x of trList(T)) { const kk = TR_KINDS[x.k].sfx; if (!x.snd || !kk || !SFX[kk]) continue; const st = Math.max(0, x.k === 'tvoff' ? x.t0 + x.d * 0.05 : x.t0); if (st < offsetSec - 0.01 || st > totalSec) continue; play(await sfxBuffer(kk), now + st - offsetSec, 0, 0.8); }
   } catch (e) { console.error(e); }
   return () => srcs.forEach(s => { try { s.stop(); } catch (e) {} });
 }
@@ -5913,12 +5925,145 @@ function drawFrameBase(ctx, f, bg, live) {
 // what goes over the cached frame picture when the puppet moves smoothly: the in-between pose, then the vector lines
 const ppLiveOver = (i, tIn, wrap) => ctx => { const f = S.frames[i]; drawPuppet(ctx, ppPoseAt(i, tIn, wrap), ppLipAt(i, tIn)); if (S.showVec && f.vec && f.vec.length) drawVec(ctx, f.vec); };
 function drawFrameFx(ctx, i, baseImg, tsec, tInFrame, vid, over) {
+  if (!trSkip && S.frames.some(f => f.tr || f.tre) && trRender(ctx, i, baseImg, tsec, tInFrame, vid, over, frameStartTimes())) return;
+  drawFrameFx0(ctx, i, baseImg, tsec, tInFrame, vid, over);
+}
+function drawFrameFx0(ctx, i, baseImg, tsec, tInFrame, vid, over) {
   const f = S.frames[i], cam = camAt(i, tInFrame || 0);
   ctx.save(); camApply(ctx, cam, f.shake || 0, tsec, i);
   if (S.bgVideo) { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); if (S.showBg) drawVideoCover(ctx, vid || bgVid.el); }
   ctx.drawImage(baseImg, 0, 0, W, H); if (over) over(ctx); ctx.restore();
   drawTexts(ctx, f, null);
   if (f.flash) { const a = Math.max(0, 0.9 * (1 - tInFrame / Math.max(0.05, f.dur / 1000))); ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(0, 0, W, H); }
+}
+/* ===== 🎞 Transitions (chuyển cảnh): fade, crossfade, TV turning off, wipe, push, zoom blur, glitch, iris =====
+   f.tr = {k, d, snd} = transition at the cut BEFORE frame f (into f; on frame 1 = film start),
+   f.tre = the same at the cut AFTER frame f (on the last frame = film end). Both are in the automatic undo (H_FKEYS).
+   Time-based: a transition can span many short frames. side 'both' straddles the cut, 'out' ends on it, 'in' starts on it.
+   e ∈ [-1, 1] = where we are (negative = before the cut). Drawn by drawFrameFx, so playback, video and GIF all show it. */
+const TR_KINDS = {
+  dip: { label: 'Mờ qua đen', ic: '🌑', side: 'both', d: 0.8, tip: 'Hình tối dần thành màn đen rồi sáng dần ra cảnh sau (fade kiểu phim)' },
+  white: { label: 'Mờ qua trắng', ic: '⚪', side: 'both', d: 0.8, tip: 'Hình sáng loá thành màn trắng rồi hiện ra cảnh sau (hồi tưởng, giấc mơ)' },
+  cross: { label: 'Hoà cảnh', ic: '🔀', side: 'both', d: 0.8, tip: 'Cảnh trước mờ dần, cảnh sau hiện dần đè lên (crossfade)', two: true },
+  tvoff: { label: 'Tắt màn hình', ic: '📺', side: 'out', d: 0.7, sfx: 'tvoff', tip: 'Như TV đời cũ bị tắt: hình co lại thành 1 vạch sáng, rồi 1 chấm, rồi tối hẳn + tiếng tách' },
+  tvon: { label: 'Bật màn hình', ic: '📺', side: 'in', d: 0.6, sfx: 'tvon', tip: 'Ngược lại: 1 chấm sáng loé ra thành vạch rồi mở thành hình' },
+  wipe: { label: 'Lau ngang', ic: '➡', side: 'both', d: 0.6, sfx: 'whoosh', tip: 'Cảnh sau quét từ trái sang phải đè lên cảnh trước', two: true },
+  push: { label: 'Đẩy sang', ic: '⬅', side: 'both', d: 0.5, sfx: 'whoosh', tip: 'Cảnh sau đẩy cảnh trước trượt ra khỏi màn hình', two: true },
+  zoom: { label: 'Phóng mờ', ic: '🌀', side: 'both', d: 0.5, sfx: 'whoosh', tip: 'Lao vút vào giữa hình, mờ nhoè, rồi bung ra cảnh sau' },
+  glitch: { label: 'Nhiễu glitch', ic: '📼', side: 'both', d: 0.5, sfx: 'glitch', tip: 'Hình giật, xé ngang, lệch màu như băng hỏng rồi sang cảnh sau' },
+  iris: { label: 'Khép tròn', ic: '⚫', side: 'both', d: 1, tip: 'Vòng tròn khép lại thành màn đen rồi mở ra cảnh sau (kiểu phim hoạt hình cũ)' }
+};
+SETTINGS_KEYS.push('trOpt');
+S.trOpt = { at: 'out', snd: true };
+let trSkip = false, trSrc = null;   // trSkip: still pictures (PNG, cover) skip transitions; trSrc(j) → {img, live} base of another frame
+// every transition in the film with its time window
+function trList(T) {
+  const n = S.frames.length, out = []; T = T || frameStartTimes();
+  const add = (c, tr) => {
+    const K = TR_KINDS[tr.k]; if (!K) return; const d = clamp(+tr.d || K.d, 0.1, 5), Tc = T[c];
+    let side = K.side; if (side === 'both' && c === 0) side = 'in'; if (side === 'both' && c === n) side = 'out';
+    if ((side === 'out' && c === 0) || (side === 'in' && c === n)) return;
+    const t0 = side === 'in' ? Tc : side === 'out' ? Tc - d : Tc - d / 2, t1 = side === 'in' ? Tc + d : side === 'out' ? Tc : Tc + d / 2;
+    out.push({ c, k: tr.k, d, side, Tc, t0, t1, snd: tr.snd !== false, two: !!K.two && c > 0 && c < n });
+  };
+  for (let c = 0; c <= n; c++) { const a = S.frames[c] && S.frames[c].tr, b = c > 0 && S.frames[c - 1].tre; if (a) add(c, a); if (b && !(a && a.k === b.k)) add(c, b); }
+  return out;
+}
+const trE = (x, t) => clamp(x.side === 'both' ? (t - x.Tc) / (x.d / 2) : (t - x.Tc) / x.d, -1, 1);
+// frames whose picture a two-picture transition needs at time t (besides the current one)
+function trOthers(t, T) { return trList(T).filter(x => x.two && t >= x.t0 && t < x.t1).map(x => t < x.Tc ? x.c : x.c - 1); }
+const trCanvas = [null, null, null, null];
+function trBuf(k, w, h) { let c = trCanvas[k]; if (!c) c = trCanvas[k] = makeCanvas(w, h); if (c.width !== w || c.height !== h) { c.width = w; c.height = h; } const x = c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; x.clearRect(0, 0, w, h); x.setTransform(w / W, 0, 0, h / H, 0, 0); return c; }
+const trRand = s => { const x = Math.sin(s * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+// draws one transition at e from picture `cur` (and `oth` = the other side) into ctx (document coordinates)
+function trDraw(ctx, x, e, cur, oth, t) {
+  const k = x.k, a = Math.abs(e), sm = EASE.inout, A = e < 0 ? cur : oth, B = e < 0 ? oth : cur, m = sm((e + 1) / 2);
+  ctx.save(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  if ((k === 'cross' || k === 'wipe' || k === 'push') && (!x.two || !oth)) { ctx.drawImage(cur, 0, 0, W, H); ctx.fillStyle = `rgba(0,0,0,${1 - sm(a)})`; ctx.fillRect(0, 0, W, H); }
+  else if (k === 'dip' || k === 'white') { ctx.drawImage(cur, 0, 0, W, H); ctx.fillStyle = k === 'dip' ? `rgba(0,0,0,${1 - sm(a)})` : `rgba(255,255,255,${1 - sm(a)})`; ctx.fillRect(0, 0, W, H); }
+  else if (k === 'cross') { ctx.drawImage(A, 0, 0, W, H); ctx.globalAlpha = m; ctx.drawImage(B, 0, 0, W, H); }
+  else if (k === 'wipe') {
+    const xw = m * W * 1.1 - W * 0.05; ctx.drawImage(A, 0, 0, W, H);
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, Math.max(0, xw), H); ctx.clip(); ctx.drawImage(B, 0, 0, W, H); ctx.restore();
+    const g = ctx.createLinearGradient(xw - W * 0.04, 0, xw + W * 0.02, 0); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.7, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(xw - W * 0.04, 0, W * 0.06, H);
+  } else if (k === 'push') { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); ctx.drawImage(A, -m * W, 0, W, H); ctx.drawImage(B, (1 - m) * W, 0, W, H); }
+  else if (k === 'zoom') {
+    const p = Math.pow(1 - a, 2), s = 1 + 1.4 * p; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+    for (let i = 0; i < 6; i++) { const si = s * (1 + i * 0.05 * p); ctx.globalAlpha = i ? 0.28 * p : 1; ctx.drawImage(cur, W / 2 - W * si / 2, H / 2 - H * si / 2, W * si, H * si); }
+    ctx.globalAlpha = 1; ctx.fillStyle = `rgba(255,255,255,${0.55 * p})`; ctx.fillRect(0, 0, W, H);
+  } else if (k === 'glitch') {
+    const g = Math.pow(1 - a, 1.5), fr = Math.floor(t * 24), img = x.two && oth && a < 0.35 && trRand(fr + 7) < 0.45 ? oth : cur;
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); ctx.drawImage(img, 0, 0, W, H);
+    const bands = 6 + Math.floor(g * 12);
+    for (let i = 0; i < bands; i++) {
+      if (trRand(fr * 31 + i) > 0.25 + g * 0.7) continue;
+      const y = trRand(fr * 17 + i * 3) * H, h = H * (0.01 + trRand(fr + i * 9) * 0.08 * (0.3 + g)), dx = (trRand(fr * 5 + i) - 0.5) * W * 0.35 * g;
+      const sy = y * img.height / H, sh = Math.max(1, h * img.height / H);
+      ctx.drawImage(img, 0, sy, img.width, sh, dx, y, W, h);
+    }
+    if (g > 0.12) {   // colour split: red channel shifted one way, green+blue the other
+      const off = W * 0.02 * g * (trRand(fr) < 0.5 ? 1 : -1), rc = trBuf(3, img.width, img.height), rx = rc.getContext('2d');
+      rx.drawImage(img, 0, 0, W, H); rx.globalCompositeOperation = 'multiply'; rx.fillStyle = '#f00'; rx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = '#0ff'; ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(rc, off, 0, W, H);
+    }
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.18 * g;
+    for (let yy = 0; yy < H; yy += H / 160) { ctx.fillStyle = trRand(fr + yy) < 0.5 ? '#000' : '#fff'; ctx.fillRect(0, yy, W, H / 400); }
+  } else if (k === 'iris') {
+    const R = Math.hypot(W, H) / 2 * sm(a), cx = W / 2, cy = H / 2; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+    if (R > 0.5) { ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(cur, 0, 0, W, H); ctx.restore(); }
+  } else if (k === 'tvoff' || k === 'tvon') trTv(ctx, cur, k === 'tvoff' ? 1 + e : 1 - e);
+  ctx.restore();
+}
+// old CRT TV switching off, q = 0 (picture) → 1 (dark): squash to a bright line, the line shrinks to a dot, the dot fades
+function trTv(ctx, img, q) {
+  q = clamp(q, 0, 1); const u = Math.min(W, H) / 1080; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+  if (q < 0.5) {
+    const p = q / 0.5, sy = Math.max(0.004, 1 - EASE.in(p) * 0.996), sx = 1 + 0.06 * p, w = W * sx, h = H * sy;
+    ctx.drawImage(img, W / 2 - w / 2, H / 2 - h / 2, w, h);
+    ctx.fillStyle = `rgba(255,255,255,${Math.min(1, p * 1.3)})`; ctx.fillRect(W / 2 - w / 2, H / 2 - h / 2, w, h);
+    ctx.shadowColor = 'rgba(200,230,255,.9)'; ctx.shadowBlur = 30 * u * p; ctx.fillStyle = `rgba(255,255,255,${p * 0.6})`; ctx.fillRect(W / 2 - w / 2, H / 2 - Math.max(h, 4 * u) / 2, w, Math.max(h, 4 * u));
+  } else if (q < 0.82) {
+    const p = (q - 0.5) / 0.32, w = Math.max(8 * u, W * 1.06 * (1 - EASE.in(p))), h = Math.max(2, 5 * u * (1 - p * 0.4));
+    ctx.shadowColor = 'rgba(190,225,255,1)'; ctx.shadowBlur = 26 * u; ctx.fillStyle = '#fff'; ctx.fillRect(W / 2 - w / 2, H / 2 - h / 2, w, h);
+  } else {
+    const p = (q - 0.82) / 0.18, r = 7 * u * (1 - p * 0.6);
+    ctx.globalAlpha = 1 - EASE.in(p); ctx.shadowColor = 'rgba(190,225,255,1)'; ctx.shadowBlur = 24 * u; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+}
+// exports: keep the base picture of the other frame a two-picture transition needs (built on demand, at most a few)
+function trSrcCache(live) {
+  const m = new Map();
+  return {
+    async prep(t, T) {
+      const need = trOthers(t, T);
+      for (const [j, c] of m) if (!need.includes(j)) { c.width = 0; m.delete(j); }
+      for (const j of need) if (!m.has(j)) { const f = S.frames[j]; await ensureLoaded(f); const bg = bgOf(f); if (bg) await ensureLoaded(bg); const c = makeCanvas(); drawFrameBase(c.getContext('2d'), f, bg, live); m.set(j, c); }
+      trSrc = j => m.has(j) ? { img: m.get(j), live } : null;
+    },
+    done() { for (const c of m.values()) c.width = 0; m.clear(); trSrc = null; }
+  };
+}
+const playTrSrc = j => S.frames[j] && S.frames[j].play ? { img: S.frames[j].play, live: ppSmoothOn() } : null;
+// renders frame i at time t with its transitions: the plain frame goes into a buffer, each active transition reworks it
+function trRender(ctx, i, baseImg, tsec, tInFrame, vid, over, T) {
+  const t = T[i] + (tInFrame || 0), act = trList(T).filter(x => t >= x.t0 && t < x.t1);
+  if (!act.length) return false;
+  const m = ctx.getTransform(), k = clamp(Math.hypot(m.a, m.b), 0.25, 1), bw = Math.max(2, Math.round(W * k)), bh = Math.max(2, Math.round(H * k));
+  let cur = trBuf(0, bw, bh); drawFrameFx0(cur.getContext('2d'), i, baseImg, tsec, tInFrame, vid, over);
+  act.forEach((x, n) => {
+    const e = trE(x, t); let oth = null;
+    if (x.two && trSrc) {
+      const j = t < x.Tc ? x.c : x.c - 1, src = trSrc(j);
+      if (src && src.img) { const tj = j === x.c ? 0 : S.frames[j].dur / 1000 - 1e-3; oth = trBuf(1, bw, bh); drawFrameFx0(oth.getContext('2d'), j, src.img, T[j] + tj, tj, vid, src.live ? ppLiveOver(j, tj, false) : null); }
+    }
+    if (n === act.length - 1) { trDraw(ctx, x, e, cur, oth, t); return; }
+    const nx = trBuf(2, bw, bh); trDraw(nx.getContext('2d'), x, e, cur, oth, t);
+    const keep = trCanvas[0]; trCanvas[0] = nx; trCanvas[2] = keep; cur = nx;
+  });
+  return true;
 }
 /* --- GIF / PNG export (no sound): sticker loops, previews, frames for other editors --- */
 // median-cut palette (≤256 colours) on a 15-bit histogram; cartoons have flat colours so no dithering
@@ -5980,12 +6125,12 @@ function gifEncoder(w, h) {
   };
 }
 // one finished frame (background, colour, lines, puppet, vector, camera, texts, flash) drawn into ctx at W×H
-async function renderFinalFrame(ctx, i, base) {
+async function renderFinalFrame(ctx, i, base, tIn = 0, withTr = false) {
   const f = S.frames[i]; await ensureLoaded(f); const bg = bgOf(f); if (bg) await ensureLoaded(bg);
   const bx = base.getContext('2d'); drawFrameBase(bx, f, bg);
   if (S.bgVideo && bgVid.ready) { const v = bgVid.el; try { v.currentTime = bgVideoTimeAt(i); await new Promise(r => { v.onseeked = r; setTimeout(r, 600); }); } catch (e) {} }
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.restore();
-  drawFrameFx(ctx, i, base, frameStartTimes()[i], 0);
+  trSkip = !withTr; try { drawFrameFx(ctx, i, base, frameStartTimes()[i] + tIn, tIn); } finally { trSkip = false; }
 }
 async function exportImagesDialog() {
   if (playing) stopPlay(); if (stroke) strokeEnd(); commitFloating();
@@ -6004,20 +6149,28 @@ async function exportGif(gw) {
   if (exportBusy) return; exportBusy = true;
   const k = Math.min(1, gw / W), w = Math.round(W * k) & ~1, h = Math.round(H * k) & ~1;
   const big = makeCanvas(), bctx = big.getContext('2d'), base = makeCanvas(), small = makeCanvas(w, h), sx = small.getContext('2d', { willReadFrequently: true });
-  const enc = gifEncoder(w, h), pm = progress('Đang tạo GIF…');
+  const enc = gifEncoder(w, h), pm = progress('Đang tạo GIF…'), T = frameStartTimes(), trs = trList(T), ts = trSrcCache(false);
   try {
     for (let i = 0; i < S.frames.length; i++) {
       pm.set(`Đang tạo GIF ${i + 1}/${S.frames.length}…`); await new Promise(r => setTimeout(r, 0));
-      await renderFinalFrame(bctx, i, base);
-      sx.imageSmoothingQuality = 'high'; sx.drawImage(big, 0, 0, w, h);
-      enc.add(sx.getImageData(0, 0, w, h).data, S.frames[i].dur / 10);
+      // inside a transition the frame is split into 1/20 s pictures so the fade / TV-off moves in the GIF too
+      const a = T[i], b = T[i + 1], pts = new Set([a]);
+      for (const x of trs) { const u0 = Math.max(a, x.t0), u1 = Math.min(b, x.t1); if (u1 <= u0) continue; for (let u = u0; u < u1 - 1e-4; u += 0.05) pts.add(+u.toFixed(4)); if (u1 < b - 1e-4) pts.add(+u1.toFixed(4)); }
+      const arr = [...pts].sort((p, q) => p - q).filter((u, k, l) => k === 0 || u - l[k - 1] > 0.009);
+      for (let k = 0; k < arr.length; k++) {
+        const u = arr[k], nx = k + 1 < arr.length ? arr[k + 1] : b;
+        if (trs.length) await ts.prep(u, T);
+        await renderFinalFrame(bctx, i, base, u - a, true);
+        sx.imageSmoothingQuality = 'high'; sx.drawImage(big, 0, 0, w, h);
+        enc.add(sx.getImageData(0, 0, w, h).data, (nx - u) * 100);
+      }
       evictSoon();
     }
     const blob = enc.finish(); pm.close();
     await deliverFile(blob, `frame-studio-${stamp()}.gif`);
     toast(`GIF ${w}×${h} · ${(blob.size / 1e6).toFixed(1)} MB`, 3000);
   } catch (e) { pm.close(); console.error(e); toast('Không tạo được GIF: ' + e.message, 4000); }
-  finally { big.width = base.width = small.width = 0; exportBusy = false; }
+  finally { ts.done(); big.width = base.width = small.width = 0; exportBusy = false; }
 }
 async function exportPngSeq() {
   if (exportBusy) return; exportBusy = true;
@@ -6126,13 +6279,14 @@ async function exportVideoFast(msg, isCancelled) {
   let err = null, vDesc = null; const vSamples = [];
   const enc = new VideoEncoder({ output: (c, meta) => { if (meta && meta.decoderConfig && meta.decoderConfig.description) vDesc = new Uint8Array(vxU8(meta.decoderConfig.description)); const d = new Uint8Array(c.byteLength); c.copyTo(d); vSamples.push({ data: d, key: c.type === 'key' }); }, error: e => { err = e; } });
   enc.configure(vcfg);
-  const out = makeCanvas(w, h), ox = out.getContext('2d'), base = makeCanvas(), bx = base.getContext('2d');
+  const out = makeCanvas(w, h), ox = out.getContext('2d'), base = makeCanvas(), bx = base.getContext('2d'), ts = trSrcCache(live);
   let bi = -1;
   try {
     for (let n = 0; n < N; n++) {
       if (isCancelled()) throw new Error('cancel'); if (err) throw err;
       const t = n / VX_FPS; let i = T.findIndex((v, k) => k < S.frames.length && t < T[k + 1]); if (i < 0) i = S.frames.length - 1;
       if (i !== bi) { const f = S.frames[i]; await ensureLoaded(f); const bg = bgOf(f); if (bg) await ensureLoaded(bg); drawFrameBase(bx, f, bg, live); bi = i; evictSoon(); }
+      await ts.prep(t, T);
       drawFrameFx(ox, i, base, t, t - T[i], null, live ? ppLiveOver(i, t - T[i], false) : null);
       const vf = new VideoFrame(out, { timestamp: Math.round(t * 1e6), duration: Math.round(1e6 / VX_FPS) });
       enc.encode(vf, { keyFrame: n % (VX_FPS * 2) === 0 }); vf.close();
@@ -6140,7 +6294,7 @@ async function exportVideoFast(msg, isCancelled) {
       if (n % 5 === 0) { msg(`⚡ Xuất nhanh: ${t.toFixed(1)} / ${total.toFixed(1)} giây`); await new Promise(r => setTimeout(r, 0)); }
     }
     await enc.flush(); if (err) throw err;
-  } finally { try { enc.close(); } catch (e) {} out.width = base.width = 0; }
+  } finally { try { enc.close(); } catch (e) {} ts.done(); out.width = base.width = 0; }
   if (!vDesc || !vSamples.length) return null;
   let audio = null;
   if (hasAudio()) {
@@ -6279,6 +6433,7 @@ async function exportVideo() {
     const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8e6 }), chunks = [];
     rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
     const done = new Promise(r => rec.onstop = r);
+    const rts = trSrcCache(live); await rts.prep(0, T);
     let bmp = await createImageBitmap(blobs[0]), bmpI = 0, nextP = blobs[1] ? createImageBitmap(blobs[1]) : null;
     drawFrameFx(ox, 0, bmp, 0, 0, vid, live ? ppLiveOver(0, 0, false) : null);
     if (vid) { try { await vid.play(); } catch (e) {} }
@@ -6291,13 +6446,13 @@ async function exportVideo() {
         if (t >= total + 0.15) { resolve(); return; }
         let i = T.findIndex((v, k) => k < S.frames.length && t < T[k + 1]); if (i < 0) i = S.frames.length - 1;
         if (i !== bmpI) { bmp.close && bmp.close(); bmp = nextP && i === bmpI + 1 ? await nextP : await createImageBitmap(blobs[i]); bmpI = i; nextP = blobs[i + 1] ? createImageBitmap(blobs[i + 1]) : null; }
-        drawFrameFx(ox, i, bmp, t, t - T[i], vid, live ? ppLiveOver(i, t - T[i], false) : null);
+        await rts.prep(t, T); drawFrameFx(ox, i, bmp, t, t - T[i], vid, live ? ppLiveOver(i, t - T[i], false) : null);
         msg(`Đang quay ${t.toFixed(1)} / ${total.toFixed(1)} giây`);
         requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
     });
-    rec.stop(); stopAudio(); if (vid) { vid.pause(); vid.remove(); } await done; ac.close(); stream.getTracks().forEach(t => t.stop()); out.width = 0;
+    rts.done(); rec.stop(); stopAudio(); if (vid) { vid.pause(); vid.remove(); } await done; ac.close(); stream.getTracks().forEach(t => t.stop()); out.width = 0;
     ov.remove();
     if (cancelled) { toast('Đã huỷ xuất video'); return; }
     const blob = new Blob(chunks, { type: mime.split(';')[0] });
@@ -7058,6 +7213,62 @@ function camPresetApply(p) {
 $('#fxShake').addEventListener('change', e => fxEdit(f => { f.shake = +e.target.value; }));
 $('#fxFlash').addEventListener('click', () => fxEdit(f => { f.flash = !f.flash; }));
 Object.entries(SFX).forEach(([k, v]) => { const b = document.createElement('button'); b.className = 'chip small'; b.textContent = '🔊 ' + v.label; b.addEventListener('click', () => { sfxPreview(k); S.audio = S.audio || {}; S.audio.sfx = S.audio.sfx || []; S.audio.sfx.push({ id: newId(), frameId: curFrame().id, kind: k, vol: 0.9 }); fxSyncBar(); scheduleSave(); toast(`Đã gắn "${v.label}" vào frame ${S.cur + 1}`); }); $('#fxSfx').append(b); });
+/* 🎞 Chuyển cảnh tab */
+// the transition the tab edits right now: on the current frame, before it (⏮) or after it (⏭)
+const trKey = () => S.trOpt.at === 'in' ? 'tr' : 'tre';
+function trDesc(f, key, i) {
+  const x = f[key], K = x && TR_KINDS[x.k]; if (!K) return '';
+  const last = i === S.frames.length - 1, where = key === 'tr' ? (i === 0 ? 'mở đầu phim' : `giữa frame ${i} và ${i + 1}`) : (last ? 'kết thúc phim' : `giữa frame ${i + 1} và ${i + 2}`);
+  return `${K.ic} ${K.label} ${(+x.d || K.d).toFixed(1)}s, ${where}`;
+}
+function trSyncBar() {
+  if (!$('#trKinds')) return; const f = curFrame(); if (!f) return; const key = trKey(), x = f[key];
+  document.querySelectorAll('[data-trat]').forEach(b => b.classList.toggle('on', b.dataset.trat === S.trOpt.at));
+  document.querySelectorAll('[data-trk]').forEach(b => b.classList.toggle('on', !!x && x.k === b.dataset.trk));
+  const d = x ? +x.d || TR_KINDS[x.k].d : 0.8; $('#trD').value = d; $('#trDVal').textContent = x ? d.toFixed(1) + 's' : ''; $('#trD').disabled = !x;
+  $('#trSnd').classList.toggle('on', x ? x.snd !== false : S.trOpt.snd !== false);
+  $('#trDel').disabled = !x; $('#trPrev').disabled = !x;
+  const parts = [trDesc(f, 'tr', S.cur), trDesc(f, 'tre', S.cur)].filter(Boolean);
+  const n = S.frames.length, i = S.cur;
+  $('#trStat').textContent = parts.length ? 'Đã có: ' + parts.join(' · ') : `Chưa có chuyển cảnh ở frame ${i + 1}. Chọn chỗ đặt (${S.trOpt.at === 'in' ? (i === 0 ? 'mở đầu phim' : `giữa frame ${i} và ${i + 1}`) : (i === n - 1 ? 'kết thúc phim' : `giữa frame ${i + 1} và ${i + 2}`)}) rồi chạm 1 kiểu.`;
+}
+// ◧ marks on the strip: left edge = transition into the frame, right edge = out of it
+function trBadges() {
+  S.frames.forEach(g => {
+    if (!g.el) return; g.el.querySelectorAll('.trb').forEach(b => b.remove());
+    [['tr', 'in'], ['tre', 'out']].forEach(([key, cls]) => { const x = g[key], K = x && TR_KINDS[x.k]; if (!K) return; const b = document.createElement('span'); b.className = 'trb ' + cls; b.textContent = K.ic; b.title = K.label; g.el.append(b); });
+  });
+}
+function trSet(kind) {
+  const f = curFrame(), key = trKey(), K = TR_KINDS[kind], i = S.cur, n = S.frames.length;
+  if (K.side === 'out' && key === 'tr' && i === 0) { toast('Đầu phim chưa có gì để tắt — chọn "Sau frame này ⏭"', 3500); return; }
+  if (K.side === 'in' && key === 'tre' && i === n - 1) { toast('Cuối phim không còn gì để bật lên — chọn "⏮ Đầu frame này"', 3500); return; }
+  f[key] = { k: kind, d: K.d, snd: S.trOpt.snd !== false };   // each kind starts at its own natural length; the slider changes it after
+  if (K.sfx && f[key].snd) sfxPreview(K.sfx);
+  scheduleSave(); fxSyncBar(); requestRender();
+  toast(`${K.ic} Đã thêm ${K.label} (${trDesc(f, key, i).split(', ').pop()}) — bấm ▶ Xem thử`, 3000);
+}
+function trInit() {
+  const box = $('#trKinds'); if (!box) return;
+  Object.entries(TR_KINDS).forEach(([k, K]) => { const b = document.createElement('button'); b.className = 'chip small'; b.dataset.trk = k; b.textContent = K.ic + ' ' + K.label; b.title = K.tip; b.addEventListener('click', () => trSet(k)); box.append(b); });
+  document.querySelectorAll('[data-trat]').forEach(b => b.addEventListener('click', () => { S.trOpt.at = b.dataset.trat; saveSettings(); trSyncBar(); }));
+  $('#trD').addEventListener('input', e => { $('#trDVal').textContent = (+e.target.value).toFixed(1) + 's'; });
+  $('#trD').addEventListener('change', e => { const d = +e.target.value, f = curFrame(), key = trKey(); if (f[key]) { f[key] = { ...f[key], d }; scheduleSave(); } fxSyncBar(); });
+  $('#trSnd').addEventListener('click', () => { const f = curFrame(), key = trKey(); if (f[key]) { f[key] = { ...f[key], snd: f[key].snd === false }; S.trOpt.snd = f[key].snd; scheduleSave(); } else S.trOpt.snd = S.trOpt.snd === false; saveSettings(); fxSyncBar(); });
+  $('#trDel').addEventListener('click', () => { const f = curFrame(), key = trKey(); if (!f[key]) return; f[key] = undefined; delete f[key]; scheduleSave(); fxSyncBar(); requestRender(); toast('Đã bỏ chuyển cảnh — hoàn tác nếu bấm nhầm'); });
+  $('#trPrev').addEventListener('click', trPreview);
+}
+// play from a little before the transition to a little after it
+async function trPreview() {
+  const f = curFrame(), x = trList().find(y => (trKey() === 'tr' ? y.c === S.cur : y.c === S.cur + 1) && y.k === (f[trKey()] || {}).k); if (!x) return;
+  if (playing) stopPlay();
+  const T = frameStartTimes(), t = Math.max(0, x.t0 - 0.4); let i = T.findIndex((v, k) => k < S.frames.length && t < T[k + 1]); if (i < 0) i = 0;
+  const back = S.cur; await selectFrame(i); await startPlay();
+  const end = x.t1 + 0.5 - T[i], my = ++trPrevTok;
+  setTimeout(() => { if (playing && my === trPrevTok) { stopPlay(); selectFrame(back); } }, end * 1000 / playSpeed);
+}
+let trPrevTok = 0;
+trInit();
 const pickAudio = (input, key) => { input.addEventListener('change', async e => { const file = e.target.files[0]; e.target.value = ''; if (!file) return; if (file.size > 40e6) { toast('File quá lớn (tối đa 40 MB)'); return; } const buf = await file.arrayBuffer(); try { const ac = new OfflineAudioContext(1, 44100, 44100); await ac.decodeAudioData(buf.slice(0)); } catch (err) { toast('Không đọc được file âm thanh này'); return; } S.audio = S.audio || {}; const clip = { name: file.name.slice(0, 60), buf, vol: key === 'music' ? 0.6 : 1, frameId: curFrame().id }; if (key === 'voice') voiceAdd(clip); else S.audio[key] = clip; waveKey = ''; updateWaves(); fxSyncBar(); scheduleSave(); toast(key === 'music' ? 'Đã thêm nhạc nền — bấm Phát để nghe' : `Đã thêm giọng ${voiceClips().length} — bấm 🗣 Tự nhép miệng theo giọng`, 3500); }); };
 pickAudio($('#musicFile'), 'music'); pickAudio($('#voiceFile'), 'voice');
 $('#fxMusicPick').addEventListener('click', () => $('#musicFile').click());
@@ -7405,7 +7616,7 @@ async function saveProject() {
       v: 2, W, H, cur: S.cur,
       bgs: S.bgs.map(b => ({ id: b.id, png: ref('b:' + b.id, b.png) })),
       name: S.projName || 'Dự án', poses: S.poses || [],
-      frames: S.frames.map(f => ({ id: f.id, dur: f.dur, bgId: f.bgId, png: ref('f:' + f.id, f.png), col: ref('c:' + f.id, f.colPng), vec: f.vec, pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || null })),
+      frames: S.frames.map(f => ({ id: f.id, dur: f.dur, bgId: f.bgId, png: ref('f:' + f.id, f.png), col: ref('c:' + f.id, f.colPng), vec: f.vec, pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || null, tr: f.tr || null, tre: f.tre || null })),
       audio: A ? { ...A, music: slim(A.music), voice: slim(A.voice), voices: (A.voices || []).map((v, k) => ({ ...v, buf: ref('m:v' + (v.id || k), v.buf) })) } : null,
       bgVideo: S.bgVideo ? { ...S.bgVideo, buf: ref('m:video', S.bgVideo.buf) } : null,
       pp: S.pp ? { parts: S.pp.parts.map(p => ({ id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null, png: p.png, alts: (p.alts || []).map(a => ({ png: a.png, dx: a.dx || 0, dy: a.dy || 0 })) })) } : null,
@@ -7432,7 +7643,7 @@ async function saveProject() {
 async function loadProjectData(p) {
   W = p.W; H = p.H; setupWorkCanvases();
   S.bgs = p.bgs.map(b => ({ kind: 'bg', id: b.id, ver: 0, png: b.png || null, pngVer: 0, canvas: null }));
-  S.frames = p.frames.map(f => ({ kind: 'char', id: f.id, dur: f.dur, bgId: f.bgId, ver: 0, png: f.png || null, pngVer: 0, canvas: null, col: null, colPng: f.col || null, colVer: 0, colPngVer: 0, thumb: null, play: null, playKey: '', vec: f.vec || [], pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || undefined }));
+  S.frames = p.frames.map(f => ({ kind: 'char', id: f.id, dur: f.dur, bgId: f.bgId, ver: 0, png: f.png || null, pngVer: 0, canvas: null, col: null, colPng: f.col || null, colVer: 0, colPngVer: 0, thumb: null, play: null, playKey: '', vec: f.vec || [], pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || undefined, tr: f.tr || undefined, tre: f.tre || undefined }));
   S.audio = p.audio || null; S.bgVideo = p.bgVideo || null; bgVideoSetup();
   S.projName = p.name || S.projName || 'Dự án'; S.poses = p.poses || [];
   loaded.length = 0; undoStack.length = 0; redoStack.length = 0; undoBytes = 0;
@@ -7584,7 +7795,7 @@ async function exportZip() {
         files.push({ name: linesName, data: new Uint8Array(await (await toBlob(comp)).arrayBuffer()) });
       }
       meta.push({ index: i + 1, file: `frames/frame_${n}.png`, char_layer: `layers/char_${n}.png`, color_layer: colorName, lines_layer: linesName, bg_layer: bgFile.get(f.bgId), duration_ms: f.dur,
-        pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], camera: camAt(i), cam_key: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || null,
+        pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], camera: camAt(i), cam_key: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || null, tr: f.tr || null, tre: f.tre || null,
         vector: f.vec.map(st => ({ c: st.c, w: +st.w.toFixed(2), a: st.a, pts: st.pts.map(q => [+q.x.toFixed(1), +q.y.toFixed(1)]) })) });
     }
     comp.width = 0;
@@ -7631,7 +7842,7 @@ async function importZip(file) {
       if (!bgId) { bgId = newId(); bgs.push({ id: bgId, png: null }); }
       const vec = (fr.vector || []).map(st => ({ id: newId(), c: st.c, w: st.w, a: st.a, pts: st.pts.map(([x, y]) => ({ x, y })) }));
       const dc = fr.color_layer && z.get(fr.color_layer);
-      return { id: newId(), dur: fr.duration_ms || 100, bgId, vec, col: dc ? dc.buffer.slice(dc.byteOffset, dc.byteOffset + dc.byteLength) : null, pp: fr.pp || {}, ppKey: fr.ppKey, ppEase: fr.ppEase, texts: fr.texts || [], cam: fr.cam_key || null, shake: fr.shake || 0, flash: !!fr.flash, lip: fr.lip || null, scene: fr.scene || undefined, png: d ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : null };
+      return { id: newId(), dur: fr.duration_ms || 100, bgId, vec, col: dc ? dc.buffer.slice(dc.byteOffset, dc.byteOffset + dc.byteLength) : null, pp: fr.pp || {}, ppKey: fr.ppKey, ppEase: fr.ppEase, texts: fr.texts || [], cam: fr.cam_key || null, shake: fr.shake || 0, flash: !!fr.flash, lip: fr.lip || null, scene: fr.scene || undefined, tr: fr.tr || undefined, tre: fr.tre || undefined, png: d ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : null };
     });
     if (!frames.length) throw new Error('ZIP không có frame nào');
     pm.set('Đang mở…');
@@ -9315,7 +9526,7 @@ function helpHtml() {
 <li><b>Xoay & toàn màn hình</b>: tablet xoay ngang/dọc đều dùng được. Xoay khung vẽ bằng 2 ngón (tự hít góc thẳng) hoặc nút <b>⟲ Xoay 90°</b>; <b>Vừa khung</b> để thẳng lại. <b>Ẩn công cụ</b> để vẽ toàn màn hình (còn cụm nút nhỏ góc trên); <b>▾ Ẩn dòng frame</b> để thu gọn thanh frame. Nút <b>Thu gọn</b> (cuối thanh công cụ, cuối thanh trên) và <b>⌄ Thu nhỏ</b> (thanh frame) gập từng thanh thành 1 nút nhỏ trên khung vẽ, chạm nút đó để mở lại. Bảng nổi (Ghép, Chữ & FX, Sửa nét) bấm ✕ để gập thành nút <b>☰</b>. Trạng thái gập được nhớ cho lần sau.</li>
 <li>Bảng công cụ che khung? Bấm <b>✕</b> để đóng bảng (công cụ vẫn bật), bấm <b>☰ Mở bảng</b> góc dưới hoặc chạm lại biểu tượng công cụ để mở lại.</li>
 <li><b>Nền</b>: vẽ/nhập nền 1 lần ở lớp Nền (dùng chung cho các frame), hoặc <b>🎞 Nền video</b> để đặt một đoạn video chạy phía sau nhân vật. Không cần vẽ nền từng frame — khi xuất video app tự ghép tất cả.</li>
-<li><b>✨ Chữ & FX</b>: thêm chữ truyện tranh/bóng thoại/hét/phụ đề (kéo để dời), camera zoom + chạm đặt tâm (tự lia mượt giữa các camera key), rung, chớp sáng; nhạc nền, lồng tiếng + 🗣 tự nhép miệng; âm thanh hiệu ứng có sẵn. <b>🎬 Video</b> xuất MP4/WebM có tiếng.</li>
+<li><b>✨ Chữ & FX</b>: thêm chữ truyện tranh/bóng thoại/hét/phụ đề (kéo để dời), camera zoom + chạm đặt tâm (tự lia mượt giữa các camera key), rung, chớp sáng; <b>🎞 Chuyển cảnh</b> (mờ qua đen/trắng, hoà cảnh, 📺 tắt/bật màn hình TV có tiếng tách, lau ngang, đẩy sang, phóng mờ, glitch, khép tròn): chọn Đầu frame / Sau frame rồi chạm 1 kiểu, hiện cả khi phát, xuất video và GIF; nhạc nền, lồng tiếng + 🗣 tự nhép miệng; âm thanh hiệu ứng có sẵn. <b>🎬 Video</b> xuất MP4/WebM có tiếng.</li>
 <li><b>📁 Dự án</b>: lưu nhiều bài, mở/đổi tên/nhân bản/xoá.</li>
 <li><b>🧩 Nhân vật ghép</b> (công cụ Ghép): Nhập ảnh → Nhân vật ghép → kéo khớp → Cắt tự động. Chạm mảnh, kéo để xoay quanh khớp. Cách làm hoạt hình: đặt tư thế A → Nhân bản frame → đặt tư thế B → quay lại A → <b>Tạo frame giữa</b>. Có mẫu Đi/Chạy/Nhảy/Vẫy/Gật/Lắc đầu/Thở, Nói/Chớp mắt (khoanh tách mảnh Miệng/Mắt rồi đặt vai trò).</li>
 <li><b>🎨 Tách nét + màu</b>: Nhập ảnh → tab <b>🎨 Tách nét + màu</b>. App tự lấy nét viền tối vào lớp <b>Nhân vật</b> và màu gốc của từng vùng vào lớp <b>Màu</b> (tô lấn dưới nét). Hợp với ảnh 🤖 AI nhân vật. Ở tab 🧩 Nhân vật ghép có công tắc <b>Làm sạch</b> để nét rõ, màu phẳng trước khi cắt mảnh.</li>
