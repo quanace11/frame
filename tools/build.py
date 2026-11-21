@@ -53,6 +53,7 @@ self.addEventListener('message', e => {{ if (e.data === 'skipWaiting') self.skip
 self.addEventListener('fetch', e => {{
   const req = e.request; if (req.method !== 'GET') return;
   const url = new URL(req.url);
+  if (url.origin !== location.origin) return;   // GitHub sync / Gemini API: always live, never from the cache
   // the page itself: network first (so updates arrive), fall back to cache when offline
   if (req.mode === 'navigate' || (url.origin === location.origin && (url.pathname.endsWith('/') || url.pathname.endsWith('/index.html')))) {{
     e.respondWith(fetch(req).then(r => {{ const cp = r.clone(); caches.open(CORE).then(c => c.put('./index.html', cp)); return r; }}).catch(() => caches.match('./index.html', {{ ignoreSearch: true }})));
