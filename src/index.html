@@ -369,7 +369,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <button class="chip small" id="selDelete">Xoá vùng</button>
       <button class="chip small" id="selCancel">Huỷ</button>
       <button class="chip small on" id="selDone">Xong</button>
-      <div id="selPlace" class="selplace"><span class="lbl">Đặt</span><button class="chip small" data-fpl="top" title="Hình nằm trên cùng, che nét vẽ ở dưới">⬆ Trên cùng</button><button class="chip small" data-fpl="under" title="Hình nằm sau nét vẽ và màu của frame này, vẫn trước nền">⬇ Sau nét vẽ</button><button class="chip small" data-fpl="bg" title="Hình vào lớp Nền, nằm sau mọi thứ">⏬ Vào nền</button><button class="chip small" id="selPart" title="Biến hình thành mảnh ghép riêng: đưa lên trước hoặc ra sau nhân vật ghép, dời và xoay theo từng frame">🧩 Thành mảnh ghép</button></div>
+      <div id="selPlace" class="selplace"><span class="lbl">Đặt</span><button class="chip small" data-fpl="top" title="Hình nằm trên cùng, che nét vẽ ở dưới">⬆ Trên cùng</button><button class="chip small" data-fpl="under" title="Hình nằm sau nét vẽ và màu của frame này, vẫn trước nền">⬇ Sau nét vẽ</button><button class="chip small" data-fpl="bg" title="Hình vào lớp Nền: sau nét vẽ và màu, nhưng đè lên hình đã có trong nền">🖼 Lên nền</button><button class="chip small" data-fpl="bottom" title="Hình nằm dưới cùng: sau mọi thứ, kể cả hình đã có trong lớp Nền">⏬ Dưới cùng</button><button class="chip small" id="selPart" title="Biến hình thành mảnh ghép riêng: đưa lên trước hoặc ra sau nhân vật ghép, dời và xoay theo từng frame">🧩 Thành mảnh ghép</button></div>
     </div>
     <div id="refbar" class="bar" hidden>
       <span class="lbl" style="color:var(--text)">Ảnh mờ — kéo bằng bút để dời</span>
@@ -762,8 +762,10 @@ function render() {
   const bg = bgOf(f);
   if (S.bgVideo && bgVid.ready && S.showBg) drawVideoCover(c, bgVid.el);
   if (stroke) buildWork();
-  if (S.showBg && bg && bg.canvas) c.drawImage(stroke && stroke.t.type === 'bg' ? work : bg.canvas, 0, 0);
+  if (floating && floatPlace() === 'bottom') { if (floating.cc) drawFloating(c, floating.cc); drawFloating(c); }
+  else if (S.showBg && bg && bg.canvas) c.drawImage(stroke && stroke.t.type === 'bg' ? work : bg.canvas, 0, 0);
   if (floating && floatPlace() === 'bg') { if (floating.cc) drawFloating(c, floating.cc); drawFloating(c); }
+  if (floating && floatPlace() === 'bottom' && S.showBg && bg && bg.canvas) c.drawImage(stroke && stroke.t.type === 'bg' ? work : bg.canvas, 0, 0); // bottom: picture was drawn first (below), background drawing goes over it
   if (REF.c && (REF.show || refEdit)) {
     c.save(); c.globalAlpha = REF.opacity; c.translate(REF.cx, REF.cy); c.rotate(REF.rot); c.scale(REF.scale, REF.scale);
     c.drawImage(REF.c, -REF.c.width / 2, -REF.c.height / 2); c.restore();
@@ -783,7 +785,11 @@ function render() {
   if (floating && floatPlace() === 'under') { if (floating.cc) drawFloating(c, floating.cc); drawFloating(c); }
   if (S.showCol && f.col) c.drawImage(stroke && stroke.cv === f.col ? work : f.col, 0, 0);
   if (floating && floating.cc && S.showCol && floatPlace() === 'top') drawFloating(c, floating.cc);
-  if (S.showChar && f.canvas) c.drawImage(stroke && stroke.cv === f.canvas ? work : f.canvas, 0, 0);
+  if (S.showChar && f.canvas) {
+    let img = stroke && stroke.cv === f.canvas ? work : f.canvas;
+    if (floating && floating.cc && floatPlace() === 'top') { img = floatKnock(img); }
+    c.drawImage(img, 0, 0);
+  }
   if (floating && floatPlace() === 'top') drawFloating(c);
   if (stroke) drawStrokePred(c);
   if (S.sym && (S.tool === 'brush' || S.tool === 'eraser')) { const q = 1 / vs * DPR; c.save(); c.setLineDash([10 * q, 8 * q]); c.lineWidth = 1.5 * q; c.strokeStyle = 'rgba(125,107,255,.85)'; c.beginPath(); if (S.sym !== 2) { c.moveTo(W / 2, 0); c.lineTo(W / 2, H); } if (S.sym !== 1) { c.moveTo(0, H / 2); c.lineTo(W, H / 2); } c.stroke(); c.restore(); }
@@ -1524,15 +1530,17 @@ function unionBox(a, b) { if (!a) return b; if (!b) return a; return [Math.min(a
    'top'   = lớp Nhân vật, on top of the lines (default)
    'under' = behind this frame's lines AND colours (into lớp Màu, drawn underneath what is there)
    'bg'    = into the background, behind everything of the frame */
-const FLOAT_PLACES = { top: '⬆ Trên cùng', under: '⬇ Sau nét vẽ', bg: '⏬ Vào nền' };
+const FLOAT_PLACES = { top: '⬆ Trên cùng', under: '⬇ Sau nét vẽ', bg: '🖼 Lên nền', bottom: '⏬ Dưới cùng' };
 function floatPlace(fl) { fl = fl || floating; return !fl ? null : fl.place || (fl.t.type === 'bg' ? 'bg' : 'top'); }
 function floatFrame(fl) { return fl.o.kind === 'char' ? fl.o : curFrame(); }
 // the draws that put the floating picture down: [{ o, col, img, op }] in drawing order
 function floatDraws(fl) {
   const pl = floatPlace(fl), fr = floatFrame(fl), out = [];
   if (pl === 'bg') { const b = bgOf(fr); if (!b || !b.canvas) return out; if (fl.cc) out.push({ o: b, col: false, img: fl.cc }); if (fl.c) out.push({ o: b, col: false, img: fl.c }); }
+  else if (pl === 'bottom') { const b = bgOf(fr); if (!b || !b.canvas) return out; if (fl.c) out.push({ o: b, col: false, img: fl.c, op: 'destination-over' }); if (fl.cc) out.push({ o: b, col: false, img: fl.cc, op: 'destination-over' }); }
   else if (pl === 'under') { if (fl.c) out.push({ o: fr, col: true, img: fl.c, op: 'destination-over' }); if (fl.cc) out.push({ o: fr, col: true, img: fl.cc, op: 'destination-over' }); }
-  else { if (fl.cc) out.push({ o: fr, col: true, img: fl.cc }); if (fl.c) out.push({ o: fr, col: false, img: fl.c }); }
+  // on top with its own colour: the colour also hides old lines underneath it (else old lines would show through, since lớp Nhân vật is above lớp Màu)
+  else { if (fl.cc) out.push({ o: fr, col: true, img: fl.cc }, { o: fr, col: false, img: fl.cc, op: 'destination-out' }); if (fl.c) out.push({ o: fr, col: false, img: fl.c }); }
   return out;
 }
 // canvas a draw goes into; keeps a "before" copy of it for undo / cancel (the source layer already has f.snap / f.csnap)
@@ -1560,11 +1568,28 @@ function setFloatPlace(pl) {
   if (!floating || !FLOAT_PLACES[pl]) return;
   floating.place = pl; syncFloatPlace();
   if (pl === 'under' && !S.showCol) { S.showCol = true; updateToggles(); }
-  if (pl === 'bg') { const fr = floatFrame(floating), n = S.frames.filter(g => g.bgId === fr.bgId).length; if (!S.showBg) { S.showBg = true; updateToggles(); }
-    toast(n > 1 ? `Hình sẽ vào lớp Nền, nằm sau mọi thứ. Nền này dùng chung ${n} frame nên cả ${n} frame đều thấy` : 'Hình sẽ vào lớp Nền, nằm sau mọi thứ của frame', 3000); }
-  else if (pl === 'under') toast('Hình sẽ nằm sau nét vẽ và màu của frame này (vẫn trước nền)', 2500);
+  const fr = floatFrame(floating), n = S.frames.filter(g => g.bgId === fr.bgId).length, share = n > 1 ? ` Nền này dùng chung ${n} frame nên cả ${n} frame đều thấy.` : '';
+  const used = floatBgUsed(floating);   // how much of the background under the picture is already drawn on (0..1)
+  if ((pl === 'bg' || pl === 'bottom') && !S.showBg) { S.showBg = true; updateToggles(); }
+  if (pl === 'bottom') toast(used > 0.9 ? 'Hình nằm dưới cùng, nhưng lớp Nền đang phủ kín chỗ này nên sẽ bị che hết. Muốn thấy hình thì chọn 🖼 Lên nền.' + share : 'Hình nằm dưới cùng: sau mọi thứ, kể cả hình đã có trong lớp Nền.' + share, 4000);
+  else if (pl === 'bg') toast((used > 0.02 ? 'Hình vào lớp Nền và đè lên hình đã có trong nền. Muốn nằm sau cả hình đó thì chọn ⏬ Dưới cùng.' : 'Hình vào lớp Nền, nằm sau nét vẽ và màu.') + share, 4000);
+  else if (pl === 'under') toast(used > 0.02 ? 'Hình nằm sau nét vẽ và màu của frame, nhưng vẫn đè lên lớp Nền. Hình người nằm trong lớp Nền thì chọn ⏬ Dưới cùng.' : 'Hình sẽ nằm sau nét vẽ và màu của frame này', 4000);
   else toast('Hình sẽ nằm trên cùng, che nét vẽ bên dưới', 2000);
   requestRender();
+}
+// preview: the lines layer with the floating colour cut out of it (what floatPutDown will do)
+let knockCv = null;
+function floatKnock(src) {
+  if (!knockCv || knockCv.width !== W || knockCv.height !== H) knockCv = makeCanvas();
+  const x = knockCv.getContext('2d'); x.save(); x.globalCompositeOperation = 'copy'; x.drawImage(src, 0, 0); x.globalCompositeOperation = 'destination-out'; drawFloating(x, floating.cc); x.restore();
+  return knockCv;
+}
+function floatBgUsed(fl) {
+  const b = bgOf(floatFrame(fl)); if (!b || !b.canvas) return 0;
+  const save = floating; floating = fl; const r = rectFromBox(floatBox(), 0); floating = save; if (!r) return 0;
+  const d = b.canvas.getContext('2d').getImageData(...r).data; let n = 0, k = 0;
+  for (let i = 3; i < d.length; i += 4 * 7) { k++; if (d[i] > 200) n++; }
+  return k ? n / k : 0;
 }
 function syncFloatPlace() {
   const box = $('#selPlace'); if (!box || !floating) return;

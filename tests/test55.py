@@ -51,6 +51,32 @@ async def main():
         # cancel after stamping into another layer puts that layer back too
         await pg.evaluate(PUT); await pg.click('[data-fpl=bg]'); await pg.evaluate("stampFloating()"); assert (await px('bg', 540, 860))[3] == 255
         await pg.click('#selCancel'); await pg.wait_for_timeout(100); assert (await px('bg', 540, 860))[3] == 0
+        # 3b. Dưới cùng: a person already sitting in the Nền layer stays in front of the new picture
+        await pg.evaluate("()=>{const b=bgOf(curFrame()); const x=b.canvas.getContext('2d'); x.fillStyle='#0000ff'; x.fillRect(500,900,80,120); b.ver++; requestRender();}")
+        await pg.evaluate(PUT); await pg.click('[data-fpl=bottom]'); await pg.wait_for_timeout(100)
+        assert 'on' in await pg.get_attribute('[data-fpl=bottom]', 'class')
+        await pg.screenshot(path='t55_bottom_preview.png')
+        await pg.click('#selDone'); await pg.wait_for_timeout(200)
+        p1, p2 = await px('bg', 540, 960), await px('bg', 540, 860)
+        print('bottom: person', p1, 'picture', p2); assert p1[:3] == [0, 0, 255] and p2[0] == 255 and p2[3] == 255
+        await pg.evaluate("undo()"); await pg.wait_for_timeout(300)
+        assert (await px('bg', 540, 860))[3] == 0 and (await px('bg', 540, 960))[2] == 255
+        # Lên nền covers it instead
+        await pg.evaluate(PUT); await pg.click('[data-fpl=bg]'); await pg.click('#selDone'); await pg.wait_for_timeout(200)
+        assert (await px('bg', 540, 960))[:3] == [255, 0, 0]
+        await pg.evaluate("undo()"); await pg.wait_for_timeout(300)
+        await pg.evaluate("()=>{const b=bgOf(curFrame()); b.canvas.getContext('2d').clearRect(0,0,W,H); b.ver++;}")
+        # 3c. a line+colour picture placed on top hides the old lines under its colour (old lines must not show through)
+        await pg.evaluate("""()=>{const L=document.createElement('canvas'); L.width=L.height=300; const lx=L.getContext('2d'); lx.lineWidth=6; lx.strokeStyle='#000'; lx.strokeRect(3,3,294,294);
+          const C=document.createElement('canvas'); C.width=C.height=300; const cx=C.getContext('2d'); cx.fillStyle='#00ff00'; cx.fillRect(0,0,300,300);
+          floatFromImage(L, C); floating.scale=1; floating.cx=540; floating.cy=960; showSelbar(); requestRender();}""")
+        assert await pg.evaluate("floatPlace()") == 'top'
+        await pg.screenshot(path='t55_split_top_preview.png')
+        await pg.click('#selDone'); await pg.wait_for_timeout(200)
+        a1, a2, k3 = await px('char', 540, 960), await px('char', 320, 960), await px('col', 540, 960)
+        print('split top: old line under colour', a1, 'outside', a2, 'col', k3); assert a1[3] == 0 and a2[3] == 255 and k3[1] == 255
+        await pg.evaluate("undo()"); await pg.wait_for_timeout(300)
+        assert (await px('char', 540, 960))[3] == 255 and (await px('col', 540, 960))[3] == 0
         # 4. Thành mảnh ghép: becomes a cut-out piece on top of everything; undo = one step
         await pg.evaluate(PUT); await pg.click('#selPart'); await pg.wait_for_timeout(400)
         parts = await pg.evaluate("S.pp && S.pp.parts.map(p=>p.name)"); print('parts', parts); assert parts == ['Hình 1']
