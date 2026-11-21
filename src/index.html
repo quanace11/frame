@@ -198,6 +198,8 @@ body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:
 #selbar{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);
   border-radius:14px;padding:8px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;box-shadow:0 8px 30px #0008;max-width:calc(100% - 20px)}
 #selbar[hidden]{display:none}
+#selbar .selplace{display:flex;flex-wrap:wrap;align-items:center;gap:6px;width:100%;border-top:1px solid var(--line);padding-top:6px} #selbar .selplace[hidden]{display:none}
+#selbar .chip.small{min-height:42px}
 #playHint{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:#000a;padding:6px 12px;border-radius:10px;font-size:12px;pointer-events:none}
 #playHint[hidden]{display:none}
 /* Timeline */
@@ -206,13 +208,17 @@ body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:
 #durIn{width:70px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 8px;text-align:right}
 body:not([data-tool=fill]) #gapBtn,body:not([data-tool=fill]) #autoColBtn{display:none}
 #strip{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 6px;scroll-behavior:smooth;touch-action:pan-x}
-.fr{flex:none;position:relative;border:2px solid transparent;border-radius:8px;cursor:pointer;background:#fff;overflow:hidden}
+.fr{flex:none;position:relative;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;border:2px solid transparent;border-radius:8px;cursor:pointer;background:#fff;overflow:hidden}
 .fr canvas{display:block}
 .fr.on{border-color:var(--accent)}
 #mselBar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--accent);border-radius:12px;background:var(--panel2)} #mselBar[hidden]{display:none} #mselBar .tbtn{min-height:42px}
 .fr.msel{border-color:#4fc3f7;box-shadow:0 0 0 3px #4fc3f7aa} .fr.msel::after{content:'✓';position:absolute;right:3px;top:2px;background:#4fc3f7;color:#000;border-radius:50%;width:20px;height:20px;font-size:13px;line-height:20px;text-align:center;font-weight:700}
 #tl.mselmode .fr:not(.msel){opacity:.75}
 .fr.playing{border-color:#4cd964}
+.fr.lift{transform:scale(1.06);box-shadow:0 6px 18px #000a;transition:transform .12s} .fr.dragging{opacity:.35}
+.frghost{position:fixed;z-index:60;pointer-events:none;border:2px solid var(--accent);border-radius:8px;overflow:hidden;background:#fff;box-shadow:0 10px 26px #000b;transform:rotate(-3deg);opacity:.92}
+.frghost canvas{display:block} .frghost .cnt{position:absolute;right:4px;top:4px;background:var(--accent);color:#fff;border-radius:10px;padding:0 7px;font-size:12px;font-weight:700}
+.frdrop{position:fixed;z-index:59;width:4px;border-radius:2px;background:var(--accent);box-shadow:0 0 8px var(--accent);pointer-events:none}
 .fr .idx{position:absolute;left:3px;top:3px;background:#000b;color:#fff;font-size:10px;padding:1px 5px;border-radius:6px}
 .fr .dur{position:absolute;right:3px;bottom:3px;background:#000b;color:#fff;font-size:10px;padding:1px 5px;border-radius:6px}
 .fr .wave{position:absolute;left:0;right:0;bottom:0;width:100%;height:18px;pointer-events:none}
@@ -363,6 +369,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <button class="chip small" id="selDelete">Xoá vùng</button>
       <button class="chip small" id="selCancel">Huỷ</button>
       <button class="chip small on" id="selDone">Xong</button>
+      <div id="selPlace" class="selplace"><span class="lbl">Đặt</span><button class="chip small" data-fpl="top" title="Hình nằm trên cùng, che nét vẽ ở dưới">⬆ Trên cùng</button><button class="chip small" data-fpl="under" title="Hình nằm sau nét vẽ và màu của frame này, vẫn trước nền">⬇ Sau nét vẽ</button><button class="chip small" data-fpl="bg" title="Hình vào lớp Nền, nằm sau mọi thứ">⏬ Vào nền</button><button class="chip small" id="selPart" title="Biến hình thành mảnh ghép riêng: đưa lên trước hoặc ra sau nhân vật ghép, dời và xoay theo từng frame">🧩 Thành mảnh ghép</button></div>
     </div>
     <div id="refbar" class="bar" hidden>
       <span class="lbl" style="color:var(--text)">Ảnh mờ — kéo bằng bút để dời</span>
@@ -448,7 +455,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
         <div class="mrow tabs" data-tabs="pp"><button class="tabb" data-t="pose">🤸 Tạo dáng</button><button class="tabb" data-t="frames">🎞 Tạo frame</button><button class="tabb" data-t="parts">🧩 Mảnh & hình</button></div>
         <div class="mrow" data-tab="parts"><select id="ppList" class="chip small"></select><button class="chip small" id="ppRename">Đổi tên</button>
           <select id="ppRole" class="chip small"></select><select id="ppParent" class="chip small"></select>
-          <button class="chip small" id="ppUp" title="Đưa lên trên">▲</button><button class="chip small" id="ppDown" title="Đưa xuống dưới">▼</button><button class="chip small" id="ppDel" style="color:var(--danger)">Xoá mảnh</button><button class="chip small" id="ppDelChar" style="color:var(--danger)">Xoá cả nhân vật</button></div>
+          <button class="chip small" id="ppUp" title="Đưa lên trên">▲</button><button class="chip small" id="ppDown" title="Đưa xuống dưới">▼</button><button class="chip small" id="ppCharTop" title="Đưa cả nhân vật (hoặc cả hình) chứa mảnh này lên trước mọi nhân vật khác">⏫ Cả nhân vật lên trước</button><button class="chip small" id="ppCharBot" title="Đưa cả nhân vật (hoặc cả hình) chứa mảnh này ra sau mọi nhân vật khác">⏬ Ra sau</button><button class="chip small" id="ppDel" style="color:var(--danger)">Xoá mảnh</button><button class="chip small" id="ppDelChar" style="color:var(--danger)">Xoá cả nhân vật</button></div>
         <div class="mrow" data-tab="parts"><span class="lbl"><b>Hình của mảnh</b> (đổi theo frame):</span><span id="ppVars" class="mrow"></span>
           <button class="chip small" id="ppVarAdd" title="Nhập hình khác cho mảnh này, vd. miệng há, mắt nhắm, tay nắm">＋ Nhập hình</button><button class="chip small" id="ppVarDup" title="Nhân bản hình đang dùng để sửa thành hình mới">⧉ Nhân bản</button><button class="chip small" id="ppVarDel">🗑</button>
           <button class="chip small" id="ppPaintBtn" title="Vẽ trực tiếp lên hình mảnh bằng màu và cỡ bút đang chọn">✎ Vẽ lên mảnh</button><button class="chip small" id="ppEraseBtn">⌫ Tẩy mảnh</button></div>
@@ -754,7 +761,7 @@ function render() {
   if (S.bgVideo && bgVid.ready && S.showBg) drawVideoCover(c, bgVid.el);
   if (stroke) buildWork();
   if (S.showBg && bg && bg.canvas) c.drawImage(stroke && stroke.t.type === 'bg' ? work : bg.canvas, 0, 0);
-  if (floating && floating.t.type === 'bg') drawFloating(c);
+  if (floating && floatPlace() === 'bg') { if (floating.cc) drawFloating(c, floating.cc); drawFloating(c); }
   if (REF.c && (REF.show || refEdit)) {
     c.save(); c.globalAlpha = REF.opacity; c.translate(REF.cx, REF.cy); c.rotate(REF.rot); c.scale(REF.scale, REF.scale);
     c.drawImage(REF.c, -REF.c.width / 2, -REF.c.height / 2); c.restore();
@@ -771,10 +778,11 @@ function render() {
       else if (of && !of.canvas) ensureLoaded(of).then(requestRender);
     }
   }
+  if (floating && floatPlace() === 'under') { if (floating.cc) drawFloating(c, floating.cc); drawFloating(c); }
   if (S.showCol && f.col) c.drawImage(stroke && stroke.cv === f.col ? work : f.col, 0, 0);
-  if (floating && floating.cc && S.showCol) drawFloating(c, floating.cc);
+  if (floating && floating.cc && S.showCol && floatPlace() === 'top') drawFloating(c, floating.cc);
   if (S.showChar && f.canvas) c.drawImage(stroke && stroke.cv === f.canvas ? work : f.canvas, 0, 0);
-  if (floating && floating.t.type === 'char') drawFloating(c);
+  if (floating && floatPlace() === 'top') drawFloating(c);
   if (stroke) drawStrokePred(c);
   if (S.sym && (S.tool === 'brush' || S.tool === 'eraser')) { const q = 1 / vs * DPR; c.save(); c.setLineDash([10 * q, 8 * q]); c.lineWidth = 1.5 * q; c.strokeStyle = 'rgba(125,107,255,.85)'; c.beginPath(); if (S.sym !== 2) { c.moveTo(W / 2, 0); c.lineTo(W / 2, H); } if (S.sym !== 1) { c.moveTo(0, H / 2); c.lineTo(W, H / 2); } c.stroke(); c.restore(); }
   const px = 1 / vs * DPR;
@@ -1510,12 +1518,96 @@ function floatBox() {
   return box;
 }
 function unionBox(a, b) { if (!a) return b; if (!b) return a; return [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])]; }
+/* ===== front / behind: where the floating picture lands when it is put down =====
+   'top'   = lớp Nhân vật, on top of the lines (default)
+   'under' = behind this frame's lines AND colours (into lớp Màu, drawn underneath what is there)
+   'bg'    = into the background, behind everything of the frame */
+const FLOAT_PLACES = { top: '⬆ Trên cùng', under: '⬇ Sau nét vẽ', bg: '⏬ Vào nền' };
+function floatPlace(fl) { fl = fl || floating; return !fl ? null : fl.place || (fl.t.type === 'bg' ? 'bg' : 'top'); }
+function floatFrame(fl) { return fl.o.kind === 'char' ? fl.o : curFrame(); }
+// the draws that put the floating picture down: [{ o, col, img, op }] in drawing order
+function floatDraws(fl) {
+  const pl = floatPlace(fl), fr = floatFrame(fl), out = [];
+  if (pl === 'bg') { const b = bgOf(fr); if (!b || !b.canvas) return out; if (fl.cc) out.push({ o: b, col: false, img: fl.cc }); if (fl.c) out.push({ o: b, col: false, img: fl.c }); }
+  else if (pl === 'under') { if (fl.c) out.push({ o: fr, col: true, img: fl.c, op: 'destination-over' }); if (fl.cc) out.push({ o: fr, col: true, img: fl.cc, op: 'destination-over' }); }
+  else { if (fl.cc) out.push({ o: fr, col: true, img: fl.cc }); if (fl.c) out.push({ o: fr, col: false, img: fl.c }); }
+  return out;
+}
+// canvas a draw goes into; keeps a "before" copy of it for undo / cancel (the source layer already has f.snap / f.csnap)
+function floatTarget(fl, d) {
+  const cv = d.col ? colOf(d.o, true) : d.o.canvas; if (!cv) return null;
+  if (d.o === fl.o && (!d.col || fl.csnap)) return cv;
+  fl.extra = fl.extra || [];
+  if (!fl.extra.some(x => x.cv === cv)) { const sn = makeCanvas(); sn.getContext('2d').drawImage(cv, 0, 0); fl.extra.push({ cv, o: d.o, col: d.col, snap: sn }); }
+  return cv;
+}
+function floatPutDown(fl) {
+  const save = floating; floating = fl;
+  for (const d of floatDraws(fl)) {
+    const cv = floatTarget(fl, d); if (!cv) continue;
+    const x = cv.getContext('2d'); x.save(); if (d.op) x.globalCompositeOperation = d.op; drawFloating(x, d.img); x.restore();
+    if (d.col) d.o.colVer++; else d.o.ver++;
+  }
+  floating = save;
+}
+function restoreFloatExtra(fl) {
+  for (const x of fl.extra || []) { if (x.cv.width) { const k = x.cv.getContext('2d'); k.save(); k.globalCompositeOperation = 'copy'; k.drawImage(x.snap, 0, 0); k.restore(); } if (x.col) x.o.colVer++; else x.o.ver++; queueThumbFor(x.o); x.snap.width = 0; }
+  fl.extra = null;
+}
+function setFloatPlace(pl) {
+  if (!floating || !FLOAT_PLACES[pl]) return;
+  floating.place = pl; syncFloatPlace();
+  if (pl === 'under' && !S.showCol) { S.showCol = true; updateToggles(); }
+  if (pl === 'bg') { const fr = floatFrame(floating), n = S.frames.filter(g => g.bgId === fr.bgId).length; if (!S.showBg) { S.showBg = true; updateToggles(); }
+    toast(n > 1 ? `Hình sẽ vào lớp Nền, nằm sau mọi thứ. Nền này dùng chung ${n} frame nên cả ${n} frame đều thấy` : 'Hình sẽ vào lớp Nền, nằm sau mọi thứ của frame', 3000); }
+  else if (pl === 'under') toast('Hình sẽ nằm sau nét vẽ và màu của frame này (vẫn trước nền)', 2500);
+  else toast('Hình sẽ nằm trên cùng, che nét vẽ bên dưới', 2000);
+  requestRender();
+}
+function syncFloatPlace() {
+  const box = $('#selPlace'); if (!box || !floating) return;
+  box.hidden = !!floating.anim || !floating.c;
+  box.querySelectorAll('[data-fpl]').forEach(b => b.classList.toggle('on', b.dataset.fpl === floatPlace()));
+}
+// turn the floating picture into a cut-out piece (mảnh ghép): it can then go in front of / behind puppet characters
+async function floatToPart() {
+  const fl = floating; if (!fl || !fl.c) return;
+  const box = floatBox(), rect = rectFromBox(box, 2); if (!rect) return;
+  const [bx, by, bw, bh] = rect, c = makeCanvas(bw, bh), x = c.getContext('2d');
+  x.translate(-bx, -by); if (fl.cc) drawFloating(x, fl.cc); drawFloating(x, fl.c);
+  floating = null; hideSelbar(); histFlush();
+  // put the source layer back as it was, except the hole left by a lifted selection (that stays, as one undo step with the new piece)
+  const entries = [];
+  restoreFloatExtra(fl);
+  if (fl.o.canvas) {
+    const lx = fl.o.canvas.getContext('2d');
+    if (fl.dirty) { const r2 = rectFromBox(fl.dirty, 2); if (r2) entries.push(pixEntry(fl.o, r2, fl.snap.getContext('2d').getImageData(...r2), lx.getImageData(...r2))); }
+    else { lx.save(); lx.globalCompositeOperation = 'copy'; lx.drawImage(fl.snap, 0, 0); lx.restore(); fl.o.ver++; }
+  }
+  if (fl.csnap && fl.o.col) {
+    const kx = fl.o.col.getContext('2d');
+    if (fl.dirty) { const r2 = rectFromBox(fl.dirty, 2); if (r2) entries.push(pixEntry(fl.o, r2, fl.csnap.getContext('2d').getImageData(...r2), kx.getImageData(...r2), true)); }
+    else { kx.save(); kx.globalCompositeOperation = 'copy'; kx.drawImage(fl.csnap, 0, 0); kx.restore(); }
+    fl.o.colVer++; fl.csnap.width = 0;
+  }
+  fl.snap.width = 0;
+  const s0 = histSnap();
+  if (!S.pp) { S.pp = { parts: [] }; S.frames.forEach(f => { if (!f.pp) f.pp = {}; }); }
+  const nProp = S.pp.parts.filter(q => /^Hình \d+$/.test(q.name)).length + 1;
+  const p = { id: newId(), name: 'Hình ' + nProp, role: '', parent: null, z: (S.pp.parts.length ? Math.max(...S.pp.parts.map(q => q.z)) : 0) + 1, ox: bx, oy: by, px: bx + bw / 2, py: by + bh / 2, c, alts: [] };
+  await encodePart(p); S.pp.parts.push(p); ppRenormZ(); ppSel = p.id;
+  entries.push({ snap: { before: s0, after: histSnap(), fr: [] }, bytes: 2000 });
+  pushEntry(entries.length > 1 ? { multi: entries } : entries[0]);
+  S.showPP = true; updateToggles(); markEdited(fl.o);
+  setTool('puppet'); openTab('pp', 'parts'); ppSyncBar();
+  S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); scheduleSave(); requestRender();
+  toast('Đã thành mảnh ghép "' + p.name + '" — dùng ⏫ ⏬ (hoặc ▲ ▼) ở 🧩 Mảnh & hình để đặt trước/sau nhân vật', 4500);
+}
 function stampFloating() {
   if (!floating || !floating.c || !floating.o.canvas) return;
-  const lx = floating.o.canvas.getContext('2d'); drawFloating(lx);
-  if (floating.cc && floating.o.col) { drawFloating(floating.o.col.getContext('2d'), floating.cc); floating.o.colVer++; }
+  floatPutDown(floating);
   floating.dirty = unionBox(floating.dirty, floatBox());
-  floating.o.ver++; requestRender(); toast('Đã in một bản — kéo tiếp hoặc bấm Xong');
+  requestRender(); toast('Đã in một bản — kéo tiếp hoặc bấm Xong');
 }
 function commitFloating() {
   if (!floating) return;
@@ -1523,19 +1615,17 @@ function commitFloating() {
   if (!f.o.canvas) return;
   const lx = f.o.canvas.getContext('2d');
   let box = f.dirty;
-  if (f.c) { const save = floating; floating = f; drawFloating(lx); box = unionBox(box, floatBox()); floating = save; }
+  if (f.c) { const save = floating; floating = f; box = unionBox(box, floatBox()); floating = save; floatPutDown(f); }
   const rect = box && rectFromBox(box, 2);
   if (rect) {
     const before = f.snap.getContext('2d').getImageData(...rect);
     const after = lx.getImageData(...rect);
     const entries = [pixEntry(f.o, rect, before, after)];
-    if (f.csnap && f.o.col) {
-      const kx = f.o.col.getContext('2d');
-      if (f.cc && f.c) { const save = floating; floating = f; drawFloating(kx, f.cc); floating = save; }
-      entries.push(pixEntry(f.o, rect, f.csnap.getContext('2d').getImageData(...rect), kx.getImageData(...rect), true)); f.o.colVer++;
-    }
+    if (f.csnap && f.o.col) { entries.push(pixEntry(f.o, rect, f.csnap.getContext('2d').getImageData(...rect), f.o.col.getContext('2d').getImageData(...rect), true)); f.o.colVer++; }
+    for (const x of f.extra || []) { entries.push(pixEntry(x.o, rect, x.snap.getContext('2d').getImageData(...rect), x.cv.getContext('2d').getImageData(...rect), x.col)); x.snap.width = 0; if (x.o !== f.o) markEdited(x.o); }
     pushEntry(entries.length > 1 ? { multi: entries } : entries[0]);
-  }
+  } else if (f.extra) restoreFloatExtra(f);
+  f.extra = null;
   if (f.csnap) f.csnap.width = 0;
   if (f.anim && f.o.kind === 'char') { const keep = makeCanvas(); keep.getContext('2d').drawImage(f.snap, 0, 0); assetStampAnim(f, keep); }
   f.snap.width = 0; markEdited(f.o); requestRender();
@@ -1544,7 +1634,7 @@ function cancelFloating() {
   if (!floating) return;
   const f = floating; floating = null; hideSelbar();
   if (f.o.canvas) { const lx = f.o.canvas.getContext('2d'); lx.save(); lx.globalCompositeOperation = 'copy'; lx.drawImage(f.snap, 0, 0); lx.restore(); }
-  restoreFloatCol(f);
+  restoreFloatCol(f); restoreFloatExtra(f);
   f.snap.width = 0; f.o.ver++; queueThumbFor(f.o); requestRender();
 }
 function restoreFloatCol(f) {
@@ -1556,6 +1646,7 @@ function showSelbar() {
   const sb = $('#selbar'); sb.hidden = false;
   $('#selScale').value = Math.round(floating.scale * 100); $('#selScaleVal').textContent = Math.round(floating.scale * 100) + '%';
   $('#selRot').value = 0; $('#selRotVal').textContent = '0°';
+  syncFloatPlace();
 }
 function hideSelbar() { $('#selbar').hidden = true; }
 
@@ -1810,7 +1901,7 @@ function buildStrip() {
     if (S.pp) { const kk = document.createElement('span'); kk.className = 'key' + (ppIsKey(f) ? '' : ' auto'); kk.textContent = ppIsKey(f) ? '🔑' : '∿'; el.append(kk); }
     el.classList.toggle('msel', !!(msel && msel.has(f.id)));
     el.addEventListener('click', e => { if (el._lp) { el._lp = false; return; } if (playing) stopPlay(); if (mselOn || e.shiftKey || e.ctrlKey || e.metaKey) { mselTap(i, e.shiftKey); return; } selectFrame(i); });
-    el.addEventListener('pointerdown', e => { clearTimeout(el._lpT); const x0 = e.clientX, y0 = e.clientY; el._lpT = setTimeout(() => { el._lp = true; mselLong(i); }, 480); const cancel = ev => { if (!ev || ev.type !== 'pointermove' || Math.hypot(ev.clientX - x0, ev.clientY - y0) > 10) { clearTimeout(el._lpT); el.removeEventListener('pointermove', cancel); } }; el.addEventListener('pointermove', cancel); el.addEventListener('pointerup', () => cancel(), { once: true }); el.addEventListener('pointercancel', () => cancel(), { once: true }); });
+    el.addEventListener('pointerdown', e => frPointerDown(e, el, f));
     el.addEventListener('contextmenu', e => e.preventDefault());
     strip.append(el); f.el = el;
   });
@@ -1819,6 +1910,88 @@ function buildStrip() {
   add.title = 'Nhân bản frame hiện tại'; add.addEventListener('click', dupFrame);
   strip.append(add);
   waveKey = ''; updateFrameUI(); if (msel && (mselOn || msel.size)) mselSync();
+}
+/* ===== drag frames to reorder: hold a frame (or press and drag with a mouse), then drag it left/right.
+   Holding without moving still starts multi-select like before. If the held frame is one of several selected frames, all of them move together. */
+let frDrag = null;
+function frPointerDown(e, el, f) {
+  if (e.button > 0 || frDrag) return;
+  clearTimeout(el._lpT);
+  const x0 = e.clientX, y0 = e.clientY, mouse = e.pointerType === 'mouse', pid = e.pointerId;
+  const st = { el, f, x0, y0, armed: mouse, held: false, active: false, pid };
+  frDrag = st;
+  el._lpT = setTimeout(() => { if (frDrag !== st) return; st.armed = true; st.held = true; el.classList.add('lift'); try { navigator.vibrate && navigator.vibrate(15); } catch (_) { } }, 480);
+  const move = ev => {
+    if (ev.pointerId !== pid) return;
+    const d = Math.hypot(ev.clientX - x0, ev.clientY - y0);
+    if (!st.armed) { if (d > 10) end(ev, true); return; }
+    if (!st.active && d > (mouse ? 8 : 6)) frDragStart(st);
+    if (st.active) { ev.preventDefault(); frDragMove(st, ev.clientX, ev.clientY); }
+  };
+  const end = (ev, quiet) => {
+    if (ev && ev.pointerId !== pid) return;
+    clearTimeout(el._lpT); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', end); window.removeEventListener('pointercancel', cancel);
+    el.classList.remove('lift'); if (frDrag === st) frDrag = null;
+    if (quiet) return;
+    if (st.active) { el._lp = true; frDragDrop(st); }
+    else if (st.held) { el._lp = true; mselLong(S.frames.indexOf(f)); }
+  };
+  const cancel = ev => { if (st.active) frDragCleanup(st); end(ev, true); };
+  window.addEventListener('pointermove', move, { passive: false }); window.addEventListener('pointerup', end); window.addEventListener('pointercancel', cancel);
+}
+// while a frame is held, stop the strip from scrolling under the finger
+strip.addEventListener('touchmove', e => { if (frDrag && frDrag.armed && e.cancelable) e.preventDefault(); }, { passive: false });
+function frDragStart(st) {
+  if (playing) stopPlay(); commitFloating();
+  st.active = true;
+  st.moving = msel && msel.size > 1 && msel.has(st.f.id) ? S.frames.filter(g => msel.has(g.id)) : [st.f];
+  const ghost = document.createElement('div'); ghost.className = 'frghost';
+  const src = st.f.thumb, gc = document.createElement('canvas'); gc.width = src.width; gc.height = src.height; gc.getContext('2d').drawImage(src, 0, 0);
+  const r = st.el.getBoundingClientRect(); gc.style.width = r.width + 'px'; gc.style.height = r.height + 'px'; ghost.append(gc);
+  if (st.moving.length > 1) { const b = document.createElement('span'); b.className = 'cnt'; b.textContent = st.moving.length; ghost.append(b); }
+  document.body.append(ghost); st.ghost = ghost; st.gw = r.width; st.gh = r.height;
+  const mk = document.createElement('div'); mk.className = 'frdrop'; document.body.append(mk); st.mark = mk;
+  st.moving.forEach(g => g.el && g.el.classList.add('dragging'));
+  st.scrollB = strip.style.scrollBehavior; strip.style.scrollBehavior = 'auto';
+  const tick = () => { if (!st.active) return; const sr = strip.getBoundingClientRect(), edge = 48; let v = 0;
+    if (st.cx < sr.left + edge) v = -Math.ceil((sr.left + edge - st.cx) / 4); else if (st.cx > sr.right - edge) v = Math.ceil((st.cx - sr.right + edge) / 4);
+    if (v) { strip.scrollLeft += v; frDragMove(st, st.cx, st.cy); } st.raf = requestAnimationFrame(tick); };
+  st.raf = requestAnimationFrame(tick);
+}
+function frDragMove(st, x, y) {
+  st.cx = x; st.cy = y;
+  st.ghost.style.left = (x - st.gw / 2) + 'px'; st.ghost.style.top = (y - st.gh * 0.75) + 'px';
+  // insertion point = before the first frame whose middle is right of the finger
+  let k = S.frames.length;
+  for (let i = 0; i < S.frames.length; i++) { const e2 = S.frames[i].el; if (!e2) continue; const r = e2.getBoundingClientRect(); if (x < r.left + r.width / 2) { k = i; break; } }
+  st.at = k;
+  const sr = strip.getBoundingClientRect(), ref = S.frames[Math.min(k, S.frames.length - 1)].el.getBoundingClientRect();
+  const mx = k < S.frames.length ? ref.left - 5 : ref.right + 3;
+  st.mark.style.left = clamp(mx, sr.left, sr.right - 4) + 'px'; st.mark.style.top = ref.top + 'px'; st.mark.style.height = ref.height + 'px';
+}
+function frDragCleanup(st) {
+  st.active = false; cancelAnimationFrame(st.raf);
+  if (st.ghost) st.ghost.remove(); if (st.mark) st.mark.remove();
+  (st.moving || []).forEach(g => g.el && g.el.classList.remove('dragging'));
+  strip.style.scrollBehavior = st.scrollB || '';
+}
+// move `moving` frames so they sit together just before position `at` (0..n) of the current list; undo = one step
+function moveFramesTo(moving, at) {
+  const set = new Set(moving), before = S.frames.map(g => g.id), cur = curFrame();
+  const left = S.frames.slice(0, at).filter(g => !set.has(g)), right = S.frames.slice(at).filter(g => !set.has(g));
+  const order = [...left, ...moving, ...right];
+  if (order.every((g, i) => g === S.frames[i])) return false;
+  S.frames = order;
+  pushEntry({ ford: { before, after: S.frames.map(g => g.id) }, bytes: 0 });
+  S.cur = Math.max(0, S.frames.indexOf(moving.includes(cur) ? cur : moving[0]));
+  tintCache.clear(); ppRetween(); buildStrip(); selectFrame(S.cur); scheduleSave(); updUndoBtns();
+  return true;
+}
+function frDragDrop(st) {
+  const at = st.at == null ? S.frames.indexOf(st.f) : st.at, moving = st.moving;
+  frDragCleanup(st);
+  const from = S.frames.indexOf(moving[0]) + 1;
+  if (moveFramesTo(moving, at)) toast(moving.length > 1 ? `Đã dời ${moving.length} frame tới vị trí ${S.frames.indexOf(moving[0]) + 1} — hoàn tác để trả lại` : `Đã dời frame ${from} → ${S.frames.indexOf(moving[0]) + 1}`, 2200);
 }
 function fmtDur(ms) { const s = ms / 1000; return (s >= 1 ? s.toFixed(s % 1 ? 1 : 0) : s.toFixed(2).replace(/0$/, '')) + 's'; }
 function updateFrameUI() {
@@ -3804,7 +3977,7 @@ function ppSyncBar() { ppBlinkInfo();
   list.innerHTML = S.pp.parts.slice().sort((a, b) => b.z - a.z).map(p => `<option value="${p.id}" ${p.id === ppSel ? 'selected' : ''}>${p.name.replace(/</g, '&lt;')}</option>`).join('') + (sel ? '' : '<option value="" selected>— chạm chọn mảnh —</option>');
   $('#ppRole').innerHTML = Object.entries(PP_ROLES).map(([k, v]) => `<option value="${k}" ${sel && sel.role === k ? 'selected' : ''}>${v}</option>`).join('');
   $('#ppParent').innerHTML = '<option value="">— không gắn —</option>' + S.pp.parts.filter(p => !sel || p.id !== sel.id).map(p => `<option value="${p.id}" ${sel && sel.parent === p.id ? 'selected' : ''}>Gắn vào: ${p.name.replace(/</g, '&lt;')}</option>`).join('');
-  ['#ppRole', '#ppParent', '#ppUp', '#ppDown', '#ppDel', '#ppRot', '#ppScale', '#ppFlip', '#ppHide', '#ppReset', '#ppRename'].forEach(id => $(id).disabled = !sel);
+  ['#ppRole', '#ppParent', '#ppUp', '#ppDown', '#ppCharTop', '#ppCharBot', '#ppDel', '#ppRot', '#ppScale', '#ppFlip', '#ppHide', '#ppReset', '#ppRename'].forEach(id => $(id).disabled = !sel);
   const q = sel && curFrame().pp && curFrame().pp[sel.id] || {};
   $('#ppRot').value = Math.round(((q.r || 0) % 360 + 540) % 360 - 180); $('#ppScale').value = Math.round((q.sx == null ? 1 : q.sx) * 100);
   $('#ppHide').textContent = q.h ? 'Hiện' : 'Ẩn';
@@ -3864,6 +4037,17 @@ $('#ppRole').addEventListener('change', e => { const p = ppPart(ppSel); if (p) {
 $('#ppParent').addEventListener('change', e => { const p = ppPart(ppSel); if (!p) return; let v = e.target.value || null, g = v, ok = true, n = 0; while (g && n++ < 30) { if (g === p.id) { ok = false; break; } g = (ppPart(g) || {}).parent; } if (!ok) { toast('Không gắn vào mảnh con của chính nó được'); ppSyncBar(); return; } p.parent = v; S.frames.forEach(f => f.ver++); scheduleSave(); requestRender(); });
 $('#ppRename').addEventListener('click', async () => { const p = ppPart(ppSel); if (!p) return; let val = null; await modal({ title: 'Đổi tên mảnh', html: `<input id="ppNameIn" value="${p.name.replace(/"/g, '&quot;')}" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text)">`, buttons: [{ label: 'Huỷ', value: null }, { label: 'Lưu', primary: true, action: () => { val = document.getElementById('ppNameIn').value.trim(); } }] }); if (val) { p.name = val.slice(0, 40); ppSyncBar(); scheduleSave(); } });
 $('#ppUp').addEventListener('click', () => { const p = ppPart(ppSel); if (!p) return; p.z += 1.5; ppRenormZ(); S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); ppSyncBar(); scheduleSave(); requestRender(); });
+// move a whole character (the selected piece's root and everything hanging from it) in front of / behind all others, keeping its own piece order
+function ppCharZ(top) {
+  const sel = ppPart(ppSel); if (!sel) return;
+  const ch = ppCharOf(sel), mine = S.pp.parts.filter(p => ppCharOf(p) === ch).sort((a, b) => a.z - b.z), rest = S.pp.parts.filter(p => ppCharOf(p) !== ch).sort((a, b) => a.z - b.z);
+  if (!rest.length) { toast('Chỉ có một nhân vật/hình — chưa có gì để đặt trước sau'); return; }
+  (top ? [...rest, ...mine] : [...mine, ...rest]).forEach((p, i) => p.z = i);
+  S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); ppSyncBar(); scheduleSave(); requestRender();
+  toast(top ? 'Đã đưa lên trước mọi nhân vật khác' : 'Đã đưa ra sau mọi nhân vật khác', 1500);
+}
+$('#ppCharTop').addEventListener('click', () => ppCharZ(true));
+$('#ppCharBot').addEventListener('click', () => ppCharZ(false));
 $('#ppDown').addEventListener('click', () => { const p = ppPart(ppSel); if (!p) return; p.z -= 1.5; ppRenormZ(); S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); ppSyncBar(); scheduleSave(); requestRender(); });
 $('#ppDel').addEventListener('click', async () => { const p = ppPart(ppSel); if (!p) return; const ok = await modal({ title: `Xoá mảnh "${p.name}"?`, html: '<p>Mảnh bị xoá khỏi mọi frame, mảnh con sẽ gắn sang mảnh cha. Lỡ tay thì bấm ↶ Hoàn tác.</p>', buttons: [{ label: 'Huỷ', value: false }, { label: 'Xoá', value: true, cls: 'danger' }] }); if (!ok) return; S.pp.parts.forEach(c => { if (c.parent === p.id) c.parent = p.parent; }); S.pp.parts = S.pp.parts.filter(x => x.id !== p.id); ppSel = null; S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); ppSyncBar(); scheduleSave(); requestRender(); });
 document.querySelectorAll('[data-ppd]').forEach(b => b.addEventListener('click', () => { ppDrag = b.dataset.ppd; ppCutMode = false; ppPaint = null; ppSyncBar(); requestRender(); }));
@@ -5321,7 +5505,7 @@ async function convertPixelsToVector(fromFloating) {
   if (fromFloating) {
     const fl = floating; floating = null; hideSelbar();
     if (fl.o.canvas) { const lx = fl.o.canvas.getContext('2d'); lx.save(); lx.globalCompositeOperation = 'copy'; lx.drawImage(fl.snap, 0, 0); lx.restore(); }
-    restoreFloatCol(fl); fl.snap.width = 0; fl.o.ver++;
+    restoreFloatCol(fl); restoreFloatExtra(fl); fl.snap.width = 0; fl.o.ver++;
     f.vec.push(...strokes); pushVecUndo(f, vBefore); markEdited(f);
   } else {
     const keep = await modal({ title: `Đã dò được ${strokes.length} nét`, html: '<p>Xoá nét pixel cũ ở lớp Nhân vật (frame này) sau khi chuyển sang vector?</p><p class="lbl" style="font-size:12px">Nếu lớp có cả mảng tô màu, hãy chọn Giữ lại.</p>',
@@ -5687,6 +5871,8 @@ $('#selVec').addEventListener('click', () => convertPixelsToVector(true));
 $('#selDelete').addEventListener('click', () => { if (floating) { floating.c = null; floating.cc = null; commitFloating(); toast('Đã xoá vùng chọn'); } });
 $('#selCancel').addEventListener('click', () => { cancelFloating(); updUndoBtns(); });
 $('#selDone').addEventListener('click', commitFloating);
+$('#selPlace').addEventListener('click', e => { const b = e.target.closest('[data-fpl]'); if (b) setFloatPlace(b.dataset.fpl); });
+$('#selPart').addEventListener('click', () => floatToPart());
 // keyboard (for desktop testing / keyboard covers)
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
