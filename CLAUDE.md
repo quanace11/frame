@@ -69,6 +69,7 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
 - **Cử chỉ** (`GESTURES`, `ppGesture`)
   - Keyframe theo vai trò và góc tuyệt đối của tay (`ppApplyAbs`), nên áp được cho mọi nhân vật đã gán vai trò.
   - Trong `BUILTIN_POSES`/`GESTURES`, góc tính theo độ trên màn hình: 0 = sang phải, 90 = xuống dưới.
+  - **⭐ Chuyển động của tôi** (tab Tạo frame, như Motion preset): `myMoSave` lưu các frame từ frame hiện tại thành góc tay/chân tuyệt đối theo vai trò (`ppCurAbs`) + đầu/thân/nhún tương đối (`myMoCapture`), thời lượng, keyframe; `myMoApply` dựng lại trên nhân vật đang chọn (có Tay kia = lật). Lưu chung mọi dự án ở localStorage `fs-motions`. `tests/test_chuyen_dong_cua_toi.py`.
 - **Còn lại**
   - IK, Pose library, Projects
   - Text/camera/FX + SFX tổng hợp + lip sync + xuất video MP4 (MediaRecorder)

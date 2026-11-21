@@ -475,6 +475,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
         <div class="mrow" data-tab="frames"><span class="lbl"><b>Frame giữa:</b> chèn</span><input type="number" id="ppTweenN" value="3" min="1" max="24" style="width:52px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">frame chuyển tiếp tới frame sau</span><button class="chip small on" id="ppTweenBtn">Tạo frame giữa</button></div>
         <div class="mrow" data-tab="frames"><span class="lbl"><b>Mẫu nhanh:</b></span><span id="ppPresets" class="mrow"></span></div>
         <div class="mrow" data-tab="frames" style="flex-wrap:wrap"><span class="lbl"><b>Cử chỉ:</b></span><span id="ppGests" class="mrow" style="flex-wrap:wrap;gap:4px"></span><label class="lbl" title="Làm bằng tay bên kia"><input type="checkbox" id="gestMir"> Tay kia</label></div>
+        <div class="mrow" data-tab="frames" style="flex-wrap:wrap"><span class="lbl"><b>⭐ Chuyển động của tôi:</b></span><select id="myMoSel" class="chip small"></select><button class="chip small on" id="myMoApply" title="Tạo lại chuyển động đã lưu từ tư thế frame này, dùng được cho mọi nhân vật đã cắt tự động (như Motion preset của Animate)">Áp</button><button class="chip small" id="myMoSave" title="Lưu các frame từ frame này trở đi thành một chuyển động để dùng lại cho nhân vật khác, dự án khác">＋ Lưu chuyển động</button><button class="chip small" id="myMoDel" title="Xoá chuyển động đã lưu">🗑</button></div>
         <div class="mrow" data-tab="frames"><span class="lbl"><b>Tự động:</b></span><button class="chip small" id="ppBlinkBtn" title="Nhân vật tự chớp mắt mỗi vài giây trên mọi frame, không thêm frame (cần mảnh vai trò Mắt)">👁 Chớp mắt tự động</button><span class="lbl" id="ppBlinkInfo"></span></div>
         <div class="mrow" data-tab="frames"><span class="lbl">Hướng</span><button class="chip small" data-ppdir="-1">◀</button><button class="chip small" data-ppdir="1">▶</button>
           <span class="lbl">Số frame</span><input type="number" id="ppPN" value="8" min="2" max="24" style="width:52px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px">
@@ -4706,6 +4707,55 @@ $('#aiCharBtn').addEventListener('click', () => aiCharDialog());
 $('#ppAssetBtn').addEventListener('click', () => { const s = ppPart(ppSel); assetDialog(s && s.asset ? s.asset.cat : (s && s.role === 'head' ? 'face' : /fore|arm/.test(s && s.role || '') ? 'hand' : 'eyes')); });
 Object.entries(GESTURES).forEach(([k, v]) => { const b = document.createElement('button'); b.className = 'chip small'; b.textContent = v[0]; b.title = 'Tạo các frame cử chỉ từ tư thế frame này'; b.addEventListener('click', () => ppGesture(k)); $('#ppGests').append(b); });
 $('#gestMir').addEventListener('change', e => { gestMirror = e.target.checked; });
+/* --- ⭐ my motions (like Animate's motion presets): save a run of frames as limb angles by role + head/body offsets,
+   then rebuild it on any cut-out character, in any project. Kept in localStorage 'fs-motions' (small JSON). --- */
+const MYMO_KEY = 'fs-motions';
+function myMoLoad() { try { return JSON.parse(localStorage.getItem(MYMO_KEY) || '[]'); } catch (e) { return []; } }
+function myMoStore(L) { try { localStorage.setItem(MYMO_KEY, JSON.stringify(L)); return true; } catch (e) { toast('Không lưu được (bộ nhớ trình duyệt đầy?)'); return false; } }
+function myMoSync() { const sel = $('#myMoSel'); if (!sel) return; const L = myMoLoad(); sel.innerHTML = L.length ? L.map(m => `<option value="${m.id}">${m.name.replace(/[<>&"]/g, '')} (${m.frames.length} frame)</option>`).join('') : '<option value="">— chưa có —</option>'; }
+function myMoCapture(f, ch, ref) {
+  const parts = S.pp.parts.filter(p => ppCharOf(p) === ch), byRole = r => parts.find(p => p.role === r), q = (r, k, d) => { const p = byRole(r); return p && f.pp && f.pp[p.id] && f.pp[p.id][k] != null ? f.pp[p.id][k] : d; };
+  const tor = byRole('torso'), hgt = tor ? Math.max(200, tor.c.height * 2.2) : H * 0.6;
+  const fr = { a: ppCurAbs(f, ch), head: q('head', 'r', 0), torso: q('torso', 'r', 0), dy: q('torso', 'dy', 0) / hgt, dur: f.dur, k: ppIsKey(f) };
+  if (ref) { fr.head -= ref.head; fr.torso -= ref.torso; fr.dy -= ref.dy; }
+  return fr;
+}
+async function myMoSave() {
+  if (!S.pp || !S.pp.parts.length) { toast('Cần nhân vật ghép trước'); return; }
+  const ch = ppSelChar(), left = S.frames.length - S.cur; if (left < 2) { toast('Đứng ở frame đầu của chuyển động (cần ít nhất 2 frame từ đây trở đi)'); return; }
+  let name = null, n = left;
+  await modal({ title: '⭐ Lưu chuyển động', html: `<p class="lbl">Lưu các frame từ frame này (${S.cur + 1}) trở đi. Sau đó dùng lại cho nhân vật khác bằng nút Áp.</p><input id="myMoName" placeholder="vd. Vẫy tay chào" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text)"><p class="lbl" style="margin-top:8px">Số frame: <input id="myMoN" type="number" min="2" max="${left}" value="${left}" style="width:70px;padding:6px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text)"></p>`,
+    buttons: [{ label: 'Huỷ', value: null }, { label: 'Lưu', primary: true, action: () => { name = document.getElementById('myMoName').value.trim() || 'Chuyển động ' + (myMoLoad().length + 1); n = clamp(+document.getElementById('myMoN').value || left, 2, left); } }] });
+  if (!name) return;
+  const f0 = S.frames[S.cur], ref = myMoCapture(f0, ch), frames = [];
+  for (let k = 0; k < n; k++) frames.push(myMoCapture(S.frames[S.cur + k], ch, ref));
+  const L = myMoLoad(); L.push({ id: newId(), name: name.slice(0, 40), frames }); if (myMoStore(L)) { myMoSync(); $('#myMoSel').value = L[L.length - 1].id; toast(`Đã lưu "${name}" (${n} frame) — dùng được ở mọi dự án`); }
+}
+async function myMoApply() {
+  if (!S.pp || !S.pp.parts.length) { toast('Cần nhân vật ghép trước — Nhập ảnh → Nhân vật ghép'); return; }
+  const m = myMoLoad().find(x => x.id === $('#myMoSel').value); if (!m) { toast('Chưa có chuyển động nào — làm các frame rồi bấm ＋ Lưu chuyển động'); return; }
+  const f0 = curFrame(), ch = ppSelChar(), parts = S.pp.parts.filter(p => ppCharOf(p) === ch), byRole = r => parts.find(p => p.role === r);
+  const mir = gestMirror, mapRole = r => mir ? r.replace(/L$/, '#').replace(/R$/, 'L').replace(/#$/, 'R') : r, mapAng = a => mir ? 180 - a : a, sg = mir ? -1 : 1;
+  const tor = byRole('torso'), hgt = tor ? Math.max(200, tor.c.height * 2.2) : H * 0.6;
+  // the first saved frame is the starting pose: put this character's limbs there too
+  { const a = {}; for (const [r, v] of Object.entries(m.frames[0].a)) a[mapRole(r)] = mapAng(v); ppKeyEdit(fr => { fr.ppKey = true; ppApplyAbs(fr, a, ch); }); }
+  const base = ppClone(f0.pp || {});
+  const poses = m.frames.slice(1).map(fr => {
+    const tf = { pp: ppClone(base) }, a = {}; for (const [r, v] of Object.entries(fr.a)) a[mapRole(r)] = mapAng(v);
+    ppApplyAbs(tf, a, ch);
+    const add = (role, prop, v) => { const p = byRole(role); if (!p || !v) return; const q = ppQ(tf, p.id); q[prop] = (q[prop] || 0) + v; };
+    add('head', 'r', fr.head * sg); add('torso', 'r', fr.torso * sg); add('torso', 'dy', fr.dy * hgt); return tf.pp;
+  });
+  const c = await ppInsertFrames(poses, m.frames[0].dur);
+  S.frames.slice(S.cur + 1, S.cur + 1 + c).forEach((f, i) => { const fr = m.frames[i + 1]; f.dur = fr.dur; f.ppKey = fr.k || i === c - 1; });
+  f0.dur = m.frames[0].dur; buildStrip(); updateFrameUI(); scheduleSave(); requestRender();
+  toast(`Đã tạo "${m.name}" — ${c} frame. Bấm Phát để xem.`, 3500);
+}
+$('#myMoSave').addEventListener('click', myMoSave);
+$('#myMoApply').addEventListener('click', myMoApply);
+$('#myMoDel').addEventListener('click', async () => { const id = $('#myMoSel').value, L = myMoLoad(), m = L.find(x => x.id === id); if (!m) return; const ok = await modal({ title: 'Xoá chuyển động?', html: `<p>Xoá "${m.name.replace(/[<>&"]/g, '')}" khỏi danh sách (frame đã làm vẫn giữ).</p>`, buttons: [{ label: 'Huỷ', value: null }, { label: 'Xoá', value: 1, cls: 'danger' }] }); if (!ok) return; myMoStore(L.filter(x => x.id !== id)); myMoSync(); });
+myMoSync();
+
 $('#fbShow').addEventListener('click', () => setFocus(false));
 $('#fbUndo').addEventListener('click', undo); $('#fbRedo').addEventListener('click', redo);
 $('#fbPen').addEventListener('click', () => { setTool('brush'); setFocus(true); });
