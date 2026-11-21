@@ -506,7 +506,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
           <span class="lbl">qua</span><input type="number" id="slideN" value="20" min="4" max="120" style="width:52px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">frame</span>
           <label class="lbl"><input type="checkbox" id="slideDust" checked> Bụi + cỏ</label><label class="lbl"><input type="checkbox" id="slideLean" checked> Ngả người</label><label class="lbl"><input type="checkbox" id="slideCam" checked> Camera đẩy vào</label><label class="lbl"><input type="checkbox" id="slideSfx" checked> Âm thanh</label></div>
         <div class="mrow" data-tab="frames"><span class="lbl"><b>Mẫu nhanh:</b></span><span id="ppPresets" class="mrow"></span></div>
-        <div class="mrow" data-tab="frames" style="flex-wrap:wrap"><span class="lbl"><b>Cử chỉ:</b></span><span id="ppGests" class="mrow" style="flex-wrap:wrap;gap:4px"></span><label class="lbl" title="Làm bằng tay bên kia"><input type="checkbox" id="gestMir"> Tay kia</label></div>
+        <div class="mrow" data-tab="frames" style="flex-wrap:wrap"><span class="lbl"><b>Cử chỉ:</b></span><span id="ppGests" class="mrow" style="flex-wrap:wrap;gap:4px"></span><label class="lbl" title="Làm bằng tay bên kia"><input type="checkbox" id="gestMir"> Tay kia</label><label class="lbl" title="Cử chỉ hét/giận: gắn tiếng hét và rung camera"><input type="checkbox" id="gestFx" checked> Kèm tiếng + rung</label></div>
         <div class="mrow" data-tab="frames" style="flex-wrap:wrap"><span class="lbl"><b>⭐ Chuyển động của tôi:</b></span><select id="myMoSel" class="chip small"></select><button class="chip small on" id="myMoApply" title="Tạo lại chuyển động đã lưu từ tư thế frame này, dùng được cho mọi nhân vật đã cắt tự động (như Motion preset của Animate)">Áp</button><button class="chip small" id="myMoSave" title="Lưu các frame từ frame này trở đi thành một chuyển động để dùng lại cho nhân vật khác, dự án khác">＋ Lưu chuyển động</button><button class="chip small" id="myMoDel" title="Xoá chuyển động đã lưu">🗑</button></div>
         <div class="mrow" data-tab="frames"><span class="lbl"><b>Tự động:</b></span><button class="chip small" id="ppBlinkBtn" title="Nhân vật tự chớp mắt mỗi vài giây trên mọi frame, không thêm frame (cần mảnh vai trò Mắt)">👁 Chớp mắt tự động</button><span class="lbl" id="ppBlinkInfo"></span></div>
         <div class="mrow" data-tab="frames"><span class="lbl">Hướng</span><button class="chip small" data-ppdir="-1">◀</button><button class="chip small" data-ppdir="1">▶</button>
@@ -5051,8 +5051,19 @@ const GESTURES = {
     { a: { armL: 112, foreL: -66, armR: 68, foreR: 246 }, head: -4, n: 3, hold: 1 },
     { a: { armL: 98, foreL: 70, armR: 82, foreR: 110 }, sy: { legL: 0.6, legR: 0.6 }, torso: 10, head: 18, dy: 0.03, n: 3, hold: 2 }, { a: { armL: 112, foreL: -66, armR: 68, foreR: 246 }, sy: { legL: 1, legR: 1 }, torso: 0, head: -4, dy: 0, n: 3 },
     { a: { armL: 98, foreL: 70, armR: 82, foreR: 110 }, sy: { legL: 0.6, legR: 0.6 }, torso: 10, head: 18, dy: 0.03, n: 3, hold: 2 }, { a: { armL: 112, foreL: -66, armR: 68, foreR: 246 }, sy: { legL: 1, legR: 1 }, torso: 0, head: -4, dy: 0, n: 3 },
-    { a: { armL: 98, foreL: 70, armR: 82, foreR: 110 }, sy: { legL: 0.6, legR: 0.6 }, torso: 10, head: 18, dy: 0.03, n: 3, hold: 2 }, { a: { armL: 112, foreL: -66, armR: 68, foreR: 246 }, sy: { legL: 1, legR: 1 }, torso: 0, head: -4, dy: 0, n: 3, hold: 3 }]]
+    { a: { armL: 98, foreL: 70, armR: 82, foreR: 110 }, sy: { legL: 0.6, legR: 0.6 }, torso: 10, head: 18, dy: 0.03, n: 3, hold: 2 }, { a: { armL: 112, foreL: -66, armR: 68, foreR: 246 }, sy: { legL: 1, legR: 1 }, torso: 0, head: -4, dy: 0, n: 3, hold: 3 }]],
+  // head thrown back (works from the back too: the head is squashed toward the neck, as if its top tips away), shoulders up,
+  // stiff arms, the whole body trembling; sh = shoulder raise, shiv = tremble (deg), mouth = open the Mouth part, shake/sfx = camera + sound
+  shout: ['😡 Ngửa mặt hét giận', [{ a: { armL: 100, foreL: 96, armR: 80, foreR: 84 }, head: 5, dy: 0.012, n: 3 },
+    { a: { armL: 120, foreL: 110, armR: 60, foreR: 70 }, sy: { head: 0.82 }, head: 0, dy: -0.012, sh: 0.01, mouth: 1, n: 2, shake: 16, sfx: 'roar' },
+    { shiv: 2.5, hold: 10, shake: 9 }, { shiv: 1.5, hold: 3, shake: 4 }, { n: 4, back: 1 }]],
+  rage: ['🤬 Giơ nắm đấm gào', [{ a: { armL: 105, foreL: 80, armR: 75, foreR: 100 }, head: 5, dy: 0.012, n: 3 },
+    { a: { armL: 140, foreL: 255, armR: 40, foreR: -75 }, sy: { head: 0.82 }, head: 0, dy: -0.015, sh: 0.01, mouth: 1, n: 2, shake: 16, sfx: 'roar' },
+    { a: { foreL: 240, foreR: -60 }, shiv: 2.5, n: 1, shake: 10 }, { a: { foreL: 258, foreR: -78 }, shiv: 2.5, n: 1, shake: 10 },
+    { a: { foreL: 240, foreR: -60 }, shiv: 2.5, n: 1, shake: 9 }, { a: { foreL: 258, foreR: -78 }, shiv: 2.5, n: 1, shake: 9 },
+    { a: { foreL: 240, foreR: -60 }, shiv: 2, n: 1, shake: 7 }, { a: { foreL: 258, foreR: -78 }, shiv: 2, n: 1, shake: 6, hold: 3 }, { n: 4, back: 1 }]]
 };
+let gestFx = true;
 let gestMirror = false;
 function ppCurAbs(f, charId) {
   const out = {}; const parts = S.pp.parts.filter(p => ppCharOf(p) === charId), M = ppMats(ppPoseFor(f));
@@ -5067,36 +5078,58 @@ async function ppGesture(id) {
   const mir = gestMirror, mapRole = r => mir ? r.replace(/L$/, '#').replace(/R$/, 'L').replace(/#$/, 'R') : r, mapAng = a => mir ? 180 - a : a, sg = mir ? -1 : 1;
   const start = ppCurAbs(f0, ch), tor = byRole('torso'), hgt = tor ? Math.max(200, tor.c.height * 2.2) : H * 0.6, dur = Math.round((+$('#ppPDur').value || 0.08) * 1000);
   const base = ppClone(f0.pp || {}), poses = [], isKey = [];
-  let prev = { a: { ...start }, head: 0, torso: 0, dy: 0, sy: {} };
-  const mk = st => {
+  const z0 = { head: 0, torso: 0, dy: 0, sh: 0, mouth: 0, sy: {} };
+  let prev = { a: { ...start }, ...z0 };
+  const startLegs = {}; for (const r of ['legL', 'legR', 'shinL', 'shinR']) if (start[r] != null) startLegs[r] = start[r];
+  const mouth = byRole('mouth');
+  const mk = (st, shiv = 0) => {
     const tf = { pp: ppClone(base) }; ppApplyAbs(tf, st.a, ch);
     const add = (role, prop, v) => { const p = byRole(role); if (!p || !v) return; const q = ppQ(tf, p.id); q[prop] = (q[prop] || 0) + v; };
-    add('head', 'r', st.head * sg); add('torso', 'r', st.torso * sg * (ppDir || 1)); add('torso', 'dy', st.dy * hgt);
+    add('head', 'r', st.head * sg - shiv * 0.6); add('torso', 'r', st.torso * sg * (ppDir || 1) + shiv); add('torso', 'dy', st.dy * hgt); add('torso', 'dx', shiv * hgt * 0.002);
+    if (st.sh) for (const r of ['armL', 'armR']) add(r, 'dy', -st.sh * hgt);   // shoulders up (arms hang from the torso, so lift their joints)
+    if (mouth && st.mouth > 0.01) { const q = ppQ(tf, mouth.id); if (mouth.alts && mouth.alts.length) { if (st.mouth > 0.5) q.v = mouth.alts.length; } else q.sy = (q.sy == null ? 1 : q.sy) * (1 + 0.8 * st.mouth); }
     for (const [role, v] of Object.entries(st.sy || {})) { const p = byRole(role); if (p && v !== 1) { const q = ppQ(tf, p.id); q.sy = (q.sy == null ? 1 : q.sy) * v; } }   // squash (a shin pointing away from the camera)
     // squashed legs are shorter: the body drops by as much, so the knees land where the feet were
     let drop = 0; const len = p => { const t = ppTipOf(p); return Math.hypot(t.x - p.px, t.y - p.py); };
     for (const sd of ['L', 'R']) { let d = 0; for (const r of ['leg' + sd, 'shin' + sd]) { const p = byRole(r), v = st.sy && st.sy[r]; if (p && v != null) d += len(p) * (1 - v); } drop = Math.max(drop, d); }
     if (drop) add('torso', 'dy', drop);
     // legs given in the keyframe stay at their screen angle when the body leans (kneeling knees stay on the ground)
-    const legs = {}; for (const r of ['legL', 'legR', 'shinL', 'shinR']) if (st.a[r] != null) legs[r] = st.a[r];
-    if (st.torso && Object.keys(legs).length) ppApplyAbs(tf, legs, ch);
+    const legs = shiv ? { ...startLegs } : {}; for (const r of ['legL', 'legR', 'shinL', 'shinR']) if (st.a[r] != null) legs[r] = st.a[r];   // trembling: feet stay put
+    if ((st.torso || shiv) && Object.keys(legs).length) ppApplyAbs(tf, legs, ch);
     return tf.pp;
   };
+  const shakes = [], sfxAt = []; let tick = 0;
   for (const k of G[1]) {
-    const tgt = k.back ? { a: { ...start }, head: 0, torso: 0, dy: 0, sy: {} } : { a: { ...prev.a }, head: k.head ?? prev.head, torso: k.torso ?? prev.torso, dy: k.dy ?? prev.dy, sy: { ...prev.sy, ...(k.sy ? Object.fromEntries(Object.entries(k.sy).map(([r, v]) => [mapRole(r), v])) : {}) } };
+    const tgt = k.back ? { a: { ...start }, ...z0 } : { a: { ...prev.a }, head: k.head ?? prev.head, torso: k.torso ?? prev.torso, dy: k.dy ?? prev.dy, sh: k.sh ?? prev.sh, mouth: k.mouth ?? prev.mouth, sy: { ...prev.sy, ...(k.sy ? Object.fromEntries(Object.entries(k.sy).map(([r, v]) => [mapRole(r), v])) : {}) } };
     if (!k.back && k.a) for (const [r, v] of Object.entries(k.a)) tgt.a[mapRole(r)] = mapAng(v);
-    for (let i = 1; i <= k.n; i++) {
-      const t = i / k.n, e = t * t * (3 - 2 * t), st = { a: {}, head: lerp(prev.head, tgt.head, e), torso: lerp(prev.torso, tgt.torso, e), dy: lerp(prev.dy, tgt.dy, e), sy: {} };
+    const seg = poses.length, sv = () => k.shiv ? k.shiv * (tick++ % 2 ? 1 : -1) : 0;
+    for (let i = 1; i <= (k.n || 0); i++) {
+      const t = i / k.n, e = t * t * (3 - 2 * t), st = { a: {}, head: lerp(prev.head, tgt.head, e), torso: lerp(prev.torso, tgt.torso, e), dy: lerp(prev.dy, tgt.dy, e), sh: lerp(prev.sh, tgt.sh, e), mouth: lerp(prev.mouth, tgt.mouth, e), sy: {} };
       for (const r of new Set([...Object.keys(prev.sy), ...Object.keys(tgt.sy)])) st.sy[r] = lerp(prev.sy[r] ?? 1, tgt.sy[r] ?? 1, e);
       for (const r of new Set([...Object.keys(prev.a), ...Object.keys(tgt.a)])) { const a0 = prev.a[r] ?? tgt.a[r], a1 = tgt.a[r] ?? a0; st.a[r] = angLerp(a0, a1, e); }
-      poses.push(mk(st)); isKey.push(i === k.n);
+      poses.push(mk(st, sv())); isKey.push(i === k.n);
     }
-    for (let h = 0; h < (k.hold || 0); h++) { poses.push(mk(tgt)); isKey.push(h === k.hold - 1); }
+    for (let h = 0; h < (k.hold || 0); h++) { poses.push(mk(tgt, sv())); isKey.push(!k.shiv && h === k.hold - 1); }   // trembling frames aren't keys (tweening would smooth the shake away)
+    for (let j = seg; j < poses.length; j++) shakes[j] = k.shake || 0;
+    if (k.sfx && poses.length > seg) sfxAt.push([seg, k.sfx]);
     prev = tgt;
   }
   const c = await ppInsertFrames(poses, dur); f0.dur = dur; f0.ppKey = true;
-  S.frames.slice(S.cur + 1, S.cur + 1 + c).forEach((f, i) => { f.ppKey = isKey[i] || i === c - 1; });
-  updateFrameUI(); toast(`Đã tạo "${G[0].replace(/^\S+\s/, '')}" — ${c} frame. Muốn chỉnh: sửa tư thế ở frame 🔑, frame giữa tự cập nhật. Bấm Phát để xem.`, 4500);
+  const added = S.frames.slice(S.cur + 1, S.cur + 1 + c);
+  added.forEach((f, i) => { f.ppKey = isKey[i] || i === c - 1; });
+  // shout/rage: camera shake on the new frames + the shout sound, folded into the same undo step as the frames
+  let extra = '';
+  if (gestFx && (shakes.some(Boolean) || sfxAt.length)) {
+    added.forEach((f, i) => { if (shakes[i]) f.shake = shakes[i]; });
+    const sfx = sfxAt.filter(([j, k]) => added[j] && SFX[k]).map(([j, k]) => ({ id: newId(), frameId: added[j].id, kind: k, vol: 0.9 }));
+    const e = undoStack[undoStack.length - 1];
+    if (sfx.length && e && e.add) {
+      S.audio = S.audio || {}; S.audio.sfx = S.audio.sfx || []; S.audio.sfx.push(...sfx);
+      undoStack.pop(); undoBytes -= e.bytes; pushEntry({ multi: [e, { t: e.t, sfxadd: sfx, bytes: 200 }], t: e.t });
+    }
+    extra = ' + tiếng hét, rung camera'; fxSyncBar(); scheduleSave();
+  }
+  updateFrameUI(); toast(`Đã tạo "${G[0].replace(/^\S+\s/, '')}" — ${c} frame${extra}. Muốn chỉnh: sửa tư thế ở frame 🔑, frame giữa tự cập nhật. Bấm Phát để xem.`, 4500);
 }
 
 function setFocus(on) {
@@ -5110,6 +5143,7 @@ $('#aiCharBtn').addEventListener('click', () => aiCharDialog());
 $('#ppAssetBtn').addEventListener('click', () => { const s = ppPart(ppSel); assetDialog(s && s.asset ? s.asset.cat : (s && s.role === 'head' ? 'face' : /fore|arm/.test(s && s.role || '') ? 'hand' : 'eyes')); });
 Object.entries(GESTURES).forEach(([k, v]) => { const b = document.createElement('button'); b.className = 'chip small'; b.textContent = v[0]; b.title = 'Tạo các frame cử chỉ từ tư thế frame này'; b.addEventListener('click', () => ppGesture(k)); $('#ppGests').append(b); });
 $('#gestMir').addEventListener('change', e => { gestMirror = e.target.checked; });
+$('#gestFx').addEventListener('change', e => { gestFx = e.target.checked; });
 /* --- ⭐ my motions (like Animate's motion presets): save a run of frames as limb angles by role + head/body offsets,
    then rebuild it on any cut-out character, in any project. Kept in localStorage 'fs-motions' (small JSON). --- */
 const MYMO_KEY = 'fs-motions';
@@ -5793,7 +5827,7 @@ const SFX = {
   ting: { label: 'Ting', dur: 1.3 }, whistle: { label: 'Còi trọng tài', dur: 1.3 }, drum: { label: 'Trống', dur: 0.5 }, crowd: { label: 'Khán giả ồ', dur: 2.2 },
   bonk: { label: 'Cốp', dur: 0.3 }, slap: { label: 'Bốp', dur: 0.25 }, bang: { label: 'Bùm', dur: 0.6 }, boom: { label: 'Nổ', dur: 1.2 }, crash: { label: 'Loảng xoảng', dur: 1.3 }, zap: { label: 'Điện giật', dur: 0.45 },
   splat: { label: 'Bẹp', dur: 0.35 }, poof: { label: 'Phụt khói', dur: 0.5 }, slide: { label: 'Huýt trượt', dur: 0.8 }, swirl: { label: 'Choáng vòng vòng', dur: 1.2 }, tweet: { label: 'Chim kêu', dur: 1.2 }, scuffle: { label: 'Đánh túi bụi', dur: 1.6 }, kick: { label: 'Sút bóng', dur: 0.3 },
-  tvoff: { label: 'Tắt TV', dur: 0.9 }, tvon: { label: 'Bật TV', dur: 0.9 }, glitch: { label: 'Nhiễu rè', dur: 0.6 }
+  tvoff: { label: 'Tắt TV', dur: 0.9 }, tvon: { label: 'Bật TV', dur: 0.9 }, glitch: { label: 'Nhiễu rè', dur: 0.6 }, roar: { label: 'Hét giận', dur: 1.5 }
 };
 const sfxCache = {};
 async function sfxBuffer(kind) {
@@ -5831,6 +5865,18 @@ async function sfxBuffer(kind) {
   if (kind === 'tvoff') { hiss(0, 0.035, 'highpass', 2500, 0.9, 0.001); thump(0, 180, 70, 0.5, 0.08); const o = osc('sine', 1500, 55, 0.5), lp = oc.createBiquadFilter(), g = oc.createGain(); lp.type = 'lowpass'; lp.frequency.value = 2500; envAt(g, 0.01, 0.01, 0.3, 0.55); o.connect(lp).connect(g).connect(out); o.start(0.01); o.stop(0.7); hiss(0.02, 0.5, 'bandpass', 4200, 0.12, 0.01); for (let i = 0; i < 6; i++) hiss(0.05 + Math.random() * 0.45, 0.012, 'highpass', 3000, 0.35, 0.001); }
   if (kind === 'tvon') { hiss(0, 0.03, 'highpass', 2500, 0.8, 0.001); const o = osc('sine', 60, 900, 0.35), g = oc.createGain(); g.gain.setValueAtTime(0.0001, 0.02); g.gain.exponentialRampToValueAtTime(0.28, 0.25); g.gain.exponentialRampToValueAtTime(0.0001, 0.75); o.connect(g).connect(out); o.start(0.02); o.stop(0.8); const n = noise(0.8), bp = oc.createBiquadFilter(), g2 = oc.createGain(); bp.type = 'bandpass'; bp.frequency.value = 3800; g2.gain.setValueAtTime(0.0001, 0.05); g2.gain.exponentialRampToValueAtTime(0.25, 0.3); g2.gain.exponentialRampToValueAtTime(0.0001, 0.85); n.connect(bp).connect(g2).connect(out); n.start(0.05); }
   if (kind === 'glitch') { for (let i = 0; i < 9; i++) { const s0 = i * 0.06 + Math.random() * 0.02, o = oc.createOscillator(), g = oc.createGain(); o.type = 'square'; o.frequency.setValueAtTime(200 + Math.random() * 1800, s0); envAt(g, s0, 0.002, 0.18, 0.04); o.connect(g).connect(out); o.start(s0); o.stop(s0 + 0.06); hiss(s0, 0.04, 'highpass', 1500 + Math.random() * 4000, 0.3); } }
+  // an angry "AAARGH!": buzzy voice-like tone (sawtooth + vibrato) through two vowel formants, rough breath noise, pitch up then sagging
+  if (kind === 'roar') {
+    const o = oc.createOscillator(), v = oc.createOscillator(), vg = oc.createGain(), mix = oc.createGain(), g = oc.createGain(), ws = oc.createWaveShaper();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(150, 0); o.frequency.exponentialRampToValueAtTime(260, 0.18); o.frequency.setValueAtTime(260, 0.9); o.frequency.exponentialRampToValueAtTime(170, d);
+    v.frequency.value = 6.5; vg.gain.value = 9; v.connect(vg).connect(o.frequency);
+    const cv = new Float32Array(256); for (let i = 0; i < 256; i++) { const x = i / 128 - 1; cv[i] = Math.tanh(3 * x); } ws.curve = cv;
+    o.connect(ws);
+    for (const [fq, q, gn] of [[750, 6, 1], [1200, 7, 0.6], [2600, 8, 0.25]]) { const bp = oc.createBiquadFilter(), bg = oc.createGain(); bp.type = 'bandpass'; bp.frequency.value = fq; bp.Q.value = q; bg.gain.value = gn; ws.connect(bp).connect(bg).connect(mix); }
+    const n = noise(d), nb = oc.createBiquadFilter(), ng = oc.createGain(); nb.type = 'bandpass'; nb.frequency.value = 1400; nb.Q.value = 0.8; ng.gain.value = 0.35; n.connect(nb).connect(ng).connect(mix); n.start();
+    g.gain.setValueAtTime(0.0001, 0); g.gain.exponentialRampToValueAtTime(0.9, 0.08); g.gain.setValueAtTime(0.9, 0.95); g.gain.exponentialRampToValueAtTime(0.0001, d);
+    mix.connect(g).connect(out); o.start(); v.start();
+  }
   const buf = await oc.startRendering(); sfxCache[kind] = buf; return buf;
 }
 async function sfxPreview(kind) { try { const ac = new (window.AudioContext || window.webkitAudioContext)(); const b = await sfxBuffer(kind); const s = ac.createBufferSource(); s.buffer = b; s.connect(ac.destination); s.start(); setTimeout(() => ac.close(), (SFX[kind].dur + 0.3) * 1000); } catch (e) {} }
