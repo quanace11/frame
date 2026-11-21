@@ -216,6 +216,10 @@ body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:
 #selbar{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);
   border-radius:14px;padding:8px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;box-shadow:0 8px 30px #0008;max-width:calc(100% - 20px)}
 #selbar[hidden]{display:none}
+#lassobar{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);
+  border-radius:14px;padding:6px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;box-shadow:0 8px 30px #0008;max-width:calc(100% - 20px)}
+#lassobar[hidden],#lassoLayers[hidden]{display:none} #lassoLayers{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+#lassobar .chip.small{min-height:42px} #lassobar .hint{width:100%;font-size:12px}
 #selbar .selplace{display:flex;flex-wrap:wrap;align-items:center;gap:6px;width:100%;border-top:1px solid var(--line);padding-top:6px} #selbar .selplace[hidden]{display:none}
 #selbar .chip.small{min-height:42px}
 #selTween{display:flex;flex-wrap:wrap;align-items:center;gap:6px;width:100%;border-top:1px solid var(--line);padding-top:6px} #selTween[hidden]{display:none}
@@ -382,6 +386,11 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
 
   <main id="stage">
     <canvas id="view"></canvas>
+    <div id="lassobar" hidden><span class="lbl">Chọn vùng lấy</span>
+      <button class="chip small" data-selm="pic" title="Nét vẽ + màu + nét vector trong vòng khoanh, không lấy nền">👤 Cả hình vẽ</button><button class="chip small" data-selm="part" title="Chỉ lấy mảng nằm gọn trong vòng (tóc, mặt…). Mảng lòi ra ngoài nhiều như TV, áo, nền thì để lại">🧩 Từng mảng</button><button class="chip small" data-selm="layer" title="Chỉ lấy 1 lớp: Nhân vật, Màu, Nét hoặc Nền">📄 Chỉ 1 lớp</button><button class="chip small" data-selm="all" title="Mọi thứ trong vòng, kể cả hình ở lớp Nền">🔲 Tất cả + nền</button>
+      <span id="lassoLayers" hidden><span class="lbl">Lớp</span><button class="chip small" data-sell="char">Nhân vật</button><button class="chip small" data-sell="col">Màu</button><button class="chip small" data-sell="vec">Nét</button><button class="chip small" data-sell="bg">Nền</button></span>
+      <span class="lbl hint" id="lassoHint"></span>
+    </div>
     <div id="selbar" hidden>
       <span class="lbl">Cỡ</span><input type="range" id="selScale" min="10" max="300" step="1" value="100"><span class="val" id="selScaleVal">100%</span>
       <span class="lbl">Xoay</span><input type="range" id="selRot" min="-180" max="180" step="1" value="0"><span class="val" id="selRotVal">0°</span>
@@ -660,7 +669,7 @@ let toastT;
 function toast(msg, ms = 1800) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
 
 /* ========= Settings ========= */
-const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','lineLayer','uiHide','panelHidden','brush','eraserType','recentColors','brushOp','sizeScreen','bigUi','fastVideo'];
+const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','lineLayer','uiHide','panelHidden','brush','eraserType','recentColors','brushOp','sizeScreen','bigUi','fastVideo','selMode'];
 function loadSettings() { try { const o = JSON.parse(localStorage.getItem('fs-settings') || '{}'); for (const k of SETTINGS_KEYS) if (k in o) { if (k === 'panelHidden') Object.assign(panelHidden, o[k]); else S[k] = o[k]; } } catch (e) {}
   S.uiHide = Object.assign({ rail: false, top: false, tl: false }, S.uiHide); }
 function applyBigUi() { document.body.classList.toggle('bigui', !!S.bigUi); }
@@ -862,8 +871,9 @@ function render() {
   const bg = bgOf(f);
   if (S.bgVideo && bgVid.ready && S.showBg) drawVideoCover(c, bgVid.el);
   if (stroke) buildWork();
-  if (floating && floatPlace() === 'bottom') { if (floating.cc) drawFloating(c, floating.cc); drawFloating(c); }
+  if (floating && floatPlace() === 'bottom') { if (floating.bc) drawFloating(c, floating.bc); if (floating.cc) drawFloating(c, floating.cc); drawFloating(c); }
   else if (S.showBg && bg && bg.canvas) c.drawImage(stroke && stroke.t.type === 'bg' ? work : bg.canvas, 0, 0);
+  if (floating && floating.bc && floatPlace() !== 'bottom') drawFloating(c, floating.bc);
   if (floating && floatPlace() === 'bg') { if (floating.cc) drawFloating(c, floating.cc); drawFloating(c); }
   if (floating && floatPlace() === 'bottom' && S.showBg && bg && bg.canvas) c.drawImage(stroke && stroke.t.type === 'bg' ? work : bg.canvas, 0, 0); // bottom: picture was drawn first (below), background drawing goes over it
   if (REF.c && (REF.show || refEdit)) {
@@ -888,7 +898,7 @@ function render() {
   drawGhosts(c, f);
   if (S.showChar && f.canvas) {
     let img = stroke && stroke.cv === f.canvas ? work : f.canvas;
-    if (floating && floating.cc && floatPlace() === 'top') { img = floatKnock(img); }
+    if (floating && floating.cc && floating.only !== 'col' && floatPlace() === 'top') { img = floatKnock(img); }
     c.drawImage(img, 0, 0);
   }
   if (floating && floatPlace() === 'top') drawFloating(c);
@@ -1591,27 +1601,143 @@ let pickBack = null;   // tool to return to after the eyedropper
 /* ========= Lasso / floating selection ========= */
 let lasso = null, floating = null;
 function polyPath(ctx, poly) { ctx.beginPath(); ctx.moveTo(poly[0].x, poly[0].y); for (const p of poly) ctx.lineTo(p.x, p.y); ctx.closePath(); }
-function liftSelection(poly) {
-  const o = activeObj(); if (!o || !o.canvas) return;
+/* ===== what Chọn vùng takes (S.selMode, nút ở thanh trên khi đang Chọn vùng) =====
+   'pic'   👤 Cả hình vẽ: nét pixel + màu + nét vector của frame (như trước)
+   'part'  🧩 Từng mảng: chỉ những mảng màu nằm gần trọn (≥ 75%) trong vòng khoanh, kèm nét viền sát chúng
+           → khoanh quanh cái đầu chỉ lấy tóc + mặt, không lấy TV hay áo dù vòng khoanh chạm vào
+   'layer' 📄 Chỉ 1 lớp: chỉ lớp đang chọn (Nhân vật / Màu / Nét / Nền)
+   'all'   🔲 Tất cả + nền: như 👤 và cả hình trong lớp Nền */
+const SEL_MODES = { pic: '👤 Cả hình vẽ', part: '🧩 Từng mảng', layer: '📄 Chỉ 1 lớp', all: '🔲 Tất cả + nền' };
+const SEL_HINTS = {
+  pic: 'Lấy nét vẽ + màu + nét vector trong vòng khoanh (không lấy nền)',
+  part: 'Chỉ lấy mảng nằm gọn trong vòng (vd. tóc, mặt). Mảng lòi ra ngoài nhiều (TV, áo, nền) được để lại',
+  layer: 'Chỉ lấy lớp đang chọn bên dưới, các lớp khác đứng yên',
+  all: 'Lấy mọi thứ trong vòng, kể cả hình ở lớp Nền'
+};
+function selMode() { return SEL_MODES[S.selMode] ? S.selMode : 'pic'; }
+function setSelMode(m) {
+  if (!SEL_MODES[m]) return;
+  if (floating) commitFloating();
+  S.selMode = m; saveSettings();
+  if (m !== 'layer' && (S.layer === 'vec' || S.layer === 'col')) setLayer('char');
+  syncLassoBar(); toast(SEL_MODES[m] + ': ' + SEL_HINTS[m], 3500);
+}
+function syncLassoBar() {
+  const bar = $('#lassobar'); if (!bar) return;
+  bar.hidden = S.tool !== 'lasso' || !!floating;
+  const m = selMode();
+  bar.querySelectorAll('[data-selm]').forEach(b => b.classList.toggle('on', b.dataset.selm === m));
+  $('#lassoLayers').hidden = m !== 'layer';
+  bar.querySelectorAll('[data-sell]').forEach(b => b.classList.toggle('on', b.dataset.sell === S.layer));
+  $('#lassoHint').textContent = SEL_HINTS[m];
+}
+// cut the masked part out of a layer canvas: returns the piece (rect-sized), leaves a hole in the layer
+function cutPiece(cv, rect, mc) {
+  const [bx, by, bw, bh] = rect, pc = makeCanvas(bw, bh), x = pc.getContext('2d');
+  x.drawImage(cv, -bx, -by); x.globalCompositeOperation = 'destination-in'; x.drawImage(mc, 0, 0);
+  const lx = cv.getContext('2d'); lx.save(); lx.globalCompositeOperation = 'destination-out'; lx.drawImage(mc, bx, by); lx.restore();
+  return pc;
+}
+/* 🧩 Từng mảng: split what the layers show into patches of (almost) the same colour; keep the patches that lie ≥ 75 %
+   inside the loop, plus dark line pixels and soft edges right next to them (inside the loop).
+   Returns { rect, mc } (mask canvas over rect) or null */
+function partMask(poly, srcs) {
   let a = [Infinity, Infinity, -Infinity, -Infinity];
   for (const p of poly) { a[0] = Math.min(a[0], p.x); a[1] = Math.min(a[1], p.y); a[2] = Math.max(a[2], p.x); a[3] = Math.max(a[3], p.y); }
-  const rect = rectFromBox(a, 1);
-  if (!rect || rect[2] < 4 || rect[3] < 4) return;
-  const [bx, by, bw, bh] = rect;
-  const snap = makeCanvas(); snap.getContext('2d').drawImage(o.canvas, 0, 0);
-  const fc = makeCanvas(bw, bh), fx = fc.getContext('2d');
-  fx.save(); fx.translate(-bx, -by); polyPath(fx, poly); fx.clip(); fx.drawImage(o.canvas, 0, 0); fx.restore();
-  const lx = o.canvas.getContext('2d');
-  lx.save(); polyPath(lx, poly); lx.globalCompositeOperation = 'destination-out'; lx.fill(); lx.restore();
-  floating = { t: targetOf(o), o, c: fc, cx: bx + bw / 2, cy: by + bh / 2, scale: 1, rot: 0, flip: 1, snap, dirty: [bx, by, bx + bw, by + bh] };
-  if (o.kind === 'char' && o.col) { // colour under the lines moves together with them
-    const csnap = makeCanvas(); csnap.getContext('2d').drawImage(o.col, 0, 0);
-    const cc = makeCanvas(bw, bh), cx2 = cc.getContext('2d');
-    cx2.save(); cx2.translate(-bx, -by); polyPath(cx2, poly); cx2.clip(); cx2.drawImage(o.col, 0, 0); cx2.restore();
-    const kx = o.col.getContext('2d'); kx.save(); polyPath(kx, poly); kx.globalCompositeOperation = 'destination-out'; kx.fill(); kx.restore();
-    Object.assign(floating, { cc, csnap });
+  const pad = Math.round(Math.max(a[2] - a[0], a[3] - a[1]) * 0.5) + 8;
+  const win = rectFromBox(a, pad); if (!win) return null;
+  const [wx, wy, ww, wh] = win, n = ww * wh;
+  const cc = makeCanvas(ww, wh), cx = cc.getContext('2d', { willReadFrequently: true });
+  cx.save(); cx.translate(-wx, -wy); for (const s of srcs) s(cx); cx.restore();
+  const d = cx.getImageData(0, 0, ww, wh).data;
+  cx.clearRect(0, 0, ww, wh); cx.save(); cx.translate(-wx, -wy); polyPath(cx, poly); cx.fillStyle = '#000'; cx.fill(); cx.restore();
+  const pd = cx.getImageData(0, 0, ww, wh).data, inside = new Uint8Array(n);
+  for (let i = 0; i < n; i++) inside[i] = pd[i * 4 + 3] > 127 ? 1 : 0;
+  const solid = i => d[i * 4 + 3] >= 40;
+  const near = (i, j) => { const p = i * 4, q = j * 4; return Math.abs(d[p] - d[q]) + Math.abs(d[p + 1] - d[q + 1]) + Math.abs(d[p + 2] - d[q + 2]) <= 42; };
+  // window edges that are not the frame's edge: a patch reaching them is far bigger than the loop
+  const openL = wx > 0, openT = wy > 0, openR = wx + ww < W, openB = wy + wh < H;
+  const lab = new Int32Array(n), sel = new Uint8Array(n), stack = new Int32Array(n), members = new Int32Array(n);
+  let next = 0;
+  for (let s = 0; s < n; s++) {
+    if (lab[s] || !inside[s] || !solid(s)) continue;
+    next++; let sp = 0, m = 0, cin = 0, edge = false; stack[sp++] = s; lab[s] = next;
+    while (sp) {
+      const i = stack[--sp]; members[m++] = i; cin += inside[i];
+      const x = i % ww, y = (i / ww) | 0;
+      if ((x === 0 && openL) || (y === 0 && openT) || (x === ww - 1 && openR) || (y === wh - 1 && openB)) edge = true;
+      if (x > 0) { const j = i - 1; if (!lab[j] && solid(j) && near(i, j)) { lab[j] = next; stack[sp++] = j; } }
+      if (x < ww - 1) { const j = i + 1; if (!lab[j] && solid(j) && near(i, j)) { lab[j] = next; stack[sp++] = j; } }
+      if (y > 0) { const j = i - ww; if (!lab[j] && solid(j) && near(i, j)) { lab[j] = next; stack[sp++] = j; } }
+      if (y < wh - 1) { const j = i + ww; if (!lab[j] && solid(j) && near(i, j)) { lab[j] = next; stack[sp++] = j; } }
+    }
+    if (!edge && cin >= m * 0.75) for (let k = 0; k < m; k++) sel[members[k]] = 1;
   }
-  floatLiftVec(floating, poly);
+  // grow into outlines (dark, up to 4 px) and soft anti-aliased edges (up to 2 px), only inside the loop
+  const dist = new Uint8Array(n).fill(255); let q = [];
+  for (let i = 0; i < n; i++) if (sel[i]) { dist[i] = 0; q.push(i); }
+  if (!q.length) return null;
+  for (let r = 1; r <= 4 && q.length; r++) {
+    const nq = [];
+    for (const i of q) {
+      const x = i % ww;
+      for (const j of [x > 0 ? i - 1 : -1, x < ww - 1 ? i + 1 : -1, i - ww, i + ww]) {
+        if (j < 0 || j >= n || dist[j] !== 255 || !inside[j]) continue;
+        const p = j * 4, al = d[p + 3]; if (!al) continue;
+        const dark = al >= 40 && d[p] * 0.3 + d[p + 1] * 0.59 + d[p + 2] * 0.11 < 110;
+        if (!(dark || (r <= 2 && al < 200))) continue;
+        dist[j] = r; sel[j] = 1; nq.push(j);
+      }
+    }
+    q = nq;
+  }
+  let b = [Infinity, Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < n; i++) if (sel[i]) { const x = i % ww, y = (i / ww) | 0; if (x < b[0]) b[0] = x; if (y < b[1]) b[1] = y; if (x > b[2]) b[2] = x; if (y > b[3]) b[3] = y; }
+  const rect = [wx + b[0], wy + b[1], b[2] - b[0] + 1, b[3] - b[1] + 1];
+  const mc = makeCanvas(rect[2], rect[3]), mx = mc.getContext('2d'), img = mx.createImageData(rect[2], rect[3]), o = img.data;
+  for (let y = 0; y < rect[3]; y++) for (let x = 0; x < rect[2]; x++) if (sel[(y + b[1]) * ww + x + b[0]]) o[(y * rect[2] + x) * 4 + 3] = 255;
+  mx.putImageData(img, 0, 0);
+  return { rect, mc };
+}
+function liftSelection(poly) {
+  const mode = selMode(), fr = curFrame(); if (!fr || !fr.canvas) return;
+  const bgO = bgOf(fr), onBg = S.layer === 'bg';
+  // the layers this mode takes
+  let lineO = onBg ? bgO : fr, takeLine = true, takeCol = !onBg && !!fr.col, takeVec = !onBg, takeBg = false, only = null;
+  if (mode === 'all') { lineO = fr; takeCol = !!fr.col; takeVec = true; takeBg = !!(S.showBg && bgO && bgO.canvas); }
+  else if (mode === 'layer' && !onBg) { only = S.layer; takeLine = only === 'char'; takeCol = only === 'col' && !!fr.col; takeVec = only === 'vec'; }
+  if (!lineO || !lineO.canvas) return;
+  let rect, mc;
+  if (mode === 'part') {
+    const srcs = [];
+    if (takeCol) srcs.push(x => x.drawImage(fr.col, 0, 0));
+    srcs.push(x => x.drawImage(lineO.canvas, 0, 0));
+    if (takeVec && S.showVec && fr.vec && fr.vec.length) srcs.push(x => drawVec(x, fr.vec));
+    const r = partMask(poly, srcs);
+    if (!r) { toast('Không có mảng nào nằm gọn trong vòng khoanh — khoanh rộng hơn một chút quanh phần muốn lấy', 3500); return; }
+    ({ rect, mc } = r);
+  } else {
+    let a = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const p of poly) { a[0] = Math.min(a[0], p.x); a[1] = Math.min(a[1], p.y); a[2] = Math.max(a[2], p.x); a[3] = Math.max(a[3], p.y); }
+    rect = rectFromBox(a, 1);
+    if (!rect || rect[2] < 4 || rect[3] < 4) return;
+    mc = makeCanvas(rect[2], rect[3]); const mx = mc.getContext('2d'); mx.translate(-rect[0], -rect[1]); polyPath(mx, poly); mx.fillStyle = '#000'; mx.fill();
+  }
+  const [bx, by, bw, bh] = rect;
+  const snap = makeCanvas(); snap.getContext('2d').drawImage(lineO.canvas, 0, 0);
+  const fc = takeLine ? cutPiece(lineO.canvas, rect, mc) : makeCanvas(bw, bh);
+  floating = { t: targetOf(lineO), o: lineO, c: fc, cx: bx + bw / 2, cy: by + bh / 2, scale: 1, rot: 0, flip: 1, snap, dirty: [bx, by, bx + bw, by + bh] };
+  if (only) floating.only = only;
+  if (takeCol) { // colour under the lines moves together with them
+    const csnap = makeCanvas(); csnap.getContext('2d').drawImage(fr.col, 0, 0);
+    Object.assign(floating, { cc: cutPiece(fr.col, rect, mc), csnap });
+  }
+  if (takeBg) { // background piece: its "before" is kept now (before the hole), so undo / Huỷ bring the background back
+    const sn = makeCanvas(); sn.getContext('2d').drawImage(bgO.canvas, 0, 0);
+    floating.extra = [{ cv: bgO.canvas, o: bgO, col: false, snap: sn }];
+    floating.bc = cutPiece(bgO.canvas, rect, mc); bgO.ver++;
+  }
+  if (takeVec && !floatLiftVec(floating, poly) && only === 'vec') { floating.snap.width = 0; floating = null; toast('Không có nét vector nào nằm trong vòng khoanh'); requestRender(); return; }
   showSelbar(); requestRender();
 }
 /* vector strokes (lớp Nét) inside the loop move together with the picture: they are drawn into the lifted lines
@@ -1672,11 +1798,13 @@ function floatFrame(fl) { return fl.o.kind === 'char' ? fl.o : curFrame(); }
 // the draws that put the floating picture down: [{ o, col, img, op }] in drawing order
 function floatDraws(fl) {
   const pl = floatPlace(fl), fr = floatFrame(fl), out = [];
+  // a piece lifted from lớp Nền (🔲 Tất cả + nền) goes back into the background, behind the rest of the picture
+  if (fl.bc) { const b = bgOf(fr); if (b && b.canvas && pl !== 'bottom') out.push({ o: b, col: false, img: fl.bc }); }
   if (pl === 'bg') { const b = bgOf(fr); if (!b || !b.canvas) return out; if (fl.cc) out.push({ o: b, col: false, img: fl.cc }); if (fl.c) out.push({ o: b, col: false, img: fl.c }); }
-  else if (pl === 'bottom') { const b = bgOf(fr); if (!b || !b.canvas) return out; if (fl.c) out.push({ o: b, col: false, img: fl.c, op: 'destination-over' }); if (fl.cc) out.push({ o: b, col: false, img: fl.cc, op: 'destination-over' }); }
+  else if (pl === 'bottom') { const b = bgOf(fr); if (!b || !b.canvas) return out; if (fl.c) out.push({ o: b, col: false, img: fl.c, op: 'destination-over' }); if (fl.cc) out.push({ o: b, col: false, img: fl.cc, op: 'destination-over' }); if (fl.bc) out.push({ o: b, col: false, img: fl.bc, op: 'destination-over' }); }
   else if (pl === 'under') { if (fl.c) out.push({ o: fr, col: true, img: fl.c, op: 'destination-over' }); if (fl.cc) out.push({ o: fr, col: true, img: fl.cc, op: 'destination-over' }); }
   // on top with its own colour: the colour also hides old lines underneath it (else old lines would show through, since lớp Nhân vật is above lớp Màu)
-  else { if (fl.cc) out.push({ o: fr, col: true, img: fl.cc }, { o: fr, col: false, img: fl.cc, op: 'destination-out' }); if (fl.c) out.push({ o: fr, col: false, img: fl.c }); }
+  else { if (fl.cc) out.push({ o: fr, col: true, img: fl.cc }); if (fl.cc && fl.only !== 'col') out.push({ o: fr, col: false, img: fl.cc, op: 'destination-out' }); if (fl.c) out.push({ o: fr, col: false, img: fl.c }); }
   return out;
 }
 // canvas a draw goes into; keeps a "before" copy of it for undo / cancel (the source layer already has f.snap / f.csnap)
@@ -1737,7 +1865,7 @@ async function floatToPart() {
   const fl = floating; if (!fl || !fl.c) return;
   const box = floatBox(), rect = rectFromBox(box, 2); if (!rect) return;
   const [bx, by, bw, bh] = rect, c = makeCanvas(bw, bh), x = c.getContext('2d');
-  x.translate(-bx, -by); if (fl.cc) drawFloating(x, fl.cc); drawFloating(x, fl.c);
+  x.translate(-bx, -by); if (fl.bc) drawFloating(x, fl.bc); if (fl.cc) drawFloating(x, fl.cc); drawFloating(x, fl.c);
   floating = null; hideSelbar(); histFlush();
   // put the source layer back as it was, except the hole left by a lifted selection (that stays, as one undo step with the new piece)
   const entries = [];
@@ -1808,12 +1936,12 @@ function restoreFloatCol(f) {
   f.csnap.width = 0; f.csnap = null;
 }
 function showSelbar() {
-  const sb = $('#selbar'); sb.hidden = false;
+  const sb = $('#selbar'); sb.hidden = false; syncLassoBar();
   $('#selScale').value = Math.round(floating.scale * 100); $('#selScaleVal').textContent = Math.round(floating.scale * 100) + '%';
   $('#selRot').value = 0; $('#selRotVal').textContent = '0°';
   syncFloatPlace(); twSync();
 }
-function hideSelbar() { $('#selbar').hidden = true; }
+function hideSelbar() { $('#selbar').hidden = true; syncLassoBar(); }
 
 /* ===== 🎞 tween a lifted picture over many frames (knee slide, run in, fly away…):
    the place it was lifted at = start, drag it to the end, pick frames / path / speed → each frame gets the picture
@@ -1823,6 +1951,7 @@ function twStart() {
   const fl = floating; if (!fl || !fl.c) return;
   if (fl.o.kind !== 'char') { toast('Chuyển động chỉ làm được với hình ở lớp Nhân vật (không phải lớp Nền)'); return; }
   if (fl.anim) { toast('Hiệu ứng động đã tự chạy qua nhiều frame rồi'); return; }
+  if (fl.bc) { toast('Vùng chọn có cả lớp Nền (dùng chung nhiều frame) nên không tạo chuyển động được. Chọn lại bằng 👤 Cả hình vẽ hoặc 🧩 Từng mảng.', 4500); return; }
   if (fl.tw) { twStop(); return; }
   fl.tw = { cx: fl.cx, cy: fl.cy, scale: fl.scale, rot: fl.rot, flip: fl.flip };
   twSync(); requestRender(); toast('Kéo hình tới chỗ kết thúc, rồi bấm ✓ Tạo frame', 3000);
@@ -7647,7 +7776,7 @@ document.addEventListener('touchmove', e => { if (e.target.closest && e.target.c
 /* ========= Toolbar wiring ========= */
 function setTool(t) {
   // Chọn vùng always lifts the whole drawing under the loop: pixel lines + colour + vector lines (it used to jump to Sửa nét on lớp Nét)
-  if (t === 'lasso' && (S.layer === 'vec' || S.layer === 'col')) { setLayer('char'); toast('Chọn vùng lấy cả nét vẽ, màu và nét vector bên trong vùng khoanh', 2500); }
+  if (t === 'lasso' && selMode() !== 'layer' && (S.layer === 'vec' || S.layer === 'col')) { setLayer('char'); toast('Chọn vùng lấy cả nét vẽ, màu và nét vector bên trong vùng khoanh (đổi kiểu chọn ở thanh trên)', 2500); }
   if (t === 'pick' && S.tool !== 'pick') pickBack = S.tool;
   motionClose(); rigClose();
   if (t !== 'lasso' && floating) commitFloating();
@@ -7660,7 +7789,7 @@ function setTool(t) {
   if (t !== 'fx') { fxCamPick = false; ballMode = null; gagMode = null; ballSyncBar(); }
   updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); updBrushBtn(); syncSizeOp(); requestRender();
   document.querySelectorAll('.tool[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
-  document.body.dataset.tool = t;
+  document.body.dataset.tool = t; syncLassoBar();
   $('#dropBtn').hidden = !(t === 'fill' || t === 'pick'); $('#dropBtn').classList.toggle('on', t === 'pick');
 }
 function setLayer(l) {
@@ -7669,6 +7798,7 @@ function setLayer(l) {
   if ((l === 'vec' || l === 'char') && S.lineLayer !== l) { S.lineLayer = l; saveSettings(); }   // remembered: drawing on Nét keeps lines editable next time too
   $('#layerBg').classList.toggle('on', l === 'bg'); $('#layerCol').classList.toggle('on', l === 'col'); $('#layerChar').classList.toggle('on', l === 'char'); $('#layerVec').classList.toggle('on', l === 'vec');
   if (l !== 'vec' && S.tool === 'vedit') setTool('brush');
+  syncLassoBar();
 }
 function setColor(c) {
   c = (normHex(c) || '#111111'); S.color = c; $('#curColor').style.background = c;
@@ -7934,9 +8064,13 @@ $('#selStamp').addEventListener('click', stampFloating);
 $('#selCopy').addEventListener('click', copyFloating);
 $('#pasteBtn').addEventListener('click', pasteDialog);
 $('#selVec').addEventListener('click', () => convertPixelsToVector(true));
-$('#selDelete').addEventListener('click', () => { if (floating) { floating.c = null; floating.cc = null; commitFloating(); toast('Đã xoá vùng chọn'); } });
+$('#selDelete').addEventListener('click', () => { if (floating) { floating.c = null; floating.cc = null; floating.bc = null; commitFloating(); toast('Đã xoá vùng chọn'); } });
 $('#selCancel').addEventListener('click', () => { cancelFloating(); updUndoBtns(); });
 $('#selDone').addEventListener('click', commitFloating);
+$('#lassobar').addEventListener('click', e => {
+  const m = e.target.closest('[data-selm]'); if (m) { setSelMode(m.dataset.selm); return; }
+  const l = e.target.closest('[data-sell]'); if (l) { setLayer(l.dataset.sell); if (S.tool !== 'lasso') setTool('lasso'); syncLassoBar(); }
+});
 $('#selPlace').addEventListener('click', e => { const b = e.target.closest('[data-fpl]'); if (b) setFloatPlace(b.dataset.fpl); });
 $('#selPart').addEventListener('click', () => floatToPart());
 $('#selTw').addEventListener('click', twStart);
