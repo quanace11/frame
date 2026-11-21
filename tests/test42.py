@@ -37,7 +37,7 @@ async def main():
            const x=a.getContext('2d').getImageData(0,0,W,H).data, y=b2.getContext('2d').getImageData(0,0,W,H).data; let n=0; for(let k=3;k<x.length;k+=4) if(Math.abs(x[k-3]-y[k-3])+Math.abs(x[k-1]-y[k-1])>60) n++; return n; })""", i)
         print('blink frame draws closed eyes', diff > 30, diff)
         # retween (edit a key) keeps the blink overlay
-        await pg.evaluate("S.frames[39].ppKey=true; const h=ppByRole('head'); (S.frames[39].pp[h.id]=S.frames[39].pp[h.id]||{}).r=12; ppRetween()")
+        await pg.evaluate("S.frames[39].ppKey=true; const h=ppByRole('head'); (S.frames[39].pp[h.id]=S.frames[39].pp[h.id]||{}).r=12; ppRetween(); histRebase()")   # test-only edit: not an undo step of its own
         print('retween keeps blink', await pg.evaluate(CNT) == c)
         await pg.evaluate("undo()"); await pg.wait_for_timeout(300); print('undo removes', await pg.evaluate(CNT) == 0)
         await pg.evaluate("redo()"); await pg.wait_for_timeout(300); print('redo restores', await pg.evaluate(CNT) == c)
