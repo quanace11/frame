@@ -71,6 +71,17 @@ async def main():
         check('legacy adjacent keys snap', leg == [2, 3, 3])
         leg2 = await pg.evaluate("(()=>{const s=S.frames.map(f=>f.cam); S.frames[0].cam={z:1,x:540,y:960}; S.frames[1].cam=null; S.frames[2].cam={z:3,x:540,y:960}; const r=[camAt(0).z, camAt(1).z, camAt(2).z]; S.frames.forEach((f,i)=>f.cam=s[i]); return r})()")
         check('legacy keys glide between', leg2[0] == 1 and 1 < leg2[1] < 3 and leg2[2] == 3)
+        # 8b) zoom carries on to later frames until the next key; "↩ Bỏ zoom từ đây" ends it; 🗑 removes a key
+        await pg.evaluate("S.frames[0].cam=null; S.frames[1].cam={z:2,x:540,y:960,tr:'cut'}; S.frames[2].cam=null; S.camTr='smooth'; S.cur=2; updateFrameUI(); fxSyncBar()")
+        check('later frame keeps zoom', abs(await Z(2) - 2) < 0.01)
+        check('held badge + status', await pg.evaluate("(S.frames[2].el.querySelector('.camk')||{}).textContent") == '🔍' and 'vẫn zoom' in await pg.inner_text('#camStat'))
+        await pg.click('#camWide')
+        check('bỏ zoom from here = cut back to wide', await Z(2) == 1 and await Z(2, 0.5) == 1 and await pg.evaluate("S.frames[2].cam.tr") == 'cut' and abs(await Z(1) - 2) < 0.01)
+        check('wide badge', await pg.evaluate("S.frames[2].el.querySelector('.camk').textContent") == '🎥↩' and 'toàn cảnh' in await pg.inner_text('#camStat'))
+        await pg.click('#fxCamKey'); check('delete key → zoom carries again', await pg.evaluate("S.frames[2].cam") is None and abs(await Z(2) - 2) < 0.01)
+        await pg.evaluate("undo()"); check('undo delete', await pg.evaluate("!!S.frames[2].cam"))
+        await pg.screenshot(path='tcam_status.png')
+        await pg.evaluate("S.camTr='cut'; S.frames[2].cam={z:2.2,x:648,y:768,tr:'cut'}")
         # 9) playback + save/reload
         await pg.click('#playBtn'); await pg.wait_for_timeout(1500); await pg.click('#playBtn')
         await pg.evaluate("S.cur=1; updateFrameUI(); S.frames[1].cam.tr='smooth'; S.frames[1].cam.d=1.5; saveProject()"); await pg.wait_for_timeout(1200)
