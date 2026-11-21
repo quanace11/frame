@@ -466,7 +466,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <div class="mrow"><b>🧩 Nhân vật ghép</b><span style="flex:1"></span><button class="chip small" id="ppMini">▾ Thu gọn</button><button class="chip small pclose" data-close="puppet" title="Đóng bảng (công cụ vẫn bật)">✕</button></div>
       <div id="ppEmpty" class="mrow"><span class="lbl">Chưa có nhân vật ghép. Nhập ảnh (vd. ảnh AI tạo) → chọn <b>Nhân vật ghép</b>.</span><button class="chip small on" id="ppNew">Nhập ảnh</button></div>
       <div id="ppSetupSec"><div id="ppJointSec">
-        <div class="mrow"><span class="lbl"><b>Bước 1 — Đặt khớp:</b> kéo chấm trắng vào vai, khuỷu, cổ tay, hông, gối, cổ chân (kéo khớp cha kéo cả nhánh)</span></div>
+        <div class="mrow"><span class="lbl"><b>Bước 1 — Đặt khớp:</b> kéo chấm trắng vào vai, khuỷu, cổ tay, hông, gối, cổ chân (kéo khớp cha kéo cả nhánh). Cắt xong, nút <b>✎ Vẽ đường đi</b> và <b>🛷 Trượt gối</b> ở tab 🎞 Tạo frame</span></div>
         <div class="mrow"><label class="lbl"><input type="checkbox" id="ppSplit"> Chia tay/chân 2 đoạn (gập khuỷu, gối)</label>
           <span class="lbl">Vá khớp</span><button class="chip small" data-ppf="fast">Nhanh</button><button class="chip small" data-ppf="ai" title="MI-GAN: AI vẽ bù miễn phí, chạy trên máy, lần đầu tải ~50 MB">AI (đẹp hơn)</button><button class="chip small" data-ppf="off">Tắt</button>
           <button class="chip small" id="ppRefit">Tự khớp lại</button><span style="flex:1"></span>
@@ -501,6 +501,9 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
         <div class="mrow" data-tab="frames"><span class="lbl"><b>Frame giữa:</b> chèn</span><input type="number" id="ppTweenN" value="3" min="1" max="24" style="width:52px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">frame chuyển tiếp tới frame sau</span><button class="chip small on" id="ppTweenBtn">Tạo frame giữa</button></div>
         <div class="mrow" data-tab="frames"><span class="lbl"><b>〰 Đường đi:</b></span><button class="chip small on" id="ppPathBtn" title="Vẽ một đường trên màn hình: nhân vật đi theo đường đó qua các frame (như motion path của Animate). Đang có chu kỳ đi bộ thì nó lặp lại cho đủ frame">✎ Vẽ đường đi</button>
           <span class="lbl">qua</span><input type="number" id="ppPathN" value="24" min="2" max="240" style="width:56px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">frame</span><select id="ppPathEase" class="chip small"><option value="linear">Đều</option><option value="inout">Mượt (chậm–nhanh–chậm)</option><option value="in">Nhanh dần</option><option value="out">Chậm dần</option></select><button class="chip small" id="ppPathClear" title="Bỏ đường đi của nhân vật đang chọn trên mọi frame">Bỏ đường đi</button></div>
+        <div class="mrow" data-tab="frames" style="flex-wrap:wrap"><span class="lbl"><b>🛷 Trượt gối:</b></span><button class="chip small" data-slide="-1" title="Nhân vật lao từ bên phải vào, trượt chậm dần rồi dừng ở chỗ đang đứng">◀ Trượt sang trái</button><button class="chip small" data-slide="1" title="Nhân vật lao từ bên trái vào, trượt chậm dần rồi dừng ở chỗ đang đứng">Trượt sang phải ▶</button>
+          <span class="lbl">qua</span><input type="number" id="slideN" value="20" min="4" max="120" style="width:52px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">frame</span>
+          <label class="lbl"><input type="checkbox" id="slideDust" checked> Bụi + cỏ</label><label class="lbl"><input type="checkbox" id="slideLean" checked> Ngả người</label><label class="lbl"><input type="checkbox" id="slideCam" checked> Camera đẩy vào</label><label class="lbl"><input type="checkbox" id="slideSfx" checked> Âm thanh</label></div>
         <div class="mrow" data-tab="frames"><span class="lbl"><b>Mẫu nhanh:</b></span><span id="ppPresets" class="mrow"></span></div>
         <div class="mrow" data-tab="frames" style="flex-wrap:wrap"><span class="lbl"><b>Cử chỉ:</b></span><span id="ppGests" class="mrow" style="flex-wrap:wrap;gap:4px"></span><label class="lbl" title="Làm bằng tay bên kia"><input type="checkbox" id="gestMir"> Tay kia</label></div>
         <div class="mrow" data-tab="frames" style="flex-wrap:wrap"><span class="lbl"><b>⭐ Chuyển động của tôi:</b></span><select id="myMoSel" class="chip small"></select><button class="chip small on" id="myMoApply" title="Tạo lại chuyển động đã lưu từ tư thế frame này, dùng được cho mọi nhân vật đã cắt tự động (như Motion preset của Animate)">Áp</button><button class="chip small" id="myMoSave" title="Lưu các frame từ frame này trở đi thành một chuyển động để dùng lại cho nhân vật khác, dự án khác">＋ Lưu chuyển động</button><button class="chip small" id="myMoDel" title="Xoá chuyển động đã lưu">🗑</button></div>
@@ -4150,12 +4153,14 @@ async function ppAutoCut(whole) {
     const zb = Math.max(...S.pp.parts.map(q => q.z)) + 1, nv = S.pp.parts.filter(q => !q.parent).length + 1;
     parts.forEach(q => { q.z += zb; q.name += ` (NV${nv})`; }); S.pp.parts.push(...parts);
   } else { S.pp = { parts }; S.frames.forEach(f => { f.pp = {}; f.ppKey = undefined; }); }
+  // a new character appears from the frame being edited on: frames before it keep showing only what they had
+  if (!recut) for (let i = 0; i < S.cur; i++) { const f = S.frames[i]; f.pp = f.pp || {}; for (const q of parts) f.pp[q.id] = { ...(f.pp[q.id] || {}), h: true }; f.ppKey = true; }
   // remember how this character was cut, so "Sửa lại vùng cắt" can reopen it (this session only)
   const roleId = {}; parts.forEach(q => { if (q.role) roleId[q.role] = q.id; });
   ppLastCut = whole ? null : { src: st.src, J: st.J, split: st.split, auto: st.auto, autoJ: st.autoJ, hand: st.hand || null, ids: parts.map(q => q.id), roleId };
   ppSetup = null; ppSel = parts[0] ? parts[0].id : null; pm.close();
   S.showPP = true; updateToggles(); openTab('pp', 'pose'); ppSyncBar(); S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); scheduleSave(); requestRender();
-  toast(whole ? 'Đã tạo 1 mảnh — dùng ✂ Khoanh cắt để tách tay, chân…' : `Đã cắt ${parts.length} mảnh — chạm mảnh rồi kéo để xoay quanh khớp`, 4000);
+  toast(whole ? 'Đã tạo 1 mảnh — dùng ✂ Khoanh cắt để tách tay, chân…' : `Đã cắt ${parts.length} mảnh — chạm mảnh rồi kéo để xoay quanh khớp. Cho nhân vật di chuyển: tab 🎞 Tạo frame → ✎ Vẽ đường đi / 🛷 Trượt gối`, 6000);
 }
 /* --- lasso cut a new part out of the selected part --- */
 async function ppCutLasso(poly) {
@@ -4573,7 +4578,7 @@ async function ppApplyPath(pts) {
     const cyc = S.frames.slice(i0), last = S.frames[S.frames.length - 1], added = [];
     for (let k = 0; k < n - have; k++) {
       const src = cyc[(have + k) % cyc.length]; await ensureLoaded(src);
-      const f = newFrameObj(src.bgId); f.dur = src.dur; f.canvas.getContext('2d').drawImage(src.canvas, 0, 0); copyCol(f, src); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(src.vec);
+      const f = newFrameObj(cyc[0].bgId);   // the scene stays the one of the frame the path starts on (a blank frame after it must not blink in) f.dur = src.dur; f.canvas.getContext('2d').drawImage(src.canvas, 0, 0); copyCol(f, src); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(src.vec);
       f.pp = ppClone(src.pp); f.ppKey = true; f.ppEase = src.ppEase; f.lip = src.lip ? JSON.parse(JSON.stringify(src.lip)) : null; added.push(f);
     }
     S.frames.push(...added); loaded.push(...added);
@@ -4600,6 +4605,77 @@ function ppClearPath() {
 }
 $('#ppPathBtn').addEventListener('click', () => { if (!S.pp || !S.pp.parts.length) { toast('Chưa có nhân vật ghép'); return; } ppPathMode = !ppPathMode; ppCutMode = ppPatchMode = false; ppPaint = null; ppSyncBar(); if (ppPathMode) toast('Kéo bút/ngón vẽ đường nhân vật sẽ đi, bắt đầu từ chỗ nhân vật đang đứng', 3500); });
 $('#ppPathClear').addEventListener('click', ppClearPath);
+/* --- 🛷 knee slide: the character rushes in, slides with dust and grass flying, stops where it stands now,
+ *  leans back and the camera pushes in. One undo step (gagApply: added frames + path + pose + dust pixels + camera + SFX). --- */
+function ppCharBox(f) {   // bounding box of the cut-out characters as drawn on frame f
+  const k = 0.25, w = Math.ceil(W * k), h = Math.ceil(H * k), c = makeCanvas(w, h), x = c.getContext('2d');
+  x.scale(k, k); drawPuppet(x, f.pp, f.lip);
+  const d = x.getImageData(0, 0, w, h).data; let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y++) for (let xx = 0; xx < w; xx++) if (d[(y * w + xx) * 4 + 3] > 40) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  return x1 < 0 ? null : { x0: x0 / k, y0: y0 / k, x1: (x1 + 1) / k, y1: (y1 + 1) / k };
+}
+const slideRnd = k => { const v = Math.sin(k * 12.9898 + 78.233) * 43758.5453; return v - Math.floor(v); };
+/** one dust puff (a soft cartoon cloud) with a few grass bits, t = 0 (just kicked up) … 1 (gone) */
+function slidePuffItem(P, t, dir) {
+  const r = P.r * (0.6 + 0.9 * t), cx = P.x - dir * P.r * 0.5 * t, cy = P.y - P.r * 0.35 * t, a = 0.85 * Math.pow(1 - t, 1.2);
+  const blobs = [0, 1, 2, 3, 4].map(b => { const an = Math.PI * (0.05 + 0.9 * b / 4); return { x: cx - Math.cos(an) * r * 0.62 + (slideRnd(P.seed + b) - 0.5) * r * 0.15, y: cy - Math.sin(an) * r * 0.32, r: r * (0.38 + 0.18 * slideRnd(P.seed + b * 7)) }; });
+  const bits = [0, 1, 2].map(b => { const vx = -dir * (0.4 + slideRnd(P.seed + 20 + b)) * P.r * 1.6, vy = -(0.9 + slideRnd(P.seed + 30 + b)) * P.r * 2.2, tt = t * 1.2; return { x: P.x + vx * tt, y: P.y + vy * tt + P.r * 3.2 * tt * tt, ang: Math.atan2(vy + P.r * 6.4 * tt, vx), c: b % 2 ? '#7cc35a' : '#4c9a3a' }; });
+  const R = r * 1.3;
+  return {
+    rect: [Math.min(cx - R, ...bits.map(q => q.x)) - 12, Math.min(cy - R, ...bits.map(q => q.y)) - 12, Math.max(cx + R, ...bits.map(q => q.x)) + 12, Math.max(P.y + r * 0.3, ...bits.map(q => q.y)) + 12],
+    draw: x => {
+      if (a <= 0.01) return;
+      x.globalAlpha = a; x.lineWidth = Math.max(2, r * 0.07); x.strokeStyle = '#b9a581'; x.fillStyle = '#f1e8d5';
+      for (const b of blobs) { x.beginPath(); x.arc(b.x, b.y, b.r, 0, Math.PI * 2); x.stroke(); }
+      for (const b of blobs) { x.beginPath(); x.arc(b.x, b.y, b.r, 0, Math.PI * 2); x.fill(); }
+      x.lineCap = 'round'; x.lineWidth = Math.max(3, P.r * 0.1);
+      if (t < 0.8) for (const q of bits) { x.strokeStyle = q.c; x.beginPath(); x.moveTo(q.x, q.y); x.lineTo(q.x - Math.cos(q.ang) * P.r * 0.35, q.y - Math.sin(q.ang) * P.r * 0.35); x.stroke(); }
+    }
+  };
+}
+async function ppSlide(dir) {
+  if (!S.pp || !S.pp.parts.length) { toast('Chưa có nhân vật ghép'); return; }
+  const charId = ppSelChar(); if (!charId) return;
+  if (playing) stopPlay(); ppPathMode = false;
+  const i0 = S.cur, f0 = S.frames[i0]; await ensureLoaded(f0);
+  const n = clamp(+$('#slideN').value || 20, 4, 120), hold = Math.max(6, Math.round(n * 0.5)), N = n + hold;
+  const box = ppCharBox(f0); if (!box) { toast('Không thấy nhân vật trên frame này'); return; }
+  const bw = box.x1 - box.x0, bh = box.y1 - box.y0, base = (f0.lip && f0.lip.mv && f0.lip.mv[charId]) || { x: 0, y: 0 };
+  const opt = { dust: $('#slideDust').checked, lean: $('#slideLean').checked, cam: $('#slideCam').checked, sfx: $('#slideSfx').checked };
+  const D = Math.max(W * 0.6, bw * 1.1);
+  const off = j => j >= n - 1 ? 0 : -dir * D * (1 - EASE.out(j / (n - 1)));   // x offset from where the character stands now
+  const mine = role => S.pp.parts.find(p => p.role === role && ppCharOf(p) === charId);
+  const torso = mine('torso') || ppPart(charId), r0 = id => (f0.pp && f0.pp[id] && f0.pp[id].r) || 0;
+  const leanN = Math.min(6, Math.max(2, Math.round(n / 3))), leanAt = j => EASE.inout(clamp((j - (n - 1 - leanN)) / leanN, 0, 1));
+  // dust: kicked up at the back of the slide (the lines/pixel layer is under the puppet, so dust under the knees would be hidden)
+  // while it moves fast, then left behind on the ground
+  const puffs = [], LIFE = 8, ground = box.y1 - bh * 0.03, back = dir > 0 ? box.x0 + bw * 0.04 : box.x1 - bw * 0.04;
+  if (opt.dust) for (let k = 0; k < n - 1; k++) { const sp = Math.abs(off(k + 1) - off(k)); if (sp < W * 0.004) continue; puffs.push({ k, x: back + off(k), y: ground, r: clamp(sp * 1.3, bh * 0.09, bh * 0.2), seed: k * 31 + 7 }); }
+  const r = await gagApply(i0, {
+    n: N, copyOf: f0,
+    edit: (j, f) => {
+      const out = [ppMvEdit(f, mv => { mv[charId] = { x: Math.round((base.x + off(j)) * 10) / 10, y: base.y }; })];
+      if (opt.lean && torso) {
+        const before = ppState(f), u = leanAt(j);
+        ppQ(f, torso.id).r = r0(torso.id) - dir * 12 * u;   // the head and arms ride along (hands resting on the head stay put)
+        f.ppKey = true; const after = ppState(f); if (JSON.stringify(after) !== JSON.stringify(before)) { out.push(ppEntry(f, before, after)); f.ver++; }
+      }
+      return out;
+    },
+    pix: j => puffs.filter(P => j >= P.k && j - P.k < LIFE).map(P => slidePuffItem(P, (j - P.k) / LIFE, dir)),
+    fx: (j, f, cb) => {
+      if (!opt.cam) return false;
+      if (j === 0 && !f.cam && S.frames.some((g, i) => i < i0 && g.cam)) { f.cam = { ...cb[i0], tr: 'cut' }; return; }
+      if (j !== n - 3 && !(n < 6 && j === n - 1)) return false;
+      f.cam = null; camKeySet(f, { z: 1.6, x: (box.x0 + box.x1) / 2, y: box.y0 + bh * 0.38 }, 'smooth'); f.cam.d = 0.7;
+    },
+    sfx: opt.sfx ? [[0, 'slide'], [n - 1, 'crowd']] : []
+  });
+  ppRetween(); ppSyncBar();
+  toast(`🛷 Đã tạo cảnh trượt gối ${r.n} frame${r.added ? ` (thêm ${r.added} frame)` : ''} — bấm ▶ Phát để xem, ↶ để làm lại`, 4500);
+  return r;
+}
+document.querySelectorAll('[data-slide]').forEach(b => b.addEventListener('click', () => ppSlide(+b.dataset.slide)));
 
 $('#ppBlinkBtn').addEventListener('click', ppAutoBlink);
 $('#ppBake').addEventListener('click', ppBake);
@@ -4959,7 +5035,18 @@ const GESTURES = {
   startle: ['😱 Giật mình', [{ a: { armL: 200, foreL: 230, armR: -20, foreR: -50 }, dy: -0.05, n: 1, hold: 1 }, { dy: 0, n: 2, hold: 4 }, { n: 4, back: 1 }]],
   cry: ['😭 Lau nước mắt', [{ a: { armL: 120, foreL: -55, armR: 60, foreR: -125 }, head: 6, n: 3 }, { head: 2, n: 2 }, { head: 6, n: 2 }, { head: 2, n: 2 }, { n: 3, back: 1 }]],
   nodyes: ['🙆 Gật đồng ý', [{ head: 10, n: 2 }, { head: -2, n: 2 }, { head: 10, n: 2 }, { head: 0, n: 2, back: 1 }]],
-  nope: ['🙅 Lắc không', [{ head: -10, n: 2 }, { head: 10, n: 2 }, { head: -10, n: 2 }, { head: 10, n: 2 }, { n: 2, back: 1 }]]
+  nope: ['🙅 Lắc không', [{ head: -10, n: 2 }, { head: 10, n: 2 }, { head: -10, n: 2 }, { head: 10, n: 2 }, { n: 2, back: 1 }]],
+  // kneeling from a standing (front view) character: thighs straight down, shins squashed (they point away from the camera), body drops
+  beg: ['🙏 Quỳ gối xin tha', [{ a: { legL: 94, shinL: 92, legR: 86, shinR: 88 }, sy: { shinL: 0.18, shinR: 0.18 }, n: 4 },
+    { a: { armL: 115, foreL: -28, armR: 65, foreR: 208 }, head: -6, n: 3 },
+    { a: { foreL: -18, foreR: 198 }, head: -2, torso: 3, n: 2 }, { a: { foreL: -40, foreR: 220 }, head: -9, torso: 0, n: 2 },
+    { a: { foreL: -18, foreR: 198 }, head: -2, torso: 3, n: 2 }, { a: { foreL: -40, foreR: 220 }, head: -9, torso: 0, n: 2 },
+    { a: { foreL: -18, foreR: 198 }, head: -2, torso: 3, n: 2 }, { a: { foreL: -30, foreR: 210 }, head: -6, torso: 0, n: 2, hold: 4 }]],
+  kowtow: ['🙇 Quỳ gối vái lạy', [{ a: { legL: 94, shinL: 92, legR: 86, shinR: 88 }, sy: { shinL: 0.18, shinR: 0.18 }, n: 4 },
+    { a: { armL: 112, foreL: -66, armR: 68, foreR: 246 }, head: -4, n: 3, hold: 1 },
+    { a: { armL: 98, foreL: 70, armR: 82, foreR: 110 }, sy: { legL: 0.6, legR: 0.6 }, torso: 10, head: 18, dy: 0.03, n: 3, hold: 2 }, { a: { armL: 112, foreL: -66, armR: 68, foreR: 246 }, sy: { legL: 1, legR: 1 }, torso: 0, head: -4, dy: 0, n: 3 },
+    { a: { armL: 98, foreL: 70, armR: 82, foreR: 110 }, sy: { legL: 0.6, legR: 0.6 }, torso: 10, head: 18, dy: 0.03, n: 3, hold: 2 }, { a: { armL: 112, foreL: -66, armR: 68, foreR: 246 }, sy: { legL: 1, legR: 1 }, torso: 0, head: -4, dy: 0, n: 3 },
+    { a: { armL: 98, foreL: 70, armR: 82, foreR: 110 }, sy: { legL: 0.6, legR: 0.6 }, torso: 10, head: 18, dy: 0.03, n: 3, hold: 2 }, { a: { armL: 112, foreL: -66, armR: 68, foreR: 246 }, sy: { legL: 1, legR: 1 }, torso: 0, head: -4, dy: 0, n: 3, hold: 3 }]]
 };
 let gestMirror = false;
 function ppCurAbs(f, charId) {
@@ -4975,17 +5062,27 @@ async function ppGesture(id) {
   const mir = gestMirror, mapRole = r => mir ? r.replace(/L$/, '#').replace(/R$/, 'L').replace(/#$/, 'R') : r, mapAng = a => mir ? 180 - a : a, sg = mir ? -1 : 1;
   const start = ppCurAbs(f0, ch), tor = byRole('torso'), hgt = tor ? Math.max(200, tor.c.height * 2.2) : H * 0.6, dur = Math.round((+$('#ppPDur').value || 0.08) * 1000);
   const base = ppClone(f0.pp || {}), poses = [], isKey = [];
-  let prev = { a: { ...start }, head: 0, torso: 0, dy: 0 };
+  let prev = { a: { ...start }, head: 0, torso: 0, dy: 0, sy: {} };
   const mk = st => {
     const tf = { pp: ppClone(base) }; ppApplyAbs(tf, st.a, ch);
     const add = (role, prop, v) => { const p = byRole(role); if (!p || !v) return; const q = ppQ(tf, p.id); q[prop] = (q[prop] || 0) + v; };
-    add('head', 'r', st.head * sg); add('torso', 'r', st.torso * sg * (ppDir || 1)); add('torso', 'dy', st.dy * hgt); return tf.pp;
+    add('head', 'r', st.head * sg); add('torso', 'r', st.torso * sg * (ppDir || 1)); add('torso', 'dy', st.dy * hgt);
+    for (const [role, v] of Object.entries(st.sy || {})) { const p = byRole(role); if (p && v !== 1) { const q = ppQ(tf, p.id); q.sy = (q.sy == null ? 1 : q.sy) * v; } }   // squash (a shin pointing away from the camera)
+    // squashed legs are shorter: the body drops by as much, so the knees land where the feet were
+    let drop = 0; const len = p => { const t = ppTipOf(p); return Math.hypot(t.x - p.px, t.y - p.py); };
+    for (const sd of ['L', 'R']) { let d = 0; for (const r of ['leg' + sd, 'shin' + sd]) { const p = byRole(r), v = st.sy && st.sy[r]; if (p && v != null) d += len(p) * (1 - v); } drop = Math.max(drop, d); }
+    if (drop) add('torso', 'dy', drop);
+    // legs given in the keyframe stay at their screen angle when the body leans (kneeling knees stay on the ground)
+    const legs = {}; for (const r of ['legL', 'legR', 'shinL', 'shinR']) if (st.a[r] != null) legs[r] = st.a[r];
+    if (st.torso && Object.keys(legs).length) ppApplyAbs(tf, legs, ch);
+    return tf.pp;
   };
   for (const k of G[1]) {
-    const tgt = k.back ? { a: { ...start }, head: 0, torso: 0, dy: 0 } : { a: { ...prev.a }, head: k.head ?? prev.head, torso: k.torso ?? prev.torso, dy: k.dy ?? prev.dy };
+    const tgt = k.back ? { a: { ...start }, head: 0, torso: 0, dy: 0, sy: {} } : { a: { ...prev.a }, head: k.head ?? prev.head, torso: k.torso ?? prev.torso, dy: k.dy ?? prev.dy, sy: { ...prev.sy, ...(k.sy ? Object.fromEntries(Object.entries(k.sy).map(([r, v]) => [mapRole(r), v])) : {}) } };
     if (!k.back && k.a) for (const [r, v] of Object.entries(k.a)) tgt.a[mapRole(r)] = mapAng(v);
     for (let i = 1; i <= k.n; i++) {
-      const t = i / k.n, e = t * t * (3 - 2 * t), st = { a: {}, head: lerp(prev.head, tgt.head, e), torso: lerp(prev.torso, tgt.torso, e), dy: lerp(prev.dy, tgt.dy, e) };
+      const t = i / k.n, e = t * t * (3 - 2 * t), st = { a: {}, head: lerp(prev.head, tgt.head, e), torso: lerp(prev.torso, tgt.torso, e), dy: lerp(prev.dy, tgt.dy, e), sy: {} };
+      for (const r of new Set([...Object.keys(prev.sy), ...Object.keys(tgt.sy)])) st.sy[r] = lerp(prev.sy[r] ?? 1, tgt.sy[r] ?? 1, e);
       for (const r of new Set([...Object.keys(prev.a), ...Object.keys(tgt.a)])) { const a0 = prev.a[r] ?? tgt.a[r], a1 = tgt.a[r] ?? a0; st.a[r] = angLerp(a0, a1, e); }
       poses.push(mk(st)); isKey.push(i === k.n);
     }
@@ -6278,14 +6375,15 @@ async function gagApply(i0, plan) {
   const base = S.frames[i0], added = [];
   // missing frames are copies of the last frame (drawn before anything is stamped)
   if (i0 + plan.n > S.frames.length) {
-    const last = S.frames[S.frames.length - 1]; await ensureLoaded(last);
-    while (i0 + plan.n > S.frames.length + added.length) { const f = newFrameObj(last.bgId); f.dur = last.dur; f.canvas.getContext('2d').drawImage(last.canvas, 0, 0); copyCol(f, last); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(last.vec); f.pp = ppClone(last.pp); f.texts = JSON.parse(JSON.stringify(last.texts || [])); added.push(f); }
+    const last = plan.copyOf || S.frames[S.frames.length - 1]; await ensureLoaded(last);
+    while (i0 + plan.n > S.frames.length + added.length) { const f = newFrameObj(last.bgId); f.dur = last.dur; f.canvas.getContext('2d').drawImage(last.canvas, 0, 0); copyCol(f, last); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(last.vec); f.pp = ppClone(last.pp); f.texts = JSON.parse(JSON.stringify(last.texts || [])); if (plan.copyOf) { f.ppKey = last.ppKey; f.ppEase = last.ppEase; f.lip = last.lip ? JSON.parse(JSON.stringify(last.lip)) : null; } added.push(f); }
     S.frames.push(...added); loaded.push(...added);
   }
   const camBefore = S.frames.map((f, i) => camAt(i)), multi = [];
   if (added.length) multi.push({ t: targetOf(S.frames[S.frames.length - added.length - 1]), add: { frames: added, index: S.frames.length - added.length, dur0: S.frames[S.frames.length - added.length - 1].dur, dur1: S.frames[S.frames.length - added.length - 1].dur }, bytes: 0 });
   for (let j = 0; j < plan.n; j++) {
     const f = S.frames[i0 + j]; await ensureLoaded(f);
+    if (plan.edit) for (const e of plan.edit(j, f) || []) if (e) multi.push(e);
     const items = (plan.pix && plan.pix(j)) || [];
     if (items.length) {
       let R = null; for (const it of items) R = rectUnion(R, it.rect);
