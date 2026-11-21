@@ -374,6 +374,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
     <div id="bgHold" hidden>
       <button class="chip small" id="newBgBtn" title="Cho frame này một nền trống riêng (cảnh mới)">Nền mới</button>
       <button class="chip small" id="bgVidBtn" title="Dùng một đoạn video làm nền phía sau nhân vật">🎞 Nền video</button>
+      <button class="chip small" id="vidFramesBtn" title="Tách một đoạn video thành từng frame (hình ở lớp Nền) để vẽ đè lên, đồ theo chuyển động thật">🎬 Video → frame</button>
       <button class="chip small" id="splitBgBtn" title="Tách nền thành bản sao riêng để sửa mà không ảnh hưởng frame khác">Tách nền</button>
       <span id="bgInfo"></span>
     </div>
@@ -645,6 +646,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
 <input type="file" id="musicFile" accept="audio/*,video/mp4" hidden>
 <input type="file" id="voiceFile" accept="audio/*,video/mp4" hidden>
 <input type="file" id="bgVidFile" accept="video/*" hidden>
+<input type="file" id="vidFramesFile" accept="video/*" hidden>
 <input type="file" id="zipFile" accept=".zip,application/zip" hidden>
 <div id="toast"></div>
 
@@ -691,6 +693,9 @@ function saveSettings() { try { const o = {}; for (const k of SETTINGS_KEYS) o[k
 function newBgObj() { return { kind: 'bg', id: newId(), ver: 0, png: null, pngVer: 0, canvas: makeCanvas() }; }
 function newFrameObj(bgId) { return { kind: 'char', id: newId(), dur: Math.round(S.defaultDur * 1000), bgId, ver: 0, png: null, pngVer: 0, canvas: makeCanvas(), col: null, colPng: null, colVer: 0, colPngVer: 0, thumb: null, play: null, playKey: '', vec: [] }; }
 const loaded = [];            // LRU of loaded frames
+// backgrounds loaded lazily (e.g. one per video frame, see 🎬 Video → frame) are tracked and freed the same way
+const loadedBg = [], MAX_BG = 6;
+function touchBg(b) { const i = loadedBg.indexOf(b); if (i >= 0) loadedBg.splice(i, 1); loadedBg.push(b); }
 const MAX_LOADED = (navigator.deviceMemory && navigator.deviceMemory <= 4) ? 8 : 14;
 function touchLRU(f) { const i = loaded.indexOf(f); if (i >= 0) loaded.splice(i, 1); loaded.push(f); }
 function toBlob(c) { return new Promise(r => c.toBlob(r, 'image/png')); }
@@ -701,14 +706,14 @@ async function ensurePng(o) {
 const pngDirty = o => o.pngVer !== o.ver || (o.col && o.colPngVer !== o.colVer);
 async function decodePng(buf) { return await createImageBitmap(new Blob([buf], { type: 'image/png' })); }
 function ensureLoaded(o) {
-  if (o.canvas) { if (o.kind === 'char') touchLRU(o); return Promise.resolve(o.canvas); }
+  if (o.canvas) { if (o.kind === 'char') touchLRU(o); else if (loadedBg.includes(o)) touchBg(o); return Promise.resolve(o.canvas); }
   if (o.loading) return o.loading;
   o.loading = (async () => {
     const c = makeCanvas();
     if (o.png) { try { const bmp = await decodePng(o.png); c.getContext('2d').drawImage(bmp, 0, 0); bmp.close && bmp.close(); } catch (e) { console.error(e); } }
     if (o.colPng && !o.col) { try { const bmp = await decodePng(o.colPng), cc = makeCanvas(); cc.getContext('2d').drawImage(bmp, 0, 0); bmp.close && bmp.close(); o.col = cc; } catch (e) { console.error(e); } }
     o.canvas = c; o.loading = null;
-    if (o.kind === 'char') { touchLRU(o); evictSoon(); }
+    if (o.kind === 'char') { touchLRU(o); evictSoon(); } else { touchBg(o); evictSoon(); }
     return c;
   })();
   return o.loading;
@@ -729,6 +734,17 @@ async function evictSoon() {
       if (keep2.has(victim) || pngDirty(victim)) { touchLRU(victim); continue; }
       loaded.splice(i, 1);
       freeFrame(victim); victim.canvas = null;
+    }
+    const keepB = () => new Set([S.cur - 1, S.cur, S.cur + 1].map(i => S.frames[i]).filter(Boolean).map(f => f.bgId));
+    while (loadedBg.length > MAX_BG && guard++ < 120) {
+      const victim = loadedBg.find(b => !keepB().has(b.id) && !(stroke && stroke.t.id === b.id));
+      if (!victim) break;
+      await ensurePng(victim);
+      const i = loadedBg.indexOf(victim);
+      if (i < 0) continue;
+      if (!victim.canvas) { loadedBg.splice(i, 1); continue; }
+      if (keepB().has(victim.id) || pngDirty(victim) || (stroke && stroke.t.id === victim.id)) { touchBg(victim); continue; }
+      loadedBg.splice(i, 1); victim.canvas.width = 0; victim.canvas = null;
     }
   } finally { evicting = false; }
 }
@@ -2410,7 +2426,7 @@ async function histApply(sn, key) {
   S.frames = G.frames.slice(); S.bgs = G.bgs.slice();
   for (let i = loaded.length - 1; i >= 0; i--) if (!S.frames.includes(loaded[i])) loaded.splice(i, 1);
   for (const f of S.frames) if (f.canvas && !loaded.includes(f)) loaded.push(f);
-  for (const b of S.bgs) if (!b.canvas || !b.canvas.width) { b.canvas = null; await ensureLoaded(b); }
+  for (const b of S.bgs) if (b.canvas && !b.canvas.width) b.canvas = null;   // loaded again when needed (selectFrame below)
   for (const [f, b, a] of sn.fr) { const v = JSON.parse(beforeKey ? b : a); H_FKEYS.forEach((k, i) => { f[k] = v[i] === null ? undefined : v[i]; }); f.ver++; queueThumbFor(f); }
   const ppWas = histJSON(S.pp && S.pp.parts.map(histPartCopy));
   if (!G.pp) S.pp = null;
@@ -2444,6 +2460,7 @@ async function drawThumb(f) {
   x.fillStyle = '#fff'; x.fillRect(0, 0, t.width, t.height);
   const bg = bgOf(f);
   if (bg && bg.canvas) x.drawImage(bg.canvas, 0, 0, t.width, t.height);
+  else if (bg && bg.png) { try { const b = await decodePng(bg.png); x.drawImage(b, 0, 0, t.width, t.height); b.close && b.close(); } catch (e) {} }
   if (f.canvas) { drawCol(x, f, t.width, t.height); x.drawImage(f.canvas, 0, 0, t.width, t.height); }
   else for (const buf of [S.showCol && f.colPng, f.png]) if (buf) { try { const b = await decodePng(buf); x.drawImage(b, 0, 0, t.width, t.height); b.close && b.close(); } catch (e) {} }
   if (S.pp && S.showPP) { x.save(); x.scale(t.width / W, t.height / H); drawPuppet(x, f.pp, f.lip); x.restore(); }
@@ -2585,8 +2602,8 @@ async function selectFrame(i) {
   commitFloating();
   motionClose(); rigClose(); S.cur = i; vsel.clear(); updVecBar();
   const f = curFrame();
-  await ensureLoaded(f);
-  [S.frames[i - 1], S.frames[i + 1]].forEach(n => n && ensureLoaded(n).then(requestRender));
+  await ensureLoaded(f); const fb = bgOf(f); if (fb) await ensureLoaded(fb);
+  [S.frames[i - 1], S.frames[i + 1]].forEach(n => { if (!n) return; ensureLoaded(n).then(requestRender); const nb = bgOf(n); if (nb) ensureLoaded(nb); });
   updateFrameUI(); ppSyncBar(); fxSel = null; fxSyncBar(); bgVideoSync(); requestRender();
 }
 async function addFrame() {
@@ -2861,7 +2878,7 @@ async function buildPlayCache() {
     const f = S.frames[i], bg = bgOf(f);
     const live = ppSmoothOn(), key = ghostKey(i) + lookKey(i) + f.ver + ':' + (bg ? bg.id + '.' + bg.ver : '') + ':' + pw + ':' + (S.bgVideo ? 'v' : '') + (live ? 's' : '');
     if (f.play && f.playKey === key) continue;
-    await ghostLoad(f); await ensureLoaded(f);
+    await ghostLoad(f); await ensureLoaded(f); if (bg) await ensureLoaded(bg);
     if (!f.play) f.play = makeCanvas(pw, ph); else { f.play.width = pw; f.play.height = ph; }
     const x = f.play.getContext('2d');
     if (S.bgVideo) x.clearRect(0, 0, pw, ph); else { x.fillStyle = '#fff'; x.fillRect(0, 0, pw, ph); }
@@ -7293,8 +7310,8 @@ async function exportVideo() {
     const tmp = makeCanvas(), tx = tmp.getContext('2d');
     for (let i = 0; i < S.frames.length; i++) {
       if (cancelled) throw new Error('cancel');
-      msg(`Chuẩn bị frame ${i + 1}/${S.frames.length}`); const f = S.frames[i]; await ghostLoad(f); await ensureLoaded(f);
-      drawFrameBase(tx, f, bgOf(f), live); blobs.push(await new Promise(r => tmp.toBlob(r, S.bgVideo ? 'image/png' : 'image/jpeg', 0.93)));
+      msg(`Chuẩn bị frame ${i + 1}/${S.frames.length}`); const f = S.frames[i]; await ghostLoad(f); await ensureLoaded(f); const bg = bgOf(f); if (bg) await ensureLoaded(bg);
+      drawFrameBase(tx, f, bg, live); evictSoon(); blobs.push(await new Promise(r => tmp.toBlob(r, S.bgVideo ? 'image/png' : 'image/jpeg', 0.93)));
     }
     tmp.width = 0;
     const out = makeCanvas(), ox = out.getContext('2d'), stream = out.captureStream(30);
@@ -7844,8 +7861,8 @@ async function wipeSwap(from, into) {
   if (S.tool === 'puppet' || S.tool === 'vedit') setTool('brush');
   S.frames = from.frames; S.bgs = from.bgs; S.pp = from.pp; S.rig = from.rig; S.bgVideo = from.bgVideo; bgVideoSetup();
   Object.assign(REF, from.ref); refEdit = false; updateRefUI();
-  loaded.length = 0; tintCache.clear();
-  for (const b of S.bgs) await ensureLoaded(b);
+  loaded.length = 0; loadedBg.length = 0; tintCache.clear();
+  if (S.bgs.length <= MAX_BG) for (const b of S.bgs) await ensureLoaded(b);
   S.cur = clamp(from.cur, 0, S.frames.length - 1);
   for (const f of S.frames) if (!f.thumb) await drawThumb(f);
   buildStrip(); await selectFrame(S.cur); ppSyncBar(); updUndoBtns(); requestRender(); scheduleSave();
@@ -8653,6 +8670,7 @@ function bgMenuPop() {
     <div class="bgm-row" data-k="newBgBtn"><span>Cho frame này nền trống riêng, dùng khi sang cảnh mới</span></div>
     <div class="bgm-row" data-k="splitBgBtn"><span>Sửa nền ở frame này mà không đổi các frame khác</span></div>
     <div class="bgm-row" data-k="bgVidBtn"><span>Dùng một đoạn video làm nền phía sau nhân vật</span></div>
+    <div class="bgm-row" data-k="vidFramesBtn"><span>Tách video thành từng frame để vẽ đè lên (đồ theo chuyển động thật), giữ cả tiếng</span></div>
     <div class="bgm-row"><button class="chip small on bgm-scene">🏞 Nền vẽ sẵn</button><span>Phòng, lớp học, phố, công viên, biển… chạm là có cảnh</span></div>`, 'bgm');
   const hold = $('#bgHold'), info = $('#bgInfo');
   d.querySelector('.bgm-info').textContent = info.textContent;
@@ -8784,8 +8802,8 @@ async function loadProjectData(p) {
   S.frames = p.frames.map(f => ({ kind: 'char', id: f.id, dur: f.dur, bgId: f.bgId, ver: 0, png: f.png || null, pngVer: 0, canvas: null, col: null, colPng: f.col || null, colVer: 0, colPngVer: 0, thumb: null, play: null, playKey: '', vec: f.vec || [], pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || undefined, tr: f.tr || undefined, tre: f.tre || undefined, ghost: f.ghost || undefined, bgs: f.bgs || undefined, sl: f.sl || undefined, flt: f.flt || undefined }));
   S.audio = p.audio || null; S.bgVideo = p.bgVideo || null; bgVideoSetup();
   S.projName = p.name || S.projName || 'Dự án'; S.poses = p.poses || [];
-  loaded.length = 0; undoStack.length = 0; redoStack.length = 0; undoBytes = 0;
-  for (const b of S.bgs) await ensureLoaded(b);
+  loaded.length = 0; loadedBg.length = 0; undoStack.length = 0; redoStack.length = 0; undoBytes = 0;
+  if (S.bgs.length <= MAX_BG) for (const b of S.bgs) await ensureLoaded(b);   // more (e.g. video frames): loaded when shown
   for (const f of S.frames) if (!S.bgs.find(b => b.id === f.bgId)) { const b = newBgObj(); S.bgs.push(b); f.bgId = b.id; }
   S.cur = clamp(p.cur || 0, 0, S.frames.length - 1);
   S.rig = p.rig || null;
@@ -10135,6 +10153,158 @@ async function bgVideoDialog() {
     });
 }
 function markAllFrames() { S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); requestRender(); }
+/* ===== 🎬 Video → frame (rotoscope): split a clip into frames. Each frame gets the video picture in its OWN Nền layer
+   (JPEG bytes kept in bg.png, canvas loaded only when shown and freed again: loadedBg / MAX_BG), so you draw over it in
+   the Nhân vật / Nét layers. The clip's sound can come along as a sound clip that starts at the first new frame.
+   One undo step (automatic undo: frame list, backgrounds and sounds are in the snapshot). ===== */
+const VF = { fps: 12, fit: '', fade: 0, audio: true, max: 300 };
+$('#vidFramesBtn').addEventListener('click', () => $('#vidFramesFile').click());
+$('#vidFramesFile').addEventListener('change', e => { const file = e.target.files[0]; e.target.value = ''; if (file) vidFramesDialog(file); });
+function vfOpenVideo(url) {
+  return new Promise((res, rej) => {
+    const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto';
+    v.style.cssText = 'position:fixed;width:2px;height:2px;opacity:0;pointer-events:none;left:0;top:0';
+    const to = setTimeout(() => rej(new Error('timeout')), 20000);
+    v.addEventListener('loadeddata', async () => {
+      clearTimeout(to);
+      // some recordings (webm from phones) report Infinity until you seek far away
+      if (!isFinite(v.duration)) { await vfSeek(v, 1e7); await vfSeek(v, 0); }
+      res(v);
+    }, { once: true });
+    v.addEventListener('error', () => { clearTimeout(to); rej(new Error('decode')); }, { once: true });
+    // iPad Safari may only fetch metadata: a short muted play makes it decode a picture
+    v.addEventListener('loadedmetadata', () => { if (v.readyState < 2) v.play().then(() => v.pause()).catch(() => {}); }, { once: true });
+    document.body.append(v); v.src = url;
+  });
+}
+function vfSeek(v, t) {
+  return new Promise(r => {
+    let done = false; const fin = () => { if (done) return; done = true; v.removeEventListener('seeked', fin); r(); };
+    v.addEventListener('seeked', fin); setTimeout(fin, 4000);
+    try { v.currentTime = t; } catch (e) { fin(); }
+  });
+}
+function vfDraw(ctx, v, fit, fade) {
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  const vw = v.videoWidth, vh = v.videoHeight; if (!vw || !vh) return;
+  const k = (fit === 'contain' ? Math.min : Math.max)(W / vw, H / vh), w = vw * k, h = vh * k;
+  ctx.drawImage(v, (W - w) / 2, (H - h) / 2, w, h);
+  if (fade > 0) { ctx.fillStyle = `rgba(255,255,255,${fade})`; ctx.fillRect(0, 0, W, H); }
+}
+// a = start s, b = end s → frame times (middle of each frame, never past the end)
+function vfTimes(a, b, fps) { const n = Math.max(1, Math.floor((b - a) * fps + 1e-6)); return Array.from({ length: n }, (_, k) => a + (k + 0.5) / fps); }
+// frame k lasts so that the sum stays on the video clock (sound in sync): 12 fps → 83, 84, 83 ms…
+const vfDur = (k, fps) => Math.round((k + 1) * 1000 / fps) - Math.round(k * 1000 / fps);
+function vfWav(ab, a, b) {
+  const sr = ab.sampleRate, ch = Math.min(2, ab.numberOfChannels), s0 = clamp(Math.floor(a * sr), 0, ab.length), s1 = clamp(Math.ceil(b * sr), s0, ab.length), n = s1 - s0;
+  const out = new DataView(new ArrayBuffer(44 + n * ch * 2)), str = (o, t) => { for (let i = 0; i < t.length; i++) out.setUint8(o + i, t.charCodeAt(i)); };
+  str(0, 'RIFF'); out.setUint32(4, 36 + n * ch * 2, true); str(8, 'WAVEfmt '); out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, ch, true);
+  out.setUint32(24, sr, true); out.setUint32(28, sr * ch * 2, true); out.setUint16(32, ch * 2, true); out.setUint16(34, 16, true); str(36, 'data'); out.setUint32(40, n * ch * 2, true);
+  const d = []; for (let c = 0; c < ch; c++) d.push(ab.getChannelData(c));
+  let o = 44; for (let i = s0; i < s1; i++) for (let c = 0; c < ch; c++) { const x = clamp(d[c][i], -1, 1); out.setInt16(o, x < 0 ? x * 0x8000 : x * 0x7fff, true); o += 2; }
+  return out.buffer;
+}
+const vfBlank = f => S.frames.length === 1 && !f.png && !f.ver && !(f.vec && f.vec.length) && !(f.texts && f.texts.length) && !(f.pp && Object.keys(f.pp).length) && (() => { const b = bgOf(f); return !b || (!b.png && !b.ver); })();
+async function vidFramesDialog(file) {
+  if (playing) stopPlay();
+  const url = URL.createObjectURL(file); let v;
+  try { v = await vfOpenVideo(url); } catch (e) { URL.revokeObjectURL(url); toast('Không mở được video này (thử file MP4)', 4000); return; }
+  const dur = v.duration || 0; v.remove();
+  if (!(dur > 0)) { URL.revokeObjectURL(url); toast('Video không có độ dài — thử file khác', 4000); return; }
+  const st = { a: 0, b: Math.min(dur, 10), fps: VF.fps, fit: VF.fit || (v.videoWidth > v.videoHeight ? 'contain' : 'cover'), fade: VF.fade, audio: VF.audio };
+  const chips = (k, list) => list.map(([val, lbl]) => `<button class="chip small" data-vf${k}="${val}">${lbl}</button>`).join('');
+  const fr = n => n.toFixed(1).replace('.', ',');
+  const go = await modal({ title: '🎬 Thêm video thành frame', html: `<p class="lbl" style="margin-top:0">${file.name.replace(/</g, '&lt;').slice(0, 60)} · ${fr(dur)} giây</p>
+    <video id="vfV" playsinline muted controls preload="auto" style="width:100%;max-height:34vh;background:#000;border-radius:8px;display:block"></video>
+    <div class="set-row"><span>Từ giây</span><span class="grp"><input type="number" id="vfA" min="0" step="0.1" style="width:76px"><button class="chip small" id="vfAHere" title="Lấy chỗ video đang dừng">⏱ Chỗ đang xem</button></span></div>
+    <div class="set-row"><span>Tới giây</span><span class="grp"><input type="number" id="vfB" min="0" step="0.1" style="width:76px"><button class="chip small" id="vfBHere" title="Lấy chỗ video đang dừng">⏱ Chỗ đang xem</button></span></div>
+    <div class="set-row"><span>Số khung mỗi giây</span><span class="grp">${chips('fps', [[6, '6'], [8, '8'], [12, '12'], [15, '15'], [24, '24']])}</span></div>
+    <div class="set-row"><span>Khung hình</span><span class="grp">${chips('fit', [['cover', 'Lấp đầy'], ['contain', 'Vừa khung']])}</span></div>
+    <div class="set-row"><span>Làm nhạt để đồ theo</span><span class="grp"><input type="range" id="vfFade" min="0" max="80" step="5" style="width:120px"><span id="vfFadeV" class="lbl"></span></span></div>
+    <div class="set-row"><span>🔊 Giữ tiếng của video</span><input type="checkbox" class="switch" id="vfAud"></div>
+    <p class="lbl" id="vfInfo" style="font-weight:600"></p>
+    <p class="lbl" style="font-size:12px">Mỗi khung của video thành 1 frame, hình nằm ở lớp <b>Nền</b> riêng của frame đó. Vẽ đè lên ở lớp Nhân vật / Nét để đồ theo chuyển động thật. Ít khung mỗi giây (8–12) thì ít frame phải vẽ hơn, kiểu hoạt hình hơn.</p>`,
+    buttons: [{ label: 'Huỷ', value: null }, { label: '🎬 Tách thành frame', primary: true, action: () => { if (vfTimes(st.a, st.b, st.fps).length > VF.max || st.b - st.a < 0.05) { toast(st.b - st.a < 0.05 ? 'Chọn đoạn dài hơn' : `Nhiều quá (tối đa ${VF.max} frame) — chọn đoạn ngắn hơn hoặc ít khung mỗi giây hơn`, 3500); return false; } }, value: 'go' }],
+    onOpen: ov => {
+      const pv = ov.querySelector('#vfV'), A = ov.querySelector('#vfA'), B = ov.querySelector('#vfB');
+      pv.src = url;
+      const sync = () => {
+        A.value = st.a.toFixed(1); B.value = st.b.toFixed(1);
+        ov.querySelectorAll('[data-vffps]').forEach(b => b.classList.toggle('on', +b.dataset.vffps === st.fps));
+        ov.querySelectorAll('[data-vffit]').forEach(b => b.classList.toggle('on', b.dataset.vffit === st.fit));
+        ov.querySelector('#vfFade').value = Math.round(st.fade * 100); ov.querySelector('#vfFadeV').textContent = Math.round(st.fade * 100) + '%';
+        ov.querySelector('#vfAud').checked = st.audio;
+        const n = vfTimes(st.a, st.b, st.fps).length, rep = vfBlank(curFrame());
+        ov.querySelector('#vfInfo').textContent = n > VF.max ? `→ ${n} frame: nhiều quá (tối đa ${VF.max}). Chọn đoạn ngắn hơn hoặc ít khung mỗi giây hơn.`
+          : `→ ${n} frame · ${fr(st.b - st.a)} giây · ${rep ? 'thay frame trống hiện có' : `thêm vào sau frame ${S.cur + 1}`}`;
+      };
+      const setA = t => { st.a = clamp(+t || 0, 0, Math.max(0, dur - 0.1)); if (st.b <= st.a) st.b = Math.min(dur, st.a + 1); sync(); };
+      const setB = t => { st.b = clamp(+t || 0, 0, dur); if (st.b <= st.a) st.a = Math.max(0, st.b - 1); sync(); };
+      A.addEventListener('change', () => { setA(A.value); try { pv.currentTime = st.a; } catch (e) {} });
+      B.addEventListener('change', () => { setB(B.value); try { pv.currentTime = st.b; } catch (e) {} });
+      ov.querySelector('#vfAHere').addEventListener('click', () => setA(pv.currentTime));
+      ov.querySelector('#vfBHere').addEventListener('click', () => setB(pv.currentTime));
+      ov.querySelectorAll('[data-vffps]').forEach(b => b.addEventListener('click', () => { st.fps = +b.dataset.vffps; sync(); }));
+      ov.querySelectorAll('[data-vffit]').forEach(b => b.addEventListener('click', () => { st.fit = b.dataset.vffit; sync(); }));
+      ov.querySelector('#vfFade').addEventListener('input', e => { st.fade = e.target.value / 100; sync(); });
+      ov.querySelector('#vfAud').addEventListener('change', e => { st.audio = e.target.checked; });
+      sync();
+    } });
+  document.querySelectorAll('#vfV').forEach(x => { x.pause(); x.removeAttribute('src'); x.load(); });
+  if (go !== 'go') { URL.revokeObjectURL(url); return; }
+  Object.assign(VF, { fps: st.fps, fit: st.fit, fade: st.fade, audio: st.audio });
+  try { await vidFramesMake(file, url, st); } finally { URL.revokeObjectURL(url); }
+}
+async function vidFramesMake(file, url, o) {
+  if (playing) stopPlay(); if (stroke) strokeEnd(); commitFloating(); histFlush();
+  const times = vfTimes(o.a, o.b, o.fps), n = Math.min(times.length, VF.max);
+  let cancelled = false;
+  const ov = document.createElement('div'); ov.className = 'ov';
+  ov.innerHTML = '<div class="dlg" style="max-width:340px;text-align:center"><h3>Đang tách video…</h3><div class="body" id="vfMsg">Mở video…</div><div class="btns" style="justify-content:center"><button class="btn" id="vfCancel">Huỷ</button></div></div>';
+  document.body.append(ov); ov.querySelector('#vfCancel').addEventListener('click', () => { cancelled = true; });
+  const msg = t => { ov.querySelector('#vfMsg').textContent = t; };
+  let v = null;
+  try {
+    v = await vfOpenVideo(url);
+    const big = makeCanvas(), bx = big.getContext('2d'), [tw, th] = thumbSize(), frames = [], bgs = [];
+    for (let k = 0; k < n; k++) {
+      if (cancelled) throw new Error('cancel');
+      msg(`Frame ${k + 1}/${n}`);
+      await vfSeek(v, Math.min(times[k], v.duration - 0.01));
+      vfDraw(bx, v, o.fit, o.fade);
+      const blob = await new Promise(r => big.toBlob(r, 'image/jpeg', 0.86));
+      const b = { kind: 'bg', id: newId(), ver: 0, png: await blob.arrayBuffer(), pngVer: 0, canvas: null };
+      const f = newFrameObj(b.id); f.canvas.width = 0; f.canvas = null; f.dur = vfDur(k, o.fps);
+      f.thumb = makeCanvas(tw, th); f.thumb.getContext('2d').drawImage(big, 0, 0, tw, th);
+      bgs.push(b); frames.push(f);
+    }
+    let clip = null;
+    if (o.audio) {
+      msg('Lấy tiếng của video…');
+      try {
+        if (file.size > 200e6) throw new Error('big');
+        const ac = new OfflineAudioContext(1, 44100, 44100), ab = await ac.decodeAudioData(await file.arrayBuffer());
+        const t1 = o.a + frames.reduce((s, f) => s + f.dur, 0) / 1000;
+        if (ab.duration > o.a + 0.05) clip = { id: newId(), name: ('Tiếng video ' + file.name).slice(0, 60), buf: vfWav(ab, o.a, Math.min(t1, ab.duration)), vol: 1, frameId: frames[0].id };
+      } catch (e) { console.warn('video audio', e); }
+    }
+    if (cancelled) throw new Error('cancel');
+    // put them in: replace the one empty frame of a new project, else insert after the current frame
+    const cur = curFrame(), replace = vfBlank(cur), at = replace ? 0 : S.cur + 1;
+    S.bgs.push(...bgs);
+    if (replace) { S.frames = frames; const li = loaded.indexOf(cur); if (li >= 0) loaded.splice(li, 1); gcBgs(); }
+    else S.frames.splice(at, 0, ...frames);
+    if (clip) { S.audio = S.audio || {}; if (!S.audio.voice) S.audio.voice = clip; else (S.audio.voices = S.audio.voices || []).push(clip); waveKey = ''; updateWaves(); fxSyncBar(); }
+    ov.remove();
+    tintCache.clear(); ppRetween(); buildStrip(); await selectFrame(at); updateFrameUI(); scheduleSave(); requestRender();
+    toast(`🎬 Đã thêm ${n} frame từ video${clip ? ' + tiếng' : o.audio ? ' (video không có tiếng)' : ''}. Hình ở lớp Nền — vẽ đè lên ở lớp Nhân vật / Nét. ↶ để bỏ`, 5000);
+    return n;
+  } catch (e) {
+    ov.remove();
+    if (e.message === 'cancel') toast('Đã huỷ tách video'); else { console.error(e); toast('Không tách được video này (thử file MP4)', 4000); }
+    return 0;
+  } finally { if (v) { v.removeAttribute('src'); v.load(); v.remove(); } }
+}
 /* ========= Panel tabs ========= */
 const TABS = { pp: 'pose', fx: 'text' };
 function applyTabs(group) {
@@ -10664,7 +10834,7 @@ function helpHtml() {
 <li><b>Nhiều nhân vật</b>: nhập ảnh nhân vật thứ 2 → Nhân vật ghép → chọn ＋ Thêm nhân vật. Mẫu và tư thế áp cho nhân vật đang chọn.</li>
 <li><b>Xoay & toàn màn hình</b>: tablet xoay ngang/dọc đều dùng được. Xoay khung vẽ bằng 2 ngón (tự hít góc thẳng) hoặc nút <b>⟲ Xoay 90°</b>; <b>Vừa khung</b> để thẳng lại. <b>Ẩn công cụ</b> để vẽ toàn màn hình (còn cụm nút nhỏ góc trên); <b>▾ Ẩn dòng frame</b> để thu gọn thanh frame. Nút <b>Thu gọn</b> (cuối thanh công cụ, cuối thanh trên) và <b>⌄ Thu nhỏ</b> (thanh frame) gập từng thanh thành 1 nút nhỏ trên khung vẽ, chạm nút đó để mở lại. Bảng nổi (Ghép, Chữ & FX, Sửa nét) bấm ✕ để gập thành nút <b>☰</b>. Trạng thái gập được nhớ cho lần sau.</li>
 <li>Bảng công cụ che khung? Bấm <b>✕</b> để đóng bảng (công cụ vẫn bật), bấm <b>☰ Mở bảng</b> góc dưới hoặc chạm lại biểu tượng công cụ để mở lại.</li>
-<li><b>Nền</b>: vẽ/nhập nền 1 lần ở lớp Nền (dùng chung cho các frame), hoặc <b>🎞 Nền video</b> để đặt một đoạn video chạy phía sau nhân vật. Không cần vẽ nền từng frame — khi xuất video app tự ghép tất cả.</li>
+<li><b>Nền</b>: vẽ/nhập nền 1 lần ở lớp Nền (dùng chung cho các frame), hoặc <b>🎞 Nền video</b> để đặt một đoạn video chạy phía sau nhân vật. Muốn vẽ đè lên video (đồ theo chuyển động thật): <b>🖼 Nền ▾ → 🎬 Video → frame</b>, chọn đoạn + số khung mỗi giây, mỗi khung thành 1 frame có hình ở lớp Nền, giữ được cả tiếng. Không cần vẽ nền từng frame — khi xuất video app tự ghép tất cả.</li>
 <li><b>🌈 Hiệu ứng</b> (tab trong ✨ Chữ & FX): 🏃 <b>Nền chạy</b> (nền trượt liên tục để nhân vật chạy tại chỗ mà như lao trên sân), 💨 <b>Đường tốc độ</b> ngang/dọc và 💥 tia tập trung kiểu truyện tranh, 🎨 <b>Màu phim</b> (đen trắng hồi tưởng, phim cũ, đêm, giận đỏ, lạnh, mơ), 📺 <b>Phát lại chậm</b>: đứng ở frame cuối pha bóng rồi bấm, app chép lại pha đó chiếu chậm 2–4×, có chữ PHÁT LẠI.</li>
 <li><b>✨ Chữ & FX</b>: thêm chữ truyện tranh/bóng thoại/hét/phụ đề (kéo để dời), camera zoom + chạm đặt tâm (tự lia mượt giữa các camera key), rung, chớp sáng; <b>🎞 Chuyển cảnh</b> (mờ qua đen/trắng, hoà cảnh, 📺 tắt/bật màn hình TV có tiếng tách, lau ngang, đẩy sang, phóng mờ, glitch, khép tròn): chọn Đầu frame / Sau frame rồi chạm 1 kiểu, hiện cả khi phát, xuất video và GIF; nhạc nền, lồng tiếng + 🗣 tự nhép miệng; âm thanh hiệu ứng có sẵn. <b>🎬 Video</b> xuất MP4/WebM có tiếng.</li>
 <li><b>✨ Chữ động</b> (Chữ & FX → 🔤 Chữ): chạm 1 chữ → chọn <b>Vào</b> (bật ra, gõ từng chữ, bay lên, rơi nảy, thu từ to, xoay vào, hiện dần), <b>Lặp</b> (rung, đập nhịp, bồng bềnh, lắc lư), <b>Ra</b> (mờ đi, thu nhỏ, bay đi) → ▶ Xem thử. Dùng <b>Giữ cho N frame</b> để chữ ở lâu hơn; chữ chạy khi phát, video và GIF.</li>
@@ -10703,6 +10873,7 @@ $('#menuBtn').addEventListener('click', () => {
   <button class="btn primary" data-m="export">⬇ Xuất ZIP (gửi Claude)</button>
   <button class="btn" data-m="open">📂 Mở dự án từ ZIP</button>
   <button class="btn" data-m="scene">🏞 Nền vẽ sẵn (phòng, lớp học, phố, biển…)</button>
+  <button class="btn" data-m="vidframes">🎬 Thêm video thành frame (vẽ đè lên)</button>
   <button class="btn" data-m="img">🖼 Nhập ảnh (đồ theo / tách nhân vật / lấy nét)</button>
   <button class="btn" data-m="aichar">🤖 AI tạo nhân vật từ ảnh</button>
   <button class="btn" data-m="aikey">🔑 Key Gemini (AI)</button>
@@ -10737,6 +10908,7 @@ $('#menuBtn').addEventListener('click', () => {
       if (m === 'wizard') wizard();
       else if (m === 'update') checkUpdate();
       else if (m === 'scene') sceneDialog();
+      else if (m === 'vidframes') $('#vidFramesFile').click();
       else if (m === 'video') exportVideo();
       else if (m === 'gif') exportImagesDialog();
       else if (m === 'cover') coverDialog();
