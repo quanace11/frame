@@ -479,8 +479,11 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
           <span class="lbl">Chuyển tới keyframe sau:</span><select id="ppEase" class="chip small"></select></div>
         <div class="mrow" data-tab="pose"><button class="chip small on" id="ppAssetBtn" title="Gắn mắt, miệng, biểu cảm, bàn tay có sẵn vào mảnh đang chọn">🎨 Kho mắt/miệng/tay</button><span class="lbl"><b>Tư thế:</b></span><select id="ppPoseSel" class="chip small"></select><button class="chip small on" id="ppPoseApply">Áp</button><button class="chip small" id="ppPoseSave">＋ Lưu tư thế này</button><button class="chip small" id="ppPoseDel" title="Xoá tư thế đã lưu">🗑</button><button class="chip small" id="ppFlipChar" title="Quay nhân vật sang hướng ngược lại">↔ Lật nhân vật</button></div>
         <div class="mrow" data-tab="frames"><span class="lbl"><b>Frame giữa:</b> chèn</span><input type="number" id="ppTweenN" value="3" min="1" max="24" style="width:52px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">frame chuyển tiếp tới frame sau</span><button class="chip small on" id="ppTweenBtn">Tạo frame giữa</button></div>
+        <div class="mrow" data-tab="frames"><span class="lbl"><b>〰 Đường đi:</b></span><button class="chip small on" id="ppPathBtn" title="Vẽ một đường trên màn hình: nhân vật đi theo đường đó qua các frame (như motion path của Animate). Đang có chu kỳ đi bộ thì nó lặp lại cho đủ frame">✎ Vẽ đường đi</button>
+          <span class="lbl">qua</span><input type="number" id="ppPathN" value="24" min="2" max="240" style="width:56px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">frame</span><select id="ppPathEase" class="chip small"><option value="linear">Đều</option><option value="inout">Mượt (chậm–nhanh–chậm)</option><option value="in">Nhanh dần</option><option value="out">Chậm dần</option></select><button class="chip small" id="ppPathClear" title="Bỏ đường đi của nhân vật đang chọn trên mọi frame">Bỏ đường đi</button></div>
         <div class="mrow" data-tab="frames"><span class="lbl"><b>Mẫu nhanh:</b></span><span id="ppPresets" class="mrow"></span></div>
         <div class="mrow" data-tab="frames" style="flex-wrap:wrap"><span class="lbl"><b>Cử chỉ:</b></span><span id="ppGests" class="mrow" style="flex-wrap:wrap;gap:4px"></span><label class="lbl" title="Làm bằng tay bên kia"><input type="checkbox" id="gestMir"> Tay kia</label></div>
+        <div class="mrow" data-tab="frames" style="flex-wrap:wrap"><span class="lbl"><b>⭐ Chuyển động của tôi:</b></span><select id="myMoSel" class="chip small"></select><button class="chip small on" id="myMoApply" title="Tạo lại chuyển động đã lưu từ tư thế frame này, dùng được cho mọi nhân vật đã cắt tự động (như Motion preset của Animate)">Áp</button><button class="chip small" id="myMoSave" title="Lưu các frame từ frame này trở đi thành một chuyển động để dùng lại cho nhân vật khác, dự án khác">＋ Lưu chuyển động</button><button class="chip small" id="myMoDel" title="Xoá chuyển động đã lưu">🗑</button></div>
         <div class="mrow" data-tab="frames"><span class="lbl"><b>Tự động:</b></span><button class="chip small" id="ppBlinkBtn" title="Nhân vật tự chớp mắt mỗi vài giây trên mọi frame, không thêm frame (cần mảnh vai trò Mắt)">👁 Chớp mắt tự động</button><span class="lbl" id="ppBlinkInfo"></span></div>
         <div class="mrow" data-tab="frames"><span class="lbl">Hướng</span><button class="chip small" data-ppdir="-1">◀</button><button class="chip small" data-ppdir="1">▶</button>
           <span class="lbl">Số frame</span><input type="number" id="ppPN" value="8" min="2" max="24" style="width:52px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px">
@@ -579,7 +582,7 @@ let W = 1080, H = 1920;
 const PALETTE = ['#111111','#ffffff','#e53935','#fb8c00','#fdd835','#43a047','#1e88e5','#8e24aa','#f6c7a8','#8d6e63','#9e9e9e','#00acc1'];
 const S = {
   frames: [], bgs: [], cur: 0, layer: 'char', tool: 'brush',
-  color: '#111111', size: 8, opacity: 1, pressure: true, brush: 'pen', eraserType: 'hard', recentColors: [], brushOp: {},
+  color: '#111111', size: 8, opacity: 1, pressure: true, brush: 'pen', eraserType: 'hard', recentColors: [], brushOp: {}, sizeScreen: true,
   onion: true, onionAlpha: 0.3, showBg: true, showChar: true, showCol: true, showVec: true, showPP: true, bendR: 160, mbendR: 0, vdm: 'point', snap: false, snapR: 24,
   fingerDraw: false, smooth: 0.3, defaultDur: 0.1, loop: true, fillTol: 120,
   uiHide: { rail: false, top: false, tl: false }
@@ -603,7 +606,7 @@ let toastT;
 function toast(msg, ms = 1800) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
 
 /* ========= Settings ========= */
-const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','lineLayer','uiHide','panelHidden','brush','eraserType','recentColors','brushOp','bigUi','fastVideo'];
+const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','lineLayer','uiHide','panelHidden','brush','eraserType','recentColors','brushOp','sizeScreen','bigUi','fastVideo'];
 function loadSettings() { try { const o = JSON.parse(localStorage.getItem('fs-settings') || '{}'); for (const k of SETTINGS_KEYS) if (k in o) { if (k === 'panelHidden') Object.assign(panelHidden, o[k]); else S[k] = o[k]; } } catch (e) {}
   S.uiHide = Object.assign({ rail: false, top: false, tl: false }, S.uiHide); }
 function applyBigUi() { document.body.classList.toggle('bigui', !!S.bigUi); }
@@ -836,7 +839,7 @@ function render() {
   if (ballMode) renderBallPath(c, px);
   if (lasso && lasso.length > 1) {
     c.lineWidth = 2 * px; c.setLineDash([8 * px, 6 * px]);
-    c.beginPath(); c.moveTo(lasso[0].x, lasso[0].y); for (const p of lasso) c.lineTo(p.x, p.y); c.closePath();
+    c.beginPath(); c.moveTo(lasso[0].x, lasso[0].y); for (const p of lasso) c.lineTo(p.x, p.y); if (!lassoOpen) c.closePath();
     c.strokeStyle = '#000'; c.stroke(); c.lineDashOffset = 7 * px; c.strokeStyle = '#fff'; c.stroke();
     c.setLineDash([]); c.lineDashOffset = 0;
   }
@@ -917,6 +920,9 @@ const SIZE_MAX = 150;   // the size slider is not linear: the left half covers 1
 const sizeToPos = s => Math.round(Math.sqrt((clamp(s, 1, SIZE_MAX) - 1) / (SIZE_MAX - 1)) * 1000);
 const posToSize = v => Math.max(1, Math.round(1 + (SIZE_MAX - 1) * Math.pow(v / 1000, 2)));
 function sizeStep(s, d) { const k = d > 0 ? s : s - 1, st = k < 10 ? 1 : k < 30 ? 2 : k < 60 ? 5 : 10; return clamp(d > 0 ? Math.floor(s / st) * st + st : Math.ceil(s / st) * st - st, 1, SIZE_MAX); }
+// brush size in document pixels. With "Giữ cỡ khi phóng to" (S.sizeScreen, default on) the number means the size at the
+// fitted view (100%), so zooming in draws finer lines and the brush looks the same on screen at any zoom.
+function bsz() { return S.sizeScreen === false || !fitS || !vs ? S.size : Math.max(0.25, S.size * fitS / vs); }
 function setSize(v) { S.size = clamp(Math.round(v), 1, SIZE_MAX); syncSizeOp(); saveSettings(); }
 // refresh every size / opacity control (top bar + Bút ▾ menu)
 function syncSizeOp() {
@@ -1075,7 +1081,7 @@ function makeBrushEngine(ctx, o) {
   return { E, add, end };
 }
 let stroke = null;
-function widthFor(p) { return S.pressure ? Math.max(0.6, S.size * (0.12 + 0.88 * Math.pow(p, 0.85))) : S.size; }
+function widthFor(p) { const z = bsz(); return S.pressure ? Math.max(Math.min(0.6, z), z * (0.12 + 0.88 * Math.pow(p, 0.85))) : z; }
 function growDirty(x, y, r) {
   const d = stroke.dirty, b = stroke.bbox;
   d[0] = Math.min(d[0], x - r); d[1] = Math.min(d[1], y - r); d[2] = Math.max(d[2], x + r); d[3] = Math.max(d[3], y + r);
@@ -1084,7 +1090,7 @@ function growDirty(x, y, r) {
 // symmetry: a second brush engine draws the mirrored stroke into the same layer
 const symPt = p => S.sym === 2 ? { ...p, y: H - p.y } : S.sym === 3 ? { ...p, x: W - p.x, y: H - p.y } : { ...p, x: W - p.x };
 function strokeEngines() {
-  const st = stroke, o = { brush: st.B, color: S.color, size: S.size, pressure: S.pressure, flowK: st.B.kind === 'dab' && !st.erase ? Math.max(1, curOp() / (st.B.op0 || 1)) : 1, smooth: st.shape ? 0 : S.smooth, erase: st.erase, dirty: growDirty };
+  const st = stroke, o = { brush: st.B, color: S.color, size: bsz(), pressure: S.pressure, flowK: st.B.kind === 'dab' && !st.erase ? Math.max(1, curOp() / (st.B.op0 || 1)) : 1, smooth: st.shape ? 0 : S.smooth, erase: st.erase, dirty: growDirty };
   st.eng = makeBrushEngine(sctx, o); st.eng2 = S.sym ? makeBrushEngine(sctx, o) : null;
 }
 function strokeFeed(p, t) { stroke.eng.add(p, t); if (stroke.eng2) stroke.eng2.add(symPt(p), t); }
@@ -1235,7 +1241,7 @@ function lineWalls(f) {           // 1 where a line is (pixel lines of Nhân v�
   const n = W * H, walls = new Uint8Array(n);
   if (S.showChar && f.canvas) { const d = f.canvas.getContext('2d').getImageData(0, 0, W, H).data; for (let i = 0; i < n; i++) if (d[i * 4 + 3] >= 100) walls[i] = 1; }
   if (S.showVec && f.vec && f.vec.length) {
-    const wc = makeCanvas(), wx = wc.getContext('2d'); drawVec(wx, f.vec);
+    const wc = makeCanvas(), wx = wc.getContext('2d'); drawVec(wx, f.vec, true);
     const d = wx.getImageData(0, 0, W, H).data; for (let i = 0; i < n; i++) if (d[i * 4 + 3] > 90) walls[i] = 1; wc.width = 0;
   }
   return walls;
@@ -1418,7 +1424,7 @@ function fillPixels(o, p) {
   if (!o || !o.canvas) return;
   let walls = null;
   if (o.kind === 'char' && o.vec && o.vec.length && S.showVec) {
-    const wc = makeCanvas(), wx = wc.getContext('2d'); drawVec(wx, o.vec);
+    const wc = makeCanvas(), wx = wc.getContext('2d'); drawVec(wx, o.vec, true);
     const wd = wx.getImageData(0, 0, W, H).data; walls = new Uint8Array(W * H);
     for (let i = 0; i < walls.length; i++) walls[i] = wd[i * 4 + 3]; wc.width = 0;
   }
@@ -2303,7 +2309,7 @@ const vpsel = new Map();   // "Nhiều chấm" mode: stroke id -> Set of selecte
 let vpoly = null, vpMinus = false, vpLastTap = null;   // vpMinus: "Khoanh bớt" = the next lasso removes points from the selection          // lasso outline of the current point selection: dragging inside it moves the selected points
 const vpGet = id => vsel.has(id) ? vpsel.get(id) : null;
 function vpCount() { let n = 0; for (const [id, s] of vpsel) if (vsel.has(id)) n += s.size; return n; }
-const cloneVec = v => (v || []).map(st => ({ id: st.id, c: st.c, w: st.w, pts: st.pts.map(q => ({ x: q.x, y: q.y })) }));
+const cloneVec = v => (v || []).map(st => ({ id: st.id, c: st.c, w: st.w, a: st.a, pts: st.pts.map(q => ({ x: q.x, y: q.y })) }));
 function strokePath(ctx, pts) {
   ctx.beginPath(); const n = pts.length; if (!n) return;
   ctx.moveTo(pts[0].x, pts[0].y);
@@ -2314,10 +2320,11 @@ function strokePath(ctx, pts) {
     ctx.bezierCurveTo(p1.x + (p2.x - p0.x) / 6, p1.y + (p2.y - p0.y) / 6, p2.x - (p3.x - p1.x) / 6, p2.y - (p3.y - p1.y) / 6, p2.x, p2.y);
   }
 }
-function drawVec(ctx, strokes) {
+// st.a = the stroke's Độ đậm (missing = 100%). solid: ignore it (fill walls)
+function drawVec(ctx, strokes, solid) {
   if (!strokes || !strokes.length) return;
   ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-  for (const st of strokes) { ctx.strokeStyle = st.c; ctx.lineWidth = st.w; strokePath(ctx, st.pts); ctx.stroke(); }
+  for (const st of strokes) { ctx.globalAlpha = solid || st.a == null ? 1 : st.a; ctx.strokeStyle = st.c; ctx.lineWidth = st.w; strokePath(ctx, st.pts); ctx.stroke(); }
   ctx.restore();
 }
 function renderVec(c, f, px) {
@@ -2328,7 +2335,7 @@ function renderVec(c, f, px) {
   }
   drawVec(c, f.vec);
   if (action && action.kind === 'vdraw' && action.pts.length) {
-    c.save(); c.lineCap = 'round'; c.lineJoin = 'round'; c.strokeStyle = S.color; c.lineWidth = vecBrushW(action.pts); strokePath(c, action.pts); c.stroke(); c.restore();
+    c.save(); c.lineCap = 'round'; c.lineJoin = 'round'; c.globalAlpha = curOp(); c.strokeStyle = S.color; c.lineWidth = vecBrushW(action.pts); strokePath(c, action.pts); c.stroke(); c.restore();
   }
   if (S.tool === 'vedit' && vsel.size && !motion && !rig) {
     c.save(); c.lineWidth = 1.5 * px;
@@ -2454,7 +2461,7 @@ function rdp(pts, eps) {
 }
 function cumLen(P) { const c = [0]; for (let i = 1; i < P.length; i++) c.push(c[i - 1] + Math.hypot(P[i].x - P[i - 1].x, P[i].y - P[i - 1].y)); return c; }
 function pip(p, poly) { let ins = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], b = poly[j]; if ((a.y > p.y) !== (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) ins = !ins; } return ins; }
-function vecBrushW(pts) { if (!S.pressure) return S.size; const ap = pts.reduce((a, q) => a + q.p, 0) / pts.length; return widthFor(ap); }
+function vecBrushW(pts) { if (!S.pressure) return bsz(); const ap = pts.reduce((a, q) => a + q.p, 0) / pts.length; return widthFor(ap); }
 function selStrokes() { const f = curFrame(); return f ? f.vec.filter(st => vsel.has(st.id)) : []; }
 
 function vecStart(p, base) {
@@ -2595,7 +2602,7 @@ async function vecOfferConvert() {
   if (ok) convertPixelsToVector(false);
 }
 function vecEraseAt(p) {
-  const f = curFrame(), r = Math.max(S.size / 2, 6 * DPR / vs);
+  const f = curFrame(), r = Math.max(bsz() / 2, 6 * DPR / vs);
   const n0 = f.vec.length; f.vec = f.vec.filter(st => strokeDist(st, p) - st.w / 2 > r);
   if (f.vec.length !== n0) { action.removed += n0 - f.vec.length; requestRender(); }
 }
@@ -2636,7 +2643,7 @@ function vecEnd() {
     if (a.last) a.pts.push({ ...a.last });
     const before = cloneVec(f.vec);
     const pts = rdp(a.pts, 0.9).map(q => ({ x: q.x, y: q.y }));
-    f.vec.push({ id: newId(), c: S.color, w: vecBrushW(a.pts), pts });
+    const op = curOp(); f.vec.push({ id: newId(), c: S.color, w: vecBrushW(a.pts), ...(op < 1 ? { a: op } : {}), pts });
     pushVecUndo(f, before); markEdited(f);
   } else if (a.kind === 'verase') { if (a.removed) { pushVecUndo(f, a.before); markEdited(f); } }
   else if (a.kind === 'vlasso' && a.multi) { const poly = lasso; lasso = null; vecMultiLasso(poly, f); }
@@ -2750,7 +2757,7 @@ function motionVec(vec, k, m) {
   for (const st of vec) {
     if (st.id.endsWith(LIP) && m.ids.has(st.id.slice(0, -LIP.length))) continue;   // regenerate lips
     if (!m.ids.has(st.id)) { out.push(st); continue; }
-    const s2 = { id: st.id, c: st.c, w: st.w, pts: st.pts.map(q => ({ x: q.x, y: q.y })) };
+    const s2 = { id: st.id, c: st.c, w: st.w, a: st.a, pts: st.pts.map(q => ({ x: q.x, y: q.y })) };
     if (m.type === 'swing') {
       const A = m.amp * Math.PI / 180 * Math.sin(t), soft = m.soft / 100;
       for (const q of s2.pts) {
@@ -2951,7 +2958,7 @@ function skinVec(vec, J, pose, simplify) {
       for (const [j, w] of boneWeights(q, J)) { const p = RP[j], c = Math.cos(pose.d[j]), s = Math.sin(pose.d[j]), vx = q.x - J[p].x, vy = q.y - J[p].y; x += w * (pose.pos[p].x + vx * c - vy * s); y += w * (pose.pos[p].y + vx * s + vy * c); }
       return { x, y };
     });
-    return { id: st.id, c: st.c, w: st.w, pts: simplify ? rdp(pts, 0.7) : pts };
+    return { id: st.id, c: st.c, w: st.w, a: st.a, pts: simplify ? rdp(pts, 0.7) : pts };
   });
 }
 function bodyPose(type, ph, f, A, prog, cyc) {
@@ -3010,11 +3017,11 @@ function lipStroke(st, open) {
   let P = st.pts; if (P.length < 2) return null;
   if (P.length < 8) P = crSample(P, 4);
   const xs = P.map(q => q.x), wid = Math.max(...xs) - Math.min(...xs) || 20, c2 = cumLen(P), L = c2[c2.length - 1] || 1;
-  return { id: st.id + '~lip', c: st.c, w: st.w, pts: P.map((q, i) => ({ x: q.x, y: q.y + Math.sin(Math.PI * c2[i] / L) * open * wid })) };
+  return { id: st.id + '~lip', c: st.c, w: st.w, a: st.a, pts: P.map((q, i) => ({ x: q.x, y: q.y + Math.sin(Math.PI * c2[i] / L) * open * wid })) };
 }
 function applyExpr(vec, type, ph, A, J) {
   const F = S.rig && S.rig.face; if (!type || type === 'none' || !F) return vec;
-  const out = vec.map(st => ({ id: st.id, c: st.c, w: st.w, pts: st.pts.map(q => ({ ...q })) }));
+  const out = vec.map(st => ({ id: st.id, c: st.c, w: st.w, a: st.a, pts: st.pts.map(q => ({ ...q })) }));
   const pick = ids => out.filter(st => ids.includes(st.id));
   const hcx = (J.head.x + J.neck.x) / 2, hl = Math.hypot(J.head.x - J.neck.x, J.head.y - J.neck.y) || 100;
   const eyes = pick(F.eyes), mouth = pick(F.mouth), brows = pick(F.brows);
@@ -3389,6 +3396,7 @@ function drawPuppet(ctx, pose, lip) {
   const lipOpen = (pid, lv) => { const mp = ppPart(pid); if (mp) { const q = { ...((pose && pose[mp.id]) || {}) }; if (mp.alts && mp.alts.length) { const v = Math.round(lv * mp.alts.length); if (v) q.v = v; else delete q.v; } else q.sy = (q.sy == null ? 1 : q.sy) * (1 + 0.8 * lv); pose = { ...(pose || {}), [mp.id]: q }; } };
   if (lip && lip.pid) lipOpen(lip.pid, lip.lv);
   if (lip && lip.m) for (const id in lip.m) if (id !== lip.pid) lipOpen(id, lip.m[id]);
+  if (lip && lip.mv) pose = ppApplyMv(pose, lip.mv);
   const M = ppMats(pose), byId = {}; S.pp.parts.forEach(p => byId[p.id] = p);
   for (const p of [...S.pp.parts].sort((a, b) => a.z - b.z)) {
     const q = pose && pose[p.id]; if ((q && q.h) || !p.c) continue;
@@ -3935,7 +3943,7 @@ async function ppAutoCut(whole) {
 /* --- lasso cut a new part out of the selected part --- */
 async function ppCutLasso(poly) {
   const src = ppPart(ppSel); if (!src) { toast('Chọn mảnh nguồn trước'); return; }
-  const f = curFrame(), M = ppMats(f.pp), inv = mInv(M[src.id]);
+  const f = curFrame(), M = ppMats(ppPoseFor(f)), inv = mInv(M[src.id]);
   const lp = poly.map(q => { const l = mApply(inv, q.x, q.y); return { x: l.x - src.ox, y: l.y - src.oy }; });
   const b = [Infinity, Infinity, -Infinity, -Infinity]; lp.forEach(q => { b[0] = Math.min(b[0], q.x); b[1] = Math.min(b[1], q.y); b[2] = Math.max(b[2], q.x); b[3] = Math.max(b[3], q.y); });
   const x0 = Math.max(0, Math.floor(b[0])), y0 = Math.max(0, Math.floor(b[1])), x1 = Math.min(src.c.width, Math.ceil(b[2])), y1 = Math.min(src.c.height, Math.ceil(b[3]));
@@ -3955,10 +3963,10 @@ async function ppCutLasso(poly) {
   toast('Đã tách mảnh mới — đặt Vai trò, kéo chấm hồng để chỉnh điểm xoay', 3500);
 }
 /* --- manual patch: lasso a gap, fill it on the selected part --- */
-let ppPatchMode = false;
+let ppPatchMode = false, ppPathMode = false, lassoOpen = false;
 async function ppPatchLasso(poly) {
   const part = ppPart(ppSel); if (!part) { toast('Chọn mảnh cần vá trước'); return; }
-  const f = curFrame(), M = ppMats(f.pp), inv = mInv(M[part.id]);
+  const f = curFrame(), M = ppMats(ppPoseFor(f)), inv = mInv(M[part.id]);
   const lp = poly.map(q => { const l = mApply(inv, q.x, q.y); return { x: l.x - part.ox, y: l.y - part.oy }; });
   const b = [Infinity, Infinity, -Infinity, -Infinity]; lp.forEach(q => { b[0] = Math.min(b[0], q.x); b[1] = Math.min(b[1], q.y); b[2] = Math.max(b[2], q.x); b[3] = Math.max(b[3], q.y); });
   const pad = 24, nx0 = Math.min(0, Math.floor(b[0]) - pad), ny0 = Math.min(0, Math.floor(b[1]) - pad);
@@ -3987,35 +3995,36 @@ function ppRenormZ() { [...S.pp.parts].sort((a, b) => a.z - b.z).forEach((p, i) 
 function ppQ(f, id) { f.pp = f.pp || {}; return (f.pp[id] = f.pp[id] || {}); }
 function ppStart(p, base) {
   const f = curFrame();
+  if (ppPathMode) { lasso = [p]; lassoOpen = true; action = { ...base, kind: 'pppath' }; return; }
   if (ppCutMode || ppPatchMode) { lasso = [p]; action = { ...base, kind: ppPatchMode ? 'pppatch' : 'ppcut' }; return; }
   if (ppPaint) {
     const sel = ppPart(ppSel); if (!sel) { toast('Chọn mảnh cần vẽ trước'); return; }
     const q = f.pp && f.pp[sel.id], im0 = ppImg(sel, q), h = im0.holder;
     if (!h.padded) { const PAD = 60, nc = makeCanvas(h.c.width + PAD * 2, h.c.height + PAD * 2); nc.getContext('2d').drawImage(h.c, PAD, PAD); h.c = nc; h.padded = true; h.alpha = null; if (h === sel) { sel.ox -= PAD; sel.oy -= PAD; } else { h.dx = (h.dx || 0) - PAD; h.dy = (h.dy || 0) - PAD; } }
-    const im = ppImg(sel, q), M = ppMats(f.pp)[sel.id], inv = mInv(M), l = mApply(inv, p.x, p.y), sc = Math.hypot(M[0], M[1]) || 1;
+    const im = ppImg(sel, q), M = ppMats(ppPoseFor(f))[sel.id], inv = mInv(M), l = mApply(inv, p.x, p.y), sc = Math.hypot(M[0], M[1]) || 1;
     const cx = im.c.getContext('2d'), before = cx.getImageData(0, 0, im.c.width, im.c.height);
     const pt = { x: l.x - im.x, y: l.y - im.y };
-    cx.save(); cx.globalCompositeOperation = ppPaint === 'erase' ? 'destination-out' : 'source-over'; cx.fillStyle = S.color; cx.beginPath(); cx.arc(pt.x, pt.y, S.size / sc / 2, 0, Math.PI * 2); cx.fill(); cx.restore();
+    cx.save(); cx.globalCompositeOperation = ppPaint === 'erase' ? 'destination-out' : 'source-over'; cx.fillStyle = S.color; cx.beginPath(); cx.arc(pt.x, pt.y, bsz() / sc / 2, 0, Math.PI * 2); cx.fill(); cx.restore();
     action = { ...base, kind: 'pppaint', part: sel, im, inv, sc, last: pt, before }; requestRender(); return;
   }
   const sel = ppPart(ppSel);
   if (sel) {
-    const M = ppMats(f.pp), wp = mApply(M[sel.id], sel.px, sel.py);
+    const M = ppMats(ppPoseFor(f)), wp = mApply(M[sel.id], sel.px, sel.py);
     if (ppDrag === 'pivot' || Math.hypot(wp.x - p.x, wp.y - p.y) < 16 * DPR / vs && ppDrag === 'pivot') { action = { ...base, kind: 'pppivot', last: p }; return; }
   }
-  const hit = ppHit(p, f.pp);
+  const hit = ppHit(p, ppPoseFor(f));
   if (!hit) { if (ppDrag !== 'pivot') { ppSel = null; ppSyncBar(); requestRender(); } return; }
   if (hit.id !== ppSel) { ppSel = hit.id; ppSyncBar(); }
-  const M = ppMats(f.pp), wp = mApply(M[hit.id], hit.px, hit.py), q = ppQ(f, hit.id);
+  const M = ppMats(ppPoseFor(f)), wp = mApply(M[hit.id], hit.px, hit.py), q = ppQ(f, hit.id);
   action = { ...base, kind: ppDrag === 'move' ? 'ppmove' : ppDrag === 'ik' ? 'ppik' : 'pprot', before: ppState(f), part: hit, last: p, a0: Math.atan2(p.y - wp.y, p.x - wp.x), r0: q.r || 0, wp };
   requestRender();
 }
 function ppMove(p) {
   const a = action, f = curFrame();
-  if (a.kind === 'ppcut' || a.kind === 'pppatch') { const l = lasso[lasso.length - 1]; if (Math.hypot(p.x - l.x, p.y - l.y) > 3 / vs) { lasso.push(p); requestRender(); } return; }
+  if (a.kind === 'ppcut' || a.kind === 'pppatch' || a.kind === 'pppath') { const l = lasso[lasso.length - 1]; if (Math.hypot(p.x - l.x, p.y - l.y) > 3 / vs) { lasso.push(p); requestRender(); } return; }
   if (a.kind === 'pppaint') {
     const l = mApply(a.inv, p.x, p.y), pt = { x: l.x - a.im.x, y: l.y - a.im.y }, cx = a.im.c.getContext('2d');
-    cx.save(); cx.globalCompositeOperation = ppPaint === 'erase' ? 'destination-out' : 'source-over'; cx.strokeStyle = S.color; cx.lineWidth = S.size / a.sc; cx.lineCap = cx.lineJoin = 'round';
+    cx.save(); cx.globalCompositeOperation = ppPaint === 'erase' ? 'destination-out' : 'source-over'; cx.strokeStyle = S.color; cx.lineWidth = bsz() / a.sc; cx.lineCap = cx.lineJoin = 'round';
     cx.beginPath(); cx.moveTo(a.last.x, a.last.y); cx.lineTo(pt.x, pt.y); cx.stroke(); cx.restore(); a.last = pt; a.im.holder.alpha = null; requestRender(); return;
   }
   if (a.kind === 'ppik') { ppIKDrag(a.part, p, f); }
@@ -4023,10 +4032,10 @@ function ppMove(p) {
   else if (a.kind === 'ppmove') {
     const q = ppQ(f, a.part.id), par = a.part.parent && ppPart(a.part.parent);
     let dx = p.x - a.last.x, dy = p.y - a.last.y;
-    if (par) { const Mi = mInv(ppMats(f.pp)[par.id]); const o = mApply(Mi, 0, 0), v = mApply(Mi, dx, dy); dx = v.x - o.x; dy = v.y - o.y; }
+    if (par) { const Mi = mInv(ppMats(ppPoseFor(f))[par.id]); const o = mApply(Mi, 0, 0), v = mApply(Mi, dx, dy); dx = v.x - o.x; dy = v.y - o.y; }
     q.dx = (q.dx || 0) + dx; q.dy = (q.dy || 0) + dy; a.last = p;
   } else if (a.kind === 'pppivot') {
-    const sel = ppPart(ppSel); if (!sel) return; const Mi = mInv(ppMats(f.pp)[sel.id]);
+    const sel = ppPart(ppSel); if (!sel) return; const Mi = mInv(ppMats(ppPoseFor(f))[sel.id]);
     const o = mApply(Mi, a.last.x, a.last.y), n2 = mApply(Mi, p.x, p.y); sel.px += n2.x - o.x; sel.py += n2.y - o.y; a.last = p;
   }
   f.ver++; requestRender();
@@ -4034,6 +4043,7 @@ function ppMove(p) {
 function ppEnd() {
   const a = action, f = curFrame();
   if (a.kind === 'ppcut') { const poly = lasso; lasso = null; if (poly && poly.length > 2) ppCutLasso(poly); requestRender(); return; }
+  if (a.kind === 'pppath') { const poly = lasso; lasso = null; lassoOpen = false; ppPathMode = false; ppSyncBar(); if (poly && poly.length > 2) ppApplyPath(poly); requestRender(); return; }
   if (a.kind === 'pppaint') {
     const c = a.im.c, after = c.getContext('2d').getImageData(0, 0, c.width, c.height);
     pushEntry({ partpix: true, pid: a.part.id, vi: a.im.vi, before: a.before, after, bytes: a.before.data.length * 2 });
@@ -4198,7 +4208,7 @@ function ppSyncBar() { ppBlinkInfo(); { const a = $('#ppSoftChk'), b = $('#ppSmo
     $('#ppEase').innerHTML = Object.entries(EASE_LABEL).map(([k2, v]) => `<option value="${k2}" ${(f.ppEase || 'inout') === k2 ? 'selected' : ''}>${v}</option>`).join(''); $('#ppEase').disabled = !k;
     const ps = $('#ppPoseSel'), cur = ps.value; ps.innerHTML = ppPoseList().map(o => `<option value="${o.id}">${o.name.replace(/</g, '&lt;')}</option>`).join(''); if (cur) ps.value = cur; }
   $('#ppRecut').disabled = !(ppLastCut && ppLastCut.ids.some(id => ppPart(id)));
-  $('#ppCutBtn').classList.toggle('on', ppCutMode); $('#ppPatchBtn').classList.toggle('on', ppPatchMode);
+  $('#ppCutBtn').classList.toggle('on', ppCutMode); $('#ppPatchBtn').classList.toggle('on', ppPatchMode); { const b = $('#ppPathBtn'); if (b) b.classList.toggle('on', !ppPathMode); b && (b.textContent = ppPathMode ? '✕ Huỷ vẽ đường' : '✎ Vẽ đường đi'); }
   document.querySelectorAll('[data-ppp]').forEach(b => b.classList.toggle('on', b.dataset.ppp === ppPreset));
   document.querySelectorAll('[data-ppdir]').forEach(b => b.classList.toggle('on', +b.dataset.ppdir === ppDir));
 }
@@ -4213,7 +4223,7 @@ function renderPP(c, f, px) {
   }
   if (S.tool !== 'puppet' || !S.pp) return;
   const sel = ppPart(ppSel); if (!sel || !sel.c) return;
-  const M = ppMats(f.pp), im = ppImg(sel, f.pp && f.pp[sel.id]); c.save(); c.transform(...M[sel.id]);
+  const M = ppMats(ppPoseFor(f)), im = ppImg(sel, f.pp && f.pp[sel.id]); c.save(); c.transform(...M[sel.id]);
   c.lineWidth = 2 * px / Math.max(0.2, Math.hypot(M[sel.id][0], M[sel.id][1])); c.setLineDash([8 * px, 6 * px]); c.strokeStyle = ppPaint ? '#2f7bff' : '#ff3b9a';
   c.strokeRect(im.x, im.y, im.c.width, im.c.height); c.restore();
   const wp = mApply(M[sel.id], sel.px, sel.py);
@@ -4311,6 +4321,69 @@ $('#ppFlipChar').addEventListener('click', ppFlipChar);
 Object.entries(PP_PRESETS).forEach(([k, v]) => { const b = document.createElement('button'); b.className = 'chip small'; b.dataset.ppp = k; b.textContent = v[0]; b.addEventListener('click', () => { ppPreset = k; $('#ppPN').value = v[1]; $('#ppPDur').value = v[2]; ppSyncBar(); }); $('#ppPresets').append(b); });
 document.querySelectorAll('[data-ppdir]').forEach(b => b.addEventListener('click', () => { ppDir = +b.dataset.ppdir; ppSyncBar(); }));
 $('#ppPresetGo').addEventListener('click', ppMakePreset);
+/* --- 〰 motion path (like Animate's motion guide): draw a line, the selected character travels along it over N frames.
+   Stored as an overlay offset per frame in f.lip.mv = {rootPartId: {x, y}} (like auto blink), so re-tweening poses,
+   walk cycles and lip sync never wipe it. Missing frames are added by repeating the poses from the current frame on
+   (a walk cycle keeps walking). One undo step. --- */
+function ppApplyMv(pose, mv) {
+  const P = { ...(pose || {}) };
+  for (const id in mv) { const m = mv[id]; if (!m || !ppPart(id)) continue; const q = P[id] = { ...(P[id] || {}) }; q.dx = (q.dx || 0) + m.x; q.dy = (q.dy || 0) + m.y; }
+  return P;
+}
+const ppPoseFor = f => f && f.lip && f.lip.mv ? ppApplyMv(f.pp, f.lip.mv) : f && f.pp;
+function ppLipAt(i, tIn) {
+  const f = S.frames[i], nx = S.frames[i + 1], a = f.lip && f.lip.mv; if (!a || !nx) return f.lip;
+  const b = (nx.lip && nx.lip.mv) || {}, dur = Math.max(1, f.dur), T = Math.min(dur, 160), u = clamp((tIn * 1000 - (dur - T)) / T, 0, 1); if (u <= 0) return f.lip;
+  const mv = {}; for (const id in a) { const p = a[id], q = b[id] || p; mv[id] = { x: p.x + (q.x - p.x) * u, y: p.y + (q.y - p.y) * u }; }
+  return { ...f.lip, mv };
+}
+// even spacing along the drawn line (with a little smoothing of hand jitter)
+function ppPathSample(pts) {
+  const sm = pts.map((p, i) => { let x = 0, y = 0, c = 0; for (let k = Math.max(0, i - 2); k <= Math.min(pts.length - 1, i + 2); k++) { x += pts[k].x; y += pts[k].y; c++; } return { x: x / c, y: y / c }; });
+  sm[0] = pts[0]; sm[sm.length - 1] = pts[pts.length - 1];
+  const L = [0]; for (let i = 1; i < sm.length; i++) L.push(L[i - 1] + Math.hypot(sm[i].x - sm[i - 1].x, sm[i].y - sm[i - 1].y));
+  const at = s => { let i = 1; while (i < sm.length - 1 && L[i] < s) i++; const t = L[i] > L[i - 1] ? (s - L[i - 1]) / (L[i] - L[i - 1]) : 0; return { x: sm[i - 1].x + (sm[i].x - sm[i - 1].x) * t, y: sm[i - 1].y + (sm[i].y - sm[i - 1].y) * t }; };
+  return { len: L[L.length - 1], at };
+}
+function ppMvEdit(f, fn) { const before = f.lip ? JSON.stringify(f.lip) : null, l = { ...(f.lip || {}) }; l.mv = { ...(l.mv || {}) }; fn(l.mv); if (!Object.keys(l.mv).length) delete l.mv; const lip = Object.keys(l).length ? l : null, after = lip ? JSON.stringify(lip) : null; if (before === after) return null; f.lip = lip; f.ver++; queueThumbFor(f); return { t: targetOf(f), lipe: true, before, after, bytes: 64 }; }
+async function ppApplyPath(pts) {
+  const charId = ppSelChar(); if (!charId) { toast('Chưa có nhân vật ghép'); return; }
+  const path = ppPathSample(pts); if (path.len < 10) { toast('Đường quá ngắn — kéo dài hơn'); return; }
+  const n = clamp(+$('#ppPathN').value || 24, 2, 240), ez = EASE[$('#ppPathEase').value] || EASE.linear, i0 = S.cur, multi = [];
+  // not enough frames after this one: repeat the poses from here on (a walk cycle keeps walking)
+  const have = S.frames.length - i0;
+  if (have < n) {
+    const cyc = S.frames.slice(i0), last = S.frames[S.frames.length - 1], added = [];
+    for (let k = 0; k < n - have; k++) {
+      const src = cyc[(have + k) % cyc.length]; await ensureLoaded(src);
+      const f = newFrameObj(src.bgId); f.dur = src.dur; f.canvas.getContext('2d').drawImage(src.canvas, 0, 0); copyCol(f, src); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(src.vec);
+      f.pp = ppClone(src.pp); f.ppKey = true; f.ppEase = src.ppEase; f.lip = src.lip ? JSON.parse(JSON.stringify(src.lip)) : null; added.push(f);
+    }
+    S.frames.push(...added); loaded.push(...added);
+    multi.push({ t: targetOf(last), add: { frames: added, index: S.frames.length - added.length, dur0: last.dur, dur1: last.dur }, bytes: 0 });
+  }
+  const f0 = S.frames[i0], base = (f0.lip && f0.lip.mv && f0.lip.mv[charId]) || { x: 0, y: 0 }, P0 = path.at(0);
+  for (let k = 0; k < n; k++) {
+    const q = path.at(ez(n > 1 ? k / (n - 1) : 1) * path.len), f = S.frames[i0 + k];
+    const e = ppMvEdit(f, mv => { mv[charId] = { x: Math.round((base.x + q.x - P0.x) * 10) / 10, y: Math.round((base.y + q.y - P0.y) * 10) / 10 }; });
+    if (e) multi.push(e);
+  }
+  // frames after the path keep the end position (otherwise the character would jump back)
+  const end = S.frames[i0 + n - 1].lip.mv[charId];
+  for (let i = i0 + n; i < S.frames.length; i++) { const e = ppMvEdit(S.frames[i], mv => { mv[charId] = { ...end }; }); if (e) multi.push(e); }
+  if (multi.length) pushEntry({ multi });
+  for (const f of S.frames.slice(i0)) if (!f.thumb) await drawThumb(f);
+  buildStrip(); updateFrameUI(); evictSoon(); scheduleSave(); requestRender();
+  toast(`Nhân vật đi theo đường qua ${n} frame — bấm ▶ Phát để xem`, 3500);
+}
+function ppClearPath() {
+  const charId = ppSelChar(); if (!charId) return; const multi = [];
+  S.frames.forEach(f => { if (f.lip && f.lip.mv && f.lip.mv[charId]) { const e = ppMvEdit(f, mv => { delete mv[charId]; }); if (e) multi.push(e); } });
+  if (multi.length) { pushEntry({ multi }); scheduleSave(); requestRender(); toast('Đã bỏ đường đi'); } else toast('Nhân vật này chưa có đường đi');
+}
+$('#ppPathBtn').addEventListener('click', () => { if (!S.pp || !S.pp.parts.length) { toast('Chưa có nhân vật ghép'); return; } ppPathMode = !ppPathMode; ppCutMode = ppPatchMode = false; ppPaint = null; ppSyncBar(); if (ppPathMode) toast('Kéo bút/ngón vẽ đường nhân vật sẽ đi, bắt đầu từ chỗ nhân vật đang đứng', 3500); });
+$('#ppPathClear').addEventListener('click', ppClearPath);
+
 $('#ppBlinkBtn').addEventListener('click', ppAutoBlink);
 $('#ppBake').addEventListener('click', ppBake);
 $('#projBtn').addEventListener('click', projectsDialog);
@@ -4673,7 +4746,7 @@ const GESTURES = {
 };
 let gestMirror = false;
 function ppCurAbs(f, charId) {
-  const out = {}; const parts = S.pp.parts.filter(p => ppCharOf(p) === charId), M = ppMats(f.pp);
+  const out = {}; const parts = S.pp.parts.filter(p => ppCharOf(p) === charId), M = ppMats(ppPoseFor(f));
   for (const role of ['armL', 'armR', 'legL', 'legR', 'foreL', 'foreR', 'shinL', 'shinR']) { const p = parts.find(q => q.role === role); if (!p) continue; const P0 = mApply(M[p.id], p.px, p.py), tip = ppTipOf(p), H0 = mApply(M[p.id], tip.x, tip.y); out[role] = Math.atan2(H0.y - P0.y, H0.x - P0.x) / DEG; }
   return out;
 }
@@ -4718,6 +4791,55 @@ $('#aiCharBtn').addEventListener('click', () => aiCharDialog());
 $('#ppAssetBtn').addEventListener('click', () => { const s = ppPart(ppSel); assetDialog(s && s.asset ? s.asset.cat : (s && s.role === 'head' ? 'face' : /fore|arm/.test(s && s.role || '') ? 'hand' : 'eyes')); });
 Object.entries(GESTURES).forEach(([k, v]) => { const b = document.createElement('button'); b.className = 'chip small'; b.textContent = v[0]; b.title = 'Tạo các frame cử chỉ từ tư thế frame này'; b.addEventListener('click', () => ppGesture(k)); $('#ppGests').append(b); });
 $('#gestMir').addEventListener('change', e => { gestMirror = e.target.checked; });
+/* --- ⭐ my motions (like Animate's motion presets): save a run of frames as limb angles by role + head/body offsets,
+   then rebuild it on any cut-out character, in any project. Kept in localStorage 'fs-motions' (small JSON). --- */
+const MYMO_KEY = 'fs-motions';
+function myMoLoad() { try { return JSON.parse(localStorage.getItem(MYMO_KEY) || '[]'); } catch (e) { return []; } }
+function myMoStore(L) { try { localStorage.setItem(MYMO_KEY, JSON.stringify(L)); return true; } catch (e) { toast('Không lưu được (bộ nhớ trình duyệt đầy?)'); return false; } }
+function myMoSync() { const sel = $('#myMoSel'); if (!sel) return; const L = myMoLoad(); sel.innerHTML = L.length ? L.map(m => `<option value="${m.id}">${m.name.replace(/[<>&"]/g, '')} (${m.frames.length} frame)</option>`).join('') : '<option value="">— chưa có —</option>'; }
+function myMoCapture(f, ch, ref) {
+  const parts = S.pp.parts.filter(p => ppCharOf(p) === ch), byRole = r => parts.find(p => p.role === r), q = (r, k, d) => { const p = byRole(r); return p && f.pp && f.pp[p.id] && f.pp[p.id][k] != null ? f.pp[p.id][k] : d; };
+  const tor = byRole('torso'), hgt = tor ? Math.max(200, tor.c.height * 2.2) : H * 0.6;
+  const fr = { a: ppCurAbs(f, ch), head: q('head', 'r', 0), torso: q('torso', 'r', 0), dy: q('torso', 'dy', 0) / hgt, dur: f.dur, k: ppIsKey(f) };
+  if (ref) { fr.head -= ref.head; fr.torso -= ref.torso; fr.dy -= ref.dy; }
+  return fr;
+}
+async function myMoSave() {
+  if (!S.pp || !S.pp.parts.length) { toast('Cần nhân vật ghép trước'); return; }
+  const ch = ppSelChar(), left = S.frames.length - S.cur; if (left < 2) { toast('Đứng ở frame đầu của chuyển động (cần ít nhất 2 frame từ đây trở đi)'); return; }
+  let name = null, n = left;
+  await modal({ title: '⭐ Lưu chuyển động', html: `<p class="lbl">Lưu các frame từ frame này (${S.cur + 1}) trở đi. Sau đó dùng lại cho nhân vật khác bằng nút Áp.</p><input id="myMoName" placeholder="vd. Vẫy tay chào" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text)"><p class="lbl" style="margin-top:8px">Số frame: <input id="myMoN" type="number" min="2" max="${left}" value="${left}" style="width:70px;padding:6px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text)"></p>`,
+    buttons: [{ label: 'Huỷ', value: null }, { label: 'Lưu', primary: true, action: () => { name = document.getElementById('myMoName').value.trim() || 'Chuyển động ' + (myMoLoad().length + 1); n = clamp(+document.getElementById('myMoN').value || left, 2, left); } }] });
+  if (!name) return;
+  const f0 = S.frames[S.cur], ref = myMoCapture(f0, ch), frames = [];
+  for (let k = 0; k < n; k++) frames.push(myMoCapture(S.frames[S.cur + k], ch, ref));
+  const L = myMoLoad(); L.push({ id: newId(), name: name.slice(0, 40), frames }); if (myMoStore(L)) { myMoSync(); $('#myMoSel').value = L[L.length - 1].id; toast(`Đã lưu "${name}" (${n} frame) — dùng được ở mọi dự án`); }
+}
+async function myMoApply() {
+  if (!S.pp || !S.pp.parts.length) { toast('Cần nhân vật ghép trước — Nhập ảnh → Nhân vật ghép'); return; }
+  const m = myMoLoad().find(x => x.id === $('#myMoSel').value); if (!m) { toast('Chưa có chuyển động nào — làm các frame rồi bấm ＋ Lưu chuyển động'); return; }
+  const f0 = curFrame(), ch = ppSelChar(), parts = S.pp.parts.filter(p => ppCharOf(p) === ch), byRole = r => parts.find(p => p.role === r);
+  const mir = gestMirror, mapRole = r => mir ? r.replace(/L$/, '#').replace(/R$/, 'L').replace(/#$/, 'R') : r, mapAng = a => mir ? 180 - a : a, sg = mir ? -1 : 1;
+  const tor = byRole('torso'), hgt = tor ? Math.max(200, tor.c.height * 2.2) : H * 0.6;
+  // the first saved frame is the starting pose: put this character's limbs there too
+  { const a = {}; for (const [r, v] of Object.entries(m.frames[0].a)) a[mapRole(r)] = mapAng(v); ppKeyEdit(fr => { fr.ppKey = true; ppApplyAbs(fr, a, ch); }); }
+  const base = ppClone(f0.pp || {});
+  const poses = m.frames.slice(1).map(fr => {
+    const tf = { pp: ppClone(base) }, a = {}; for (const [r, v] of Object.entries(fr.a)) a[mapRole(r)] = mapAng(v);
+    ppApplyAbs(tf, a, ch);
+    const add = (role, prop, v) => { const p = byRole(role); if (!p || !v) return; const q = ppQ(tf, p.id); q[prop] = (q[prop] || 0) + v; };
+    add('head', 'r', fr.head * sg); add('torso', 'r', fr.torso * sg); add('torso', 'dy', fr.dy * hgt); return tf.pp;
+  });
+  const c = await ppInsertFrames(poses, m.frames[0].dur);
+  S.frames.slice(S.cur + 1, S.cur + 1 + c).forEach((f, i) => { const fr = m.frames[i + 1]; f.dur = fr.dur; f.ppKey = fr.k || i === c - 1; });
+  f0.dur = m.frames[0].dur; buildStrip(); updateFrameUI(); scheduleSave(); requestRender();
+  toast(`Đã tạo "${m.name}" — ${c} frame. Bấm Phát để xem.`, 3500);
+}
+$('#myMoSave').addEventListener('click', myMoSave);
+$('#myMoApply').addEventListener('click', myMoApply);
+$('#myMoDel').addEventListener('click', async () => { const id = $('#myMoSel').value, L = myMoLoad(), m = L.find(x => x.id === id); if (!m) return; const ok = await modal({ title: 'Xoá chuyển động?', html: `<p>Xoá "${m.name.replace(/[<>&"]/g, '')}" khỏi danh sách (frame đã làm vẫn giữ).</p>`, buttons: [{ label: 'Huỷ', value: null }, { label: 'Xoá', value: 1, cls: 'danger' }] }); if (!ok) return; myMoStore(L.filter(x => x.id !== id)); myMoSync(); });
+myMoSync();
+
 $('#fbShow').addEventListener('click', () => setFocus(false));
 $('#fbUndo').addEventListener('click', undo); $('#fbRedo').addEventListener('click', redo);
 $('#fbPen').addEventListener('click', () => { setTool('brush'); setFocus(true); });
@@ -4794,7 +4916,7 @@ function ppTipOf(p) {
 }
 const LOWER = { foreL: 'armL', foreR: 'armR', shinL: 'legL', shinR: 'legR' };
 function ppIKDrag(part, target, f) {
-  const M = ppMats(f.pp), qOf = p => ppQ(f, p.id), wrap = wrapRad;
+  const M = ppMats(ppPoseFor(f)), qOf = p => ppQ(f, p.id), wrap = wrapRad;
   const up = part.parent && ppPart(part.parent);
   if (LOWER[part.role] && up && up.role === LOWER[part.role]) {
     const S0 = mApply(M[up.id], up.px, up.py), E0 = mApply(M[part.id], part.px, part.py), tip = ppTipOf(part), H0 = mApply(M[part.id], tip.x, tip.y);
@@ -4832,7 +4954,7 @@ function ppApplyAbs(f, abs, charId, reset) {
   // parents first so children use updated parent angles
   for (const role of ['armL', 'armR', 'legL', 'legR', 'foreL', 'foreR', 'shinL', 'shinR']) {
     if (abs[role] == null) continue; const p = byRole(role); if (!p) continue;
-    const M = ppMats(f.pp), P0 = mApply(M[p.id], p.px, p.py), tip = ppTipOf(p), H0 = mApply(M[p.id], tip.x, tip.y);
+    const M = ppMats(ppPoseFor(f)), P0 = mApply(M[p.id], p.px, p.py), tip = ppTipOf(p), H0 = mApply(M[p.id], tip.x, tip.y);
     const cur = Math.atan2(H0.y - P0.y, H0.x - P0.x), dd = wrapRad(abs[role] * DEG - cur);
     const q = ppQ(f, p.id); q.r = (q.r || 0) + dd / DEG;
   }
@@ -5411,7 +5533,7 @@ async function fxLipSync() {
   }
   S.frames.forEach((f, i) => {
     const old = JSON.stringify(f.lip || null), m = {}; for (const [id, arr] of byMouth) if (arr[i] != null) m[id] = arr[i];
-    const l = {}; if (f.lip && f.lip.eb) l.eb = f.lip.eb; if (Object.keys(m).length) l.m = m;
+    const l = {}; if (f.lip && f.lip.eb) l.eb = f.lip.eb; if (f.lip && f.lip.mv) l.mv = f.lip.mv; if (Object.keys(m).length) l.m = m;
     f.lip = Object.keys(l).length ? l : null; if (JSON.stringify(f.lip) !== old) { f.ver++; queueThumbFor(f); }
   });
   scheduleSave(); requestRender(); fxSyncBar();
@@ -5454,7 +5576,7 @@ function drawFrameBase(ctx, f, bg, live) {
   if (S.showVec) drawVec(ctx, f.vec);
 }
 // what goes over the cached frame picture when the puppet moves smoothly: the in-between pose, then the vector lines
-const ppLiveOver = (i, tIn, wrap) => ctx => { const f = S.frames[i]; drawPuppet(ctx, ppPoseAt(i, tIn, wrap), f.lip); if (S.showVec && f.vec && f.vec.length) drawVec(ctx, f.vec); };
+const ppLiveOver = (i, tIn, wrap) => ctx => { const f = S.frames[i]; drawPuppet(ctx, ppPoseAt(i, tIn, wrap), ppLipAt(i, tIn)); if (S.showVec && f.vec && f.vec.length) drawVec(ctx, f.vec); };
 function drawFrameFx(ctx, i, baseImg, tsec, tInFrame, vid, over) {
   const f = S.frames[i], cam = camAt(i, tInFrame || 0);
   ctx.save(); camApply(ctx, cam, f.shake || 0, tsec, i);
@@ -6808,7 +6930,8 @@ function brushPop() {
     <div class="set-row"><span>Cỡ nét</span><span class="stpw"><button class="stp" data-stp="size" data-d="-1" aria-label="Giảm cỡ">−</button><input type="range" class="sizeR" min="0" max="1000" step="1"><button class="stp" data-stp="size" data-d="1" aria-label="Tăng cỡ">+</button><span class="val sizeV"></span></span></div>
     <div class="set-row"><span title="Mỗi loại bút / kiểu tẩy nhớ độ đậm riêng. Với tẩy: độ đậm thấp thì xoá nhạt">Độ đậm <small class="bp-opfor"></small></span><span class="stpw"><button class="stp" data-stp="op" data-d="-1" aria-label="Giảm độ đậm">−</button><input type="range" class="opR" min="5" max="100" step="1"><button class="stp" data-stp="op" data-d="1" aria-label="Tăng độ đậm">+</button><span class="val opV"></span></span></div>
     <div class="set-row"><span title="Kéo lên cao để nét thẳng và mượt hơn khi tay run (nét đi chậm hơn bút một chút)">Chống run tay</span><input type="range" class="bp-smooth" min="0" max="90" step="1"><span class="val bp-smoothv"></span></div>
-    <label class="set-row"><span title="Nét to nhỏ theo lực nhấn bút">Nét theo lực nhấn bút</span><input type="checkbox" class="bp-press"></label>`, 'wide');
+    <label class="set-row"><span title="Nét to nhỏ theo lực nhấn bút">Nét theo lực nhấn bút</span><input type="checkbox" class="bp-press"></label>
+    <label class="set-row"><span title="Bật: phóng to thì nét vẽ mảnh lại, bút trông luôn to như nhau trên màn hình (để vẽ chi tiết). Tắt: cỡ tính theo hình, phóng to thì nét cũng to theo">Giữ cỡ bút khi phóng to</span><input type="checkbox" class="bp-zs"></label>`, 'wide');
   const tip = d.querySelector('.br-tip');
   function sync() {
     const isE = S.tool === 'eraser';
@@ -6827,6 +6950,8 @@ function brushPop() {
   sm.addEventListener('input', () => { S.smooth = sm.value / 100; d.querySelector('.bp-smoothv').textContent = sm.value + '%'; saveSettings(); });
   const pr = d.querySelector('.bp-press'); pr.checked = !!S.pressure;
   pr.addEventListener('change', () => { S.pressure = pr.checked; updateToggles(); saveSettings(); });
+  const zs = d.querySelector('.bp-zs'); zs.checked = S.sizeScreen !== false;
+  zs.addEventListener('change', () => { S.sizeScreen = zs.checked; saveSettings(); toast(zs.checked ? 'Phóng to thì nét mảnh lại để vẽ chi tiết' : 'Cỡ nét tính theo hình: phóng to thì nét cũng to'); });
   sync();
 }
 // background options live in a small menu so the top bar stays short; the real buttons are moved in and back out
@@ -7118,7 +7243,7 @@ async function exportZip() {
       }
       meta.push({ index: i + 1, file: `frames/frame_${n}.png`, char_layer: `layers/char_${n}.png`, color_layer: colorName, lines_layer: linesName, bg_layer: bgFile.get(f.bgId), duration_ms: f.dur,
         pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], camera: camAt(i), cam_key: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || null,
-        vector: f.vec.map(st => ({ c: st.c, w: +st.w.toFixed(2), pts: st.pts.map(q => [+q.x.toFixed(1), +q.y.toFixed(1)]) })) });
+        vector: f.vec.map(st => ({ c: st.c, w: +st.w.toFixed(2), a: st.a, pts: st.pts.map(q => [+q.x.toFixed(1), +q.y.toFixed(1)]) })) });
     }
     comp.width = 0;
     const total = S.frames.reduce((a, f) => a + f.dur, 0);
@@ -7162,7 +7287,7 @@ async function importZip(file) {
       const d = z.get(fr.char_layer);
       let bgId = bgIdByFile.get(fr.bg_layer);
       if (!bgId) { bgId = newId(); bgs.push({ id: bgId, png: null }); }
-      const vec = (fr.vector || []).map(st => ({ id: newId(), c: st.c, w: st.w, pts: st.pts.map(([x, y]) => ({ x, y })) }));
+      const vec = (fr.vector || []).map(st => ({ id: newId(), c: st.c, w: st.w, a: st.a, pts: st.pts.map(([x, y]) => ({ x, y })) }));
       const dc = fr.color_layer && z.get(fr.color_layer);
       return { id: newId(), dur: fr.duration_ms || 100, bgId, vec, col: dc ? dc.buffer.slice(dc.byteOffset, dc.byteOffset + dc.byteLength) : null, pp: fr.pp || {}, ppKey: fr.ppKey, ppEase: fr.ppEase, texts: fr.texts || [], cam: fr.cam_key || null, shake: fr.shake || 0, flash: !!fr.flash, lip: fr.lip || null, scene: fr.scene || undefined, png: d ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : null };
     });
