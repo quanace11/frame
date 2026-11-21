@@ -461,6 +461,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
           <button class="chip small" id="ppPaintBtn" title="Vẽ trực tiếp lên hình mảnh bằng màu và cỡ bút đang chọn">✎ Vẽ lên mảnh</button><button class="chip small" id="ppEraseBtn">⌫ Tẩy mảnh</button></div>
         <div class="mrow" data-tab="pose"><span class="lbl">Kéo để</span><button class="chip small" data-ppd="rotate">Xoay quanh khớp</button><button class="chip small" data-ppd="ik" title="Kéo bàn tay/bàn chân: cả cánh tay tự gập theo (cần chia 2 đoạn để gập khuỷu)">Kéo tay chân (IK)</button><button class="chip small" data-ppd="move">Dời</button><button class="chip small" data-ppd="pivot">Dời điểm xoay</button>
           <span class="lbl">Xoay</span><input type="range" id="ppRot" min="-180" max="180" step="1"><span class="lbl">Cỡ</span><input type="range" id="ppScale" min="30" max="250" step="1"></div>
+        <div class="mrow" data-tab="pose"><label class="lbl" title="Khuỷu tay, đầu gối, vai, hông uốn cong mềm như da thịt thay vì gập cứng 2 mảnh"><input type="checkbox" id="ppSoftChk"> 〰 Uốn mềm khớp</label><label class="lbl" title="Khi phát và xuất video, nhân vật chuyển động liên tục giữa các frame (như tween của Animate), không bị giật"><input type="checkbox" id="ppSmoothChk"> 🌊 Phát mượt giữa các frame</label></div>
         <div class="mrow" data-tab="pose"><button class="chip small" id="ppFlip">Lật</button><button class="chip small" id="ppHide">Ẩn</button><button class="chip small" id="ppReset">Về gốc mảnh</button><button class="chip small" id="ppResetAll">Về gốc tất cả</button>
         </div><div class="mrow" data-tab="parts">
           <button class="chip small" id="ppPatchBtn" title="Khoanh chỗ bị hở/đứt trên mảnh đang chọn để tự vẽ bù">🩹 Vá chỗ hở</button>
@@ -752,7 +753,7 @@ function render() {
   c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
   { const deg = Math.round(((vr / DEG) % 360 + 360) % 360); $('#zoomLbl').textContent = Math.round(vs / fitS * 100) + '%' + (deg ? ` · ${deg}°` : ''); }
   if (playing) {
-    if (playCanvas) { c.save(); c.beginPath(); c.rect(0, 0, W, H); c.clip(); const now = performance.now(); drawFrameFx(c, playIdx, playCanvas, (now - playT0) / 1000, (now - playFT0) / 1000); c.restore(); }
+    if (playCanvas) { c.save(); c.beginPath(); c.rect(0, 0, W, H); c.clip(); const now = performance.now(), tf = (now - playFT0) / 1000; drawFrameFx(c, playIdx, playCanvas, (now - playT0) / 1000, tf, null, ppSmoothOn() ? ppLiveOver(playIdx, tf, S.loop) : null); c.restore(); }
     if (S.safe) drawSafeZone(c, 1 / vs * DPR);
     requestRender(); return;
   }
@@ -2032,7 +2033,7 @@ async function buildPlayCache() {
   const ph = playCacheSize(S.frames.length), k = ph / H, pw = Math.round(W * k);
   for (let i = 0; i < S.frames.length; i++) {
     const f = S.frames[i], bg = bgOf(f);
-    const key = f.ver + ':' + (bg ? bg.id + '.' + bg.ver : '') + ':' + pw + ':' + (S.bgVideo ? 'v' : '');
+    const live = ppSmoothOn(), key = f.ver + ':' + (bg ? bg.id + '.' + bg.ver : '') + ':' + pw + ':' + (S.bgVideo ? 'v' : '') + (live ? 's' : '');
     if (f.play && f.playKey === key) continue;
     await ensureLoaded(f);
     if (!f.play) f.play = makeCanvas(pw, ph); else { f.play.width = pw; f.play.height = ph; }
@@ -2040,8 +2041,8 @@ async function buildPlayCache() {
     if (S.bgVideo) x.clearRect(0, 0, pw, ph); else { x.fillStyle = '#fff'; x.fillRect(0, 0, pw, ph); }
     if (bg && bg.canvas) x.drawImage(bg.canvas, 0, 0, pw, ph);
     drawCol(x, f, pw, ph); if (f.canvas) x.drawImage(f.canvas, 0, 0, pw, ph);
-    if (S.pp && S.showPP) { x.save(); x.scale(pw / W, ph / H); drawPuppet(x, f.pp, f.lip); x.restore(); }
-    if (f.vec && f.vec.length) { x.save(); x.scale(pw / W, ph / H); drawVec(x, f.vec); x.restore(); }
+    if (!live && S.pp && S.showPP) { x.save(); x.scale(pw / W, ph / H); drawPuppet(x, f.pp, f.lip); x.restore(); }
+    if (!live && f.vec && f.vec.length) { x.save(); x.scale(pw / W, ph / H); drawVec(x, f.vec); x.restore(); }
     f.playKey = key;
   }
 }
@@ -3013,14 +3014,129 @@ function ppImg(p, q) {
   return { c: p.c, x: p.ox, y: p.oy, holder: p, vi: 0 };
 }
 function ppAlphaH(h) { if (!h.alpha && h.c) { const d = h.c.getContext('2d').getImageData(0, 0, h.c.width, h.c.height).data, a = new Uint8Array(h.c.width * h.c.height); for (let i = 0; i < a.length; i++) a[i] = d[i * 4 + 3]; h.alpha = a; } return h.alpha; }
+/* --- soft joints (like bones + mesh warp): instead of two rigid pieces meeting at the elbow/knee, the pixels near the joint
+   follow BOTH pieces with a smooth weight, so the limb bends in a curve. The top of an arm/leg also blends into the body
+   (shoulder, hip). Drawn as a small strip mesh of triangles per piece; everything far from a joint stays one rigid draw. --- */
+SETTINGS_KEYS.push('ppSoft', 'ppSmooth'); S.ppSoft = true; S.ppSmooth = true;
+const PP_SOFT2 = { foreL: 'armL', foreR: 'armR', shinL: 'legL', shinR: 'legR' }, PP_SOFT1 = { armL: 1, armR: 1, legL: 1, legR: 1 };
+const ppSkinCache = new WeakMap();
+// rest geometry of a piece: bone axis (pivot -> tip), length and limb thickness (measured across the bone on the image)
+function ppGeom(p) {
+  const tip = p.tip || ppTipOf(p), key = p.c.width + ':' + p.c.height + ':' + p.px + ':' + p.py + ':' + tip.x + ':' + tip.y + ':' + p.ox + ':' + p.oy;
+  let g = ppSkinCache.get(p); if (g && g.key === key) return g;
+  const L = Math.hypot(tip.x - p.px, tip.y - p.py), ux = L ? (tip.x - p.px) / L : 0, uy = L ? (tip.y - p.py) / L : 1;
+  const a = ppAlphaH(p), w = p.c.width, h = p.c.height, ws = [];
+  for (const t of [0.3, 0.45, 0.6]) {
+    const cx = p.px + ux * L * t - p.ox, cy = p.py + uy * L * t - p.oy; let n = 0;
+    for (let s = -L; s <= L; s += 1) { const x = Math.round(cx - uy * s), y = Math.round(cy + ux * s); if (x >= 0 && y >= 0 && x < w && y < h && a[y * w + x] > 100) n++; }
+    ws.push(n);
+  }
+  ws.sort((m, n) => m - n);
+  g = { key, ux, uy, L, wid: ws[1] || 0.25 * L }; ppSkinCache.set(p, g); return g;
+}
+// joints that bend a piece softly: [{c: child piece, two: both sides blend, px, py, ux, uy, b: half-width of the blend}]
+function ppSoftJoints(p, byId) {
+  const out = [], mk = (c, two) => { const g = ppGeom(c); if (g.L < 6) return; const par = byId[c.parent], gp = par && par.role !== 'torso' ? ppGeom(par) : null;
+    const b = clamp((two ? 0.4 : 0.35) * g.wid, 4, 0.4 * Math.min(g.L, gp ? gp.L : 1e9)); out.push({ c, two, px: c.px, py: c.py, ux: g.ux, uy: g.uy, b }); };
+  const par = p.parent && byId[p.parent];
+  if (par && PP_SOFT2[p.role] === par.role) mk(p, true);
+  else if (par && PP_SOFT1[p.role] && par.role === 'torso') mk(p, false);
+  for (const c of S.pp.parts) if (c.parent === p.id && PP_SOFT2[c.role] === p.role) mk(c, true);
+  return out;
+}
+const ppSmoothW = t => t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
+const mLerp = (A, B, t) => t <= 0 ? A : t >= 1 ? B : A.map((v, k) => v + (B[k] - v) * t);
+// matrix for a rest point X of piece p: blends towards the parent at its own joint and towards children at theirs
+function ppSkinMat(p, joints, M, x, y) {
+  let own = M[p.id], self = null;
+  for (const j of joints) {
+    const t = ppSmoothW(((x - j.px) * j.ux + (y - j.py) * j.uy + j.b) / (2 * j.b));
+    if (j.c === p) self = { j, t }; else own = mLerp(own, M[j.c.id], t);
+  }
+  return self ? mLerp(M[p.parent], own, self.t) : own;
+}
+function ppAffine3(r, q) {   // affine matrix that maps 3 rest points onto 3 posed points
+  const [a, b, c] = r, [A, B, C] = q, d = (b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y); if (Math.abs(d) < 1e-9) return null;
+  const m0 = ((B.x - A.x) * (c.y - a.y) - (C.x - A.x) * (b.y - a.y)) / d, m2 = ((C.x - A.x) * (b.x - a.x) - (B.x - A.x) * (c.x - a.x)) / d;
+  const m1 = ((B.y - A.y) * (c.y - a.y) - (C.y - A.y) * (b.y - a.y)) / d, m3 = ((C.y - A.y) * (b.x - a.x) - (B.y - A.y) * (c.x - a.x)) / d;
+  return [m0, m1, m2, m3, A.x - m0 * a.x - m2 * a.y, A.y - m1 * a.x - m3 * a.y];
+}
+function ppPolyDraw(ctx, Mx, poly, im, grow) {
+  // clip the polygon (rest space, pushed out a little from its centre so neighbouring cells overlap: no hairline seams)
+  // every edge moves out by `grow` (mitred corners), also for thin slivers
+  const n = poly.length; let ar = 0; for (let k = 0; k < n; k++) { const a = poly[k], b = poly[(k + 1) % n]; ar += a.x * b.y - b.x * a.y; }
+  const sg = ar >= 0 ? 1 : -1, nm = poly.map((a, k) => { const b = poly[(k + 1) % n], dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy) || 1; return { x: sg * dy / l, y: -sg * dx / l }; });
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  ctx.save(); ctx.transform(...Mx); ctx.beginPath();
+  poly.forEach((q, k) => { const A = nm[(k + n - 1) % n], B = nm[k], d = 1 + A.x * B.x + A.y * B.y, f = grow / Math.max(d, 0.25), X = q.x + (A.x + B.x) * f, Y = q.y + (A.y + B.y) * f; k ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); x0 = Math.min(x0, X); y0 = Math.min(y0, Y); x1 = Math.max(x1, X); y1 = Math.max(y1, Y); });
+  ctx.closePath(); ctx.clip();
+  const sx = Math.max(0, Math.floor(x0 - im.x - 1)), sy = Math.max(0, Math.floor(y0 - im.y - 1)), ex = Math.min(im.c.width, Math.ceil(x1 - im.x + 1)), ey = Math.min(im.c.height, Math.ceil(y1 - im.y + 1));
+  if (ex > sx && ey > sy) ctx.drawImage(im.c, sx, sy, ex - sx, ey - sy, im.x + sx, im.y + sy, ex - sx, ey - sy);
+  ctx.restore();
+}
+function ppDrawSoft(ctx, p, im, M, joints) {
+  const g = ppGeom(p), ux = g.ux, uy = g.uy, vx = -uy, vy = ux, W0 = im.c.width, H0 = im.c.height;
+  // the piece's image box in (along, across) coordinates of its own bone
+  let a0 = Infinity, a1 = -Infinity, c0 = Infinity, c1 = -Infinity;
+  for (const [X, Y] of [[im.x, im.y], [im.x + W0, im.y], [im.x, im.y + H0], [im.x + W0, im.y + H0]]) { const a = (X - p.px) * ux + (Y - p.py) * uy, c = (X - p.px) * vx + (Y - p.py) * vy; a0 = Math.min(a0, a); a1 = Math.max(a1, a); c0 = Math.min(c0, c); c1 = Math.max(c1, c); }
+  const cuts = [a0, a1], zone = [];
+  for (const j of joints) {
+    const z = (j.px - p.px) * ux + (j.py - p.py) * uy, cosT = Math.max(0.5, Math.abs(j.ux * ux + j.uy * uy)), sinT = Math.sqrt(1 - cosT * cosT), hw = Math.min(a1 - a0, (j.b + (c1 - c0) * sinT) / cosT + 2);
+    zone.push([z - hw, z + hw]); for (let k = 0; k <= 8; k++) cuts.push(z - hw + 2 * hw * k / 8);
+  }
+  const A = [...new Set(cuts.filter(a => a >= a0 && a <= a1).map(a => Math.round(a * 100) / 100))].sort((m, n) => m - n);
+  const P = (a, c) => ({ x: p.px + ux * a + vx * c, y: p.py + uy * a + vy * c }), T0 = ctx.getTransform(), sc = (Math.hypot(M[p.id][0], M[p.id][1]) || 1) * (Math.hypot(T0.a, T0.b) || 1), grow = 1 / sc;
+  const NC = 3, cs = []; for (let k = 0; k <= NC; k++) cs.push(c0 + (c1 - c0) * k / NC);
+  for (let r = 0; r < A.length - 1; r++) {
+    const s = A[r], e = A[r + 1]; if (e - s < 0.01) continue;
+    const mid = (s + e) / 2, inZone = zone.some(([z0, z1]) => mid > z0 && mid < z1);
+    if (!inZone) { const q = P(mid, (c0 + c1) / 2); ppPolyDraw(ctx, ppSkinMat(p, joints, M, q.x, q.y), [P(s, c0), P(e, c0), P(e, c1), P(s, c1)], im, grow); continue; }
+    for (let k = 0; k < NC; k++) {
+      const R = [P(s, cs[k]), P(e, cs[k]), P(e, cs[k + 1]), P(s, cs[k + 1])], Q = R.map(q => mApply(ppSkinMat(p, joints, M, q.x, q.y), q.x, q.y));
+      for (const t of [[0, 1, 2], [0, 2, 3]]) { const Mx = ppAffine3(t.map(i => R[i]), t.map(i => Q[i])); if (Mx) ppPolyDraw(ctx, Mx, t.map(i => R[i]), im, grow); }
+    }
+  }
+}
+
+/* --- smooth playback (like a tween at full frame rate): while playing / exporting video, the puppet moves continuously
+   from one frame's pose to the next instead of jumping, so 8 walk frames look like a fluid walk. Long frames hold their
+   pose and only blend in the last ~0.16 s. Frames with ease "hold" keep the snap. Lines, colours and drawings are not touched. --- */
+const ppSmoothOn = () => !!(S.ppSmooth && S.pp && S.pp.parts.length && S.showPP);
+function ppEaseOf(i) { for (let k = i; k >= 0; k--) if (ppIsKey(S.frames[k])) return S.frames[k].ppEase || 'inout'; return 'inout'; }
+// monotone cubic through 4 samples (no overshoot on holds), u in 0..1 between y1 and y2
+function ppCubic(y0, y1, y2, y3, u) {
+  const d0 = y1 - y0, d1 = y2 - y1, d2 = y3 - y2;
+  const tg = (a, b) => a * b <= 0 ? 0 : 2 * a * b / (a + b);
+  const m1 = tg(d0, d1), m2 = tg(d1, d2), u2 = u * u, u3 = u2 * u;
+  return (2 * u3 - 3 * u2 + 1) * y1 + (u3 - 2 * u2 + u) * m1 + (-2 * u3 + 3 * u2) * y2 + (u3 - u2) * m2;
+}
+function ppPoseAt(i, tIn, wrap) {
+  const n = S.frames.length, f = S.frames[i]; if (!f) return null;
+  const at = k => wrap ? S.frames[((k % n) + n) % n] : S.frames[clamp(k, 0, n - 1)];
+  const nx = at(i + 1); if (!nx || nx === f || ppEaseOf(i) === 'hold') return f.pp;
+  const dur = Math.max(1, f.dur), T = Math.min(dur, 160), u = clamp((tIn * 1000 - (dur - T)) / T, 0, 1);
+  if (u <= 0) return f.pp;
+  const P = [at(i - 1).pp || {}, f.pp || {}, nx.pp || {}, at(i + 2).pp || {}], out = {};
+  const ids = new Set([...Object.keys(P[1]), ...Object.keys(P[2])]);
+  for (const id of ids) {
+    const q = P.map(pp => pp[id] || {}), b = q[1], c = q[2], o = out[id] = { ...b };
+    // rotations: unwrap so 179° -> -179° goes the short way; a big jump (> 150°) is a deliberate cut, keep it
+    let r = q.map(x => x.r || 0); for (let k = 1; k < 4; k++) r[k] = r[k - 1] + wrapRad((r[k] - r[k - 1]) * DEG) / DEG;
+    if (Math.abs(r[2] - r[1]) > 150 || !!b.fl !== !!c.fl) continue;
+    o.r = ppCubic(r[0], r[1], r[2], r[3], u);
+    for (const [k, d] of [['dx', 0], ['dy', 0], ['sx', 1], ['sy', 1]]) { const v = q.map(x => x[k] == null ? d : x[k]); if (v[1] !== v[2]) o[k] = ppCubic(v[0], v[1], v[2], v[3], u); }
+  }
+  return out;
+}
 function drawPuppet(ctx, pose, lip) {
   if (!S.pp || !S.pp.parts.length) return;
   if (lip && lip.eb) { pose = { ...(pose || {}) }; for (const id in lip.eb) { const ep = ppPart(id), a = lip.eb[id]; if (!ep || !a) continue; const q = pose[id] = { ...(pose[id] || {}) }; if (ep.alts && ep.alts.length) { const L = ep.alts.length; if (a >= 1) q.v = L; else if (L >= 2) q.v = 1; } else q.sy = (q.sy == null ? 1 : q.sy) * (1 - 0.9 * a); } }
   if (lip && lip.pid) { const mp = ppPart(lip.pid); if (mp) { const q = { ...((pose && pose[mp.id]) || {}) }; if (mp.alts && mp.alts.length) { const v = Math.round(lip.lv * mp.alts.length); if (v) q.v = v; else delete q.v; } else q.sy = (q.sy == null ? 1 : q.sy) * (1 + 0.8 * lip.lv); pose = { ...(pose || {}), [mp.id]: q }; } }
-  const M = ppMats(pose);
+  const M = ppMats(pose), byId = {}; S.pp.parts.forEach(p => byId[p.id] = p);
   for (const p of [...S.pp.parts].sort((a, b) => a.z - b.z)) {
     const q = pose && pose[p.id]; if ((q && q.h) || !p.c) continue;
     const im = ppImg(p, q);
+    if (S.ppSoft && p.role && (PP_SOFT1[p.role] || PP_SOFT2[p.role])) { const js = ppSoftJoints(p, byId); if (js.length) { ppDrawSoft(ctx, p, im, M, js); continue; } }
     ctx.save(); ctx.transform(...M[p.id]); ctx.drawImage(im.c, im.x, im.y); ctx.restore();
   }
 }
@@ -3799,7 +3915,7 @@ function updPanelPill() {
 }
 function hidePanel(t) { panelHidden[t] = true; saveSettings(); updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
 function showPanel() { panelHidden[S.tool] = false; saveSettings(); updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
-function ppSyncBar() { ppBlinkInfo();
+function ppSyncBar() { ppBlinkInfo(); { const a = $('#ppSoftChk'), b = $('#ppSmoothChk'); if (a) a.checked = !!S.ppSoft; if (b) b.checked = !!S.ppSmooth; }
   const bar = $('#ppbar'), show = S.tool === 'puppet' && (!panelHidden.puppet || !!ppSetup);
   bar.hidden = !show; updPanelPill(); if (!show) return;
   $('#ppSetupSec').hidden = !ppSetup; $('#ppPoseSec').hidden = !!ppSetup || !S.pp;
@@ -3873,6 +3989,8 @@ $('#ppRename').addEventListener('click', async () => { const p = ppPart(ppSel); 
 $('#ppUp').addEventListener('click', () => { const p = ppPart(ppSel); if (!p) return; p.z += 1.5; ppRenormZ(); S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); ppSyncBar(); scheduleSave(); requestRender(); });
 $('#ppDown').addEventListener('click', () => { const p = ppPart(ppSel); if (!p) return; p.z -= 1.5; ppRenormZ(); S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); ppSyncBar(); scheduleSave(); requestRender(); });
 $('#ppDel').addEventListener('click', async () => { const p = ppPart(ppSel); if (!p) return; const ok = await modal({ title: `Xoá mảnh "${p.name}"?`, html: '<p>Mảnh bị xoá khỏi mọi frame, mảnh con sẽ gắn sang mảnh cha. Lỡ tay thì bấm ↶ Hoàn tác.</p>', buttons: [{ label: 'Huỷ', value: false }, { label: 'Xoá', value: true, cls: 'danger' }] }); if (!ok) return; S.pp.parts.forEach(c => { if (c.parent === p.id) c.parent = p.parent; }); S.pp.parts = S.pp.parts.filter(x => x.id !== p.id); ppSel = null; S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); ppSyncBar(); scheduleSave(); requestRender(); });
+$('#ppSoftChk').addEventListener('change', e => { S.ppSoft = e.target.checked; saveSettings(); S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); requestRender(); toast(S.ppSoft ? 'Khớp uốn mềm: khuỷu, gối, vai, hông cong tự nhiên' : 'Khớp gập cứng (2 mảnh rời)'); });
+$('#ppSmoothChk').addEventListener('change', e => { S.ppSmooth = e.target.checked; saveSettings(); toast(S.ppSmooth ? 'Phát và xuất video: chuyển động liền mạch giữa các frame' : 'Phát đúng từng frame (kiểu giật frame)'); });
 document.querySelectorAll('[data-ppd]').forEach(b => b.addEventListener('click', () => { ppDrag = b.dataset.ppd; ppCutMode = false; ppPaint = null; ppSyncBar(); requestRender(); }));
 let ppSlBefore = null;
 const ppSlStart = () => { if (!ppSlBefore) ppSlBefore = ppState(curFrame()); };
@@ -4753,19 +4871,22 @@ async function fxLipSync() {
   toast(`Đã nhép miệng theo giọng trên ${lv.filter(v => v != null).length} frame${mouth.alts && mouth.alts.length ? '' : ' (thêm hình miệng há cho mảnh Miệng để đẹp hơn)'}`, 4000);
 }
 /* --- final frame composition (used by playback & video export) --- */
-function drawFrameBase(ctx, f, bg) {
+function drawFrameBase(ctx, f, bg, live) {
   if (S.bgVideo) ctx.clearRect(0, 0, W, H); else { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); }
   if (bg && bg.canvas && S.showBg) ctx.drawImage(bg.canvas, 0, 0);
   drawCol(ctx, f);
   if (f.canvas && S.showChar) ctx.drawImage(f.canvas, 0, 0);
+  if (live) return;   // puppet + lines are drawn per video frame (smooth motion)
   if (S.pp && S.showPP) drawPuppet(ctx, f.pp, f.lip);
   if (S.showVec) drawVec(ctx, f.vec);
 }
-function drawFrameFx(ctx, i, baseImg, tsec, tInFrame, vid) {
+// what goes over the cached frame picture when the puppet moves smoothly: the in-between pose, then the vector lines
+const ppLiveOver = (i, tIn, wrap) => ctx => { const f = S.frames[i]; drawPuppet(ctx, ppPoseAt(i, tIn, wrap), f.lip); if (S.showVec && f.vec && f.vec.length) drawVec(ctx, f.vec); };
+function drawFrameFx(ctx, i, baseImg, tsec, tInFrame, vid, over) {
   const f = S.frames[i], cam = camAt(i);
   ctx.save(); camApply(ctx, cam, f.shake || 0, tsec, i);
   if (S.bgVideo) { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); if (S.showBg) drawVideoCover(ctx, vid || bgVid.el); }
-  ctx.drawImage(baseImg, 0, 0, W, H); ctx.restore();
+  ctx.drawImage(baseImg, 0, 0, W, H); if (over) over(ctx); ctx.restore();
   drawTexts(ctx, f, null);
   if (f.flash) { const a = Math.max(0, 0.9 * (1 - tInFrame / Math.max(0.05, f.dur / 1000))); ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(0, 0, W, H); }
 }
@@ -4902,12 +5023,12 @@ async function exportVideo() {
   const ov = document.createElement('div'); ov.className = 'ov'; ov.innerHTML = '<div class="dlg" style="max-width:360px;text-align:center"><h3>Đang xuất video…</h3><div class="body" id="vxMsg">Chuẩn bị frame…</div><div class="btns" style="justify-content:center"><button class="btn" id="vxCancel">Huỷ</button></div></div>';
   document.body.append(ov); const msg = t => ov.querySelector('#vxMsg').textContent = t; ov.querySelector('#vxCancel').onclick = () => { cancelled = true; };
   try {
-    const blobs = [];
+    const blobs = [], live = ppSmoothOn();
     const tmp = makeCanvas(), tx = tmp.getContext('2d');
     for (let i = 0; i < S.frames.length; i++) {
       if (cancelled) throw new Error('cancel');
       msg(`Chuẩn bị frame ${i + 1}/${S.frames.length}`); const f = S.frames[i]; await ensureLoaded(f);
-      drawFrameBase(tx, f, bgOf(f)); blobs.push(await new Promise(r => tmp.toBlob(r, S.bgVideo ? 'image/png' : 'image/jpeg', 0.93)));
+      drawFrameBase(tx, f, bgOf(f), live); blobs.push(await new Promise(r => tmp.toBlob(r, S.bgVideo ? 'image/png' : 'image/jpeg', 0.93)));
     }
     tmp.width = 0;
     const out = makeCanvas(), ox = out.getContext('2d'), stream = out.captureStream(30);
@@ -4928,7 +5049,7 @@ async function exportVideo() {
     rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
     const done = new Promise(r => rec.onstop = r);
     let bmp = await createImageBitmap(blobs[0]), bmpI = 0, nextP = blobs[1] ? createImageBitmap(blobs[1]) : null;
-    drawFrameFx(ox, 0, bmp, 0, 0, vid);
+    drawFrameFx(ox, 0, bmp, 0, 0, vid, live ? ppLiveOver(0, 0, false) : null);
     if (vid) { try { await vid.play(); } catch (e) {} }
     rec.start(250); let stopAudio = () => {}; if (hasAudio) stopAudio = await scheduleAudio(ac, dest, 0, total);
     const t0 = performance.now();
@@ -4939,7 +5060,7 @@ async function exportVideo() {
         if (t >= total + 0.15) { resolve(); return; }
         let i = T.findIndex((v, k) => k < S.frames.length && t < T[k + 1]); if (i < 0) i = S.frames.length - 1;
         if (i !== bmpI) { bmp.close && bmp.close(); bmp = nextP && i === bmpI + 1 ? await nextP : await createImageBitmap(blobs[i]); bmpI = i; nextP = blobs[i + 1] ? createImageBitmap(blobs[i + 1]) : null; }
-        drawFrameFx(ox, i, bmp, t, t - T[i], vid);
+        drawFrameFx(ox, i, bmp, t, t - T[i], vid, live ? ppLiveOver(i, t - T[i], false) : null);
         msg(`Đang quay ${t.toFixed(1)} / ${total.toFixed(1)} giây`);
         requestAnimationFrame(tick);
       };
@@ -7663,7 +7784,7 @@ async function init() {
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }
 /* ========= Installed app (PWA): offline + updates ========= */
-const APP_VERSION = '2026.11.21-0004';
+const APP_VERSION = '2026.11.21-0033';
 let swReg = null, swUpdating = false;
 (function setupPWA() {
   let top = false; try { top = window.top === window; } catch (e) {}

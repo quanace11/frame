@@ -56,6 +56,8 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
   - Vai trò (`PP_ROLES`): `head`, `torso`, `armL/R`, `foreL/R`, `legL/R`, `shinL/R`, `mouth`, `eyes`.
   - Cắt tự động 2 bước: `ppFitJoints` (+ `ppFitLimbs`: tìm bàn tay/bàn chân là đầu mút xa nhất khi đi bên trong hình; tay áp sát thân thì tìm theo viền) → `ppLabBegin` chia vùng (`ppAutoLabels`: lan từ xương, qua nét viền tốn thêm) và cho người dùng tô sửa (`ppSetup.hand`, bút / chạm cả mảng / khoanh, giá trị theo `PP_R10`, 10 = bỏ đi) → `ppAutoCut`. Nút "Sửa lại vùng cắt" mở lại từ `ppLastCut` (chỉ trong phiên), cắt lại giữ tư thế theo vai trò.
   - `ppPresetPose` (đi, chạy, nhảy...), `ppTween`/`ppRetween` (frame giữa tự cập nhật theo keyframe 🔑).
+  - **〰 Uốn mềm khớp** (`S.ppSoft`): `drawPuppet` vẽ tay/chân bằng lưới tam giác (`ppDrawSoft`), điểm gần khớp trộn ma trận 2 mảnh (`ppSkinMat`, `ppSoftJoints`): khuỷu/gối trộn 2 phía, vai/hông chỉ phía tay/chân. `ppGeom` cache trục xương + bề rộng chi (WeakMap, không lưu).
+  - **🌊 Phát mượt** (`S.ppSmooth`): khi phát/xuất video, cache frame không có puppet + nét vector, rồi vẽ trực tiếp tư thế nội suy `ppPoseAt(i, tInFrame, wrap)` (cubic đơn điệu, frame dài giữ dáng rồi chuyển trong 0.16 s cuối, ease `hold` thì nhảy) qua `drawFrameFx(..., over=ppLiveOver(...))`. Test55.
 - **Kho hình** (`ASSET_CATS`, `assetDialog`, `assetToPart`, `assetToFrame`)
   - Mắt, miệng, biểu cảm, tay, hiệu ứng.
   - Hiệu ứng động (`ANIM_CATS`: 💫 Choáng, 🥊 Đánh nhau, 💥 Chữ âm thanh): mỗi hình là vòng lặp nhiều frame, hàm vẽ nhận `o.t`, số frame + âm thanh ở `items[k][2]` = `{n, sfx}`. `assetToFrameAnim` đặt frame 0, bấm ✓ thì `assetStampAnim` vẽ tiếp lên các frame sau (thiếu thì thêm frame), gắn SFX và ghi undo.
