@@ -572,7 +572,7 @@ let W = 1080, H = 1920;
 const PALETTE = ['#111111','#ffffff','#e53935','#fb8c00','#fdd835','#43a047','#1e88e5','#8e24aa','#f6c7a8','#8d6e63','#9e9e9e','#00acc1'];
 const S = {
   frames: [], bgs: [], cur: 0, layer: 'char', tool: 'brush',
-  color: '#111111', size: 8, opacity: 1, pressure: true, brush: 'pen', eraserType: 'hard', recentColors: [], brushOp: {},
+  color: '#111111', size: 8, opacity: 1, pressure: true, brush: 'pen', eraserType: 'hard', recentColors: [], brushOp: {}, sizeScreen: true,
   onion: true, onionAlpha: 0.3, showBg: true, showChar: true, showCol: true, showVec: true, showPP: true, bendR: 160, mbendR: 0, vdm: 'point', snap: false, snapR: 24,
   fingerDraw: false, smooth: 0.3, defaultDur: 0.1, loop: true, fillTol: 120,
   uiHide: { rail: false, top: false, tl: false }
@@ -596,7 +596,7 @@ let toastT;
 function toast(msg, ms = 1800) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
 
 /* ========= Settings ========= */
-const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','lineLayer','uiHide','panelHidden','brush','eraserType','recentColors','brushOp'];
+const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','lineLayer','uiHide','panelHidden','brush','eraserType','recentColors','brushOp','sizeScreen'];
 function loadSettings() { try { const o = JSON.parse(localStorage.getItem('fs-settings') || '{}'); for (const k of SETTINGS_KEYS) if (k in o) { if (k === 'panelHidden') Object.assign(panelHidden, o[k]); else S[k] = o[k]; } } catch (e) {}
   S.uiHide = Object.assign({ rail: false, top: false, tl: false }, S.uiHide); }
 function saveSettings() { try { const o = {}; for (const k of SETTINGS_KEYS) o[k] = S[k]; localStorage.setItem('fs-settings', JSON.stringify(o)); } catch (e) {} }
@@ -909,6 +909,9 @@ const SIZE_MAX = 150;   // the size slider is not linear: the left half covers 1
 const sizeToPos = s => Math.round(Math.sqrt((clamp(s, 1, SIZE_MAX) - 1) / (SIZE_MAX - 1)) * 1000);
 const posToSize = v => Math.max(1, Math.round(1 + (SIZE_MAX - 1) * Math.pow(v / 1000, 2)));
 function sizeStep(s, d) { const k = d > 0 ? s : s - 1, st = k < 10 ? 1 : k < 30 ? 2 : k < 60 ? 5 : 10; return clamp(d > 0 ? Math.floor(s / st) * st + st : Math.ceil(s / st) * st - st, 1, SIZE_MAX); }
+// brush size in document pixels. With "Giữ cỡ khi phóng to" (S.sizeScreen, default on) the number means the size at the
+// fitted view (100%), so zooming in draws finer lines and the brush looks the same on screen at any zoom.
+function bsz() { return S.sizeScreen === false || !fitS || !vs ? S.size : Math.max(0.25, S.size * fitS / vs); }
 function setSize(v) { S.size = clamp(Math.round(v), 1, SIZE_MAX); syncSizeOp(); saveSettings(); }
 // refresh every size / opacity control (top bar + Bút ▾ menu)
 function syncSizeOp() {
@@ -1067,7 +1070,7 @@ function makeBrushEngine(ctx, o) {
   return { E, add, end };
 }
 let stroke = null;
-function widthFor(p) { return S.pressure ? Math.max(0.6, S.size * (0.12 + 0.88 * Math.pow(p, 0.85))) : S.size; }
+function widthFor(p) { const z = bsz(); return S.pressure ? Math.max(Math.min(0.6, z), z * (0.12 + 0.88 * Math.pow(p, 0.85))) : z; }
 function growDirty(x, y, r) {
   const d = stroke.dirty, b = stroke.bbox;
   d[0] = Math.min(d[0], x - r); d[1] = Math.min(d[1], y - r); d[2] = Math.max(d[2], x + r); d[3] = Math.max(d[3], y + r);
@@ -1076,7 +1079,7 @@ function growDirty(x, y, r) {
 // symmetry: a second brush engine draws the mirrored stroke into the same layer
 const symPt = p => S.sym === 2 ? { ...p, y: H - p.y } : S.sym === 3 ? { ...p, x: W - p.x, y: H - p.y } : { ...p, x: W - p.x };
 function strokeEngines() {
-  const st = stroke, o = { brush: st.B, color: S.color, size: S.size, pressure: S.pressure, flowK: st.B.kind === 'dab' && !st.erase ? Math.max(1, curOp() / (st.B.op0 || 1)) : 1, smooth: st.shape ? 0 : S.smooth, erase: st.erase, dirty: growDirty };
+  const st = stroke, o = { brush: st.B, color: S.color, size: bsz(), pressure: S.pressure, flowK: st.B.kind === 'dab' && !st.erase ? Math.max(1, curOp() / (st.B.op0 || 1)) : 1, smooth: st.shape ? 0 : S.smooth, erase: st.erase, dirty: growDirty };
   st.eng = makeBrushEngine(sctx, o); st.eng2 = S.sym ? makeBrushEngine(sctx, o) : null;
 }
 function strokeFeed(p, t) { stroke.eng.add(p, t); if (stroke.eng2) stroke.eng2.add(symPt(p), t); }
@@ -1227,7 +1230,7 @@ function lineWalls(f) {           // 1 where a line is (pixel lines of Nhân v�
   const n = W * H, walls = new Uint8Array(n);
   if (S.showChar && f.canvas) { const d = f.canvas.getContext('2d').getImageData(0, 0, W, H).data; for (let i = 0; i < n; i++) if (d[i * 4 + 3] >= 100) walls[i] = 1; }
   if (S.showVec && f.vec && f.vec.length) {
-    const wc = makeCanvas(), wx = wc.getContext('2d'); drawVec(wx, f.vec);
+    const wc = makeCanvas(), wx = wc.getContext('2d'); drawVec(wx, f.vec, true);
     const d = wx.getImageData(0, 0, W, H).data; for (let i = 0; i < n; i++) if (d[i * 4 + 3] > 90) walls[i] = 1; wc.width = 0;
   }
   return walls;
@@ -1410,7 +1413,7 @@ function fillPixels(o, p) {
   if (!o || !o.canvas) return;
   let walls = null;
   if (o.kind === 'char' && o.vec && o.vec.length && S.showVec) {
-    const wc = makeCanvas(), wx = wc.getContext('2d'); drawVec(wx, o.vec);
+    const wc = makeCanvas(), wx = wc.getContext('2d'); drawVec(wx, o.vec, true);
     const wd = wx.getImageData(0, 0, W, H).data; walls = new Uint8Array(W * H);
     for (let i = 0; i < walls.length; i++) walls[i] = wd[i * 4 + 3]; wc.width = 0;
   }
@@ -2289,7 +2292,7 @@ const vpsel = new Map();   // "Nhiều chấm" mode: stroke id -> Set of selecte
 let vpoly = null, vpMinus = false, vpLastTap = null;   // vpMinus: "Khoanh bớt" = the next lasso removes points from the selection          // lasso outline of the current point selection: dragging inside it moves the selected points
 const vpGet = id => vsel.has(id) ? vpsel.get(id) : null;
 function vpCount() { let n = 0; for (const [id, s] of vpsel) if (vsel.has(id)) n += s.size; return n; }
-const cloneVec = v => (v || []).map(st => ({ id: st.id, c: st.c, w: st.w, pts: st.pts.map(q => ({ x: q.x, y: q.y })) }));
+const cloneVec = v => (v || []).map(st => ({ id: st.id, c: st.c, w: st.w, a: st.a, pts: st.pts.map(q => ({ x: q.x, y: q.y })) }));
 function strokePath(ctx, pts) {
   ctx.beginPath(); const n = pts.length; if (!n) return;
   ctx.moveTo(pts[0].x, pts[0].y);
@@ -2300,10 +2303,11 @@ function strokePath(ctx, pts) {
     ctx.bezierCurveTo(p1.x + (p2.x - p0.x) / 6, p1.y + (p2.y - p0.y) / 6, p2.x - (p3.x - p1.x) / 6, p2.y - (p3.y - p1.y) / 6, p2.x, p2.y);
   }
 }
-function drawVec(ctx, strokes) {
+// st.a = the stroke's Độ đậm (missing = 100%). solid: ignore it (fill walls)
+function drawVec(ctx, strokes, solid) {
   if (!strokes || !strokes.length) return;
   ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-  for (const st of strokes) { ctx.strokeStyle = st.c; ctx.lineWidth = st.w; strokePath(ctx, st.pts); ctx.stroke(); }
+  for (const st of strokes) { ctx.globalAlpha = solid || st.a == null ? 1 : st.a; ctx.strokeStyle = st.c; ctx.lineWidth = st.w; strokePath(ctx, st.pts); ctx.stroke(); }
   ctx.restore();
 }
 function renderVec(c, f, px) {
@@ -2314,7 +2318,7 @@ function renderVec(c, f, px) {
   }
   drawVec(c, f.vec);
   if (action && action.kind === 'vdraw' && action.pts.length) {
-    c.save(); c.lineCap = 'round'; c.lineJoin = 'round'; c.strokeStyle = S.color; c.lineWidth = vecBrushW(action.pts); strokePath(c, action.pts); c.stroke(); c.restore();
+    c.save(); c.lineCap = 'round'; c.lineJoin = 'round'; c.globalAlpha = curOp(); c.strokeStyle = S.color; c.lineWidth = vecBrushW(action.pts); strokePath(c, action.pts); c.stroke(); c.restore();
   }
   if (S.tool === 'vedit' && vsel.size && !motion && !rig) {
     c.save(); c.lineWidth = 1.5 * px;
@@ -2440,7 +2444,7 @@ function rdp(pts, eps) {
 }
 function cumLen(P) { const c = [0]; for (let i = 1; i < P.length; i++) c.push(c[i - 1] + Math.hypot(P[i].x - P[i - 1].x, P[i].y - P[i - 1].y)); return c; }
 function pip(p, poly) { let ins = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], b = poly[j]; if ((a.y > p.y) !== (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) ins = !ins; } return ins; }
-function vecBrushW(pts) { if (!S.pressure) return S.size; const ap = pts.reduce((a, q) => a + q.p, 0) / pts.length; return widthFor(ap); }
+function vecBrushW(pts) { if (!S.pressure) return bsz(); const ap = pts.reduce((a, q) => a + q.p, 0) / pts.length; return widthFor(ap); }
 function selStrokes() { const f = curFrame(); return f ? f.vec.filter(st => vsel.has(st.id)) : []; }
 
 function vecStart(p, base) {
@@ -2581,7 +2585,7 @@ async function vecOfferConvert() {
   if (ok) convertPixelsToVector(false);
 }
 function vecEraseAt(p) {
-  const f = curFrame(), r = Math.max(S.size / 2, 6 * DPR / vs);
+  const f = curFrame(), r = Math.max(bsz() / 2, 6 * DPR / vs);
   const n0 = f.vec.length; f.vec = f.vec.filter(st => strokeDist(st, p) - st.w / 2 > r);
   if (f.vec.length !== n0) { action.removed += n0 - f.vec.length; requestRender(); }
 }
@@ -2622,7 +2626,7 @@ function vecEnd() {
     if (a.last) a.pts.push({ ...a.last });
     const before = cloneVec(f.vec);
     const pts = rdp(a.pts, 0.9).map(q => ({ x: q.x, y: q.y }));
-    f.vec.push({ id: newId(), c: S.color, w: vecBrushW(a.pts), pts });
+    const op = curOp(); f.vec.push({ id: newId(), c: S.color, w: vecBrushW(a.pts), ...(op < 1 ? { a: op } : {}), pts });
     pushVecUndo(f, before); markEdited(f);
   } else if (a.kind === 'verase') { if (a.removed) { pushVecUndo(f, a.before); markEdited(f); } }
   else if (a.kind === 'vlasso' && a.multi) { const poly = lasso; lasso = null; vecMultiLasso(poly, f); }
@@ -2736,7 +2740,7 @@ function motionVec(vec, k, m) {
   for (const st of vec) {
     if (st.id.endsWith(LIP) && m.ids.has(st.id.slice(0, -LIP.length))) continue;   // regenerate lips
     if (!m.ids.has(st.id)) { out.push(st); continue; }
-    const s2 = { id: st.id, c: st.c, w: st.w, pts: st.pts.map(q => ({ x: q.x, y: q.y })) };
+    const s2 = { id: st.id, c: st.c, w: st.w, a: st.a, pts: st.pts.map(q => ({ x: q.x, y: q.y })) };
     if (m.type === 'swing') {
       const A = m.amp * Math.PI / 180 * Math.sin(t), soft = m.soft / 100;
       for (const q of s2.pts) {
@@ -2937,7 +2941,7 @@ function skinVec(vec, J, pose, simplify) {
       for (const [j, w] of boneWeights(q, J)) { const p = RP[j], c = Math.cos(pose.d[j]), s = Math.sin(pose.d[j]), vx = q.x - J[p].x, vy = q.y - J[p].y; x += w * (pose.pos[p].x + vx * c - vy * s); y += w * (pose.pos[p].y + vx * s + vy * c); }
       return { x, y };
     });
-    return { id: st.id, c: st.c, w: st.w, pts: simplify ? rdp(pts, 0.7) : pts };
+    return { id: st.id, c: st.c, w: st.w, a: st.a, pts: simplify ? rdp(pts, 0.7) : pts };
   });
 }
 function bodyPose(type, ph, f, A, prog, cyc) {
@@ -2996,11 +3000,11 @@ function lipStroke(st, open) {
   let P = st.pts; if (P.length < 2) return null;
   if (P.length < 8) P = crSample(P, 4);
   const xs = P.map(q => q.x), wid = Math.max(...xs) - Math.min(...xs) || 20, c2 = cumLen(P), L = c2[c2.length - 1] || 1;
-  return { id: st.id + '~lip', c: st.c, w: st.w, pts: P.map((q, i) => ({ x: q.x, y: q.y + Math.sin(Math.PI * c2[i] / L) * open * wid })) };
+  return { id: st.id + '~lip', c: st.c, w: st.w, a: st.a, pts: P.map((q, i) => ({ x: q.x, y: q.y + Math.sin(Math.PI * c2[i] / L) * open * wid })) };
 }
 function applyExpr(vec, type, ph, A, J) {
   const F = S.rig && S.rig.face; if (!type || type === 'none' || !F) return vec;
-  const out = vec.map(st => ({ id: st.id, c: st.c, w: st.w, pts: st.pts.map(q => ({ ...q })) }));
+  const out = vec.map(st => ({ id: st.id, c: st.c, w: st.w, a: st.a, pts: st.pts.map(q => ({ ...q })) }));
   const pick = ids => out.filter(st => ids.includes(st.id));
   const hcx = (J.head.x + J.neck.x) / 2, hl = Math.hypot(J.head.x - J.neck.x, J.head.y - J.neck.y) || 100;
   const eyes = pick(F.eyes), mouth = pick(F.mouth), brows = pick(F.brows);
@@ -3979,7 +3983,7 @@ function ppStart(p, base) {
     const im = ppImg(sel, q), M = ppMats(f.pp)[sel.id], inv = mInv(M), l = mApply(inv, p.x, p.y), sc = Math.hypot(M[0], M[1]) || 1;
     const cx = im.c.getContext('2d'), before = cx.getImageData(0, 0, im.c.width, im.c.height);
     const pt = { x: l.x - im.x, y: l.y - im.y };
-    cx.save(); cx.globalCompositeOperation = ppPaint === 'erase' ? 'destination-out' : 'source-over'; cx.fillStyle = S.color; cx.beginPath(); cx.arc(pt.x, pt.y, S.size / sc / 2, 0, Math.PI * 2); cx.fill(); cx.restore();
+    cx.save(); cx.globalCompositeOperation = ppPaint === 'erase' ? 'destination-out' : 'source-over'; cx.fillStyle = S.color; cx.beginPath(); cx.arc(pt.x, pt.y, bsz() / sc / 2, 0, Math.PI * 2); cx.fill(); cx.restore();
     action = { ...base, kind: 'pppaint', part: sel, im, inv, sc, last: pt, before }; requestRender(); return;
   }
   const sel = ppPart(ppSel);
@@ -3999,7 +4003,7 @@ function ppMove(p) {
   if (a.kind === 'ppcut' || a.kind === 'pppatch') { const l = lasso[lasso.length - 1]; if (Math.hypot(p.x - l.x, p.y - l.y) > 3 / vs) { lasso.push(p); requestRender(); } return; }
   if (a.kind === 'pppaint') {
     const l = mApply(a.inv, p.x, p.y), pt = { x: l.x - a.im.x, y: l.y - a.im.y }, cx = a.im.c.getContext('2d');
-    cx.save(); cx.globalCompositeOperation = ppPaint === 'erase' ? 'destination-out' : 'source-over'; cx.strokeStyle = S.color; cx.lineWidth = S.size / a.sc; cx.lineCap = cx.lineJoin = 'round';
+    cx.save(); cx.globalCompositeOperation = ppPaint === 'erase' ? 'destination-out' : 'source-over'; cx.strokeStyle = S.color; cx.lineWidth = bsz() / a.sc; cx.lineCap = cx.lineJoin = 'round';
     cx.beginPath(); cx.moveTo(a.last.x, a.last.y); cx.lineTo(pt.x, pt.y); cx.stroke(); cx.restore(); a.last = pt; a.im.holder.alpha = null; requestRender(); return;
   }
   if (a.kind === 'ppik') { ppIKDrag(a.part, p, f); }
@@ -6558,7 +6562,8 @@ function brushPop() {
     <div class="set-row"><span>Cỡ nét</span><span class="stpw"><button class="stp" data-stp="size" data-d="-1" aria-label="Giảm cỡ">−</button><input type="range" class="sizeR" min="0" max="1000" step="1"><button class="stp" data-stp="size" data-d="1" aria-label="Tăng cỡ">+</button><span class="val sizeV"></span></span></div>
     <div class="set-row"><span title="Mỗi loại bút / kiểu tẩy nhớ độ đậm riêng. Với tẩy: độ đậm thấp thì xoá nhạt">Độ đậm <small class="bp-opfor"></small></span><span class="stpw"><button class="stp" data-stp="op" data-d="-1" aria-label="Giảm độ đậm">−</button><input type="range" class="opR" min="5" max="100" step="1"><button class="stp" data-stp="op" data-d="1" aria-label="Tăng độ đậm">+</button><span class="val opV"></span></span></div>
     <div class="set-row"><span title="Kéo lên cao để nét thẳng và mượt hơn khi tay run (nét đi chậm hơn bút một chút)">Chống run tay</span><input type="range" class="bp-smooth" min="0" max="90" step="1"><span class="val bp-smoothv"></span></div>
-    <label class="set-row"><span title="Nét to nhỏ theo lực nhấn bút">Nét theo lực nhấn bút</span><input type="checkbox" class="bp-press"></label>`, 'wide');
+    <label class="set-row"><span title="Nét to nhỏ theo lực nhấn bút">Nét theo lực nhấn bút</span><input type="checkbox" class="bp-press"></label>
+    <label class="set-row"><span title="Bật: phóng to thì nét vẽ mảnh lại, bút trông luôn to như nhau trên màn hình (để vẽ chi tiết). Tắt: cỡ tính theo hình, phóng to thì nét cũng to theo">Giữ cỡ bút khi phóng to</span><input type="checkbox" class="bp-zs"></label>`, 'wide');
   const tip = d.querySelector('.br-tip');
   function sync() {
     const isE = S.tool === 'eraser';
@@ -6577,6 +6582,8 @@ function brushPop() {
   sm.addEventListener('input', () => { S.smooth = sm.value / 100; d.querySelector('.bp-smoothv').textContent = sm.value + '%'; saveSettings(); });
   const pr = d.querySelector('.bp-press'); pr.checked = !!S.pressure;
   pr.addEventListener('change', () => { S.pressure = pr.checked; updateToggles(); saveSettings(); });
+  const zs = d.querySelector('.bp-zs'); zs.checked = S.sizeScreen !== false;
+  zs.addEventListener('change', () => { S.sizeScreen = zs.checked; saveSettings(); toast(zs.checked ? 'Phóng to thì nét mảnh lại để vẽ chi tiết' : 'Cỡ nét tính theo hình: phóng to thì nét cũng to'); });
   sync();
 }
 // background options live in a small menu so the top bar stays short; the real buttons are moved in and back out
@@ -6868,7 +6875,7 @@ async function exportZip() {
       }
       meta.push({ index: i + 1, file: `frames/frame_${n}.png`, char_layer: `layers/char_${n}.png`, color_layer: colorName, lines_layer: linesName, bg_layer: bgFile.get(f.bgId), duration_ms: f.dur,
         pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], camera: camAt(i), cam_key: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null,
-        vector: f.vec.map(st => ({ c: st.c, w: +st.w.toFixed(2), pts: st.pts.map(q => [+q.x.toFixed(1), +q.y.toFixed(1)]) })) });
+        vector: f.vec.map(st => ({ c: st.c, w: +st.w.toFixed(2), a: st.a, pts: st.pts.map(q => [+q.x.toFixed(1), +q.y.toFixed(1)]) })) });
     }
     comp.width = 0;
     const total = S.frames.reduce((a, f) => a + f.dur, 0);
@@ -6912,7 +6919,7 @@ async function importZip(file) {
       const d = z.get(fr.char_layer);
       let bgId = bgIdByFile.get(fr.bg_layer);
       if (!bgId) { bgId = newId(); bgs.push({ id: bgId, png: null }); }
-      const vec = (fr.vector || []).map(st => ({ id: newId(), c: st.c, w: st.w, pts: st.pts.map(([x, y]) => ({ x, y })) }));
+      const vec = (fr.vector || []).map(st => ({ id: newId(), c: st.c, w: st.w, a: st.a, pts: st.pts.map(([x, y]) => ({ x, y })) }));
       const dc = fr.color_layer && z.get(fr.color_layer);
       return { id: newId(), dur: fr.duration_ms || 100, bgId, vec, col: dc ? dc.buffer.slice(dc.byteOffset, dc.byteOffset + dc.byteLength) : null, pp: fr.pp || {}, ppKey: fr.ppKey, ppEase: fr.ppEase, texts: fr.texts || [], cam: fr.cam_key || null, shake: fr.shake || 0, flash: !!fr.flash, lip: fr.lip || null, png: d ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : null };
     });
