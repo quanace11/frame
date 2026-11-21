@@ -90,6 +90,7 @@ input[type=range]{width:110px;accent-color:var(--accent);height:28px}
 #bgInfo{font-size:11px;color:var(--muted)}
 .spacer{flex:1}
 #saveState{font-size:11px;color:var(--muted);white-space:nowrap}
+#syncState{min-width:44px;font-size:12px;white-space:nowrap}
 .pop.bgm{width:min(360px,92vw)} .bgm-row{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:12px;color:var(--muted)} .bgm-row > button{flex:none;min-width:110px;min-height:42px}
 #projBtn{max-width:170px;overflow:hidden;text-overflow:ellipsis} #top .chip.small,#top .layer{min-height:38px} #top .layer .name,#top .layer .eye{min-height:36px}
 /* Stage */
@@ -353,7 +354,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
     </div>
     <span class="spacer"></span>
     <button class="chip small on" id="wizBtn" title="Trợ lý làm video từng bước">🚀 Làm nhanh</button><button class="chip small" id="aiCharBtn" title="AI tạo nhân vật hoạt hình từ ảnh chụp (Google Gemini, dùng key của bạn)">🤖 AI nhân vật</button><button class="chip small" id="assetBtn" title="Kho hình: hiệu ứng động (choáng, đánh nhau, chữ âm thanh), mắt, miệng, tay">🎨 Kho hình</button>
-    <button class="chip small" id="projBtn" title="Danh sách dự án">📁 Dự án</button><span id="saveState"></span>
+    <button class="chip small" id="projBtn" title="Danh sách dự án">📁 Dự án</button><span id="saveState"></span><button class="chip small" id="syncState" hidden title="Đồng bộ giữa các máy">☁</button>
     <button class="chip small hidebtn" id="topHide" title="Thu gọn thanh này thành 1 nút nhỏ để vùng vẽ rộng hơn" aria-label="Thu gọn thanh trên">▴</button>
   </header>
 
@@ -4741,24 +4742,258 @@ async function projectsDialog() {
   const rows = list.map(p => `<div class="prow ${p.id === curProjId ? 'on' : ''}" data-id="${p.id}">
     <img src="${p.thumb || ''}" alt=""><div class="pinfo"><b>${(p.name || 'Dự án').replace(/</g, '&lt;')}</b><span>${p.frames || 1} frame · ${fmt(p.updated || Date.now())}</span></div>
     <div class="pbtns"><button class="chip small" data-pa="open">Mở</button><button class="chip small" data-pa="ren">Đổi tên</button><button class="chip small" data-pa="dup">Nhân bản</button><button class="chip small" data-pa="del" style="color:var(--danger)">Xoá</button></div></div>`).join('');
-  modal({ title: '📁 Dự án của bạn', html: `<div class="menu-grid" style="margin-top:0"><button class="btn primary" data-pn="916">＋ Dự án mới 9:16 (Shorts)</button><button class="btn" data-pn="169">＋ Dự án mới 16:9</button></div><div class="plist">${rows || '<p class="lbl">Chưa có dự án</p>'}</div>`,
+  modal({ title: '📁 Dự án của bạn', html: `<div class="menu-grid" style="margin-top:0"><button class="btn primary" data-pn="916">＋ Dự án mới 9:16 (Shorts)</button><button class="btn" data-pn="169">＋ Dự án mới 16:9</button><button class="btn" data-pn="sync">☁ ${syncCfg() ? 'Đồng bộ ngay' : 'Đồng bộ tablet ↔ laptop'}</button></div><div class="plist">${rows || '<p class="lbl">Chưa có dự án</p>'}</div>`,
     buttons: [{ label: 'Đóng', value: null }], onOpen: (ov, close) => {
       ov.querySelector('.dlg').classList.add('wide');
-      ov.querySelectorAll('[data-pn]').forEach(b => b.addEventListener('click', async () => { close(); await createProject(b.dataset.pn === '916' ? 1080 : 1920, b.dataset.pn === '916' ? 1920 : 1080); toast('Đã tạo dự án mới — dự án cũ vẫn được giữ'); }));
+      ov.querySelectorAll('[data-pn]').forEach(b => b.addEventListener('click', async () => { close(); if (b.dataset.pn === 'sync') { if (!syncCfg()) syncDialog(); else { await syncNow({ manual: true }); projectsDialog(); } return; } await createProject(b.dataset.pn === '916' ? 1080 : 1920, b.dataset.pn === '916' ? 1920 : 1080); toast('Đã tạo dự án mới — dự án cũ vẫn được giữ'); }));
       ov.querySelectorAll('.prow').forEach(row => row.querySelectorAll('[data-pa]').forEach(b => b.addEventListener('click', async () => {
         const id = row.dataset.id, act = b.dataset.pa, item = list.find(x => x.id === id);
         if (act === 'open') { close(); await openProject(id); }
         else if (act === 'ren') { let v = null; await modal({ title: 'Đổi tên dự án', html: `<input id="pnIn" value="${(item.name || '').replace(/"/g, '&quot;')}" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text)">`, buttons: [{ label: 'Huỷ', value: null }, { label: 'Lưu', primary: true, action: () => { v = document.getElementById('pnIn').value.trim(); } }] });
-          if (v) { if (id === curProjId) { S.projName = v.slice(0, 60); updateProjLabel(); await saveProject(); } else { const p = await idbGet('project:' + id); if (p) { p.name = v.slice(0, 60); await idbPut('project:' + id, p); } const L = await projIndex(); const it = L.find(x => x.id === id); if (it) { it.name = v.slice(0, 60); await idbPut('projects', L); } } close(); projectsDialog(); } }
+          if (v) { if (id === curProjId) { S.projName = v.slice(0, 60); updateProjLabel(); await saveProject(); } else { const p = await idbGet('project:' + id); if (p) { p.name = v.slice(0, 60); await idbPut('project:' + id, p); } const L = await projIndex(); const it = L.find(x => x.id === id); if (it) { it.name = v.slice(0, 60); it.updated = Date.now(); await idbPut('projects', L); syncSoon(); } } close(); projectsDialog(); } }
         else if (act === 'dup') { const p = await idbGet('project:' + id); if (!p) return; const nid = newId(); p.name = (p.name || 'Dự án') + ' (bản sao)'; await copyProjectBlobs(id, nid, p); await idbPut('project:' + nid, p); const L = await projIndex(); L.push({ ...item, id: nid, name: p.name, updated: Date.now() }); await idbPut('projects', L); close(); projectsDialog(); }
         else if (act === 'del') {
           const ok = await modal({ title: `Xoá dự án "${item.name}"?`, html: '<p>Lỡ tay thì bấm ↶ Hoàn tác để lấy lại.</p>', buttons: [{ label: 'Huỷ', value: false }, { label: 'Xoá', value: true, cls: 'danger' }] });
-          if (!ok) return; await idbDel('project:' + id); try { await deleteProjectBlobs(id); } catch (e) { console.error(e); } const L = (await projIndex()).filter(x => x.id !== id); await idbPut('projects', L);
+          if (!ok) return; await idbDel('project:' + id); try { await deleteProjectBlobs(id); } catch (e) { console.error(e); } const L = (await projIndex()).filter(x => x.id !== id); await idbPut('projects', L); await syncNoteDeleted(id);
           if (id === curProjId) { close(); if (L.length) { curProjId = null; await openProject(L.sort((a, b) => b.updated - a.updated)[0].id); } else await createProject(1080, 1920); }
           else { close(); projectsDialog(); }
         }
       })));
     } });
+}
+/* ========= ☁ Sync projects between devices (tablet ↔ laptop) through the user's own PRIVATE GitHub repo =========
+   No server: the app talks to the GitHub git API with a fine-grained token that lives ONLY in this browser's localStorage
+   (never in a project, ZIP or the repo). Remote layout (one commit per sync run):
+     index.json            { v:1, projects:[{id, name, updated, frames, thumb, del?}] }
+     p/<id>/rec.json       the IndexedDB project record; binaries replaced by {$b:<git sha>}, blob refs by {$r:name,$v:...}
+     p/<id>/b/<git sha>    each binary (frame PNGs, audio...) once, named by its git sha → unchanged pictures are never re-uploaded
+   Each device remembers what it last saw (IDB 'sync-state'): changed only here → push, only there → pull,
+   both → keep both (the other device's version comes in as a copy "(từ máy khác)"). */
+const SYNC_TOK_LS = 'fs-sync-gh-token', SYNC_REPO_LS = 'fs-sync-gh-repo', SYNC_AUTO_LS = 'fs-sync-auto', SYNC_API = 'https://api.github.com';
+const syncCfg = () => { const tok = lsGet(SYNC_TOK_LS).trim(), repo = lsGet(SYNC_REPO_LS).trim().replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/+$/, ''); return tok && /^[\w.-]+\/[\w.-]+$/.test(repo) ? { tok, repo } : null; };
+const syncAuto = () => lsGet(SYNC_AUTO_LS) !== 'off';
+let syncBusy = null, syncAgain = false, syncLast = 0, syncT = null, syncMsg = '';
+function setSyncState(t, title) { const el = document.getElementById('syncState'); if (!el) return; el.hidden = !syncCfg(); el.textContent = t; el.title = title || 'Đồng bộ giữa các máy (bấm để xem)'; }
+function syncErr(status, j) {
+  const m = j && j.message || '';
+  if (status === 401) return 'Token sai hoặc đã hết hạn. Tạo token mới rồi dán lại.';
+  if (status === 403 && /rate limit/i.test(m)) return 'GitHub đang giới hạn số lần gọi. Thử lại sau ít phút.';
+  if (status === 403) return 'Token chưa có quyền ghi. Khi tạo token, chọn Contents: Read and write cho repo này.';
+  if (status === 404) return 'Không thấy repo. Kiểm tra tên repo, và token đã được chọn cho đúng repo này chưa.';
+  return 'GitHub báo lỗi ' + status + (m ? ': ' + m : '');
+}
+async function gh(cfg, path, { method = 'GET', body, raw } = {}) {
+  let r;
+  try { r = await fetch(SYNC_API + '/repos/' + cfg.repo + path, { method, cache: 'no-store', headers: { Authorization: 'Bearer ' + cfg.tok, Accept: raw ? 'application/vnd.github.raw' : 'application/vnd.github+json', ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined }); }
+  catch (e) { const er = new Error('Không kết nối được GitHub (đang offline?)'); er.offline = true; throw er; }
+  if (!r.ok) { let j = null; try { j = await r.json(); } catch (e) {} const er = new Error(syncErr(r.status, j)); er.status = r.status; er.ghMsg = j && j.message || ''; throw er; }
+  if (raw) return new Uint8Array(await r.arrayBuffer());
+  return r.status === 204 ? null : r.json();
+}
+const u8b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
+const strU8 = s => new TextEncoder().encode(s);
+async function gitSha(u8) { const h = strU8('blob ' + u8.length + '\0'), all = new Uint8Array(h.length + u8.length); all.set(h); all.set(u8, h.length); return [...new Uint8Array(await crypto.subtle.digest('SHA-1', all))].map(b => b.toString(16).padStart(2, '0')).join(''); }
+const asU8 = v => v instanceof ArrayBuffer ? new Uint8Array(v) : new Uint8Array(v.buffer, v.byteOffset, v.byteLength);
+// project record → JSON-safe tree + the binaries it needs (sha → bytes)
+async function syncEncode(rec, pid) {
+  const files = new Map(), pre = blobPrefix(pid);
+  const bin = async (u8, t, extra) => { const sha = await gitSha(u8); files.set(sha, u8); return { $b: sha, $t: t, ...extra }; };
+  const walk = async v => {
+    if (v == null || typeof v !== 'object') return v;
+    if (v instanceof ArrayBuffer) return bin(asU8(v), 'ab');
+    if (ArrayBuffer.isView(v)) return bin(new Uint8Array(asU8(v)), v.constructor.name);
+    if (typeof Blob !== 'undefined' && v instanceof Blob) return bin(new Uint8Array(await v.arrayBuffer()), 'blob', { $m: v.type });
+    if (Array.isArray(v)) { const o = []; for (const x of v) o.push(await walk(x)); return o; }
+    if (typeof v.ref === 'string' && v.ref.startsWith(pre) && Object.keys(v).length === 1) { const b = await idbGet(v.ref); return b ? { $r: v.ref.slice(pre.length), $v: await walk(b) } : null; }
+    const o = {}; for (const k of Object.keys(v)) o[k] = await walk(v[k]); return o;
+  };
+  return { json: await walk(rec), files };
+}
+async function syncDecode(j, pid, getBin) {
+  const blobs = [], pre = blobPrefix(pid);
+  const walk = async v => {
+    if (v == null || typeof v !== 'object') return v;
+    if (Array.isArray(v)) { const o = []; for (const x of v) o.push(await walk(x)); return o; }
+    if (typeof v.$b === 'string') {
+      const u8 = await getBin(v.$b);
+      if (v.$t === 'ab') return u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
+      if (v.$t === 'blob') return new Blob([u8], { type: v.$m || '' });
+      const C = self[v.$t]; return C && C.BYTES_PER_ELEMENT ? new C(u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength)) : u8;
+    }
+    if (typeof v.$r === 'string') { const key = pre + v.$r; blobs.push([key, await walk(v.$v)]); return { ref: key }; }
+    const o = {}; for (const k of Object.keys(v)) o[k] = await walk(v[k]); return o;
+  };
+  return { rec: await walk(j), blobs };
+}
+async function syncWriteLocal(pid, rec, blobs, item) {
+  const db = await idbOpen();
+  await new Promise((res, rej) => { const tx = db.transaction('kv', 'readwrite'), st = tx.objectStore('kv'); st.delete(blobRange(pid)); for (const [k, v] of blobs) st.put(v, k); st.put(rec, 'project:' + pid); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error || new Error('abort')); });
+  const L = await projIndex(), it = L.find(x => x.id === pid), row = { id: pid, name: item.name, updated: item.updated, frames: item.frames, thumb: item.thumb || '' };
+  if (it) Object.assign(it, row); else L.push(row); await idbPut('projects', L);
+}
+async function syncState() { try { const s = await idbGet('sync-state'); if (s && s.items) return s; } catch (e) {} return { repo: '', items: {}, dels: [] }; }
+async function syncNoteDeleted(id) { if (!syncCfg()) return; const s = await syncState(); if (s.items[id] && !s.dels.includes(id)) { s.dels.push(id); await idbPut('sync-state', s); } syncSoon(); }
+function syncSoon(ms = 20000) { clearTimeout(syncT); if (syncCfg() && syncAuto()) syncT = setTimeout(() => syncNow({ quiet: true }), ms); }
+function syncNow(opt = {}) {
+  if (!syncCfg()) return Promise.resolve(null);
+  if (syncBusy) { syncAgain = true; return syncBusy; }
+  syncBusy = (async () => { let r = null; try { r = await syncRun(opt); } finally { syncBusy = null; } if (syncAgain) { syncAgain = false; syncSoon(1500); } return r; })();
+  return syncBusy;
+}
+async function syncRun(opt) {
+  const cfg = syncCfg(); clearTimeout(syncT);
+  if (stroke || playing || floating) { syncSoon(5000); return null; }
+  if (saveT) { clearTimeout(saveT); saveT = null; await saveProject(); }
+  for (let i = 0; saving && i < 100; i++) await new Promise(r => setTimeout(r, 100));
+  setSyncState('☁ …', 'Đang đồng bộ…');
+  const out = { pushed: 0, pulled: 0, copies: 0, deleted: 0, reloaded: false };
+  try {
+    for (let attempt = 0; ; attempt++) {
+      try { await syncOnce(cfg, out, opt); break; }
+      catch (e) { if (e.status === 422 && /fast.?forward|reference/i.test(e.ghMsg || '') && attempt < 3) continue; throw e; }   // another device committed meanwhile → redo on top of it
+    }
+    syncLast = Date.now(); syncMsg = '';
+    const t = new Date(syncLast).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    setSyncState('☁ ✓', 'Đã đồng bộ lúc ' + t);
+    if (out.reloaded) toast('☁ Đã cập nhật bài từ máy khác', 2600);
+    else if (out.copies) toast(`☁ Hai máy cùng sửa 1 dự án: đã giữ cả 2 bản (bản kia tên "… (từ máy khác)")`, 4200);
+    else if (!opt.quiet) toast(out.pushed || out.pulled || out.deleted ? `☁ Đồng bộ xong: gửi ${out.pushed}, nhận ${out.pulled} dự án` : '☁ Đã đồng bộ, không có gì mới');
+    return out;
+  } catch (e) {
+    console.error(e); syncMsg = e.message;
+    setSyncState(e.offline ? '☁ ⏸' : '☁ ⚠', (e.offline ? 'Chưa đồng bộ được: ' : 'Lỗi đồng bộ: ') + e.message);
+    if (!opt.quiet || (!e.offline && !syncWarned)) { syncWarned = true; toast('☁ ' + e.message, 4000); }
+    if (e.offline) syncSoon(60000);
+    return null;
+  }
+}
+let syncWarned = false;
+async function syncOnce(cfg, out, opt) {
+  // 1. where the remote is now
+  let head = null;
+  try { head = (await gh(cfg, '/git/ref/heads/main')).object.sha; }
+  catch (e) {
+    if (e.status !== 409 && e.status !== 404) throw e;
+    if (e.status === 404) await gh(cfg, '');          // 404 on the repo itself → clear "repo not found" error
+    // empty repo: the first file has to go through the contents API, which also creates the branch
+    await gh(cfg, '/contents/index.json', { method: 'PUT', body: { message: 'Frame Studio: bắt đầu đồng bộ', content: btoa('{"v":1,"projects":[]}'), branch: 'main' } });
+    head = (await gh(cfg, '/git/ref/heads/main')).object.sha;
+  }
+  const treeSha = (await gh(cfg, '/git/commits/' + head)).tree.sha;
+  const tree = await gh(cfg, '/git/trees/' + treeSha + '?recursive=1');
+  const paths = new Map(); for (const t of tree.tree || []) if (t.type === 'blob') paths.set(t.path, t.sha);
+  const readJson = async p => paths.has(p) ? JSON.parse(new TextDecoder().decode(await gh(cfg, '/git/blobs/' + paths.get(p), { raw: true }))) : null;
+  const rIndex = (await readJson('index.json')) || { v: 1, projects: [] };
+  const R = new Map(rIndex.projects.map(x => [x.id, x]));
+  const st = await syncState(); if (st.repo !== cfg.repo) { st.repo = cfg.repo; st.items = {}; st.dels = []; }
+  const local = await projIndex(), Lm = new Map(local.map(x => [x.id, x]));
+  st.dels = st.dels.filter(id => !Lm.has(id));
+  const edits = [], newItems = new Map(), newState = {};
+  // 2. pull = copy one remote project into this device (as the same id, or as a copy with a new id)
+  const pull = async (rit, asId, name) => {
+    const recSha = paths.get(`p/${rit.id}/rec.json`); if (!recSha) return false;
+    const j = JSON.parse(new TextDecoder().decode(await gh(cfg, '/git/blobs/' + recSha, { raw: true })));
+    const cache = new Map(), getBin = async sha => { if (!cache.has(sha)) cache.set(sha, await gh(cfg, '/git/blobs/' + sha, { raw: true })); return cache.get(sha); };
+    const { rec, blobs } = await syncDecode(j, asId, getBin);
+    if (name) rec.name = name;
+    if (asId === curProjId) {   // the open project: only replace it when nothing was touched since this sync started
+      const now = (await projIndex()).find(x => x.id === asId);
+      if (saveT || saving || stroke || floating || (now && Lm.get(asId) && now.updated !== Lm.get(asId).updated) || (!opt.manual && document.querySelector('.ov'))) return false;
+    }
+    await syncWriteLocal(asId, rec, blobs, { ...rit, name: rec.name || rit.name, updated: name ? Date.now() : rit.updated });
+    if (asId === curProjId) { curProjId = null; await openProject(asId); out.reloaded = true; }
+    out.pulled++; return true;
+  };
+  // 3. push = put one local project into the next commit
+  const push = async it => {
+    const rec = await idbGet('project:' + it.id); if (!rec) return;
+    const { json, files } = await syncEncode(rec, it.id), dir = `p/${it.id}/`;
+    const recU8 = strU8(JSON.stringify(json)), recSha = await gitSha(recU8);
+    const want = new Set(), n0 = edits.length;
+    for (const [sha, u8] of files) { const p = dir + 'b/' + sha; want.add(p); if (paths.get(p) !== sha) { await gh(cfg, '/git/blobs', { method: 'POST', body: { content: u8b64(u8), encoding: 'base64' } }); edits.push({ path: p, mode: '100644', type: 'blob', sha }); } }
+    if (paths.get(dir + 'rec.json') !== recSha) { await gh(cfg, '/git/blobs', { method: 'POST', body: { content: u8b64(recU8), encoding: 'base64' } }); edits.push({ path: dir + 'rec.json', mode: '100644', type: 'blob', sha: recSha }); }
+    for (const p of paths.keys()) if (p.startsWith(dir + 'b/') && !want.has(p)) edits.push({ path: p, mode: '100644', type: 'blob', sha: null });
+    const r = R.get(it.id);
+    if (edits.length === n0 && r && !r.del && r.name === it.name) return r.updated;   // same content already there: leave the remote as it is
+    newItems.set(it.id, { id: it.id, name: it.name, updated: it.updated, frames: it.frames, thumb: it.thumb || '' });
+    out.pushed++; return it.updated;
+  };
+  const drop = id => { for (const p of paths.keys()) if (p.startsWith(`p/${id}/`)) edits.push({ path: p, mode: '100644', type: 'blob', sha: null }); };
+  const ids = new Set([...Lm.keys(), ...R.keys(), ...st.dels]);
+  let n = 0;
+  for (const id of ids) {
+    setSyncState(`☁ ${++n}/${ids.size}`, 'Đang đồng bộ…');
+    const L = Lm.get(id), r = R.get(id), s = st.items[id];
+    const rLive = r && !r.del;
+    const lCh = L && (!s || L.updated !== s.l), rCh = r && (!s || r.updated !== s.r);
+    if (L && !rLive) {
+      if (r && r.del && s && !lCh) { await idbDel('project:' + id); await deleteProjectBlobs(id); await idbPut('projects', (await projIndex()).filter(x => x.id !== id)); out.deleted++; if (id === curProjId) curProjId = null; continue; }   // deleted on the other device
+      newState[id] = { l: L.updated, r: await push(L) };
+    } else if (L && rLive) {
+      if (!lCh && !rCh) newState[id] = s;
+      else if (!lCh && rCh) { if (await pull(r, id)) newState[id] = { l: r.updated, r: r.updated }; else newState[id] = s; }
+      else if (lCh && !rCh) { newState[id] = { l: L.updated, r: await push(L) }; }
+      else {   // changed on both sides (or first meeting): if the content is the same nothing to do, otherwise keep both
+        const rec = await idbGet('project:' + id), mine = rec ? await gitSha(strU8(JSON.stringify((await syncEncode(rec, id)).json))) : '';
+        if (mine && mine === paths.get(`p/${id}/rec.json`)) newState[id] = { l: L.updated, r: r.updated };
+        else { const nid = newId(); if (await pull(r, nid, (r.name || 'Dự án') + ' (từ máy khác)')) { out.copies++; const c = (await projIndex()).find(x => x.id === nid); newState[nid] = { l: c.updated, r: await push(c) }; } newState[id] = { l: L.updated, r: await push(L) }; }
+      }
+    } else if (!L && rLive) {
+      if (st.dels.includes(id)) {
+        if (s && !rCh) { drop(id); newItems.set(id, { id, name: r.name, updated: Date.now(), del: true }); out.deleted++; }   // deleted here → delete there too
+        else if (await pull(r, id)) newState[id] = { l: r.updated, r: r.updated };       // edited on the other device after → bring it back
+      } else if (await pull(r, id)) newState[id] = { l: r.updated, r: r.updated };
+    }
+  }
+  // 4. one commit with everything; refused if another device moved main meanwhile (→ the caller redoes the sync)
+  const projects = rIndex.projects.filter(x => !newItems.has(x.id)).concat([...newItems.values()]);
+  const idxU8 = strU8(JSON.stringify({ v: 1, projects })), idxSha = await gitSha(idxU8);
+  if (edits.length || idxSha !== paths.get('index.json')) {
+    await gh(cfg, '/git/blobs', { method: 'POST', body: { content: u8b64(idxU8), encoding: 'base64' } });
+    edits.push({ path: 'index.json', mode: '100644', type: 'blob', sha: idxSha });
+    const nt = await gh(cfg, '/git/trees', { method: 'POST', body: { base_tree: treeSha, tree: edits } });
+    const cm = await gh(cfg, '/git/commits', { method: 'POST', body: { message: `Frame Studio: đồng bộ ${out.pushed} dự án`, tree: nt.sha, parents: [head] } });
+    await gh(cfg, '/git/refs/heads/main', { method: 'PATCH', body: { sha: cm.sha, force: false } });
+  }
+  st.items = newState; st.dels = st.dels.filter(id => R.has(id) && !R.get(id).del && !newItems.has(id));
+  await idbPut('sync-state', st);
+  if (!curProjId) { const L2 = (await projIndex()).sort((a, b) => b.updated - a.updated); if (L2.length) await openProject(L2[0].id); else await createProject(1080, 1920); }
+}
+async function syncDialog() {
+  const c = syncCfg();
+  const inp = 'min-height:44px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:16px';
+  return modal({ title: '☁ Đồng bộ giữa các máy', html: `
+<p style="margin-top:0">Làm trên tablet rồi mở laptop làm tiếp (và ngược lại). Bài được giữ trong <b>một repo GitHub riêng tư</b> của bạn, miễn phí, không cần server.</p>
+<details ${c ? '' : 'open'} style="margin-bottom:8px"><summary style="cursor:pointer;min-height:32px"><b>Cách cài (làm 1 lần)</b></summary>
+<ol style="margin:6px 0;padding-left:20px;line-height:1.5">
+<li>Tạo repo mới, chọn <b>Private</b> (riêng tư), ví dụ tên <code>frame-data</code>: <a href="https://github.com/new" target="_blank" rel="noopener" style="color:var(--accent)">github.com/new</a></li>
+<li>Tạo token: <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener" style="color:var(--accent)">Fine-grained token</a> → Repository access: <b>Only select repositories</b> → chọn repo đó → Permissions: <b>Contents: Read and write</b> → Generate.</li>
+<li>Dán tên repo và token vào đây. Làm giống vậy trên máy còn lại (dùng cùng repo, token có thể dùng chung).</li>
+</ol></details>
+<div class="set-row"><span>Repo (tên-bạn/tên-repo)</span><input id="syRepo" type="text" autocomplete="off" spellcheck="false" placeholder="ten-ban/frame-data" value="${escHtml(lsGet(SYNC_REPO_LS))}" style="width:230px;${inp}"></div>
+<div style="display:flex;gap:6px;align-items:center"><input id="syTok" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…" value="${escHtml(lsGet(SYNC_TOK_LS))}" style="flex:1;${inp}"><button class="btn" id="syEye" style="min-width:44px">👁</button></div>
+<div class="set-row"><span>Tự đồng bộ (khi mở app, sau khi sửa, khi chuyển máy)</span><input type="checkbox" class="switch" id="syAuto" ${syncAuto() ? 'checked' : ''}></div>
+<p class="lbl" style="font-size:13px">🔒 Token chỉ lưu trên máy này. Không nằm trong dự án, file ZIP hay repo. Đừng gửi token cho ai. Lịch sử hoàn tác (↶) không đi theo sang máy kia.</p>
+<div class="lbl" id="syMsg" style="font-size:13px;min-height:20px">${syncMsg ? '⚠ ' + escHtml(syncMsg) : syncLast ? '✓ Đồng bộ lần cuối lúc ' + new Date(syncLast).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}</div>`,
+    buttons: [{ label: 'Đóng', value: null }, { label: 'Tắt đồng bộ', value: 'off', cls: 'danger', action: () => { lsSet(SYNC_TOK_LS, ''); clearTimeout(syncT); setSyncState(''); toast('Đã tắt đồng bộ và xoá token khỏi máy này. Bài trên máy vẫn còn.'); } },
+      { label: 'Lưu & đồng bộ', value: 'save', primary: true, action: async () => {
+        const ov = document.getElementById('syTok').closest('.ov'), m = ov.querySelector('#syMsg');
+        const repo = ov.querySelector('#syRepo').value.trim(), tok = ov.querySelector('#syTok').value.trim();
+        lsSet(SYNC_AUTO_LS, ov.querySelector('#syAuto').checked ? '' : 'off');
+        const prev = [lsGet(SYNC_REPO_LS), lsGet(SYNC_TOK_LS)];
+        lsSet(SYNC_REPO_LS, repo); lsSet(SYNC_TOK_LS, tok);
+        const cfg = syncCfg();
+        if (!cfg) { m.textContent = !tok ? 'Chưa dán token.' : 'Tên repo phải có dạng tên-bạn/tên-repo.'; lsSet(SYNC_REPO_LS, prev[0]); lsSet(SYNC_TOK_LS, prev[1]); return false; }
+        m.textContent = 'Đang kiểm tra repo…';
+        try {
+          const info = await gh(cfg, '');
+          if (!info.private) { m.textContent = '⚠ Repo này đang Công khai (Public): ai cũng xem được bài của bạn. Vào Settings của repo đổi sang Private rồi thử lại.'; lsSet(SYNC_TOK_LS, prev[1]); lsSet(SYNC_REPO_LS, prev[0]); return false; }
+          if (info.permissions && info.permissions.push === false) { m.textContent = syncErr(403); lsSet(SYNC_TOK_LS, prev[1]); lsSet(SYNC_REPO_LS, prev[0]); return false; }
+        } catch (e) { m.textContent = '⚠ ' + e.message; if (!e.offline) { lsSet(SYNC_TOK_LS, prev[1]); lsSet(SYNC_REPO_LS, prev[0]); } return false; }
+        setSyncState('☁ …'); setTimeout(() => syncNow({ manual: true }), 50);
+      } }],
+    onOpen: ov => { ov.querySelector('#syEye').addEventListener('click', () => { const i = ov.querySelector('#syTok'); i.type = i.type === 'password' ? 'text' : 'password'; }); }
+  });
 }
 /* ========= Text, camera & effects ========= */
 let fxSel = null, fxCamPick = false;
@@ -6254,7 +6489,7 @@ async function saveProject() {
       const it = L.find(x => x.id === pid), rec = { id: pid, name: data.name, updated: Date.now(), frames: S.frames.length, thumb: th };
       if (it) Object.assign(it, rec); else L.push(rec); await idbPut('projects', L);
     } catch (e) { console.error(e); }
-    storageOk = true; saveFails = 0; saveWarned = false; setSaveState();
+    storageOk = true; saveFails = 0; saveWarned = false; setSaveState(); syncSoon();
   } catch (e) {
     // never give up for good: a full disk or a busy tab can recover, so retry with a growing delay
     console.error(e); storageOk = false; setSaveState();
@@ -7787,6 +8022,7 @@ function helpHtml() {
 <li><b>Lớp Nhân vật</b> là phần chuyển động, riêng từng frame.</li>
 <li><b>Nhập ảnh</b>: đặt ảnh mờ dưới để đồ theo, hoặc để AI tách nhân vật khỏi nền, hoặc tự chuyển ảnh thành nét viền rồi tô lại.</li>
 <li><b>🤖 AI nhân vật</b> (thanh trên): chọn ảnh chụp 1 người, AI (Google Gemini) vẽ lại thành nhân vật hoạt hình theo ảnh mẫu phong cách, lưu vào <b>Nhân vật AI</b>; bấm <b>✂ Cắt mảnh</b> để thành Nhân vật ghép. Cần key Gemini của bạn (Menu → 🔑 Key Gemini), key chỉ lưu trên máy này.</li>
+<li><b>☁ Đồng bộ tablet ↔ laptop</b> (Menu): bài được giữ trong một repo GitHub riêng tư của bạn. Cài 1 lần trên mỗi máy (tên repo + token), sau đó app tự gửi bài khi bạn sửa xong hoặc chuyển sang app khác, và tự lấy bài mới khi mở lại. Hai máy cùng sửa 1 dự án thì app giữ cả 2 bản.</li>
 <li><b>🤪 Biếm hoạ</b>: Nhập ảnh → tab "Biếm hoạ". Chọn ảnh chụp 1 người, app tự tách người, phóng to đầu, thu nhỏ thân, phồng giữa mặt và tô màu kiểu hoạt hình. Chỉnh Đầu to / Cỡ thân / Vị trí cổ rồi đưa vào vùng chọn hoặc thành Nhân vật ghép để làm động.</li>
 <li><b>Lớp Nét</b> (vector): vẽ bằng Bút khi chọn lớp Nét, hoặc nhập ảnh → "Chuyển thành nét vẽ". Công cụ <b>Sửa nét</b>: chạm chọn, kéo để dời, kéo chấm để uốn, khoanh để chọn nhiều, chỉnh Xoay/Cỡ/Dày. Tẩy ở lớp Nét xoá cả nét. <b>Chốt → pixel</b> để gộp vào lớp Nhân vật.</li>
 <li><b>🎬 Tạo chuyển động</b> (trong Sửa nét): chọn nét tay/chân/miệng → chọn kiểu Vẫy, Nhép miệng, Nhún, Lắc → xem thử → Tạo. Muốn vừa vẫy tay vừa nói: tạo vẫy tay trước, quay lại frame đầu, chọn miệng, chọn "Áp lên các frame sau có sẵn".</li>
@@ -7818,6 +8054,7 @@ $('#menuBtn').addEventListener('click', () => {
 <div class="menu-grid">
   <button class="btn primary" data-m="wizard">🚀 Làm video nhanh (từng bước)</button>
   <button class="btn" data-m="projects">📁 Dự án của bạn</button>
+  <button class="btn" data-m="sync">☁ Đồng bộ tablet ↔ laptop</button>
   <button class="btn" data-m="update">🔄 Kiểm tra cập nhật</button>
   <button class="btn primary" data-m="video">🎬 Xuất video (MP4)</button>
   <button class="btn" data-m="gif">🖼 Xuất GIF / ảnh PNG</button>
@@ -7857,6 +8094,7 @@ $('#menuBtn').addEventListener('click', () => {
       else if (m === 'video') exportVideo();
       else if (m === 'gif') exportImagesDialog();
       else if (m === 'projects') projectsDialog();
+      else if (m === 'sync') syncDialog();
       else if (m === 'export') exportZip();
       else if (m === 'open') $('#zipFile').click();
       else if (m === 'img') $('#imgFile').click();
@@ -7897,6 +8135,8 @@ async function init() {
   else { S.projName = 'Dự án 1'; setCurProj(newId()); newProject(1080, 1920); }
   updateProjLabel();
   setSaveState();
+  $('#syncState').addEventListener('click', syncDialog);
+  if (syncCfg()) { setSyncState('☁'); if (syncAuto()) syncSoon(1500); }
   let seen = false; try { seen = localStorage.getItem('fs-help') === '1'; localStorage.setItem('fs-help', '1'); } catch (e) {}
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }
@@ -7923,6 +8163,8 @@ async function checkUpdate() {
 }
 window.addEventListener('pagehide', () => { if (saveT) { clearTimeout(saveT); saveProject(); } });
 document.addEventListener('visibilitychange', () => { if (document.hidden && saveT) { clearTimeout(saveT); saveProject(); } });
+// switching devices: send the work when this app goes to the background, fetch the other device's work when it comes back
+document.addEventListener('visibilitychange', () => { if (!syncCfg() || !syncAuto()) return; if (document.hidden) syncNow({ quiet: true }); else if (Date.now() - syncLast > 15000) syncNow({ quiet: true }); });
 init();
 </script>
 </body>
