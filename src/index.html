@@ -219,9 +219,9 @@ body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:
 #selbar[hidden]{display:none}
 #selbar.peek{opacity:.15;pointer-events:none;transition:opacity .15s}   /* see the picture while dragging it under the bar */
 #lassobar{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);
-  border-radius:14px;padding:6px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;box-shadow:0 8px 30px #0008;max-width:calc(100% - 20px)}
-#lassobar[hidden],#lassoLayers[hidden]{display:none} #lassoLayers{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-#lassobar .chip.small{min-height:42px} #lassobar .hint{width:100%;font-size:12px}
+  border-radius:14px;padding:6px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;box-shadow:0 8px 30px #0008;width:max-content;max-width:calc(100% - 20px)}
+#lassobar[hidden],#lassoLayers[hidden],#lassoSoft[hidden]{display:none} #lassoLayers,#lassoSoft{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+#lassobar .chip.small{min-height:42px} #lassobar .hint{display:none}
 #selbar .selplace{display:flex;flex-wrap:wrap;align-items:center;gap:6px;width:100%;border-top:1px solid var(--line);padding-top:6px} #selbar .selplace[hidden]{display:none}
 #selbar .chip.small{min-height:42px}
 #selTween{display:flex;flex-wrap:wrap;align-items:center;gap:6px;width:100%;border-top:1px solid var(--line);padding-top:6px} #selTween[hidden]{display:none}
@@ -392,9 +392,10 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
 
   <main id="stage">
     <canvas id="view"></canvas>
-    <div id="lassobar" hidden><span class="lbl">Chọn vùng lấy</span>
-      <button class="chip small" data-selm="pic" title="Nét vẽ + màu + nét vector trong vòng khoanh, không lấy nền">👤 Cả hình vẽ</button><button class="chip small" data-selm="part" title="Chỉ lấy mảng nằm gọn trong vòng (tóc, mặt…). Mảng lòi ra ngoài nhiều như TV, áo, nền thì để lại">🧩 Từng mảng</button><button class="chip small" data-selm="layer" title="Chỉ lấy 1 lớp: Nhân vật, Màu, Nét hoặc Nền">📄 Chỉ 1 lớp</button><button class="chip small" data-selm="all" title="Mọi thứ trong vòng, kể cả hình ở lớp Nền">🔲 Tất cả + nền</button>
+    <div id="lassobar" hidden>
+      <button class="chip small" data-selm="pic" title="Nét vẽ + màu + nét vector trong vòng khoanh, không lấy nền">👤 Cả hình</button><button class="chip small" data-selm="part" title="Chỉ lấy mảng nằm gọn trong vòng (tóc, mặt…). Mảng lòi ra ngoài nhiều như TV, áo, nền thì để lại">🧩 Từng mảng</button><button class="chip small" data-selm="warp" title="Khoanh 1 chỗ rồi kéo để uốn nét + màu (vd. kéo lông mày xuống cho mặt tức giận), như Nhiều chấm: trong vòng = chấm vàng đi theo, ngoài = chấm xanh đứng yên">🫳 Kéo uốn</button><button class="chip small" data-selm="layer" title="Chỉ lấy 1 lớp: Nhân vật, Màu, Nét hoặc Nền">📄 1 lớp</button><button class="chip small" data-selm="all" title="Mọi thứ trong vòng, kể cả hình ở lớp Nền">🔲 Cả nền</button>
       <span id="lassoLayers" hidden><span class="lbl">Lớp</span><button class="chip small" data-sell="char">Nhân vật</button><button class="chip small" data-sell="col">Màu</button><button class="chip small" data-sell="vec">Nét</button><button class="chip small" data-sell="bg">Nền</button></span>
+      <span id="lassoSoft" hidden><span class="lbl">Viền</span><button class="chip small" data-wsoft="1">Cứng</button><button class="chip small" data-wsoft="2">Vừa</button><button class="chip small" data-wsoft="3">Mềm</button></span>
       <span class="lbl hint" id="lassoHint"></span>
     </div>
     <div id="selbar" hidden>
@@ -699,7 +700,7 @@ let toastT;
 function toast(msg, ms = 1800) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
 
 /* ========= Settings ========= */
-const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','lineLayer','uiHide','panelHidden','brush','eraserType','recentColors','brushOp','sizeScreen','bigUi','fastVideo','selMode','atlOpen'];
+const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','lineLayer','uiHide','panelHidden','brush','eraserType','recentColors','brushOp','sizeScreen','bigUi','fastVideo','selMode','warpSoft','atlOpen'];
 function loadSettings() { try { const o = JSON.parse(localStorage.getItem('fs-settings') || '{}'); for (const k of SETTINGS_KEYS) if (k in o) { if (k === 'panelHidden') Object.assign(panelHidden, o[k]); else S[k] = o[k]; } } catch (e) {}
   S.uiHide = Object.assign({ rail: false, top: false, tl: false }, S.uiHide); }
 function applyBigUi() { document.body.classList.toggle('bigui', !!S.bigUi); }
@@ -972,6 +973,7 @@ function render() {
     c.beginPath(); c.moveTo(q.x - 16 * px, q.y); c.lineTo(q.x + 16 * px, q.y); c.moveTo(q.x, q.y - 16 * px); c.lineTo(q.x, q.y + 16 * px); c.stroke(); c.restore();
   }
   if (ballMode) renderBallPath(c, px);
+  renderWarpSel(c, px);
   if (lasso && lasso.length > 1) {
     c.lineWidth = 2 * px; c.setLineDash([8 * px, 6 * px]);
     c.beginPath(); c.moveTo(lasso[0].x, lasso[0].y); for (const p of lasso) c.lineTo(p.x, p.y); if (!lassoOpen) c.closePath();
@@ -1639,18 +1641,19 @@ function polyPath(ctx, poly) { ctx.beginPath(); ctx.moveTo(poly[0].x, poly[0].y)
            → khoanh quanh cái đầu chỉ lấy tóc + mặt, không lấy TV hay áo dù vòng khoanh chạm vào
    'layer' 📄 Chỉ 1 lớp: chỉ lớp đang chọn (Nhân vật / Màu / Nét / Nền)
    'all'   🔲 Tất cả + nền: như 👤 và cả hình trong lớp Nền */
-const SEL_MODES = { pic: '👤 Cả hình vẽ', part: '🧩 Từng mảng', layer: '📄 Chỉ 1 lớp', all: '🔲 Tất cả + nền' };
+const SEL_MODES = { pic: '👤 Cả hình vẽ', part: '🧩 Từng mảng', warp: '🫳 Kéo uốn', layer: '📄 Chỉ 1 lớp', all: '🔲 Tất cả + nền' };
 const SEL_HINTS = {
   pic: 'Lấy nét vẽ + màu + nét vector trong vòng khoanh (không lấy nền)',
   part: 'Chỉ lấy mảng nằm gọn trong vòng (vd. tóc, mặt). Mảng lòi ra ngoài nhiều (TV, áo, nền) được để lại',
   layer: 'Chỉ lấy lớp đang chọn bên dưới, các lớp khác đứng yên',
-  all: 'Lấy mọi thứ trong vòng, kể cả hình ở lớp Nền'
+  all: 'Lấy mọi thứ trong vòng, kể cả hình ở lớp Nền',
+  warp: 'Khoanh chỗ muốn sửa rồi kéo: trong vòng đi theo, viền quanh giãn mềm, xa thì đứng yên. Nét + màu uốn cùng nhau'
 };
 function selMode() { return SEL_MODES[S.selMode] ? S.selMode : 'pic'; }
 function setSelMode(m) {
   if (!SEL_MODES[m]) return;
   if (floating) commitFloating();
-  S.selMode = m; saveSettings();
+  S.selMode = m; saveSettings(); warpSel = null; requestRender();
   if (m !== 'layer' && (S.layer === 'vec' || S.layer === 'col')) setLayer('char');
   syncLassoBar(); toast(SEL_MODES[m] + ': ' + SEL_HINTS[m], 3500);
 }
@@ -1659,7 +1662,8 @@ function syncLassoBar() {
   bar.hidden = S.tool !== 'lasso' || !!floating;
   const m = selMode();
   bar.querySelectorAll('[data-selm]').forEach(b => b.classList.toggle('on', b.dataset.selm === m));
-  $('#lassoLayers').hidden = m !== 'layer';
+  $('#lassoLayers').hidden = m !== 'layer'; $('#lassoSoft').hidden = m !== 'warp';
+  bar.querySelectorAll('[data-wsoft]').forEach(b => b.classList.toggle('on', +b.dataset.wsoft === (S.warpSoft || 2)));
   bar.querySelectorAll('[data-sell]').forEach(b => b.classList.toggle('on', b.dataset.sell === S.layer));
   $('#lassoHint').textContent = SEL_HINTS[m];
 }
@@ -1731,7 +1735,123 @@ function partMask(poly, srcs) {
   mx.putImageData(img, 0, 0);
   return { rect, mc };
 }
+/* ===== 🫳 Kéo uốn (S.selMode 'warp'): khoanh một chỗ của hình (lông mày, miệng, tóc…) rồi kéo:
+   bên trong vòng đi theo hẳn (như chấm vàng), dải quanh vòng giãn mềm (độ rộng S.warpSoft), xa hơn đứng yên (như chấm xanh).
+   Nét + Màu + phần đã vẽ của Nền + nét vector cùng uốn, nên dùng được cho ảnh vẽ đưa vào. Mỗi lần kéo = 1 bước hoàn tác.
+   Kéo bắt đầu trong vòng = uốn tiếp, ngoài vòng = khoanh vòng mới. ===== */
+let warpSel = null;   // { f, poly, win: [x, y, w, h], w: Float32Array (0..1 over win), R }
+const WARP_SOFT = { 1: 0.15, 2: 0.45, 3: 0.9 }, WARP_SOFT_N = { 1: 'Cứng', 2: 'Vừa', 3: 'Mềm' };
+function warpSoftK() { return WARP_SOFT[S.warpSoft] || WARP_SOFT[2]; }
+function warpBuild(poly, f) {
+  let a = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const p of poly) { a[0] = Math.min(a[0], p.x); a[1] = Math.min(a[1], p.y); a[2] = Math.max(a[2], p.x); a[3] = Math.max(a[3], p.y); }
+  const R = Math.max(12, Math.max(a[2] - a[0], a[3] - a[1]) * warpSoftK());
+  const win = rectFromBox(a, Math.max(R, Math.max(a[2] - a[0], a[3] - a[1]) * 0.9) + 4); if (!win) return null;   // room for the band to widen on long drags
+  const [wx, wy, ww, wh] = win, n = ww * wh;
+  const mc = makeCanvas(ww, wh), mx = mc.getContext('2d'); mx.translate(-wx, -wy); polyPath(mx, poly); mx.fillStyle = '#000'; mx.fill();
+  const md = mx.getImageData(0, 0, ww, wh).data, d = new Float32Array(n);
+  let inside = 0;
+  for (let i = 0; i < n; i++) { if (md[i * 4 + 3] > 127) { d[i] = 0; inside++; } else d[i] = 1e9; }
+  if (inside < 9) return null;
+  // two-pass chamfer distance (1, √2) from the loop
+  const S2 = Math.SQRT2;
+  for (let y = 0; y < wh; y++) for (let x = 0; x < ww; x++) { const i = y * ww + x; let v = d[i];
+    if (x > 0) v = Math.min(v, d[i - 1] + 1); if (y > 0) { v = Math.min(v, d[i - ww] + 1); if (x > 0) v = Math.min(v, d[i - ww - 1] + S2); if (x < ww - 1) v = Math.min(v, d[i - ww + 1] + S2); } d[i] = v; }
+  for (let y = wh - 1; y >= 0; y--) for (let x = ww - 1; x >= 0; x--) { const i = y * ww + x; let v = d[i];
+    if (x < ww - 1) v = Math.min(v, d[i + 1] + 1); if (y < wh - 1) { v = Math.min(v, d[i + ww] + 1); if (x < ww - 1) v = Math.min(v, d[i + ww + 1] + S2); if (x > 0) v = Math.min(v, d[i + ww - 1] + S2); } d[i] = v; }
+  const ws = { f, poly, win, d, R0: R, R: 0, w: new Float32Array(n) };
+  warpSetR(ws, R); return ws;
+}
+// band width: never thinner than 1.6 × the drag, else the picture would fold over itself
+function warpSetR(ws, R) {
+  if (Math.abs(R - ws.R) < 0.5) return; ws.R = R;
+  const d = ws.d, w = ws.w;
+  for (let i = 0; i < d.length; i++) { const t = 1 - d[i] / R; w[i] = t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t); }
+}
+function warpW(ws, x, y) {
+  const [wx, wy, ww, wh] = ws.win, ix = Math.round(x - wx), iy = Math.round(y - wy);
+  return ix < 0 || iy < 0 || ix >= ww || iy >= wh ? 0 : ws.w[iy * ww + ix];
+}
+// the layers that bend: lines + colour of the frame, and lớp Nền when the picture is drawn there (not just white paper)
+function warpLayers(f, ws) {
+  const out = [{ o: f, col: false, cv: f.canvas }];
+  if (f.col) out.push({ o: f, col: true, cv: f.col });
+  const bg = bgOf(f);
+  if (S.showBg && bg && bg.canvas) {
+    const [wx, wy, ww, wh] = ws.win, a = bg.canvas.getContext('2d').getImageData(wx, wy, ww, wh).data; let n = 0, k = 0;
+    for (let i = 0; i < ww * wh; i++) if (ws.w[i] >= 1) { k++; const j = i * 4; if (a[j + 3] >= 20 && !(a[j] > 235 && a[j + 1] > 235 && a[j + 2] > 235)) n++; }
+    if (k && n > k * 0.03) out.push({ o: bg, col: false, cv: bg.canvas });
+  }
+  return out;
+}
+function warpBegin(p, base) {
+  const f = curFrame(), ws = warpSel;
+  const layers = warpLayers(f, ws).map(L => ({ ...L, snap: cloneCv(L.cv) }));
+  action = { ...base, kind: 'warp', p0: p, layers, done: null, vecBefore: f.vec && f.vec.length ? cloneVec(f.vec) : null, D: { x: 0, y: 0 } };
+}
+function warpApply(D) {
+  const A = action, ws = warpSel, f = ws.f, [wx, wy, ww, wh] = ws.win;
+  A.D = D;
+  const dd = Math.hypot(D.x, D.y), [, , w0w, w0h] = ws.win;
+  warpSetR(ws, Math.min(Math.max(ws.R0, dd * 1.6), Math.max(4, Math.min(w0w, w0h) / 2)));
+  const r = rectFromBox([Math.min(wx, wx + D.x), Math.min(wy, wy + D.y), Math.max(wx + ww, wx + ww + D.x), Math.max(wy + wh, wy + wh + D.y)], 2); if (!r) return;
+  const [rx, ry, rw, rh] = r;
+  for (const L of A.layers) {
+    const x = L.cv.getContext('2d');
+    if (A.done) { x.save(); x.beginPath(); x.rect(...A.done); x.clip(); x.globalCompositeOperation = 'copy'; x.drawImage(L.snap, 0, 0); x.restore(); }
+    const src = L.snap.getContext('2d').getImageData(rx, ry, rw, rh).data, img = x.createImageData(rw, rh), o = img.data;
+    for (let y = 0; y < rh; y++) for (let xx = 0; xx < rw; xx++) {
+      const qx = rx + xx, qy = ry + y, oi = (y * rw + xx) * 4;
+      // inverse of p → p + D·w(p): find t = w(q − D·t) by bisection (the map is monotone along D)
+      let sx, sy;
+      if (warpW(ws, qx, qy) === 0 && warpW(ws, qx - D.x, qy - D.y) === 0) { sx = qx; sy = qy; }
+      else { let lo = 0, hi = 1; for (let it = 0; it < 9; it++) { const t = (lo + hi) / 2; if (t - warpW(ws, qx - D.x * t, qy - D.y * t) < 0) lo = t; else hi = t; } const t = (lo + hi) / 2; sx = qx - D.x * t; sy = qy - D.y * t; }
+      sx -= rx; sy -= ry;
+      const x0 = Math.floor(sx), y0 = Math.floor(sy), fx = sx - x0, fy = sy - y0;
+      let r0 = 0, g0 = 0, b0 = 0, a0 = 0;
+      for (let k = 0; k < 4; k++) {
+        const px = x0 + (k & 1), py = y0 + (k >> 1); if (px < 0 || py < 0 || px >= rw || py >= rh) continue;
+        const wt = ((k & 1) ? fx : 1 - fx) * ((k >> 1) ? fy : 1 - fy), si = (py * rw + px) * 4, al = src[si + 3] * wt;
+        r0 += src[si] * al; g0 += src[si + 1] * al; b0 += src[si + 2] * al; a0 += al;
+      }
+      if (a0 > 0) { o[oi] = r0 / a0; o[oi + 1] = g0 / a0; o[oi + 2] = b0 / a0; o[oi + 3] = a0; }
+    }
+    x.putImageData(img, rx, ry);
+    if (L.col) L.o.colVer++; else L.o.ver++;
+  }
+  A.done = r; A.all = A.all ? rectFromBox(unionBox([A.all[0], A.all[1], A.all[0] + A.all[2], A.all[1] + A.all[3]], [rx, ry, rx + rw, ry + rh]), 0) : r;
+  if (A.vecBefore) {
+    const vb = A.vecBefore;
+    f.vec = cloneVec(vb).map(st => { for (const q of st.pts) { const w = warpW(ws, q.x, q.y); q.x += D.x * w; q.y += D.y * w; } return st; });
+    f.vec.forEach((st, i) => { const s0 = vb[i]; for (const k in s0) if (k !== 'pts' && !(k in st)) st[k] = s0[k]; });
+  }
+}
+function warpEnd(cancel) {
+  const A = action, ws = warpSel, f = ws && ws.f;
+  if (!A || !ws) return;
+  const moved = Math.hypot(A.D.x, A.D.y) >= 0.5;
+  if (cancel || !moved || !A.all) {
+    if (A.done) for (const L of A.layers) { const x = L.cv.getContext('2d'); x.save(); x.globalCompositeOperation = 'copy'; x.drawImage(L.snap, 0, 0); x.restore(); if (L.col) L.o.colVer++; else L.o.ver++; }
+    if (A.vecBefore) f.vec = A.vecBefore;
+  } else {
+    const r = A.all, entries = [];
+    for (const L of A.layers) { entries.push(pixEntry(L.o, r, L.snap.getContext('2d').getImageData(...r), L.cv.getContext('2d').getImageData(...r), L.col)); if (L.o !== f) markEdited(L.o); }
+    if (A.vecBefore) entries.push(vecEntry(f, A.vecBefore, cloneVec(f.vec)));
+    pushEntry(entries.length > 1 ? { multi: entries } : entries[0]); markEdited(f);
+    warpSel = warpBuild(ws.poly.map(q => ({ x: q.x + A.D.x, y: q.y + A.D.y })), f) || null;   // the loop follows what was dragged
+  }
+  for (const L of A.layers) L.snap.width = 0;
+  requestRender();
+}
+function renderWarpSel(c, px) {
+  if (!warpSel) return;
+  if (warpSel.f !== curFrame() || S.tool !== 'lasso' || selMode() !== 'warp') { warpSel = null; return; }
+  const p = warpSel.poly;
+  c.save(); c.beginPath(); c.moveTo(p[0].x, p[0].y); for (const q of p) c.lineTo(q.x, q.y); c.closePath();
+  c.fillStyle = 'rgba(255,170,0,.12)'; c.fill(); c.lineWidth = 2 * px; c.setLineDash([8 * px, 6 * px]); c.strokeStyle = '#ff9800'; c.stroke(); c.restore();
+}
 function liftSelection(poly) {
+  if (selMode() === 'warp') { warpSel = warpBuild(poly, curFrame()); if (!warpSel) toast('Vòng khoanh nhỏ quá'); else toast('Kéo từ trong vòng để uốn. Khoanh chỗ khác để chọn lại', 2500); requestRender(); return; }
   const mode = selMode(), fr = curFrame(); if (!fr || !fr.canvas) return;
   const bgO = bgOf(fr), onBg = S.layer === 'bg';
   // the layers this mode takes
@@ -8126,7 +8246,7 @@ function startAction(e, isTouch) {
     }
     case 'fill': if (e.altKey) { pickBack = 'fill'; doPick(p); break; } if (!layerVisible()) { toast('Lớp đang ẩn'); return; } doFill(p); break;
     case 'pick': doPick(p); break;
-    case 'lasso': lasso = [p]; action = { ...base, kind: 'lasso' }; requestRender(); break;
+    case 'lasso': if (selMode() === 'warp' && warpSel && warpSel.f === curFrame() && warpW(warpSel, p.x, p.y) >= 0.5) { warpBegin(p, base); break; } warpSel = null; lasso = [p]; action = { ...base, kind: 'lasso' }; requestRender(); break;
   }
 }
 function moveAction(e) {
@@ -8142,6 +8262,7 @@ function moveAction(e) {
     if (ballMode && ballMode.pts) for (const ev of list) { const p = toDoc(ev, action.rect), l = ballMode.pts[ballMode.pts.length - 1]; if (Math.hypot(p.x - l.x, p.y - l.y) > 4 / vs) ballMode.pts.push(p); }
     requestRender();
   }
+  else if (action.kind === 'warp') { const p = toDoc(e, action.rect); warpApply({ x: p.x - action.p0.x, y: p.y - action.p0.y }); requestRender(); }
   else if (action.kind === 'lasso') {
     const p = toDoc(e, action.rect), l = lasso[lasso.length - 1];
     if (Math.hypot(p.x - l.x, p.y - l.y) > 3 / vs) { lasso.push(p); requestRender(); }
@@ -8193,6 +8314,7 @@ function endAction() {
   else if (action.kind === 'labpaint') { if (ppSetup) ppLabSyncBar(); }
   else if (action.kind === 'ballpath') { const pts = ballMode && ballMode.pts; ballMode = null; ballSyncBar(); requestRender(); ballRun(pts); }
   else if (action.kind === 'lasso') { const poly = lasso; lasso = null; if (poly && poly.length > 2) liftSelection(poly); requestRender(); updUndoBtns(); }
+  else if (action.kind === 'warp') { warpEnd(false); updUndoBtns(); }
   action = null;
 }
 function abortAction() {
@@ -8200,6 +8322,7 @@ function abortAction() {
   $('#selbar').classList.remove('peek');
   if (action.kind === 'stroke') strokeAbort();
   if (action.kind === 'lasso' || action.kind === 'vlasso') { lasso = null; requestRender(); }
+  if (action.kind === 'warp') warpEnd(true);
   if (action.kind === 'ballpath' && ballMode) { ballMode.pts = null; requestRender(); }
   if (action.kind === 'vbend' || action.kind === 'vmove' || action.kind === 'verase' || action.kind === 'vmulti' || action.kind === 'vxform') { if (action.col) colLiftAbort(curFrame(), action.col); curFrame().vec = action.before; if (action.kind === 'vmulti' && action.polyBase) vpoly = action.polyBase; requestRender(); }
   if (action.kind === 'pprot' || action.kind === 'ppmove' || action.kind === 'ppik') { ppSetState(curFrame(), action.before); requestRender(); }
@@ -8623,6 +8746,7 @@ $('#selCancel').addEventListener('click', () => { cancelFloating(); updUndoBtns(
 $('#selDone').addEventListener('click', commitFloating);
 $('#lassobar').addEventListener('click', e => {
   const m = e.target.closest('[data-selm]'); if (m) { setSelMode(m.dataset.selm); return; }
+  const ws = e.target.closest('[data-wsoft]'); if (ws) { S.warpSoft = +ws.dataset.wsoft; saveSettings(); if (warpSel) warpSel = warpBuild(warpSel.poly, warpSel.f); syncLassoBar(); requestRender(); toast('Viền giãn: ' + WARP_SOFT_N[S.warpSoft]); return; }
   const l = e.target.closest('[data-sell]'); if (l) { setLayer(l.dataset.sell); if (S.tool !== 'lasso') setTool('lasso'); syncLassoBar(); }
 });
 $('#selPlace').addEventListener('click', e => { const b = e.target.closest('[data-fpl]'); if (b) setFloatPlace(b.dataset.fpl); });
