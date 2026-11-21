@@ -3648,11 +3648,10 @@ function ppFitJoints(src, pts) {
   }
   // image-aware axis, neck and shoulders: the bounding-box centre is off when feet are spread or one arm sticks out,
   // and arms hanging beside the body put the generic shoulders out in the air
-  var armsDown = false, headFit = false, armsHead = null;
+  var armsDown = false, headFit = false;
   {
     const A = new Float32Array(W * H); for (let i = 0; i < A.length; i++) A[i] = d[i * 4 + 3] > 100 ? 1 : 0;
-    let hd = cariFindHead(A, W, H);
-    if (hd) { const rn = ppRunNeck(op, hd); if (rn != null && rn < hd.neck - 0.06 * (hd.bot - hd.top)) hd = { ...hd, neck: rn }; }   // arms raised beside the head make whole rows wide: use the run through the head
+    const hd = cariFindHead(A, W, H);
     if (hd && hd.neck < hd.bot - 0.3 * (hd.bot - hd.top)) {
       const H0 = hd.bot - hd.top;
       const rowRun = (y, x0) => {   // opaque run on row y that contains (or is nearest to) x0
@@ -3681,7 +3680,6 @@ function ppFitJoints(src, pts) {
           }
         }
       }
-      if (!armsDown && nr) { armsHead = ppArmsToHead(op, J, hd, nr, neckX); for (const sd in armsHead) Object.assign(J, armsHead[sd]); }
     }
   }
   const top = J.head.y, hgt = Math.max(J.ftL.y, J.ftR.y) - top, cx = J.root.x;
@@ -3707,7 +3705,7 @@ function ppFitJoints(src, pts) {
         if (J.chest.y > J.root.y - 0.1 * hgt) J.chest.y = J.root.y - 0.25 * hgt;
       }
       else rL = null;
-      if (rL) return ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit, armsHead);
+      if (rL) return ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit);
     }
   }
   let crotch = null;
@@ -3725,69 +3723,10 @@ function ppFitJoints(src, pts) {
       if (J.chest.y > J.root.y - 0.1 * hgt) J.chest.y = J.root.y - 0.25 * hgt;
     }
   }
-  if (!crotch) ppKneelHips(J, op, hgt, top);
-  return ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit, armsHead);
-}
-/** neck from the run of pixels through the head (not whole rows): hands on the head / raised arms widen whole rows */
-function ppRunNeck(op, hd) {
-  const H0 = hd.bot - hd.top, y1 = Math.round(hd.top + 0.6 * H0), y0 = Math.round(hd.top + 0.08 * H0), R = Math.round(0.05 * H0);
-  const run = (y, x0) => { x0 = Math.round(x0); let x = null; for (let k = 0; k < R && x == null; k++) { if (op(x0 - k, y)) x = x0 - k; else if (op(x0 + k, y)) x = x0 + k; } if (x == null) return 0; let a = x, b = x; while (op(a - 1, y)) a--; while (op(b + 1, y)) b++; return b - a + 1; };
-  const w = []; for (let y = hd.top; y <= y1; y++) w.push(run(y, hd.cx));
-  const r = Math.max(2, Math.round(H0 * 0.012)), sm = w.map((_, i) => { let s = 0, n = 0; for (let k = -r; k <= r; k++) if (w[i + k] != null) { s += w[i + k]; n++; } return s / n; });
-  let best = Infinity, neck = null, runMax = 0;
-  for (let i = 0; i < sm.length; i++) {
-    runMax = Math.max(runMax, sm[i]); if (hd.top + i < y0 || !sm[i]) continue;
-    let below = 0; for (let k = i; k < Math.min(sm.length, i + 0.25 * H0); k++) below = Math.max(below, sm[k]);
-    const q = sm[i] / Math.max(1, Math.min(runMax, below)); if (q < best) { best = q; neck = i; }
-  }
-  if (neck == null || best > 0.7) return null;
-  // the narrow part here is the chin between the forearms (the real neck already joins the arms): cut at its bottom
-  const lim = sm[neck] * 1.15; while (neck < sm.length - 1 && sm[neck + 1] <= lim) neck++;
-  return hd.top + neck;
-}
-/** hands resting on the head (celebrating, shocked): the elbows stick out sideways and the forearms reach back to the head.
- *  A side is such an arm when the shortest walk inside the drawing from its outermost point to the top of the head
- *  goes up the forearm instead of through the neck. Returns { L: {shL, elL, haL}, R: ... } for those sides. */
-function ppArmsToHead(op, J, hd, nr, neckX) {
-  const H0 = hd.bot - hd.top, S4 = 4, gw = Math.ceil(W / S4), gh = Math.ceil(H / S4), occ = new Uint8Array(gw * gh);
-  for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) if (op(x * S4 + 2, y * S4 + 2)) occ[y * gw + x] = 1;
-  const cell = p => Math.min(gh - 1, Math.max(0, Math.round((p.y - 2) / S4))) * gw + Math.min(gw - 1, Math.max(0, Math.round((p.x - 2) / S4)));
-  const pt = i => ({ x: (i % gw) * S4 + 2, y: ((i / gw) | 0) * S4 + 2 });
-  let s = cell({ x: J.head.x, y: hd.top + 0.04 * H0 });
-  if (!occ[s]) { let bd = Infinity; for (let i = 0; i < occ.length; i++) if (occ[i]) { const q = pt(i), d = Math.hypot(q.x - J.head.x, q.y - hd.top - 0.04 * H0); if (d < bd) { bd = d; s = i; } } }
-  const prev = new Int32Array(gw * gh).fill(-1); prev[s] = s; let cur = [s];
-  while (cur.length) { const nx = []; for (const i of cur) { const x = i % gw, y = (i / gw) | 0; for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + ox, Y = y + oy; if (X < 0 || Y < 0 || X >= gw || Y >= gh) continue; const k = Y * gw + X; if (occ[k] && prev[k] < 0) { prev[k] = i; nx.push(k); } } } cur = nx; }
-  const out = {}, earY = hd.top + 0.55 * (hd.neck - hd.top), yMax = J.chest.y + 0.25 * H0, neckRow = Math.round((hd.neck - 2) / S4);
-  const edge = (y, sgn) => { y = Math.round(y); let x = Math.round(neckX); if (!op(x, y)) return null; while (op(x + sgn, y)) x += sgn; return x; };
-  for (const sd of ['L', 'R']) {
-    const sgn = sd === 'L' ? -1 : 1; let E = -1, ex = -Infinity;
-    for (let y = Math.round(hd.top / S4); y < Math.min(gh, yMax / S4); y++) for (let x = 0; x < gw; x++) { const i = y * gw + x; if (occ[i] && prev[i] >= 0 && x * sgn > ex) { ex = x * sgn; E = i; } }
-    if (E < 0) continue; const e = pt(E); if ((e.x - neckX) * sgn < 0.15 * H0) continue;
-    const path = []; for (let i = E; ; i = prev[i]) { path.push(i); if (i === s || path.length > gw * gh) break; }
-    const cross = path.filter(i => ((i / gw) | 0) === neckRow).map(i => pt(i).x);
-    if (!cross.length || cross.some(x => x >= nr[0] - 0.02 * H0 && x <= nr[1] + 0.02 * H0)) continue;   // went through the neck: a normal arm
-    const hi = path.find(i => pt(i).y <= earY); if (hi == null) continue;
-    // armpit: going down from the elbow, the side edge first runs fast along the upper arm, then slowly along the torso
-    let ap = null; for (let y = e.y + 0.03 * H0; y < yMax + 0.2 * H0; y += 4) { const a = edge(y, sgn), b = edge(y + 12, sgn); if (a == null || b == null) break; if (Math.abs(b - a) < 12 * 0.6) { ap = { x: a, y }; break; } }
-    if (!ap) continue;
-    const sh = { x: ap.x - sgn * 0.02 * H0, y: ap.y - 0.05 * H0 }, L = Math.hypot(sh.x - e.x, sh.y - e.y) || 1, k = Math.min(0.4, 0.03 * H0 / L);
-    out[sd] = { ['sh' + sd]: sh, ['el' + sd]: { x: e.x + (sh.x - e.x) * k, y: e.y + (sh.y - e.y) * k }, ['ha' + sd]: pt(hi) };
-  }
-  return Object.keys(out).length ? out : null;
-}
-/** kneeling (no gap between the legs, knees and shins on the ground): hips sit well below the middle of the figure */
-function ppKneelHips(J, op, hgt, top) {
-  const bot = top + hgt; let x0 = W, x1 = 0;
-  for (let y = Math.round(bot - 0.06 * hgt); y <= bot; y += 2) for (let x = 0; x < W; x += 3) if (op(x, y)) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); }
-  if (x1 - x0 < 0.45 * hgt) return;
-  const hy = J.chest.y + 0.55 * (bot - J.chest.y); if (hy < J.root.y) return;
-  const x = Math.round(J.root.x), y = Math.round(hy); if (!op(x, y)) return; let a = x, b = x; while (op(a - 1, y)) a--; while (op(b + 1, y)) b++;
-  const c = (a + b) / 2, hw = Math.min(0.08 * hgt, 0.22 * (b - a));
-  J.hpL = { x: c - hw, y: hy }; J.hpR = { x: c + hw, y: hy }; J.root = { x: c, y: hy - 0.03 * hgt };
-  for (const sd of ['L', 'R']) J['kn' + sd] = { x: (J['hp' + sd].x + J['ft' + sd].x) / 2, y: (hy + J['ft' + sd].y) / 2 };
+  return ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit);
 }
 /** shared end of joint fitting: neck/torso line, hands & feet from the drawing's shape, then centre the limb joints */
-function ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit, armsHead) {
+function ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit) {
   if (!headFit) { // neck = narrowest row under the head; the torso starts where the body gets wide again
     const runW = y => { const x0 = Math.round(cx); if (!op(x0, y)) return 0; let a = x0, b = x0; while (op(a - 1, y) && x0 - a < W) a--; while (op(b + 1, y) && b - x0 < W) b++; return b - a; };
     let ny = null, nw = Infinity; for (let y = Math.round(top + 0.1 * hgt); y < top + 0.33 * hgt; y += 2) { const w = runW(y); if (w < nw) { nw = w; ny = y; } }
@@ -3798,13 +3737,12 @@ function ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit, armsHead) {
   }
   // arms already placed against the body (arms-down front view) keep their joints; ppFitLimbs still finds the feet
   // (a side whose hand ppFitLimbs finds raised above that elbow is a raised arm: the shape-based fit wins there)
-  // hands resting on the head (ppArmsToHead) are never tips either: those sides always keep their joints
-  const keep = armsDown || armsHead ? ['shL', 'elL', 'haL', 'shR', 'elR', 'haR'].map(k => [k, J[k]]) : null, skip = {};
+  const keep = armsDown ? ['shL', 'elL', 'haL', 'shR', 'elR', 'haR'].map(k => [k, J[k]]) : null, skip = {};
   try { ppFitLimbs(src, J); } catch (e) { console.warn(e); }
   if (keep) {
     const K = Object.fromEntries(keep);
     for (const sd of ['L', 'R']) {
-      if (armsHead ? !armsHead[sd] : J['ha' + sd].y < K['el' + sd].y) continue;
+      if (J['ha' + sd].y < K['el' + sd].y) continue;
       for (const k of ['sh', 'el', 'ha']) J[k + sd] = K[k + sd];
       skip[sd] = true; if (J._out) delete J._out[sd];
     }
@@ -5097,7 +5035,18 @@ const GESTURES = {
   startle: ['😱 Giật mình', [{ a: { armL: 200, foreL: 230, armR: -20, foreR: -50 }, dy: -0.05, n: 1, hold: 1 }, { dy: 0, n: 2, hold: 4 }, { n: 4, back: 1 }]],
   cry: ['😭 Lau nước mắt', [{ a: { armL: 120, foreL: -55, armR: 60, foreR: -125 }, head: 6, n: 3 }, { head: 2, n: 2 }, { head: 6, n: 2 }, { head: 2, n: 2 }, { n: 3, back: 1 }]],
   nodyes: ['🙆 Gật đồng ý', [{ head: 10, n: 2 }, { head: -2, n: 2 }, { head: 10, n: 2 }, { head: 0, n: 2, back: 1 }]],
-  nope: ['🙅 Lắc không', [{ head: -10, n: 2 }, { head: 10, n: 2 }, { head: -10, n: 2 }, { head: 10, n: 2 }, { n: 2, back: 1 }]]
+  nope: ['🙅 Lắc không', [{ head: -10, n: 2 }, { head: 10, n: 2 }, { head: -10, n: 2 }, { head: 10, n: 2 }, { n: 2, back: 1 }]],
+  // kneeling from a standing (front view) character: thighs straight down, shins squashed (they point away from the camera), body drops
+  beg: ['🙏 Quỳ gối xin tha', [{ a: { legL: 94, shinL: 92, legR: 86, shinR: 88 }, sy: { shinL: 0.18, shinR: 0.18 }, n: 4 },
+    { a: { armL: 115, foreL: -28, armR: 65, foreR: 208 }, head: -6, n: 3 },
+    { a: { foreL: -18, foreR: 198 }, head: -2, torso: 3, n: 2 }, { a: { foreL: -40, foreR: 220 }, head: -9, torso: 0, n: 2 },
+    { a: { foreL: -18, foreR: 198 }, head: -2, torso: 3, n: 2 }, { a: { foreL: -40, foreR: 220 }, head: -9, torso: 0, n: 2 },
+    { a: { foreL: -18, foreR: 198 }, head: -2, torso: 3, n: 2 }, { a: { foreL: -30, foreR: 210 }, head: -6, torso: 0, n: 2, hold: 4 }]],
+  kowtow: ['🙇 Quỳ gối vái lạy', [{ a: { legL: 94, shinL: 92, legR: 86, shinR: 88 }, sy: { shinL: 0.18, shinR: 0.18 }, n: 4 },
+    { a: { armL: 112, foreL: -66, armR: 68, foreR: 246 }, head: -4, n: 3, hold: 1 },
+    { a: { armL: 98, foreL: 70, armR: 82, foreR: 110 }, sy: { legL: 0.6, legR: 0.6 }, torso: 10, head: 18, dy: 0.03, n: 3, hold: 2 }, { a: { armL: 112, foreL: -66, armR: 68, foreR: 246 }, sy: { legL: 1, legR: 1 }, torso: 0, head: -4, dy: 0, n: 3 },
+    { a: { armL: 98, foreL: 70, armR: 82, foreR: 110 }, sy: { legL: 0.6, legR: 0.6 }, torso: 10, head: 18, dy: 0.03, n: 3, hold: 2 }, { a: { armL: 112, foreL: -66, armR: 68, foreR: 246 }, sy: { legL: 1, legR: 1 }, torso: 0, head: -4, dy: 0, n: 3 },
+    { a: { armL: 98, foreL: 70, armR: 82, foreR: 110 }, sy: { legL: 0.6, legR: 0.6 }, torso: 10, head: 18, dy: 0.03, n: 3, hold: 2 }, { a: { armL: 112, foreL: -66, armR: 68, foreR: 246 }, sy: { legL: 1, legR: 1 }, torso: 0, head: -4, dy: 0, n: 3, hold: 3 }]]
 };
 let gestMirror = false;
 function ppCurAbs(f, charId) {
@@ -5113,17 +5062,27 @@ async function ppGesture(id) {
   const mir = gestMirror, mapRole = r => mir ? r.replace(/L$/, '#').replace(/R$/, 'L').replace(/#$/, 'R') : r, mapAng = a => mir ? 180 - a : a, sg = mir ? -1 : 1;
   const start = ppCurAbs(f0, ch), tor = byRole('torso'), hgt = tor ? Math.max(200, tor.c.height * 2.2) : H * 0.6, dur = Math.round((+$('#ppPDur').value || 0.08) * 1000);
   const base = ppClone(f0.pp || {}), poses = [], isKey = [];
-  let prev = { a: { ...start }, head: 0, torso: 0, dy: 0 };
+  let prev = { a: { ...start }, head: 0, torso: 0, dy: 0, sy: {} };
   const mk = st => {
     const tf = { pp: ppClone(base) }; ppApplyAbs(tf, st.a, ch);
     const add = (role, prop, v) => { const p = byRole(role); if (!p || !v) return; const q = ppQ(tf, p.id); q[prop] = (q[prop] || 0) + v; };
-    add('head', 'r', st.head * sg); add('torso', 'r', st.torso * sg * (ppDir || 1)); add('torso', 'dy', st.dy * hgt); return tf.pp;
+    add('head', 'r', st.head * sg); add('torso', 'r', st.torso * sg * (ppDir || 1)); add('torso', 'dy', st.dy * hgt);
+    for (const [role, v] of Object.entries(st.sy || {})) { const p = byRole(role); if (p && v !== 1) { const q = ppQ(tf, p.id); q.sy = (q.sy == null ? 1 : q.sy) * v; } }   // squash (a shin pointing away from the camera)
+    // squashed legs are shorter: the body drops by as much, so the knees land where the feet were
+    let drop = 0; const len = p => { const t = ppTipOf(p); return Math.hypot(t.x - p.px, t.y - p.py); };
+    for (const sd of ['L', 'R']) { let d = 0; for (const r of ['leg' + sd, 'shin' + sd]) { const p = byRole(r), v = st.sy && st.sy[r]; if (p && v != null) d += len(p) * (1 - v); } drop = Math.max(drop, d); }
+    if (drop) add('torso', 'dy', drop);
+    // legs given in the keyframe stay at their screen angle when the body leans (kneeling knees stay on the ground)
+    const legs = {}; for (const r of ['legL', 'legR', 'shinL', 'shinR']) if (st.a[r] != null) legs[r] = st.a[r];
+    if (st.torso && Object.keys(legs).length) ppApplyAbs(tf, legs, ch);
+    return tf.pp;
   };
   for (const k of G[1]) {
-    const tgt = k.back ? { a: { ...start }, head: 0, torso: 0, dy: 0 } : { a: { ...prev.a }, head: k.head ?? prev.head, torso: k.torso ?? prev.torso, dy: k.dy ?? prev.dy };
+    const tgt = k.back ? { a: { ...start }, head: 0, torso: 0, dy: 0, sy: {} } : { a: { ...prev.a }, head: k.head ?? prev.head, torso: k.torso ?? prev.torso, dy: k.dy ?? prev.dy, sy: { ...prev.sy, ...(k.sy ? Object.fromEntries(Object.entries(k.sy).map(([r, v]) => [mapRole(r), v])) : {}) } };
     if (!k.back && k.a) for (const [r, v] of Object.entries(k.a)) tgt.a[mapRole(r)] = mapAng(v);
     for (let i = 1; i <= k.n; i++) {
-      const t = i / k.n, e = t * t * (3 - 2 * t), st = { a: {}, head: lerp(prev.head, tgt.head, e), torso: lerp(prev.torso, tgt.torso, e), dy: lerp(prev.dy, tgt.dy, e) };
+      const t = i / k.n, e = t * t * (3 - 2 * t), st = { a: {}, head: lerp(prev.head, tgt.head, e), torso: lerp(prev.torso, tgt.torso, e), dy: lerp(prev.dy, tgt.dy, e), sy: {} };
+      for (const r of new Set([...Object.keys(prev.sy), ...Object.keys(tgt.sy)])) st.sy[r] = lerp(prev.sy[r] ?? 1, tgt.sy[r] ?? 1, e);
       for (const r of new Set([...Object.keys(prev.a), ...Object.keys(tgt.a)])) { const a0 = prev.a[r] ?? tgt.a[r], a1 = tgt.a[r] ?? a0; st.a[r] = angLerp(a0, a1, e); }
       poses.push(mk(st)); isKey.push(i === k.n);
     }
@@ -8482,10 +8441,7 @@ ${st.lineOut === 'vec'
           for (const i of comp) { sum += m[i]; const x = i % sw, y = (i / sw) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
           const len = Math.max(x1 - x0, y1 - y0) + 1, thick = comp.length / len, mean = sum / comp.length;
           const slit = st.slits && len / thick > 8 && len > src.height * 0.08;   // long thin gap (arm held close to the body): the AI blurs these, so trust it less
-          // a wide closed-in patch the AI is unsure about (gap between a raised arm and the head): eye whites, teeth and
-          // white logos inside the figure score ~1.0, these gaps 0.6–0.75
-          const wide = mean < 0.85 && comp.length > src.width * src.height * 0.001;
-          if (mean < 0.4 || (slit && mean < 0.98) || wide) { for (const i of comp) a[i] = 0; cut++; }
+          if (mean < 0.4 || (slit && mean < 0.98)) { for (const i of comp) a[i] = 0; cut++; }
         }
         if (cut) { const b = boxBlur(a, src.width, src.height, 1); for (let i = 0; i < a.length; i++) a[i] = Math.min(a[i], b[i] * 1.5); }
       }

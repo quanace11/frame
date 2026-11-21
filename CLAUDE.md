@@ -61,7 +61,6 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
   - Mỗi frame có `f.pp[partId] = {r, dx, dy, sx, sy, v, h}`. FK dùng ma trận 2×3 (`ppMats`).
   - Vai trò (`PP_ROLES`): `head`, `torso`, `armL/R`, `foreL/R`, `legL/R`, `shinL/R`, `mouth`, `eyes`.
   - Cắt tự động 2 bước: `ppFitJoints` (+ `ppFitLimbs`: tìm bàn tay/bàn chân là đầu mút xa nhất khi đi bên trong hình; tay áp sát thân thì tìm theo viền) → `ppLabBegin` chia vùng (`ppAutoLabels`: lan từ xương, qua nét viền tốn thêm) và cho người dùng tô sửa (`ppSetup.hand`, bút / chạm cả mảng / khoanh, giá trị theo `PP_R10`, 10 = bỏ đi) → `ppAutoCut`. Nút "Sửa lại vùng cắt" mở lại từ `ppLastCut` (chỉ trong phiên), cắt lại giữ tư thế theo vai trò.
-  - Dáng khó: `ppRunNeck` (cổ theo dải điểm qua đầu, khi tay giơ cạnh đầu làm cả hàng rộng), `ppArmsToHead` (tay ôm đầu: đường ngắn nhất từ khuỷu chìa ra tới đỉnh đầu đi qua cẳng tay chứ không qua cổ → bàn tay ở cạnh đầu, vai ở nách), `ppKneelHips` (quỳ: không có khe giữa 2 chân, đáy rộng → hông thấp). Tách nền theo màu: khe kín rộng mà AI không chắc (`mean < 0.85`) cũng xoá (khe giữa tay giơ và đầu).
   - **🛷 Trượt gối** (tab Tạo frame, `ppSlide(dir)`): nhân vật lao vào, chậm dần (`EASE.out`) rồi dừng đúng chỗ đang đứng (`f.lip.mv`), bụi + cỏ ở phía sau (`slidePuffItem`, vẽ vào lớp pixel nên phải ở chỗ không bị nhân vật che), ngả thân ra sau, camera đẩy vào (key smooth ở frame n-3), SFX `slide` + `crowd`. Dùng `gagApply` (thêm `plan.copyOf` = frame để sao chép, `plan.edit(j, f)` trả về entry pose/đường đi) nên là 1 bước undo. `tests/test_truot_goi.py`.
   - `ppPresetPose` (đi, chạy, nhảy...), `ppTween`/`ppRetween` (frame giữa tự cập nhật theo keyframe 🔑).
   - **〰 Uốn mềm khớp** (`S.ppSoft`): `drawPuppet` vẽ tay/chân bằng lưới tam giác (`ppDrawSoft`), điểm gần khớp trộn ma trận 2 mảnh (`ppSkinMat`, `ppSoftJoints`): khuỷu/gối trộn 2 phía, vai/hông chỉ phía tay/chân. `ppGeom` cache trục xương + bề rộng chi (WeakMap, không lưu).
@@ -74,6 +73,7 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
 - **Cử chỉ** (`GESTURES`, `ppGesture`)
   - Keyframe theo vai trò và góc tuyệt đối của tay (`ppApplyAbs`), nên áp được cho mọi nhân vật đã gán vai trò.
   - Trong `BUILTIN_POSES`/`GESTURES`, góc tính theo độ trên màn hình: 0 = sang phải, 90 = xuống dưới.
+  - Keyframe cử chỉ có thể có `sy: {role: tỉ lệ}` (ép ngắn mảnh, vd. ống chân chĩa ra sau khi quỳ nhìn từ trước); chân bị ép thì thân tự hạ xuống đúng chừng đó (`drop`) để gối chạm đất ở chỗ bàn chân cũ. Chân có trong `a` giữ góc màn hình khi thân nghiêng. 🙏 Quỳ gối xin tha (`beg`), 🙇 Quỳ gối vái lạy (`kowtow`). `tests/test_quy_goi.py`.
   - **⭐ Chuyển động của tôi** (tab Tạo frame, như Motion preset): `myMoSave` lưu các frame từ frame hiện tại thành góc tay/chân tuyệt đối theo vai trò (`ppCurAbs`) + đầu/thân/nhún tương đối (`myMoCapture`), thời lượng, keyframe; `myMoApply` dựng lại trên nhân vật đang chọn (có Tay kia = lật). Lưu chung mọi dự án ở localStorage `fs-motions`. `tests/test_chuyen_dong_cua_toi.py`.
 - **Còn lại**
   - IK, Pose library, Projects
