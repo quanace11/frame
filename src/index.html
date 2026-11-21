@@ -381,7 +381,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <div class="layer" id="layerRef"><button class="name" id="refEditBtn" title="Chỉnh vị trí/cỡ/độ mờ ảnh mờ">Ảnh mờ</button><button class="eye" id="refEye" title="Ẩn/hiện">👁</button></div>
     </div>
     <span class="spacer"></span>
-    <button class="chip small on" id="wizBtn" title="Trợ lý làm video từng bước">🚀 Làm nhanh</button><button class="chip small" id="aiCharBtn" title="AI tạo nhân vật hoạt hình từ ảnh chụp (Google Gemini, dùng key của bạn)">🤖 AI nhân vật</button><button class="chip small" id="assetBtn" title="Kho hình: hiệu ứng động (choáng, đánh nhau, chữ âm thanh), mắt, miệng, tay">🎨 Kho hình</button>
+    <button class="chip small on" id="wizBtn" title="Trợ lý làm video từng bước">🚀 Làm nhanh</button><button class="chip small" id="aiFxBtn" title="AI vẽ đẹp: làm sạch nét phác, tô màu, vẽ frame giữa (Google Gemini, dùng key của bạn)">🪄 AI vẽ đẹp</button><button class="chip small" id="aiCharBtn" title="AI tạo nhân vật hoạt hình từ ảnh chụp (Google Gemini, dùng key của bạn)">🤖 AI nhân vật</button><button class="chip small" id="assetBtn" title="Kho hình: hiệu ứng động (choáng, đánh nhau, chữ âm thanh), mắt, miệng, tay">🎨 Kho hình</button>
     <button class="chip small" id="projBtn" title="Danh sách dự án">📁 Dự án</button><span id="saveState"></span><button class="chip small" id="syncState" hidden title="Đồng bộ giữa các máy">☁</button>
     <button class="chip small hidebtn" id="topHide" title="Thu gọn thanh này thành 1 nút nhỏ để vùng vẽ rộng hơn" aria-label="Thu gọn thanh trên">▴</button>
   </header>
@@ -5667,6 +5667,7 @@ function setFocus(on) {
 $('#focusBtn').addEventListener('click', () => setFocus(true));
 $('#assetBtn').addEventListener('click', () => assetDialog());
 $('#aiCharBtn').addEventListener('click', () => aiCharDialog());
+$('#aiFxBtn').addEventListener('click', () => aiFxDialog());
 $('#ppAssetBtn').addEventListener('click', () => { const s = ppPart(ppSel); assetDialog(s && s.asset ? s.asset.cat : (s && s.role === 'head' ? 'face' : /fore|arm/.test(s && s.role || '') ? 'hand' : 'eyes')); });
 Object.entries(GESTURES).forEach(([k, v]) => { const b = document.createElement('button'); b.className = 'chip small'; b.textContent = v[0]; b.title = 'Tạo các frame cử chỉ từ tư thế frame này'; b.addEventListener('click', () => ppGesture(k)); $('#ppGests').append(b); });
 $('#gestMir').addEventListener('change', e => { gestMirror = e.target.checked; });
@@ -9503,13 +9504,14 @@ function aiErrMsg(status, j) {
 }
 
 // One call to Gemini. Image 1 = style reference, photo 2 = the person. Returns a PNG/JPEG Blob.
-async function geminiGenerate({ key, model, prompt, refImg, photoImg, signal, fetchFn = fetch }) {
+// images: [{label, img}] in place of refImg/photoImg (🪄 AI vẽ đẹp); aspect = the picture shape to ask for
+async function geminiGenerate({ key, model, prompt, refImg, photoImg, images, aspect = '3:4', signal, fetchFn = fetch }) {
+  const imgs = images || [{ label: 'Image 1 (style reference):', img: refImg }, { label: 'Photo 2 (the person to redraw):', img: photoImg }];
   const mk = withCfg => ({
     contents: [{ role: 'user', parts: [
-      { text: 'Image 1 (style reference):' }, { inline_data: { mime_type: refImg.mime, data: refImg.data } },
-      { text: 'Photo 2 (the person to redraw):' }, { inline_data: { mime_type: photoImg.mime, data: photoImg.data } },
+      ...imgs.flatMap(e => [{ text: e.label }, { inline_data: { mime_type: e.img.mime, data: e.img.data } }]),
       { text: prompt } ] }],
-    generationConfig: Object.assign({ responseModalities: ['TEXT', 'IMAGE'] }, withCfg ? { imageConfig: { aspectRatio: '3:4' } } : {})
+    generationConfig: Object.assign({ responseModalities: ['TEXT', 'IMAGE'] }, withCfg ? { imageConfig: { aspectRatio: aspect } } : {})
   });
   const call = async withCfg => {
     let r;
@@ -9639,6 +9641,161 @@ async function aiCharDialog() {
       } finally { clearTimeout(timer); st.ctl = null; busy(''); }
     });
     // free object URLs when the dialog goes away
+    const mo = new MutationObserver(() => { if (!ov.isConnected) { mo.disconnect(); if (st.ctl) st.ctl.abort(); st.urls.forEach(u => URL.revokeObjectURL(u)); } });
+    mo.observe(document.body, { childList: true });
+  } });
+}
+
+/* ========= 🪄 AI vẽ đẹp: one tap with Gemini (the user's own key) =========
+   ✨ clean a rough sketch into finished line + colour art (same pose and place), 🎨 colour line art, 🎞 draw the in-between frame
+   between this frame and the next. The answer goes back through the line/colour split (nét → lớp Nhân vật, màu → lớp Màu) as a
+   floating picture over the whole frame, so Xong puts it down (one undo step) and Huỷ brings the old drawing back. */
+const AI_FX_LS = 'fs-ai-fx';
+const AI_FX = {
+  clean: { lbl: '✨ Làm đẹp nét phác', tip: 'Vẽ phác nhanh, AI vẽ lại thành nét sạch + tô màu, giữ đúng dáng và chỗ đứng.' },
+  color: { lbl: '🎨 Tô màu', tip: 'Giữ nguyên nét của bạn, AI chỉ tô màu vào lớp Màu (nét cũ không đổi).' },
+  ib: { lbl: '🎞 Vẽ frame giữa', tip: 'AI vẽ dáng ở giữa frame này và frame sau, thêm thành frame mới chen vào giữa.' }
+};
+const AI_NO_LOGO = 'Do not draw any logos, team crests, brand marks, sponsor text, letters or numbers.';
+function aiFxPrompt(mode, withRef, note) {
+  const same = 'Keep EXACTLY the same canvas framing, pose, positions, sizes and proportions, so the result lines up when placed over the original.';
+  let p;
+  if (mode === 'color') p = 'Image 1 is black line art: one frame of a 2D cartoon animation. Colour it: keep every line exactly where it is with the same thickness, do not move, add or remove any line. Fill each closed area with a flat colour plus soft simple shading. ' + same + ' Plain pure white background.';
+  else if (mode === 'ib') p = 'Image 1 and image 2 are two key frames of the same 2D cartoon animation, on the same canvas. Draw the ONE in-between frame exactly halfway between them: the same character with the same design, style, colours, line weight and size; the pose and position halfway from image 1 to image 2, moving along natural arcs. Keep the same canvas framing as the key frames. Plain pure white background.';
+  else p = 'Image 1 is a rough sketch: one frame of a 2D cartoon animation. Redraw it as clean, finished cartoon art: smooth confident dark outlines, flat colours with soft simple shading, tidy shapes. ' + same + ' Plain pure white background, do not add a scene or other objects.';
+  if (withRef && mode !== 'ib') p += ' Use the drawing style of image 2 (style reference: line colour and weight, colouring, shading), but not its character or pose.';
+  if (note) p += ' What is drawn: ' + note + '.';
+  return p + ' ' + AI_NO_LOGO + ' Draw no text.';
+}
+// a frame as the AI should see it: colour + character pixels + cut-out character + vector lines on white (no background layer)
+async function aiFrameShot(f) {
+  await ensureLoaded(f);
+  const c = makeCanvas(W, H), x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
+  if (f.col) x.drawImage(f.col, 0, 0);
+  if (f.canvas) x.drawImage(f.canvas, 0, 0);
+  if (S.pp) drawPuppet(x, f.pp, f.lip);
+  drawVec(x, f.vec);
+  return c;
+}
+function aiFrameEmpty(f) {
+  if ((f.vec || []).length || (S.pp && S.pp.parts.length)) return false;
+  for (const cv of [f.canvas, f.col]) if (cv) { const d = cv.getContext('2d').getImageData(0, 0, W, H).data; for (let i = 3; i < d.length; i += 16) if (d[i] > 20) return false; }
+  return true;
+}
+const aiAspect = () => { const r = W / H; return r < 0.7 ? '9:16' : r < 0.9 ? '3:4' : r < 1.15 ? '1:1' : r < 1.5 ? '4:3' : '16:9'; };
+// the white paper around the drawing → transparent (flood from the edges, so white eyes/teeth inside the drawing stay)
+function aiWhiteMask(img) {
+  const w = img.width, h = img.height, d = img.data, n = w * h, fig = new Float32Array(n).fill(1), seen = new Uint8Array(n), st = [];
+  const paper = i => { const r = d[i * 4], g = d[i * 4 + 1], b = d[i * 4 + 2]; return Math.min(r, g, b) > 228 && Math.max(r, g, b) - Math.min(r, g, b) < 26; };
+  const push = i => { if (!seen[i] && paper(i)) { seen[i] = 1; st.push(i); } };
+  for (let x = 0; x < w; x++) { push(x); push((h - 1) * w + x); }
+  for (let y = 0; y < h; y++) { push(y * w); push(y * w + w - 1); }
+  while (st.length) { const i = st.pop(), x = i % w; fig[i] = 0; if (x > 0) push(i - 1); if (x < w - 1) push(i + 1); if (i >= w) push(i - w); if (i < n - w) push(i + w); }
+  return fig;
+}
+async function aiSplitResult(blob) {
+  const bmp = await createImageBitmap(blob);
+  const k = Math.min(1, 1400 / Math.max(bmp.width, bmp.height)), c = makeCanvas(Math.max(1, Math.round(bmp.width * k)), Math.max(1, Math.round(bmp.height * k))), x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(bmp, 0, 0, c.width, c.height); if (bmp.close) bmp.close();
+  const img = x.getImageData(0, 0, c.width, c.height);
+  return splitLineColor(img, aiWhiteMask(img), 55, true);
+}
+// put the AI picture over the whole frame as a floating picture (Xong = one undo step, Huỷ = as before)
+function aiPlace(res, mode, replace) {
+  const empty = makeCanvas(res.line.width, res.line.height);
+  floatFromImage(mode === 'color' ? empty : res.line, res.col);
+  const fl = floating; if (!fl) return false;
+  fl.scale = Math.min(W / fl.c.width, H / fl.c.height); fl.cx = W / 2; fl.cy = H / 2;
+  if (replace && mode === 'clean') {   // the rough sketch goes away under the clean picture (Huỷ / ↶ bring it back)
+    const o = fl.o; o.canvas.getContext('2d').clearRect(0, 0, W, H);
+    if (o.col) { o.col.getContext('2d').clearRect(0, 0, W, H); o.colVer++; }
+    if ((o.vec || []).length) { fl.vecBefore = cloneVec(o.vec); o.vec = []; }
+    fl.dirty = [0, 0, W, H]; o.ver++;
+  }
+  showSelbar(); requestRender(); return true;
+}
+async function aiFxDialog() {
+  if (playing) stopPlay(); if (stroke) strokeEnd(); commitFloating();
+  const st = { mode: AI_FX[lsGet(AI_FX_LS)] ? lsGet(AI_FX_LS) : 'clean', ctl: null, result: null, res: null, resMode: '', ia: S.cur, urls: [], useRef: true, replace: true };
+  let refBlob = null; try { refBlob = (await idbGet(AI_REF_KEY)) || null; } catch (e) {}
+  const url = b => { const u = URL.createObjectURL(b); st.urls.push(u); return u; };
+  const box = 'width:100%;max-width:170px;aspect-ratio:' + W + '/' + H + ';border-radius:10px;border:1px solid var(--line);background:#fff;object-fit:contain;display:block';
+  const html = `
+<p style="margin-top:0">Vẽ phác thật nhanh, để AI làm phần tốn công. Kết quả đặt vào frame thành <b>hình nổi</b>: nét vào lớp <b>Nhân vật</b>, màu vào lớp <b>Màu</b>. Bấm <b>Xong</b> để giữ, <b>Huỷ</b> để bỏ.</p>
+<div class="chips" id="axModes" style="display:flex;gap:6px;flex-wrap:wrap">${Object.keys(AI_FX).map(k => `<button class="chip" data-ax="${k}">${AI_FX[k].lbl}</button>`).join('')}</div>
+<p class="lbl" id="axTip" style="font-size:13px;margin:6px 0"></p>
+<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start">
+  <div style="flex:1;min-width:120px"><div class="lbl" style="font-size:13px;margin-bottom:4px" id="axSrcLbl">Gửi đi</div><div style="display:flex;gap:6px"><img id="axSrcA" alt="" style="${box}"><img id="axSrcB" alt="" style="${box}" hidden></div></div>
+  <div style="flex:1;min-width:120px"><div class="lbl" style="font-size:13px;margin-bottom:4px">Kết quả</div><div style="position:relative;max-width:170px"><img id="axRes" alt="" style="${box}"><div id="axBusy" class="lbl" hidden style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;background:rgba(0,0,0,.55);color:#fff;border-radius:10px;padding:8px;font-size:13px"></div></div></div>
+</div>
+<div class="set-row"><span>Mô tả thêm (không bắt buộc)</span><input id="axNote" type="text" spellcheck="false" placeholder="VD: cầu thủ đang sút bóng" style="flex:1;max-width:260px;min-height:42px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:15px"></div>
+<label class="set-row" id="axRefRow"><span>Vẽ theo ảnh mẫu phong cách (như 🤖 AI nhân vật)</span><input type="checkbox" id="axRef" checked></label>
+<label class="set-row" id="axRepRow"><span>Thay nét phác cũ bằng hình mới</span><input type="checkbox" id="axRep" checked></label>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button class="btn primary" id="axGo">✨ Cho AI vẽ</button><button class="btn" id="axPut" disabled style="border-color:#ff3b9a">📥 Đặt vào frame</button><button class="btn" id="axImp" disabled title="Mở trong Nhập ảnh để tách nền, tách nét + màu, cắt mảnh…">✂ Mở trong Nhập ảnh</button></div>
+<div id="axErr" role="alert" style="display:none;margin-top:10px;padding:10px;border-radius:10px;background:rgba(255,84,104,.14);border:1px solid var(--danger);font-size:14px;line-height:1.4"></div>
+<div class="set-row" style="margin-top:6px"><span id="axKeyState" class="lbl" style="font-size:13px"></span><button class="btn" id="axKeyBtn">🔑 Key Gemini</button></div>
+<p class="lbl" style="font-size:12px;margin:4px 0 0">Hình của frame được gửi tới Google Gemini bằng key của bạn. AI không bao giờ giống 100%: kéo, đổi cỡ hình nổi cho khớp rồi bấm Xong, hoặc bấm Vẽ lại.</p>`;
+  return modal({ title: '🪄 AI vẽ đẹp', html, buttons: [{ label: 'Đóng', value: null }], dismissable: false, onOpen: (ov, close) => {
+    ov.querySelector('.dlg').classList.add('wide');
+    const q = s => ov.querySelector(s), errBox = q('#axErr');
+    const showErr = m => { errBox.textContent = m || ''; errBox.style.display = m ? 'block' : 'none'; };
+    const keyState = () => { q('#axKeyState').textContent = aiKey() ? '🔑 Đã có key trên máy này ✓' : '🔑 Chưa có key Gemini — bấm nút bên phải để dán key'; };
+    const shots = {};
+    const shot = async i => shots[i] || (shots[i] = await aiFrameShot(S.frames[i]));
+    const sync = async () => {
+      ov.querySelectorAll('[data-ax]').forEach(b => b.classList.toggle('on', b.dataset.ax === st.mode));
+      q('#axTip').textContent = AI_FX[st.mode].tip;
+      q('#axRefRow').hidden = st.mode === 'ib'; q('#axRepRow').hidden = st.mode !== 'clean';
+      const ib = st.mode === 'ib', B = S.frames[st.ia + 1];
+      q('#axSrcLbl').textContent = ib ? `Frame ${st.ia + 1} → frame ${st.ia + 2}` : `Frame ${st.ia + 1}`;
+      q('#axSrcA').src = (await shot(st.ia)).toDataURL('image/jpeg', 0.8);
+      q('#axSrcB').hidden = !ib || !B; if (ib && B) q('#axSrcB').src = (await shot(st.ia + 1)).toDataURL('image/jpeg', 0.8);
+      q('#axGo').textContent = st.result && st.resMode === st.mode ? '🔁 Vẽ lại' : '✨ Cho AI vẽ';
+      q('#axPut').disabled = q('#axImp').disabled = !(st.result && st.resMode === st.mode);
+    };
+    ov.querySelectorAll('[data-ax]').forEach(b => b.addEventListener('click', () => { st.mode = b.dataset.ax; lsSet(AI_FX_LS, st.mode === 'clean' ? '' : st.mode); showErr(''); sync(); }));
+    q('#axNote').addEventListener('keydown', e => e.stopPropagation());
+    q('#axKeyBtn').addEventListener('click', async () => { ov.style.display = 'none'; await aiKeyDialog(); ov.style.display = ''; keyState(); });
+    const busy = t => { const b = q('#axBusy'); b.hidden = !t; b.textContent = t || ''; };
+    q('#axGo').addEventListener('click', async () => {
+      if (st.ctl) { st.ctl.abort(); return; }
+      showErr('');
+      if (!aiKey()) { showErr('🔑 Chưa có key Gemini. Bấm 🔑 Key Gemini để dán key của bạn.'); return; }
+      const mode = st.mode, A = S.frames[st.ia], B = S.frames[st.ia + 1];
+      if (mode === 'ib' && !B) { showErr('🎞 Cần có frame sau: chọn frame dáng đầu (frame sau là dáng cuối) rồi mở lại.'); return; }
+      await ensureLoaded(A); if (B) await ensureLoaded(B);
+      if (aiFrameEmpty(A) || (mode === 'ib' && aiFrameEmpty(B))) { showErr('✏️ Frame còn trống: vẽ phác nhân vật trước (lớp Nhân vật, Màu hoặc Nét vector).'); return; }
+      st.ctl = new AbortController(); const timer = setTimeout(() => st.ctl && st.ctl.abort('timeout'), 120000);
+      q('#axGo').textContent = '✕ Huỷ'; busy('🎨 AI đang vẽ… (thường 10–40 giây)');
+      try {
+        const useRef = mode !== 'ib' && q('#axRef').checked, note = q('#axNote').value.trim().slice(0, 200);
+        const images = [await aiPrepImage(await shot(st.ia), 1024)];
+        if (mode === 'ib') images.push(await aiPrepImage(await shot(st.ia + 1), 1024));
+        else if (useRef) images.push(await aiPrepImage(refBlob || aiStyleRefCanvas(), 768));
+        const labels = mode === 'ib' ? ['Image 1 (first key frame):', 'Image 2 (last key frame):'] : ['Image 1 (' + (mode === 'color' ? 'line art' : 'rough sketch') + '):', 'Image 2 (style reference):'];
+        const blob = await geminiGenerate({ key: aiKey(), model: aiModel(), prompt: aiFxPrompt(mode, useRef, note), images: images.map((img, k) => ({ label: labels[k], img })), aspect: aiAspect(), signal: st.ctl.signal });
+        busy('Đang tách nét và màu…');
+        st.res = await aiSplitResult(blob); st.result = blob; st.resMode = mode; q('#axRes').src = url(blob);
+        toast('Xong! Bấm 📥 Đặt vào frame', 2500);
+      } catch (e) {
+        if (e.name === 'AbortError' || (st.ctl && st.ctl.signal.aborted)) showErr(st.ctl && st.ctl.signal.reason === 'timeout' ? '⌛ AI trả lời quá lâu (2 phút). Thử lại nhé.' : 'Đã huỷ.');
+        else { console.warn('AI fx:', e.aiStatus, e.raw || e); showErr(e.message); }
+      } finally { clearTimeout(timer); st.ctl = null; busy(''); sync(); }
+    });
+    q('#axPut').addEventListener('click', async () => {
+      if (!st.res) return;
+      const mode = st.resMode, replace = q('#axRep').checked; close(null);
+      if (mode === 'ib') {   // a new frame between A and B, then the in-between picture floats on it
+        const A = S.frames[st.ia]; await ensureLoaded(A);
+        const f = newFrameObj(A.bgId); f.dur = A.dur; f.pp = ppClone(A.pp); if (S.pp) f.ppKey = false; f.lip = lipCopy(A); f.texts = JSON.parse(JSON.stringify(A.texts || []));
+        loaded.push(f); S.frames.splice(st.ia + 1, 0, f);
+        pushEntry({ t: targetOf(A), add: { frames: [f], index: st.ia + 1, dur0: A.dur, dur1: A.dur }, bytes: 0 });
+        tintCache.clear(); if (S.pp) ppRetween(); await drawThumb(f); buildStrip(); await selectFrame(st.ia + 1); scheduleSave(); updUndoBtns();
+      } else if (S.cur !== st.ia) await selectFrame(st.ia);
+      if (aiPlace(st.res, mode, replace)) toast(mode === 'ib' ? `Đã thêm frame ${st.ia + 2} (frame giữa). Kéo cho khớp rồi bấm Xong` : 'Kéo, đổi cỡ cho khớp rồi bấm Xong để giữ, Huỷ để bỏ', 3500);
+    });
+    q('#axImp').addEventListener('click', async () => { if (!st.result) return; const b = st.result; close(null); let bmp; try { bmp = await createImageBitmap(b); } catch (e) { toast('Không đọc được hình'); return; } openImport(bmp); });
+    keyState(); sync();
     const mo = new MutationObserver(() => { if (!ov.isConnected) { mo.disconnect(); if (st.ctl) st.ctl.abort(); st.urls.forEach(u => URL.revokeObjectURL(u)); } });
     mo.observe(document.body, { childList: true });
   } });
@@ -10456,30 +10613,81 @@ function ibLerpCol(a, b, t) {
   const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16), ch = s => Math.round(((pa >> s) & 255) * (1 - t) + ((pb >> s) & 255) * t);
   return '#' + ((ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).padStart(6, '0');
 }
-function ibVec(va, vb, t) {
-  const mb = new Map((vb || []).map(st => [st.id, st])), ma = new Set((va || []).map(st => st.id)), out = [];
-  for (const sa of va || []) {
-    const sb = mb.get(sa.id);
-    if (!sb) { if (t < 0.5) out.push({ id: sa.id, c: sa.c, w: sa.w, a: sa.a, pts: sa.pts.map(q => ({ x: q.x, y: q.y })) }); continue; }
-    const n = Math.max(sa.pts.length, sb.pts.length), A = ibResample(sa.pts, n), B = ibResample(sb.pts, n);
+/* stroke pairs A → B: same id first (Nhân bản frame), then ✨ auto-match for strokes drawn again on the key frame:
+   cost = how far the stroke moved + how different its shape is (both centred) + length + colour + drawing order; cheapest first.
+   Open strokes may be drawn the other way round (rev); a closed loop (head, ball) may start somewhere else (rot). */
+function ibFeat(st, k, n) {
+  const R = ibResample(st.pts, 24); let cx = 0, cy = 0; for (const q of R) { cx += q.x; cy += q.y; } cx /= R.length; cy /= R.length;
+  let len = 0; for (let i = 1; i < st.pts.length; i++) len += Math.hypot(st.pts[i].x - st.pts[i - 1].x, st.pts[i].y - st.pts[i - 1].y);
+  const p0 = st.pts[0], p1 = st.pts[st.pts.length - 1];
+  return { st, R, cx, cy, len, ord: n > 1 ? k / (n - 1) : 0, closed: st.pts.length > 4 && Math.hypot(p1.x - p0.x, p1.y - p0.y) < Math.max(10, len * 0.12) };
+}
+function ibShape(fa, fb) {   // mean distance of the centred shapes, best of both directions
+  let f = 0, r = 0; const n = fa.R.length;
+  for (let k = 0; k < n; k++) { const a = fa.R[k], b = fb.R[k], c = fb.R[n - 1 - k];
+    f += Math.hypot(a.x - fa.cx - (b.x - fb.cx), a.y - fa.cy - (b.y - fb.cy)); r += Math.hypot(a.x - fa.cx - (c.x - fb.cx), a.y - fa.cy - (c.y - fb.cy)); }
+  return Math.min(f, r) / n;
+}
+function ibPairs(va, vb) {
+  va = va || []; vb = vb || [];
+  const ids = new Map(vb.map(st => [st.id, st])), out = [], usedB = new Set(), restA = [];
+  for (const sa of va) { const sb = ids.get(sa.id); if (sb && !usedB.has(sb)) { usedB.add(sb); out.push({ sa, sb }); } else if (sa.pts.length) restA.push(sa); }
+  const restB = vb.filter(st => !usedB.has(st) && st.pts.length);
+  if (restA.length && restB.length && restA.length * restB.length <= 40000) {
+    const D = Math.hypot(W, H), FA = restA.map((st, k) => ibFeat(st, k, restA.length)), FB = restB.map((st, k) => ibFeat(st, k, restB.length)), C = [];
+    for (const fa of FA) for (const fb of FB) {
+      const c = Math.hypot(fa.cx - fb.cx, fa.cy - fb.cy) + ibShape(fa, fb) + 0.5 * Math.abs(fa.len - fb.len) + (fa.st.c !== fb.st.c ? 0.06 * D : 0) + 0.12 * D * Math.abs(fa.ord - fb.ord) + (fa.closed !== fb.closed ? 0.05 * D : 0);
+      if (c < 0.3 * D) C.push({ c, fa, fb });
+    }
+    C.sort((x, y) => x.c - y.c);
+    const ua = new Set(), ub = new Set();
+    for (const { fa, fb } of C) {
+      if (ua.has(fa) || ub.has(fb)) continue; ua.add(fa); ub.add(fb);
+      const pr = { sa: fa.st, sb: fb.st, auto: true }, A = fa.st.pts, B = fb.st.pts;
+      if (fa.closed && fb.closed) {   // loops: pick the start point + direction on B that lines up best with A
+        const n = 48, RA = ibResample(A, n), dx = fb.cx - fa.cx, dy = fb.cy - fa.cy; let best = Infinity;
+        for (const rev of [false, true]) { const RB = ibResample(rev ? B.slice().reverse() : B, n);
+          for (let o = 0; o < n; o++) { let s = 0; for (let k = 0; k < n; k++) { const q = RB[(k + o) % n]; s += Math.hypot(RA[k].x + dx - q.x, RA[k].y + dy - q.y); } if (s < best) { best = s; pr.rev = rev; pr.rot = o / n; } } }
+      } else pr.rev = Math.hypot(A[0].x - B[B.length - 1].x, A[0].y - B[B.length - 1].y) + Math.hypot(A[A.length - 1].x - B[0].x, A[A.length - 1].y - B[0].y)
+        < Math.hypot(A[0].x - B[0].x, A[0].y - B[0].y) + Math.hypot(A[A.length - 1].x - B[B.length - 1].x, A[A.length - 1].y - B[B.length - 1].y);
+      out.push(pr);
+    }
+  }
+  const pa = new Set(out.map(p => p.sa)), pb = new Set(out.map(p => p.sb));
+  return { pairs: out, onlyA: va.filter(st => !pa.has(st)), onlyB: vb.filter(st => !pb.has(st)), auto: out.filter(p => p.auto).length };
+}
+function ibVec(va, vb, t, P) {
+  P = P || ibPairs(va, vb); const out = [], copy = s => ({ id: s.id, c: s.c, w: s.w, a: s.a, pts: s.pts.map(q => ({ x: q.x, y: q.y })) });
+  const order = new Map((va || []).map((s, k) => [s, k]));
+  const items = P.pairs.slice().sort((x, y) => order.get(x.sa) - order.get(y.sa));
+  for (const { sa, sb, rev, rot } of items) {
+    const n = Math.max(sa.pts.length, sb.pts.length, rot != null ? 48 : 2), A = ibResample(sa.pts, n);
+    let B = ibResample(rev ? sb.pts.slice().reverse() : sb.pts, n);
+    if (rot) { const o = Math.round(rot * n) % n, L = B.slice(0, n - 1); B = Array.from({ length: n }, (_, k) => L[(k + o) % (n - 1)]); }   // closed loop: last point = first
     const st = { id: sa.id, c: ibLerpCol(sa.c, sb.c, t), w: sa.w + (sb.w - sa.w) * t, pts: A.map((q, k) => ({ x: q.x + (B[k].x - q.x) * t, y: q.y + (B[k].y - q.y) * t })) };
     if (sa.a != null || sb.a != null) st.a = (sa.a ?? 1) + ((sb.a ?? 1) - (sa.a ?? 1)) * t;
     out.push(st);
   }
-  if (t >= 0.5) for (const sb of vb || []) if (!ma.has(sb.id)) out.push({ id: sb.id, c: sb.c, w: sb.w, a: sb.a, pts: sb.pts.map(q => ({ x: q.x, y: q.y })) });
+  if (t < 0.5) for (const sa of P.onlyA) out.push(copy(sa)); else for (const sb of P.onlyB) out.push(copy(sb));
   return out;
 }
-const ibShared = (a, b) => { const ids = new Set((b.vec || []).map(st => st.id)); return (a.vec || []).filter(st => ids.has(st.id)).length; };
-async function inbetween(n, ease) {
+const ibShared = (a, b) => ibPairs(a.vec, b.vec).pairs.length;
+// pix: ✏️ pen lines on the Nhân vật layer move too: both key frames are traced into strokes (in memory), paired like vector
+// strokes, and every in-between is drawn back as pixels, so the frames stay normal pen drawings
+async function inbetween(n, ease, pix) {
   if (playing) stopPlay(); if (stroke) strokeEnd(); commitFloating(); motionClose(); rigClose();
   const ia = S.cur, A = S.frames[ia], B = S.frames[ia + 1]; if (!A || !B) return 0;
   await ensureLoaded(A); await ensureLoaded(B);
-  const ez = EASE[ease] || EASE.linear, added = [];
+  const ez = EASE[ease] || EASE.linear, added = [], P = ibPairs(A.vec, B.vec);
+  let PX = null;
+  if (pix) { const pm = progress('Đang dò nét bút của 2 frame…'); await new Promise(r => setTimeout(r, 30));
+    try { const SA = pixelsToStrokes(A.canvas), SB = pixelsToStrokes(B.canvas); if (SA.length && SB.length) PX = { SA, SB, P: ibPairs(SA, SB) }; } finally { pm.close(); } }
   for (let k = 1; k <= n; k++) {
     const t = ez(k / (n + 1)), src = t < 0.5 ? A : B;
     const f = newFrameObj(A.bgId); f.dur = A.dur;
-    f.canvas.getContext('2d').drawImage(src.canvas, 0, 0); copyCol(f, src); f.ver = 1; f.pngVer = 0;
-    f.vec = ibVec(A.vec, B.vec, t);
+    if (PX) drawVec(f.canvas.getContext('2d'), ibVec(PX.SA, PX.SB, t, PX.P)); else f.canvas.getContext('2d').drawImage(src.canvas, 0, 0);
+    copyCol(f, src); f.ver = 1; f.pngVer = 0;
+    f.vec = ibVec(A.vec, B.vec, t, P);
     f.pp = ppClone(A.pp); if (S.pp) { f.ppKey = false; }
     f.lip = lipCopy(A);
     if (A.lip && A.lip.mv && B.lip && B.lip.mv) for (const id in f.lip.mv) { const q = B.lip.mv[id]; if (q) { const p = f.lip.mv[id]; p.x += (q.x - p.x) * t; p.y += (q.y - p.y) * t; } }   // 〰 Đường đi: in-between frames move along too
@@ -10497,12 +10705,16 @@ async function inbetween(n, ease) {
 async function inbetweenDialog() {
   const A = curFrame(), B = S.frames[S.cur + 1];
   if (!B) { toast('Cần có frame sau: chọn frame đầu của chuyển động (frame sau là điểm đến)', 3500); return; }
-  const sh = ibShared(A, B), pp = !!S.pp;
-  if (!sh && !pp) { toast('Chưa có gì để nội suy: vẽ bằng lớp Nét vector → Nhân bản frame → kéo chấm ở frame mới → quay lại frame trước rồi bấm ✨ Vẽ giữa', 6000); return; }
+  await ensureLoaded(A); await ensureLoaded(B);
+  const P = ibPairs(A.vec, B.vec), sh = P.pairs.length, pp = !!S.pp;
+  const inked = f => { const d = f.canvas.getContext('2d').getImageData(0, 0, W, H).data; for (let i = 3; i < d.length; i += 4) if (d[i] > 90) return true; return false; };
+  const pxOk = inked(A) && inked(B);
+  if (!sh && !pp && !pxOk) { toast('Chưa có gì để nội suy: vẽ dáng đầu ở frame này và dáng cuối ở frame sau (bút thường hoặc Nét vector) rồi bấm ✨ Vẽ giữa ở frame đầu', 6000); return; }
   let el = {};
   const ez = [['linear', 'Đều'], ['out', 'Chậm dần'], ['in', 'Nhanh dần'], ['inout', 'Chậm–nhanh–chậm']];
   let ease = 'inout';
-  const v = await modal({ title: '✨ Vẽ giữa (tween)', html: `<p class="lbl">Tự tạo các frame chuyển tiếp từ frame ${S.cur + 1} tới frame ${S.cur + 2}.${sh ? ` ${sh} nét vector cùng nguồn sẽ chuyển dần hình dạng.` : ''}${pp ? ' Nhân vật ghép chuyển dáng giữa 2 frame 🔑.' : ''} Hình vẽ bằng bút thường (không phải nét vector) được giữ nguyên.</p>
+  const v = await modal({ title: '✨ Vẽ giữa (tween)', html: `<p class="lbl">Tự tạo các frame chuyển tiếp từ frame ${S.cur + 1} tới frame ${S.cur + 2}.${sh ? ` ${sh} nét vector sẽ chuyển dần hình dạng${P.auto ? ` (${P.auto} nét vẽ lại được tự ghép đôi theo chỗ và hình dạng)` : ''}.` : ''}${P.onlyA.length + P.onlyB.length ? ` ${P.onlyA.length + P.onlyB.length} nét không tìm được cặp thì hiện/ẩn ở giữa.` : ''}${pp ? ' Nhân vật ghép chuyển dáng giữa 2 frame 🔑.' : ''} Màu (lớp Màu) được giữ nguyên.</p>
+${pxOk ? `<label class="set-row"><span>✏️ Nét bút thường (lớp Nhân vật) cũng chuyển dần: app tự dò nét 2 frame rồi vẽ dáng ở giữa. Hợp với nét viền đơn, mảng tô to thì giữ nguyên.</span><input type="checkbox" id="ibPix" ${sh || pp ? '' : 'checked'}></label>` : ''}
 <div class="set-row"><span>Số frame giữa</span><input type="number" id="ibN" min="1" max="24" value="3" style="width:72px"></div>
 <div class="set-row"><span>Nhịp</span><span class="grp">${ez.map(([k, l]) => `<button class="chip small ${k === ease ? 'on' : ''}" data-ibe="${k}">${l}</button>`).join('')}</span></div>`,
     buttons: [{ label: 'Huỷ', value: null }, { label: '✨ Tạo frame giữa', value: 'go', primary: true }],
@@ -10510,7 +10722,7 @@ async function inbetweenDialog() {
       ov.querySelectorAll('[data-ibe]').forEach(b => b.addEventListener('click', () => { ease = b.dataset.ibe; ov.querySelectorAll('[data-ibe]').forEach(x => x.classList.toggle('on', x === b)); })); } });
   if (!v) return;
   const n = clamp(parseInt(el.ibN.value) || 3, 1, 24);
-  const c = await inbetween(n, ease);
+  const c = await inbetween(n, ease, !!(el.ibPix && el.ibPix.checked));
   if (c) toast(`Đã chèn ${c} frame giữa — bấm Phát để xem, hoàn tác 1 lần để bỏ`, 3000);
 }
 $('#ibBtn').addEventListener('click', inbetweenDialog);
@@ -10651,6 +10863,7 @@ function helpHtml() {
 <li><b>Lớp Nền</b> vẽ cảnh một lần; frame nhân bản dùng chung nền. <b>Nền mới</b> = đổi cảnh; <b>Tách nền</b> = sửa nền riêng cho frame này. Chấm màu dưới frame cho biết nhóm nền.</li>
 <li><b>Lớp Nhân vật</b> là phần chuyển động, riêng từng frame.</li>
 <li><b>Nhập ảnh</b>: đặt ảnh mờ dưới để đồ theo, hoặc để AI tách nhân vật khỏi nền, hoặc tự chuyển ảnh thành nét viền rồi tô lại.</li>
+<li><b>🪄 AI vẽ đẹp</b> (thanh trên): vẽ phác thật nhanh rồi để AI làm phần tốn công. <b>✨ Làm đẹp nét phác</b> = vẽ lại thành nét sạch + tô màu, giữ đúng dáng và chỗ đứng; <b>🎨 Tô màu</b> = giữ nét của bạn, AI tô vào lớp Màu; <b>🎞 Vẽ frame giữa</b> = AI vẽ dáng ở giữa frame này và frame sau, chen thành frame mới. Kết quả là hình nổi phủ cả frame (nét → lớp Nhân vật, màu → lớp Màu): kéo cho khớp, bấm Xong (1 bước hoàn tác). Dùng chung key Gemini với 🤖 AI nhân vật.</li>
 <li><b>🤖 AI nhân vật</b> (thanh trên): chọn ảnh chụp 1 người, AI (Google Gemini) vẽ lại thành nhân vật hoạt hình theo ảnh mẫu phong cách, lưu vào <b>Nhân vật AI</b>; bấm <b>✂ Cắt mảnh</b> để thành Nhân vật ghép. Cần key Gemini của bạn (Menu → 🔑 Key Gemini), key chỉ lưu trên máy này.</li>
 <li><b>☁ Đồng bộ tablet ↔ laptop</b> (Menu): bài được giữ trong một repo GitHub riêng tư của bạn. Cài 1 lần trên mỗi máy (tên repo + token), sau đó app tự gửi bài khi bạn sửa xong hoặc chuyển sang app khác, và tự lấy bài mới khi mở lại. Hai máy cùng sửa 1 dự án thì app giữ cả 2 bản.</li>
 <li><b>🤪 Biếm hoạ</b>: Nhập ảnh → tab "Biếm hoạ". Chọn ảnh chụp 1 người, app tự tách người, phóng to đầu, thu nhỏ thân, phồng giữa mặt và tô màu kiểu hoạt hình. Chỉnh Đầu to / Cỡ thân / Vị trí cổ rồi đưa vào vùng chọn hoặc thành Nhân vật ghép để làm động.</li>
@@ -10681,7 +10894,7 @@ function helpHtml() {
 <li><b>Onion</b>: đỏ = frame trước, xanh = frame sau, để vẽ khớp chuyển động. Giữ nút Onion: số frame (tới 8), đổi màu, 🎨 màu thật, hiện cả lớp Màu, bỏ qua frame giữ y hệt.</li>
 <li><b>Thanh tua</b> (ngay trên dòng frame): kéo ngón tay dọc thanh để lật nhanh qua các frame. Mỗi ô dài bằng thời gian frame đó hiện.</li>
 <li><b>Giữ hình − N khung +</b>: thêm/bớt 1 khung cho frame (vẽ "đôi" ở 12fps = mỗi hình giữ 2 khung). Chạm số để đổi fps. <b>1×</b> cạnh nút Lặp = phát chậm ½× / ¼× để soi. ☑ Chọn nhiều → <b>▶ Phát đoạn</b> = chỉ phát đoạn đã chọn.</li>
-<li><b>✨ Vẽ giữa</b>: vẽ bằng lớp Nét vector → Nhân bản frame → kéo chấm → quay lại frame trước → ✨ Vẽ giữa: app tự tạo các frame chuyển tiếp (Đều / Chậm dần / Nhanh dần).</li>
+<li><b>✨ Vẽ giữa</b>: vẽ dáng đầu ở 1 frame, dáng cuối ở frame sau → quay lại frame đầu → ✨ Vẽ giữa: app tự tạo các frame chuyển tiếp (Đều / Chậm dần / Nhanh dần). Nét vector vẽ lại ở frame sau được tự ghép đôi theo chỗ và hình dạng (không cần Nhân bản frame). Bật <b>✏️ Nét bút thường cũng chuyển dần</b> để nét vẽ bằng bút (lớp Nhân vật) cũng chuyển dần.</li>
 <li><b>Phím tắt</b>: , . = frame trước/sau · F5 = giữ thêm 1 khung (Shift+F5 bớt) · F6 = nhân bản frame · F7 = frame trống · Enter/Space = phát.</li>
 <li>Làm chuyển động nhanh: <b>Nhân bản frame</b> → <b>Chọn vùng</b> khoanh tay/đầu → kéo, chỉnh <b>Xoay/Cỡ</b> → <b>Xong</b>.</li>
 <li>Khung giữ lâu (punchline): đặt <b>Thời lượng frame</b> 2–3 giây.</li>
@@ -10705,6 +10918,7 @@ $('#menuBtn').addEventListener('click', () => {
   <button class="btn" data-m="scene">🏞 Nền vẽ sẵn (phòng, lớp học, phố, biển…)</button>
   <button class="btn" data-m="img">🖼 Nhập ảnh (đồ theo / tách nhân vật / lấy nét)</button>
   <button class="btn" data-m="aichar">🤖 AI tạo nhân vật từ ảnh</button>
+  <button class="btn" data-m="aifx">🪄 AI vẽ đẹp (làm sạch nét, tô màu, frame giữa)</button>
   <button class="btn" data-m="aikey">🔑 Key Gemini (AI)</button>
   <button class="btn" data-m="help">❓ Hướng dẫn</button>
   <button class="btn" data-m="tovec">✏️ Nét pixel lớp Nhân vật → nét vector</button>
@@ -10747,6 +10961,7 @@ $('#menuBtn').addEventListener('click', () => {
       else if (m === 'open') $('#zipFile').click();
       else if (m === 'img') $('#imgFile').click();
       else if (m === 'aichar') aiCharDialog();
+      else if (m === 'aifx') aiFxDialog();
       else if (m === 'aikey') aiKeyDialog();
       else if (m === 'help') modal({ title: 'Hướng dẫn nhanh', html: helpHtml() });
       else if (m === 'tovec') convertPixelsToVector(false);
