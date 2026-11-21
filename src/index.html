@@ -28,7 +28,8 @@ button{touch-action:manipulation}
   gap:4px;padding:8px 6px;overflow-y:auto}
 .tool{width:58px;min-height:54px;border:0;border-radius:12px;background:transparent;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:2px;cursor:pointer;color:var(--muted);font-size:11px;padding:4px 2px}
-.tool svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tool svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+#rail > .tool{flex-shrink:0;line-height:1.1}   /* never squash icons of 2-line labels (Chọn vùng, Vừa khung…) when the rail is tall: it scrolls instead */
 .tool:active{background:var(--panel2)}
 .tool.on{background:var(--accent);color:var(--accent-ink)}
 .tool[disabled]{opacity:.35}
@@ -216,6 +217,7 @@ body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:
 #selbar{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);
   border-radius:14px;padding:8px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;box-shadow:0 8px 30px #0008;max-width:calc(100% - 20px)}
 #selbar[hidden]{display:none}
+#selbar.peek{opacity:.15;pointer-events:none;transition:opacity .15s}   /* see the picture while dragging it under the bar */
 #lassobar{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);
   border-radius:14px;padding:6px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;box-shadow:0 8px 30px #0008;max-width:calc(100% - 20px)}
 #lassobar[hidden],#lassoLayers[hidden]{display:none} #lassoLayers{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
@@ -1939,7 +1941,20 @@ function showSelbar() {
   const sb = $('#selbar'); sb.hidden = false; syncLassoBar();
   $('#selScale').value = Math.round(floating.scale * 100); $('#selScaleVal').textContent = Math.round(floating.scale * 100) + '%';
   $('#selRot').value = 0; $('#selRotVal').textContent = '0°';
-  syncFloatPlace(); twSync();
+  syncFloatPlace(); twSync(); selbarAvoid();
+}
+// the bar sits over the top of the canvas: when the lifted picture is under it, slide the drawing down so it can be seen (landscape tablets, 🎞 Chuyển động)
+function selbarAvoid() {
+  const sb = $('#selbar'); if (!floating || !floating.c || sb.hidden) return;
+  requestAnimationFrame(() => {
+    if (!floating || !floating.c || sb.hidden) return;
+    const b = floatBox(), m = viewMat(), vr = view.getBoundingClientRect(), r = sb.getBoundingClientRect();
+    const ys = [[b[0], b[1]], [b[2], b[1]], [b[0], b[3]], [b[2], b[3]]].map(([x, y]) => (m[1] * x + m[3] * y + m[5]) / DPR + vr.top);
+    const top = Math.min(...ys), bot = Math.max(...ys), room = vr.bottom - 70 - bot, need = r.bottom + 12 - top;
+    if (need <= 0) return;
+    const dy = Math.min(need, Math.max(0, room)); if (dy < 8) return;
+    vty += dy * DPR; requestRender();
+  });
 }
 function hideSelbar() { $('#selbar').hidden = true; syncLassoBar(); }
 
@@ -1954,7 +1969,7 @@ function twStart() {
   if (fl.bc) { toast('Vùng chọn có cả lớp Nền (dùng chung nhiều frame) nên không tạo chuyển động được. Chọn lại bằng 👤 Cả hình vẽ hoặc 🧩 Từng mảng.', 4500); return; }
   if (fl.tw) { twStop(); return; }
   fl.tw = { cx: fl.cx, cy: fl.cy, scale: fl.scale, rot: fl.rot, flip: fl.flip };
-  twSync(); requestRender(); toast('Kéo hình tới chỗ kết thúc, rồi bấm ✓ Tạo frame', 3000);
+  twSync(); requestRender(); selbarAvoid(); toast('Kéo hình tới chỗ kết thúc, rồi bấm ✓ Tạo frame', 3000);
 }
 function twStop() { if (floating) floating.tw = null; twSync(); requestRender(); }
 function twSync() {
@@ -2013,7 +2028,7 @@ async function twMake() {
       if (!fr) {
         while (S.frames.length + added.length < i0 + k + 1) {   // build the missing frames once, in order
           const nf = newFrameObj(base.bgId); nf.dur = base.dur; nf.canvas.getContext('2d').drawImage(rest, 0, 0); if (restCol) { colOf(nf, true).getContext('2d').drawImage(restCol, 0, 0); nf.colVer = 1; }
-          nf.ver = 1; nf.pngVer = 0; nf.vec = cloneVec(base.vec); nf.pp = ppClone(base.pp); nf.texts = JSON.parse(JSON.stringify(base.texts || [])); added.push(nf);
+          nf.ver = 1; nf.pngVer = 0; nf.vec = cloneVec(base.vec); nf.pp = ppClone(base.pp); nf.lip = lipCopy(base); nf.texts = JSON.parse(JSON.stringify(base.texts || [])); added.push(nf);
         }
         fr = added[i0 + k - S.frames.length]; put(fr, pose); continue;
       }
@@ -2095,11 +2110,12 @@ const UNDO_MAX = 400, UNDO_BYTES = (navigator.deviceMemory || 4) >= 8 ? 450e6 : 
 let undoBytes = 0;
 function vecBytes(v) { let n = 0; for (const st of v) n += st.pts.length * 24 + 64; return n; }
 function pushEntry(e) {
+  if (!histPushing && histT && !histCovered && histBase && !histLight(e)) { clearTimeout(histT); histCheck(true); }   // a light change made just before this pixel / line step becomes its own step first
   e.bytes = e.bytes != null && !e.multi ? e.bytes : e.add ? 0 : e.ppose ? 200 : e.multi ? e.multi.reduce((a, x) => a + (x.bytes || 0), 0) : e.vec ? vecBytes(e.before) + vecBytes(e.after) : e.before.data.length + e.after.data.length;
   undoStack.push(e); undoBytes += e.bytes;
   for (const x of redoStack) undoBytes -= x.bytes; redoStack.length = 0;
   while (undoStack.length > 1 && (undoStack.length > UNDO_MAX || undoBytes > UNDO_BYTES)) undoBytes -= undoStack.shift().bytes;
-  if (!histPushing) histCovered = true;
+  if (!histPushing) histCover(e);
   updUndoBtns();
 }
 function pixEntry(o, rect, before, after, col) { const e = { t: targetOf(o), rect, before, after }; if (col) e.col = true; e.bytes = before.data.length + after.data.length; return e; }
@@ -2206,10 +2222,10 @@ const histReset = histRebase;
 function histSoon() { clearTimeout(histT); histT = setTimeout(histCheck, 400); }
 // long jobs (progress window, a drag, a pending stroke) finish first, so one action = one step
 const histBusy = () => !!(stroke || action || document.querySelector('.ov'));
-function histCheck() {
+function histCheck(force) {
   histT = null;
   if (!histBase) { histRebase(); return; }
-  if (histBusy()) { histT = setTimeout(histCheck, 400); return; }
+  if (!force && histBusy()) { histT = setTimeout(histCheck, 400); return; }
   const now = histSnap();
   if (histCovered) { histBase = now; histCovered = false; return; }
   const fr = [];
@@ -2219,6 +2235,19 @@ function histCheck() {
     histPushing = true; pushEntry({ snap: { before: histBase, after: now, fr }, bytes }); histPushing = false;
   }
   histBase = now;
+}
+// A dedicated undo step was pushed: its own light changes (frames added…) must not become a 2nd step, so they are "covered" —
+// but only for a moment. Before, the cover lasted until the next check (400 ms after the LAST save), so a quick next action
+// (draw a line, then tap Nhân bản frame / + giữ khung right away) was swallowed: it could not be undone and undo reverted the line instead.
+const histLight = e => !!(e.add || e.del || e.ford || e.fdel || e.wipe || e.snap || e.sfxadd || e.ppose || e.fxe || e.lipe || (e.multi && e.multi.some(histLight)));
+let histCoverT = null;
+function histCover(e) {
+  histCovered = true; clearTimeout(histCoverT); histCoverT = setTimeout(histCoverEnd, 150);
+}
+function histCoverEnd() {
+  histCoverT = null; if (!histCovered) return;
+  if (histBusy()) { histCoverT = setTimeout(histCoverEnd, 150); return; }
+  histBase = histSnap(); histCovered = false;
 }
 // record a pending change right away (before undo/redo runs)
 function histFlush() { if (!histT) return; clearTimeout(histT); histT = null; if (!stroke && !action) histCheck(); }
@@ -2414,11 +2443,13 @@ async function addFrame() {
   S.frames.splice(S.cur + 1, 0, f); loaded.push(f);
   await drawThumb(f); buildStrip(); await selectFrame(S.cur + 1); scheduleSave(); evictSoon();
 }
+// f.lip = mouth/eye pictures + 〰 Đường đi offsets (lip.mv): a copied frame must keep them, else the character jumps back to where it started
+function lipCopy(f) { return f && f.lip ? JSON.parse(JSON.stringify(f.lip)) : null; }
 async function dupFrame() {
   if (playing) stopPlay(); commitFloating();
   const src = curFrame(); await ensureLoaded(src);
   const f = newFrameObj(src.bgId); f.dur = src.dur;
-  f.canvas.getContext('2d').drawImage(src.canvas, 0, 0); copyCol(f, src); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(src.vec); f.pp = ppClone(src.pp); f.texts = JSON.parse(JSON.stringify(src.texts || []));
+  f.canvas.getContext('2d').drawImage(src.canvas, 0, 0); copyCol(f, src); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(src.vec); f.pp = ppClone(src.pp); f.lip = lipCopy(src); f.texts = JSON.parse(JSON.stringify(src.texts || []));
   S.frames.splice(S.cur + 1, 0, f); loaded.push(f);
   await drawThumb(f); buildStrip(); await selectFrame(S.cur + 1); scheduleSave(); evictSoon();
 }
@@ -3284,7 +3315,7 @@ async function motionCommit() {
     for (let k = 1; k < m.n; k++) {
       const f = newFrameObj(f0.bgId); f.dur = durMs;
       f.canvas.getContext('2d').drawImage(f0.canvas, 0, 0); copyCol(f, f0); f.ver = 1; f.pngVer = 0;
-      f.vec = cloneVec(motionVec(f0.vec, k, m)); f.pp = ppClone(f0.pp); added.push(f);
+      f.vec = cloneVec(motionVec(f0.vec, k, m)); f.pp = ppClone(f0.pp); f.lip = lipCopy(f0); added.push(f);
     }
     const oldDur = f0.dur; f0.dur = durMs;
     S.frames.splice(i0 + 1, 0, ...added); loaded.push(...added);
@@ -3613,7 +3644,7 @@ async function rigCommit() {
   await ensureLoaded(f0);
   R.simplify = true;
   const added = [], entries = [];
-  const mk = kk => { const f = newFrameObj(f0.bgId); f.dur = durMs; f.canvas.getContext('2d').drawImage(f0.canvas, 0, 0); copyCol(f, f0); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(rigFrameVec(kk).vec); f.pp = ppClone(f0.pp); return f; };
+  const mk = kk => { const f = newFrameObj(f0.bgId); f.dur = durMs; f.canvas.getContext('2d').drawImage(f0.canvas, 0, 0); copyCol(f, f0); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(rigFrameVec(kk).vec); f.pp = ppClone(f0.pp); f.lip = lipCopy(f0); return f; };
   if (R.keep) { for (let kk = 0; kk < R.n; kk++) added.push(mk(kk)); }
   else {
     const before = cloneVec(f0.vec); f0.vec = cloneVec(rigFrameVec(0).vec);
@@ -5302,7 +5333,7 @@ async function assetStampAnim(fl, keep) {
   const base = S.frames[i0], pix = [], added = [];
   for (let j = 1; j < total; j++) {
     let fr = S.frames[i0 + j];
-    if (!fr) { fr = newFrameObj(base.bgId); fr.dur = base.dur; fr.canvas.getContext('2d').drawImage(keep, 0, 0); copyCol(fr, base); fr.ver = 1; fr.pngVer = 0; fr.vec = cloneVec(base.vec); fr.pp = ppClone(base.pp); fr.texts = JSON.parse(JSON.stringify(base.texts || [])); S.frames.push(fr); loaded.push(fr); added.push(fr); }
+    if (!fr) { fr = newFrameObj(base.bgId); fr.dur = base.dur; fr.canvas.getContext('2d').drawImage(keep, 0, 0); copyCol(fr, base); fr.ver = 1; fr.pngVer = 0; fr.vec = cloneVec(base.vec); fr.pp = ppClone(base.pp); fr.lip = lipCopy(base); fr.texts = JSON.parse(JSON.stringify(base.texts || [])); S.frames.push(fr); loaded.push(fr); added.push(fr); }
     else await ensureLoaded(fr);
     const lx = fr.canvas.getContext('2d'), c = assetRender(A.cat, A.key, A.k, { ...A.opt, t: j % n }), save = floating;
     floating = { ...fl, c }; const rect = rectFromBox(floatBox(), 2); const before = added.includes(fr) ? null : lx.getImageData(...rect); drawFloating(lx); floating = save;
@@ -6394,7 +6425,7 @@ async function fxLipSync() {
     if (ok) {
       const pm = progress('Đang thêm frame…'); const last = S.frames[S.frames.length - 1]; await ensureLoaded(last);
       const blank = !last.png && last.ver === 0;
-      for (let k = 0; k < n; k++) { const f = newFrameObj(last.bgId); f.dur = fd * 1000; if (!blank && last.canvas) { f.canvas.getContext('2d').drawImage(last.canvas, 0, 0); copyCol(f, last); f.ver = 1; } f.vec = cloneVec(last.vec); f.pp = ppClone(last.pp); f.ppKey = false; S.frames.push(f); loaded.push(f); if (k % 20 === 0) { pm.set(`Đang thêm frame ${k}/${n}…`); await new Promise(r => setTimeout(r, 0)); evictSoon(); } }
+      for (let k = 0; k < n; k++) { const f = newFrameObj(last.bgId); f.dur = fd * 1000; if (!blank && last.canvas) { f.canvas.getContext('2d').drawImage(last.canvas, 0, 0); copyCol(f, last); f.ver = 1; } f.vec = cloneVec(last.vec); f.pp = ppClone(last.pp); f.lip = lipCopy(last); f.ppKey = false; S.frames.push(f); loaded.push(f); if (k % 20 === 0) { pm.set(`Đang thêm frame ${k}/${n}…`); await new Promise(r => setTimeout(r, 0)); evictSoon(); } }
       pm.close(); for (const f of S.frames.slice(-n)) await drawThumb(f); ppRetween(); buildStrip(); evictSoon(); T = frameStartTimes();
     }
   }
@@ -6679,11 +6710,13 @@ function gifEncoder(w, h) {
   const out = [], u16 = v => [v & 255, (v >> 8) & 255];
   out.push(new Uint8Array([...'GIF89a'].map(c => c.charCodeAt(0)).concat(u16(w), u16(h), [0, 0, 0])));
   out.push(new Uint8Array([0x21, 0xFF, 11, ...[...'NETSCAPE2.0'].map(c => c.charCodeAt(0)), 3, 1, 0, 0, 0]));   // loop forever
+  let tWant = 0, tOut = 0;   // GIF delays are whole 1/100 s: carry the rounding over so 12/24 fps GIFs keep the real total time (and stay in sync)
   return {
     add(d, delayCs) {
+      tWant += delayCs; const cs = Math.max(2, Math.round(tWant - tOut)); tOut += cs;
       const { pal, lut } = gifPalette(d), n = w * h, idx = new Uint8Array(n);
       for (let i = 0, j = 0; i < n; i++, j += 4) idx[i] = lut[((d[j] >> 3) << 10) | ((d[j + 1] >> 3) << 5) | (d[j + 2] >> 3)];
-      out.push(new Uint8Array([0x21, 0xF9, 4, 0x04, ...u16(Math.max(2, Math.round(delayCs))), 0, 0]));
+      out.push(new Uint8Array([0x21, 0xF9, 4, 0x04, ...u16(cs), 0, 0]));
       out.push(new Uint8Array([0x2C, 0, 0, 0, 0, ...u16(w), ...u16(h), 0x87]), pal);
       gifLzw(idx, out);
     },
@@ -7569,7 +7602,7 @@ function layerVisible() { return S.layer === 'bg' ? S.showBg : S.layer === 'vec'
 function startAction(e, isTouch) {
   const f = curFrame(); if (!f || !f.canvas) return;
   const rect = view.getBoundingClientRect();
-  const p = toDoc(e, rect);
+  const p = e.tapAt || toDoc(e, rect);
   const base = { id: e.pointerId, touch: isTouch, t0: performance.now(), rect };
   if (ppSetup && ppSetup.stage === 'paint') { ppLabStart(p, base); return; }
   if (ppSetup) {
@@ -7579,6 +7612,8 @@ function startAction(e, isTouch) {
     return;
   }
   if (S.tool === 'fx' && ballMode) { ballMode.pts = [p]; action = { ...base, kind: 'ballpath' }; requestRender(); return; }
+  // a finger tap only counts when the finger lifts without a 2nd finger joining (that is a pinch / 2-finger undo)
+  if (isTouch && S.tool === 'fx' && !(fxHit(f, p)) && (gagMode || camPresetMode || fxCamPick)) { action = { ...base, kind: 'fxtap', p }; return; }
   if (S.tool === 'fx' && gagMode) { const k = gagMode; gagMode = null; ballSyncBar(); gagRun(k, p); return; }
   if (S.tool === 'fx') {
     const t = fxHit(f, p);
@@ -7599,7 +7634,7 @@ function startAction(e, isTouch) {
   if (rig) { rigPointer(p, base); return; }
   if (motion) { if (motion.type === 'swing') { motion.pivot = { x: p.x, y: p.y }; motion.pv = motionVec(f.vec, motion.k, motion); requestRender(); } return; }
   if (refEdit) { action = { ...base, kind: 'refmove', last: p }; return; }
-  if (floating) { action = { ...base, kind: 'move', last: p }; return; }
+  if (floating) { action = { ...base, kind: 'move', last: p }; $('#selbar').classList.add('peek'); return; }
   if (S.tool === 'vedit') { vecStart(p, base); return; }
   if (S.layer === 'vec' && (S.tool === 'brush' || S.tool === 'eraser')) {
     if (!S.showVec) { toast('Lớp Nét đang ẩn — bấm 👁 để hiện'); return; }
@@ -7626,6 +7661,7 @@ function moveAction(e) {
     const pr = e.getPredictedEvents ? e.getPredictedEvents() : [];
     stroke.pred = pr.length ? pr.slice(-3).map(ev => toDoc(ev, action.rect)) : null;
   }
+  else if (action.kind === 'fxtap') { const p = toDoc(e, action.rect); if (Math.hypot(p.x - action.p.x, p.y - action.p.y) > 24 * DPR / vs) action.moved = true; }
   else if (action.kind === 'ballpath') {
     if (ballMode && ballMode.pts) for (const ev of list) { const p = toDoc(ev, action.rect), l = ballMode.pts[ballMode.pts.length - 1]; if (Math.hypot(p.x - l.x, p.y - l.y) > 4 / vs) ballMode.pts.push(p); }
     requestRender();
@@ -7663,6 +7699,8 @@ function moveAction(e) {
 }
 function endAction() {
   if (!action) return;
+  $('#selbar').classList.remove('peek');
+  if (action.kind === 'fxtap') { const a = action; action = null; if (!a.moved) startAction({ clientX: 0, clientY: 0, pointerType: 'touch', pointerId: a.id, tapAt: a.p }, false); action = null; return; }
   if (action.kind === 'stroke') strokeEnd();
   else if (action.kind === 'refmove') scheduleSave();
   else if (action.kind === 'rjoint') { scheduleSave(); rigPreview(); }
@@ -7683,12 +7721,14 @@ function endAction() {
 }
 function abortAction() {
   if (!action) return;
+  $('#selbar').classList.remove('peek');
   if (action.kind === 'stroke') strokeAbort();
   if (action.kind === 'lasso' || action.kind === 'vlasso') { lasso = null; requestRender(); }
   if (action.kind === 'ballpath' && ballMode) { ballMode.pts = null; requestRender(); }
   if (action.kind === 'vbend' || action.kind === 'vmove' || action.kind === 'verase' || action.kind === 'vmulti' || action.kind === 'vxform') { if (action.col) colLiftAbort(curFrame(), action.col); curFrame().vec = action.before; if (action.kind === 'vmulti' && action.polyBase) vpoly = action.polyBase; requestRender(); }
   if (action.kind === 'pprot' || action.kind === 'ppmove' || action.kind === 'ppik') { ppSetState(curFrame(), action.before); requestRender(); }
-  if (action.kind === 'ppcut' || action.kind === 'pppatch') { lasso = null; requestRender(); }
+  if (action.kind === 'ppcut' || action.kind === 'pppatch' || action.kind === 'pppath') { lasso = null; lassoOpen = false; requestRender(); }
+  if ((action.kind === 'fxmove' || action.kind.startsWith('cam')) && action.before) { fxSetState(curFrame(), action.before); fxSyncBar(); requestRender(); }
   if ((action.kind === 'labpaint' || action.kind === 'lablasso') && ppSetup) { lasso = null; if (ppSetup.undo.length) ppSetup.hand = ppSetup.undo.pop(); ppLabOverlay(ppSetup); requestRender(); }
   action = null;
 }
@@ -7715,8 +7755,25 @@ function gestureMove() {
   }
   requestRender();
 }
+let penSeen = false, fingerHinted = false;
+// without "Ngón tay cũng vẽ" one finger pans the view; but these are touch-first actions (the buttons even say "chạm lên khung"),
+// so one finger does them: picking a spot for 🔍 Cận cảnh / combos, drawing ⚽ / 〰 paths, dragging texts, the camera box, puppet parts and joints
+function fingerActs(e) {
+  const f = curFrame(); if (!f || !f.canvas || floating) return false;
+  const p = toDoc(e, view.getBoundingClientRect());
+  if (ppSetup) { if (ppSetup.stage === 'paint') return false; const tol = 24 * DPR / vs; return RJ.some(j => Math.hypot(ppSetup.J[j].x - p.x, ppSetup.J[j].y - p.y) <= tol); }
+  if (S.tool === 'fx') {
+    if (ballMode || gagMode || camPresetMode || fxCamPick || fxHit(f, p)) return true;
+    if (TABS.fx === 'cam' && !panelHidden.fx) { const b = camBox(camEditBox(S.cur)), tol = 30 * DPR / vs; return [[-1, -1], [1, -1], [-1, 1], [1, 1]].some(([sx, sy]) => Math.hypot(p.x - (b.cx + sx * b.hw), p.y - (b.cy + sy * b.hh)) <= tol) || (b.z > 1.001 && Math.abs(p.x - b.cx) < b.hw && Math.abs(p.y - b.cy) < b.hh); }
+    return false;
+  }
+  if (S.tool === 'puppet' && S.pp && !rig && !motion) return ppPathMode || (!ppCutMode && !ppPatchMode && !ppPaint && !!ppHit(p, ppPoseFor(f)));
+  return false;
+}
 function gestureEnd() {
   const g = gesture; gesture = null; if (!g) return;
+  // a beginner without a stylus drags one finger to draw and the drawing only slides: say how to draw with a finger (once)
+  if (g.max === 1 && g.moved && !penSeen && !fingerHinted && !S.fingerDraw && ['brush', 'eraser', 'lasso'].includes(S.tool)) { fingerHinted = true; toast('1 ngón tay dùng để kéo khung vẽ. Không có bút? Vào ☰ Menu → bật “Ngón tay cũng vẽ”', 5000); }
   if (!g.moved && performance.now() - g.t0 < 400) { if (g.max === 2) undo(); else if (g.max >= 3) redo(); }
 }
 view.addEventListener('pointerdown', e => {
@@ -7730,9 +7787,10 @@ view.addEventListener('pointerdown', e => {
       return; // pen is drawing: ignore palm
     }
     if (gesture) { gestureBase(); return; }
-    if (S.fingerDraw && touches.size === 1) { startAction(e, true); return; }
+    if (touches.size === 1 && (S.fingerDraw || fingerActs(e))) { startAction(e, true); return; }
     gestureBase(); return;
   }
+  if (e.pointerType === 'pen') penSeen = true;
   if (e.pointerType === 'mouse' && e.button !== 0) { mousePan = { x: e.clientX, y: e.clientY, tx: vtx, ty: vty }; return; }
   gesture = null;
   if (action) return;
@@ -10117,7 +10175,8 @@ async function inbetween(n, ease) {
     f.canvas.getContext('2d').drawImage(src.canvas, 0, 0); copyCol(f, src); f.ver = 1; f.pngVer = 0;
     f.vec = ibVec(A.vec, B.vec, t);
     f.pp = ppClone(A.pp); if (S.pp) { f.ppKey = false; }
-    f.lip = A.lip ? JSON.parse(JSON.stringify(A.lip)) : null;
+    f.lip = lipCopy(A);
+    if (A.lip && A.lip.mv && B.lip && B.lip.mv) for (const id in f.lip.mv) { const q = B.lip.mv[id]; if (q) { const p = f.lip.mv[id]; p.x += (q.x - p.x) * t; p.y += (q.y - p.y) * t; } }   // 〰 Đường đi: in-between frames move along too
     f.texts = JSON.parse(JSON.stringify(A.texts || []));
     added.push(f); loaded.push(f);
   }

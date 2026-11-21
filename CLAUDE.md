@@ -39,7 +39,7 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
 - **Không dùng `alert`/`confirm`.** Dùng `modal()`, `toast()`, `progress()`.
 - **Bộ nhớ:** frame được giải phóng theo LRU (`MAX_LOADED`) xuống PNG trong IndexedDB. Luôn `await ensureLoaded(f)` trước khi đọc `f.canvas`.
 - **Undo:** mọi chỉnh sửa đi qua `pushEntry(...)`, với puppet là `ppEntry`/`ppEdit`. Thay đổi pixel phải ghi `bytes`.
-  - Ngoài ra có **undo tự động** (`histSnap`/`histCheck`/`histApply`): mỗi `scheduleSave()` hẹn kiểm tra sau 400 ms; nếu trạng thái nhẹ (thứ tự/thời lượng frame, nền, mảnh puppet, tư thế, chữ/camera, âm thanh, rig, ảnh mờ, nền video) đổi mà không có `pushEntry` nào thì tự đẩy 1 bước `snap`. Vì vậy thay đổi mới chỉ cần gọi `scheduleSave()` là hoàn tác được. Pixel và nét vector **không** nằm trong snapshot: vẫn phải tự `pushEntry`. Đừng sửa canvas của mảnh tại chỗ (hãy tạo canvas mới) để snapshot giữ được bản cũ. Lịch sử tối đa `UNDO_MAX` = 400 bước.
+  - Ngoài ra có **undo tự động** (`histSnap`/`histCheck`/`histApply`): mỗi `scheduleSave()` hẹn kiểm tra sau 400 ms; nếu trạng thái nhẹ (thứ tự/thời lượng frame, nền, mảnh puppet, tư thế, chữ/camera, âm thanh, rig, ảnh mờ, nền video) đổi mà không có `pushEntry` nào thì tự đẩy 1 bước `snap`. Vì vậy thay đổi mới chỉ cần gọi `scheduleSave()` là hoàn tác được. Pixel và nét vector **không** nằm trong snapshot: vẫn phải tự `pushEntry`. Đừng sửa canvas của mảnh tại chỗ (hãy tạo canvas mới) để snapshot giữ được bản cũ. Lịch sử tối đa `UNDO_MAX` = 400 bước. Sau một `pushEntry` riêng, thay đổi nhẹ chỉ được "che" 150 ms (`histCover`); `pushEntry` của bước pixel/nét ghi trước thay đổi nhẹ đang chờ thành bước riêng (`histLight`), nên thao tác nhanh ngay sau khi vẽ vẫn hoàn tác được (`tests/test_luong_chinh.py`).
 - **Lưu trữ:** IndexedDB key-value `frame-studio`, gồm `projects` và `project:<id>`. Khi thêm field mới cho mảnh puppet, nhớ thêm vào cả 3 chỗ serialize: `saveProject` (khoảng dòng 3309), xuất ZIP (`ppMeta.parts.push`) và nhập ZIP. Thêm cả vào `charLibSave` (Kho nhân vật).
 
 ## Bản đồ code (`src/index.html`, tìm theo tiêu đề `/* ===== ... */`)
@@ -100,6 +100,8 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
   - **👆 Nút to** (`S.bigUi`, class `body.bigui`). Test `tests/test_more_features.py`.
   - Image → vector (centre-line tracing), Snap-to-line, Delete all
   - Input (cử chỉ, phím tắt), Toolbar, Modal, Persistence, ZIP, Import dialog
+  - **1 ngón tay** (khi tắt "Ngón tay cũng vẽ"): mặc định kéo khung, nhưng `fingerActs` cho ngón tay làm việc ở chỗ cần chạm: chọn chỗ 🔍 Cận cảnh/combo (`fxtap`, chỉ tính khi nhấc ngón mà không có ngón thứ 2), vẽ đường ⚽/〰, kéo chữ, khung camera, mảnh puppet, chấm khớp. Chưa từng dùng bút mà kéo 1 ngón ở Bút/Tẩy thì hiện gợi ý bật "Ngón tay cũng vẽ".
+  - Frame mới sao chép từ frame khác phải giữ `f.lip` (`lipCopy`: mắt/miệng + vị trí 〰 Đường đi `lip.mv`), nếu không nhân vật nhảy về chỗ cũ.
   - Video nền, Panel tabs, Wizard (🚀 Làm nhanh), Menu/Help, Init, PWA
 
 ## Ghi chú khi làm cùng nhau
