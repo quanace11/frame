@@ -47,9 +47,12 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
   - Objects (frames, nền, lazy load)
   - **View**: `vs`/`vtx`/`vty`/`vr`, `viewMat()`, `scrToDoc()`, `fitView()`, `rotateView90()`
   - Render, Strokes, Fill, Lasso/floating (`floatFromImage`), Undo, Timeline, Playback
+  - **Đặt trước/sau cho hình đang nổi** (thanh Chọn vùng, hàng "Đặt"): `floating.place` = `top` (lớp Nhân vật) / `under` (vẽ `destination-over` vào lớp Màu, sau nét + màu) / `bg` (vào lớp Nền). `floatDraws`/`floatPutDown` vẽ, `floatTarget` giữ bản "trước" của lớp khác (`fl.extra`) cho undo/Huỷ. `floatToPart` biến hình thành mảnh ghép gốc ("Hình N") để đặt trước/sau nhân vật; `ppCharZ` (⏫/⏬) đưa cả nhân vật lên trước/ra sau. Test55.
+  - **Kéo đổi chỗ frame** (`frPointerDown` → `frDragStart/Move/Drop`, `moveFramesTo` + entry `ford`): chuột kéo ngay; cảm ứng giữ 0,5 s rồi kéo (giữ mà không kéo = chọn nhiều như cũ). Frame đang chọn nhiều thì cả nhóm đi cùng.
   - **Cỡ / Độ đậm** (trong Strokes): `setSize`/`setOp`/`syncSizeOp`/`wireSizeOp` (nút − + giữ để lặp, bấm số = `sizeOpPop`). Thanh cỡ không tuyến tính (`sizeToPos`/`posToSize`). Độ đậm lưu riêng cho mỗi bút/kiểu tẩy trong `S.brushOp` (`curOp()`), mặc định = `B.op0`/`B.alpha`; bút dab vượt `op0` thì tăng flow (`flowK`). Tẩy cũng dùng độ đậm (xoá nhạt).
 - **Nét vector**
-  - Vector line layer: `vecStart`/`vecMove`/`vecEnd`. Chế độ kéo chấm `S.vdm` gồm `point` / `soft` / `move`.
+  - Vector line layer: `vecStart`/`vecMove`/`vecEnd`. Chế độ kéo chấm `S.vdm` gồm `point` / `soft` / `move` / `multi`.
+  - **Nhiều chấm** (`multi`): khoanh chọn chấm (`vecMultiLasso`, chặt: bỏ chấm sát viền vùng khoanh, `distToPoly`), chấm cam = chọn/đi theo, chấm xanh = đứng yên. Chạm 1 chấm = thêm/bỏ; chạm nhanh 2 lần cùng chấm = bỏ cả nét (`vpLastTap`); nút ➖ Khoanh bớt (`vpMinus`) = khoanh để bỏ chọn. Cả nét: khoanh chỉ lấy nét có ≥ 75% chiều dài trong vùng (`strokeInsideFrac`). Zoom tối đa `ZOOM_MAX` = 48× vừa khung. Test56.
   - Motion generator; Rig xương + biểu cảm; Gap filling (diffusion + MI-GAN)
 - **Cut-out puppet** (`S.pp.parts`: `{id, role, parent, z, ox, oy, px, py, c, alts[], asset?}`)
   - Mỗi frame có `f.pp[partId] = {r, dx, dy, sx, sy, v, h}`. FK dùng ma trận 2×3 (`ppMats`).
