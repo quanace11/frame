@@ -8728,11 +8728,13 @@ function bgMenuPop() {
     <div class="bgm-row" data-k="newBgBtn"><span>Cho frame này nền trống riêng, dùng khi sang cảnh mới</span></div>
     <div class="bgm-row" data-k="splitBgBtn"><span>Sửa nền ở frame này mà không đổi các frame khác</span></div>
     <div class="bgm-row" data-k="bgVidBtn"><span>Dùng một đoạn video làm nền phía sau nhân vật</span></div>
-    <div class="bgm-row"><button class="chip small on bgm-scene">🏞 Nền vẽ sẵn</button><span>Phòng, lớp học, phố, công viên, biển… chạm là có cảnh</span></div>`, 'bgm');
+    <div class="bgm-row"><button class="chip small on bgm-scene">🏞 Nền vẽ sẵn</button><span>Phòng, lớp học, phố, công viên, biển… chạm là có cảnh</span></div>
+    <div class="bgm-row"><button class="chip small on bgm-ai">🤖 AI vẽ nền</button><span>Gõ cảnh bạn muốn (hoặc phác vài nét), AI vẽ nền đẹp trong vài giây</span></div>`, 'bgm');
   const hold = $('#bgHold'), info = $('#bgInfo');
   d.querySelector('.bgm-info').textContent = info.textContent;
   d.querySelectorAll('.bgm-row[data-k]').forEach(r => r.prepend($('#' + r.dataset.k)));
   d.querySelector('.bgm-scene').addEventListener('click', () => { closePop(); sceneDialog(); });
+  d.querySelector('.bgm-ai').addEventListener('click', () => { closePop(); aiBgDialog(); });
   d._onClose = () => d.querySelectorAll('.bgm-row[data-k] > button').forEach(b => hold.insertBefore(b, info));
   d.addEventListener('click', e => { if (e.target.closest('.bgm-row > button')) setTimeout(closePop, 0); });
 }
@@ -9579,12 +9581,16 @@ function aiErrMsg(status, j) {
 
 // One call to Gemini. Image 1 = style reference, photo 2 = the person. Returns a PNG/JPEG Blob.
 async function geminiGenerate({ key, model, prompt, refImg, photoImg, signal, fetchFn = fetch }) {
+  return geminiImage({ key, model, signal, fetchFn, aspect: '3:4', parts: [
+    { text: 'Image 1 (style reference):' }, { inline_data: { mime_type: refImg.mime, data: refImg.data } },
+    { text: 'Photo 2 (the person to redraw):' }, { inline_data: { mime_type: photoImg.mime, data: photoImg.data } },
+    { text: prompt } ] });
+}
+// one Gemini image request: parts = [{text} | {inline_data}], aspect like '9:16' → Blob (or a Vietnamese error)
+async function geminiImage({ key, model, parts: reqParts, aspect, signal, fetchFn = fetch, blockHint = 'Thử một ảnh khác: một người, mặc đồ bình thường, rõ mặt.' }) {
   const mk = withCfg => ({
-    contents: [{ role: 'user', parts: [
-      { text: 'Image 1 (style reference):' }, { inline_data: { mime_type: refImg.mime, data: refImg.data } },
-      { text: 'Photo 2 (the person to redraw):' }, { inline_data: { mime_type: photoImg.mime, data: photoImg.data } },
-      { text: prompt } ] }],
-    generationConfig: Object.assign({ responseModalities: ['TEXT', 'IMAGE'] }, withCfg ? { imageConfig: { aspectRatio: '3:4' } } : {})
+    contents: [{ role: 'user', parts: reqParts }],
+    generationConfig: Object.assign({ responseModalities: ['TEXT', 'IMAGE'] }, withCfg && aspect ? { imageConfig: { aspectRatio: aspect } } : {})
   });
   const call = async withCfg => {
     let r;
@@ -9603,7 +9609,7 @@ async function geminiGenerate({ key, model, prompt, refImg, photoImg, signal, fe
   const img = parts.map(p => p.inlineData || p.inline_data).find(d => d && d.data);
   if (img) { const bin = atob(img.data), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type: img.mimeType || img.mime_type || 'image/png' }); }
   const why = (pf && pf.blockReason) || (cand && cand.finishReason) || '';
-  if (/SAFETY|PROHIBITED|BLOCK|RECITATION|SPII/i.test(why)) throw Object.assign(new Error('🚫 AI từ chối vẽ ảnh này (lý do an toàn nội dung: ' + why + '). Thử một ảnh khác: một người, mặc đồ bình thường, rõ mặt.'), { aiStatus: 200 });
+  if (/SAFETY|PROHIBITED|BLOCK|RECITATION|SPII/i.test(why)) throw Object.assign(new Error('🚫 AI từ chối vẽ ảnh này (lý do an toàn nội dung: ' + why + '). ' + blockHint), { aiStatus: 200 });
   const said = parts.map(p => p.text).filter(Boolean).join(' ').slice(0, 200);
   throw Object.assign(new Error('🤔 AI không trả về hình' + (said ? ': “' + said + '”' : '') + '. Bấm Tạo lại để thử lần nữa.'), { aiStatus: 200 });
 }
@@ -9715,6 +9721,116 @@ async function aiCharDialog() {
     });
     // free object URLs when the dialog goes away
     const mo = new MutationObserver(() => { if (!ov.isConnected) { mo.disconnect(); if (st.ctl) st.ctl.abort(); st.urls.forEach(u => URL.revokeObjectURL(u)); } });
+    mo.observe(document.body, { childList: true });
+  } });
+}
+
+/* ===== 🏞 AI background: describe a place (or give your own rough sketch) → Gemini paints a full-frame background,
+   no people/text/logos, lower middle left open for the characters. Recent results kept in IndexedDB "ai-bgs" (this device). ===== */
+const AI_BG_KEY = 'ai-bgs', AI_BG_MAX = 24;
+const AI_BG_STYLES = {
+  flat: ['🎨 Hoạt hình phẳng', 'flat 2D cartoon background, clean shapes, soft simple shading, bright friendly colours, like a modern animated short'],
+  water: ['🖌 Màu nước', 'soft watercolour cartoon background, gentle textures, warm light'],
+  anime: ['🌸 Anime', 'anime style background art, detailed, vivid sky and lighting'],
+  chibi: ['🧸 Dễ thương', 'cute pastel children’s book style background, rounded shapes, thick soft outlines'],
+  ink: ['✒️ Nét mực', 'black ink line art background with light flat colour fill, comic style']
+};
+function aiAspect() { const r = W / H, opts = [['9:16', 9 / 16], ['3:4', 3 / 4], ['1:1', 1], ['4:3', 4 / 3], ['16:9', 16 / 9]]; return opts.reduce((a, b) => Math.abs(Math.log(b[1] / r)) < Math.abs(Math.log(a[1] / r)) ? b : a)[0]; }
+function aiBgPrompt(desc, style, sketch) {
+  return `${sketch ? 'Image 1 is my rough sketch of the layout: keep its composition, horizon and the position of every object, and turn it into finished art. ' : ''}Paint a background scene for a vertical cartoon video: ${desc || 'a sunny park'}. Style: ${(AI_BG_STYLES[style] || AI_BG_STYLES.flat)[1]}. ` +
+    'Background only: no people, no characters, no animals unless asked, no text, no letters, no logos, no watermark, no frame or border. Fill the whole image edge to edge. Keep the lower middle part of the image fairly open and uncluttered so cartoon characters can stand there.';
+}
+async function aiBgLib() { try { return (await idbGet(AI_BG_KEY)) || []; } catch (e) { return []; } }
+// draw an image over the whole background of the current frame (cover-fit), one undo step
+async function applyBgImage(src, onlyThis, label) {
+  if (playing) stopPlay(); commitFloating();
+  const bmp = src instanceof Blob ? await createImageBitmap(src) : src;
+  const f = curFrame(), shared = S.frames.filter(g => g.bgId === f.bgId).length;
+  if (onlyThis && shared > 1) await newBg(false);
+  const b = bgOf(curFrame()); if (!b) return; await ensureLoaded(b);
+  const x = b.canvas.getContext('2d'), before = x.getImageData(0, 0, W, H), k = Math.max(W / bmp.width, H / bmp.height);
+  x.clearRect(0, 0, W, H); x.imageSmoothingQuality = 'high'; x.drawImage(bmp, (W - bmp.width * k) / 2, (H - bmp.height * k) / 2, bmp.width * k, bmp.height * k);
+  if (bmp.close && src instanceof Blob) bmp.close();
+  pushEntry(pixEntry(b, [0, 0, W, H], before, x.getImageData(0, 0, W, H))); markEdited(b);
+  if (S.layer === 'bg') setLayer('char');
+  buildStrip(); updateFrameUI(); requestRender();
+  const n = S.frames.filter(g => g.bgId === b.id).length;
+  toast(`Đã đặt ${label || 'nền'}${n > 1 ? ` cho ${n} frame dùng chung nền` : ' cho frame này'} — lỡ tay thì ↶ Hoàn tác`, 3500);
+}
+// what is drawn on this frame right now (background + lines + colour), used as a layout sketch
+async function aiFrameSketch() {
+  const f = curFrame(), b = bgOf(f); if (b) await ensureLoaded(b); await ensureLoaded(f);
+  const c = makeCanvas(W, H), x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
+  if (b && b.canvas) x.drawImage(b.canvas, 0, 0); if (f.col) x.drawImage(f.col, 0, 0); if (f.canvas) x.drawImage(f.canvas, 0, 0);
+  if (f.vec && f.vec.length) drawVec(x, f.vec);
+  return c;
+}
+async function aiBgDialog() {
+  if (playing) stopPlay();
+  const f = curFrame(), shared = S.frames.filter(g => g.bgId === f.bgId).length;
+  const st = { style: lsGet('fs-ai-bg-style') || 'flat', ctl: null, result: null, urls: [], only: false };
+  const url = b => { const u = URL.createObjectURL(b); st.urls.push(u); return u; };
+  const tw = 120, th = Math.round(tw * H / W);
+  const html = `<p style="margin-top:0">Gõ cảnh bạn muốn (tiếng Việt được) → AI vẽ nền cho cả khung, không có người, chừa chỗ giữa-dưới cho nhân vật đứng.</p>
+<textarea id="abDesc" rows="2" placeholder="vd. lớp học buổi chiều nắng vàng, bảng xanh, bàn gỗ" style="width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:16px">${escHtml(lsGet('fs-ai-bg-desc'))}</textarea>
+<div class="mrow" style="flex-wrap:wrap;gap:6px;margin:8px 0">${Object.entries(AI_BG_STYLES).map(([k, v]) => `<button class="chip small${k === st.style ? ' on' : ''}" data-abs="${k}">${v[0]}</button>`).join('')}</div>
+<label class="lbl" style="display:block"><input type="checkbox" id="abSketch"> ✏️ Dùng hình đang vẽ ở frame này làm bản phác (AI giữ bố cục, vẽ đẹp lại)</label>
+${shared > 1 ? `<div class="mrow" style="gap:6px;margin:6px 0"><span class="lbl">Áp cho:</span><button class="chip small on" data-abo="0">Cả ${shared} frame dùng chung nền</button><button class="chip small" data-abo="1">Chỉ frame này (cảnh mới)</button></div>` : ''}
+<div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-top:8px">
+  <div style="position:relative"><img id="abRes" alt="" style="width:${tw * 1.4}px;height:${th * 1.4}px;object-fit:cover;border-radius:10px;border:1px dashed var(--line);background:var(--panel2);display:block"><div id="abBusy" class="lbl" hidden style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;background:rgba(0,0,0,.45);border-radius:10px;color:#fff"></div></div>
+  <div style="display:flex;flex-direction:column;gap:8px;min-width:160px"><button class="btn primary" id="abGo">✨ Vẽ nền</button><button class="btn" id="abUse" disabled style="border-color:#ff3b9a">✓ Dùng làm nền</button><span id="abKey" class="lbl" style="font-size:13px"></span><button class="btn" id="abKeyBtn">🔑 Key Gemini</button></div>
+</div>
+<div id="abErr" role="alert" style="display:none;margin-top:10px;padding:10px;border-radius:10px;background:rgba(255,84,104,.14);border:1px solid var(--danger);font-size:14px;line-height:1.4"></div>
+<h4 style="margin:12px 0 6px">🗂 Nền AI đã vẽ (chạm để dùng lại)</h4><div id="abLib" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+<p class="lbl" style="font-size:12px;margin:8px 0 0">Cần Internet. Mô tả (và bản phác nếu chọn) được gửi tới Google Gemini bằng key của bạn.</p>`;
+  modal({ title: '🤖 AI vẽ nền', html, buttons: [{ label: 'Đóng', value: null }], dismissable: false, onOpen: (ov, close) => {
+    ov.querySelector('.dlg').classList.add('wide');
+    const q = s => ov.querySelector(s), errBox = q('#abErr');
+    const showErr = m => { errBox.textContent = m || ''; errBox.style.display = m ? 'block' : 'none'; };
+    const keyState = () => { q('#abKey').textContent = aiKey() ? '🔑 Đã có key ✓' : '🔑 Chưa có key Gemini'; };
+    const busy = t => { const b = q('#abBusy'); b.hidden = !t; b.textContent = t || ''; };
+    const use = async blob => { close(null); await applyBgImage(blob, st.only, 'nền AI'); };
+    const libShow = async () => {
+      const L = await aiBgLib(), el = q('#abLib'); el.innerHTML = '';
+      if (!L.length) { el.innerHTML = '<span class="lbl" style="font-size:13px">Chưa có nền nào.</span>'; return; }
+      for (const e of L) {
+        const d = document.createElement('div'); d.className = 'ab-item'; d.style.cssText = 'display:flex;flex-direction:column;gap:4px;align-items:center';
+        d.innerHTML = `<button class="btn" data-a="use" title="${escHtml(e.desc || '')}" style="padding:0;width:${tw * 0.7}px;height:${th * 0.7}px;overflow:hidden;border-radius:8px"><img alt="" src="${url(e.png)}" style="width:100%;height:100%;object-fit:cover"></button><button class="btn" data-a="del" title="Xoá" style="min-width:44px;min-height:36px;color:var(--danger)">🗑</button>`;
+        d.querySelector('[data-a=use]').addEventListener('click', () => use(e.png));
+        d.querySelector('[data-a=del]').addEventListener('click', async () => { const L2 = (await aiBgLib()).filter(x => x.id !== e.id); try { await idbPut(AI_BG_KEY, L2); } catch (err) {} libShow(); });
+        el.append(d);
+      }
+    };
+    keyState(); libShow();
+    ov.querySelectorAll('[data-abs]').forEach(b => b.addEventListener('click', () => { st.style = b.dataset.abs; lsSet('fs-ai-bg-style', st.style); ov.querySelectorAll('[data-abs]').forEach(x => x.classList.toggle('on', x === b)); }));
+    ov.querySelectorAll('[data-abo]').forEach(b => b.addEventListener('click', () => { st.only = b.dataset.abo === '1'; ov.querySelectorAll('[data-abo]').forEach(x => x.classList.toggle('on', x === b)); }));
+    q('#abKeyBtn').addEventListener('click', async () => { ov.style.display = 'none'; await aiKeyDialog(); ov.style.display = ''; keyState(); });
+    q('#abUse').addEventListener('click', () => { if (st.result) use(st.result); });
+    q('#abGo').addEventListener('click', async () => {
+      const go = q('#abGo');
+      if (st.ctl) { st.ctl.abort(); return; }              // second tap = cancel
+      showErr('');
+      if (!aiKey()) { showErr('🔑 Chưa có key Gemini. Bấm 🔑 Key Gemini để dán key của bạn (lấy miễn phí ở Google AI Studio).'); return; }
+      const desc = q('#abDesc').value.trim(), sketch = q('#abSketch').checked;
+      if (!desc && !sketch) { showErr('✍️ Gõ vài chữ tả cảnh trước, vd. "phòng ngủ buổi tối có đèn bàn".'); return; }
+      lsSet('fs-ai-bg-desc', desc);
+      st.ctl = new AbortController(); const timer = setTimeout(() => st.ctl && st.ctl.abort('timeout'), 120000);
+      go.textContent = '✕ Huỷ'; busy('🎨 AI đang vẽ nền… (thường 10–30 giây)');
+      try {
+        const parts = [];
+        if (sketch) { const sk = await aiPrepImage(await aiFrameSketch(), 1024); parts.push({ text: 'Image 1 (my sketch):' }, { inline_data: { mime_type: sk.mime, data: sk.data } }); }
+        parts.push({ text: aiBgPrompt(desc, st.style, sketch) });
+        const blob = await geminiImage({ key: aiKey(), model: aiModel(), parts, aspect: aiAspect(), signal: st.ctl.signal, blockHint: 'Thử tả cảnh theo cách khác (chỉ nơi chốn, không có người).' });
+        st.result = blob; q('#abRes').src = url(blob); q('#abUse').disabled = false; go.textContent = '🔁 Vẽ lại';
+        try { const L = await aiBgLib(); L.unshift({ id: 'bg' + Date.now().toString(36), t: Date.now(), desc, png: blob }); L.length = Math.min(L.length, AI_BG_MAX); await idbPut(AI_BG_KEY, L); } catch (e) {}
+        libShow(); toast('Xong! Bấm ✓ Dùng làm nền, chưa ưng thì 🔁 Vẽ lại', 3000);
+      } catch (e) {
+        go.textContent = st.result ? '🔁 Vẽ lại' : '✨ Vẽ nền';
+        if (e.name === 'AbortError' || (st.ctl && st.ctl.signal.aborted)) showErr(st.ctl && st.ctl.signal.reason === 'timeout' ? '⌛ AI trả lời quá lâu (2 phút). Thử lại nhé.' : 'Đã huỷ.');
+        else { console.warn('AI background:', e.aiStatus, e.raw || e); showErr(e.message); }
+      } finally { clearTimeout(timer); st.ctl = null; busy(''); }
+    });
+    const mo = new MutationObserver(() => { if (!ov.isConnected) { mo.disconnect(); if (st.ctl) st.ctl.abort(); setTimeout(() => st.urls.forEach(u => URL.revokeObjectURL(u)), 2000); } });
     mo.observe(document.body, { childList: true });
   } });
 }
