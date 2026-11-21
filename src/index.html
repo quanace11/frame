@@ -524,9 +524,17 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
         <button class="chip small" id="fxColorTxt" title="Đổi màu chữ thành màu đang chọn ở thanh trên">Màu</button>
         <button class="chip small" id="fxKeep" title="Chép chữ này sang các frame tiếp theo">Giữ cho</button><input type="number" id="fxKeepN" value="5" min="1" max="200" style="width:50px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">frame sau</span>
         <button class="chip small" id="fxDelTxt" style="color:var(--danger)">🗑</button></div>
+      <div class="mrow" data-tab="text" style="flex-wrap:wrap"><span class="lbl" title="Như chữ động của CapCut / 万彩: chữ bật ra, gõ từng chữ, rơi xuống nảy… Áp cho chữ này ở mọi frame liền nhau có nó"><b>✨ Chữ động:</b></span>
+        <span class="lbl">Vào</span><select id="txIn" class="chip small"></select><span class="lbl">Lặp</span><select id="txLp" class="chip small"></select><span class="lbl">Ra</span><select id="txOut" class="chip small"></select>
+        <button class="chip small" id="txPrev" title="Phát đoạn có chữ này để xem chữ chuyển động">▶ Xem thử</button><span class="lbl" id="txInfo" style="font-size:11px"></span></div>
       <div class="mrow" data-tab="cam"><span class="lbl"><b>Camera:</b> Zoom</span><input type="range" id="fxZoom" min="100" max="800"><span class="val" id="fxZoomVal"></span>
         <button class="chip small" id="fxPick" title="Chạm lên khung để chọn chỗ camera nhìn vào">📍 Chạm đặt tâm</button><button class="chip small" id="fxCamKey" title="Camera key = chỗ đổi khung camera. Zoom giữ nguyên ở các frame sau cho tới key tiếp theo.">🎥 Camera key</button><button class="chip small" id="camWide" title="Từ frame này hết zoom, về lại toàn cảnh (thấy hết khung)">↩ Bỏ zoom từ đây</button>
         <span class="lbl">Rung</span><input type="range" id="fxShake" min="0" max="60"><button class="chip small" id="fxFlash" title="Chớp trắng ở frame này">⚡ Chớp sáng</button></div>
+      <div class="mrow" data-tab="cam" style="flex-wrap:wrap"><span class="lbl" title="Bóng mờ lướt (残影): vài bản mờ của nhân vật ở các frame trước hiện phía sau, như cú sút/cú đá thật nhanh"><b>👻 Bóng mờ lướt:</b></span><button class="chip small" id="ghBtn" title="Bật/tắt bóng mờ ở frame này (hoặc mọi frame đang chọn nhiều)">👻 Bật ở frame này</button>
+        <span class="lbl">Số bóng</span><span id="ghN"><button class="chip small" data-ghn="2">2</button><button class="chip small" data-ghn="3">3</button><button class="chip small" data-ghn="5">5</button></span>
+        <span class="lbl">Màu</span><span id="ghTint"><button class="chip small" data-ght="">Thật</button><button class="chip small" data-ght="#4fc3ff">Xanh</button><button class="chip small" data-ght="#ffd23f">Vàng</button><button class="chip small" data-ght="#ff4f6d">Đỏ</button></span>
+        <button class="chip small" id="ghNext" title="Bật bóng mờ cho frame này và N-1 frame sau">Cho</button><input type="number" id="ghNextN" value="4" min="1" max="60" style="width:46px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">frame</span></div>
+
       <div class="mrow" data-tab="cam"><span class="lbl"><b>Đổi cảnh ở frame này:</b></span><button class="chip small" data-camtr="cut" title="Tới frame này hình đổi ngay sang khung camera mới (như cắt sang cảnh khác)">✂ Cắt cảnh</button><button class="chip small" data-camtr="smooth" title="Từ frame này camera từ từ đẩy/lia tới khung mới">〰 Đẩy mượt</button><span class="lbl">trong</span><input type="range" id="camD" min="0.3" max="5" step="0.1" style="width:90px"><span class="val" id="camDVal"></span>
         <span class="lbl">Nhanh:</span><button class="chip small" id="camCutIn" title="Chạm nút rồi chạm lên chỗ cần chú ý: cắt thẳng sang cận cảnh">🔍 Cận cảnh</button><button class="chip small" id="camPushIn" title="Chạm nút rồi chạm lên chỗ cần chú ý: camera từ từ đẩy vào">🎬 Đẩy vào từ từ</button></div>
       <div class="mrow" data-tab="cam"><span class="lbl" id="camStat" style="flex-basis:100%;color:#ffb21e"></span></div>
@@ -542,6 +550,8 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <div class="mrow" data-tab="trans" style="flex-wrap:wrap;gap:4px"><span class="lbl"><b>Chạm 1 kiểu để thêm:</b></span><span id="trKinds" class="mrow" style="flex-wrap:wrap;gap:4px"></span></div>
       <div class="mrow" data-tab="trans"><span class="lbl" id="trStat" style="flex:1;color:#c9b8ff"></span><button class="chip small" id="trPrev" title="Phát thử đoạn quanh chuyển cảnh">▶ Xem thử</button><button class="chip small" id="trDel" style="color:var(--danger)" title="Bỏ chuyển cảnh ở chỗ đang chọn">🗑 Bỏ</button></div>
       <div class="mrow" data-tab="audio"><span class="lbl"><b>Nhạc nền:</b></span><span class="lbl" id="fxMusicName"></span><button class="chip small" id="fxMusicPick">Chọn file</button><button class="chip small" id="fxMusicDel">✕</button><span class="lbl">Âm lượng</span><input type="range" id="fxMusicVol" min="0" max="100"></div>
+      <div class="mrow" data-tab="audio" style="flex-wrap:wrap"><span class="lbl" title="App nghe nhạc nền và tìm nhịp (beat), như tự động bắt nhịp của CapCut: vạch vàng trên timeline = nhịp"><b>🥁 Nhịp nhạc:</b></span><span class="lbl" id="beatInfo"></span>
+        <button class="chip small" id="beatSnap" title="Kéo dài/rút ngắn frame này để frame sau bắt đầu đúng nhịp gần nhất (cú sút, cú ngã rơi đúng nhịp)">🎯 Frame sau vào đúng nhịp</button><button class="chip small" id="beatFit" title="Mỗi frame (đang chọn nhiều, hoặc từ frame này tới cuối) dài đúng 1 / 2 / ½ nhịp, như video ghép ảnh theo nhạc">🥁 Khớp nhịp…</button></div>
       <div class="mrow" data-tab="audio"><span class="lbl"><b>Lồng tiếng:</b></span><button class="chip small" id="fxVoicePick" title="Thêm 1 câu thoại, bắt đầu từ frame đang xem. Thêm nhiều giọng để 2 nhân vật nói chuyện với nhau">＋ Thêm giọng (bắt đầu ở frame này)</button><button class="chip small on" id="fxLip" title="Tự nhép miệng nhân vật ghép theo âm lượng giọng (mỗi giọng nhép miệng nhân vật của nó)">🗣 Tự nhép miệng theo giọng</button></div>
       <div class="mrow" data-tab="audio" id="fxVoiceList" style="flex-wrap:wrap;gap:4px"></div>
       <div class="mrow" data-tab="audio"><span class="lbl"><b>Âm thanh hiệu ứng</b> (chạm để nghe & gắn vào frame này):</span><span id="fxSfx" class="mrow"></span></div>
@@ -865,6 +875,7 @@ function render() {
   if (floating && floatPlace() === 'under') { if (floating.cc) drawFloating(c, floating.cc); drawFloating(c); }
   if (S.showCol && f.col) c.drawImage(stroke && stroke.cv === f.col ? work : f.col, 0, 0);
   if (floating && floating.cc && S.showCol && floatPlace() === 'top') drawFloating(c, floating.cc);
+  drawGhosts(c, f);
   if (S.showChar && f.canvas) {
     let img = stroke && stroke.cv === f.canvas ? work : f.canvas;
     if (floating && floating.cc && floatPlace() === 'top') { img = floatKnock(img); }
@@ -2027,7 +2038,7 @@ const histTok = new WeakMap(); let histTokN = 0;
 const histId = o => { if (!histTok.has(o)) histTok.set(o, ++histTokN); return '#' + histTok.get(o); };
 const histBig = x => x && typeof x === 'object' && (x instanceof ArrayBuffer || ArrayBuffer.isView(x) || typeof x.getContext === 'function' || (typeof ImageBitmap !== 'undefined' && x instanceof ImageBitmap) || (typeof ImageData !== 'undefined' && x instanceof ImageData));
 const histJSON = v => JSON.stringify(v, (k, x) => histBig(x) ? histId(x) : x);
-const H_FKEYS = ['dur', 'bgId', 'pp', 'ppKey', 'ppEase', 'texts', 'cam', 'shake', 'flash', 'lip', 'scene', 'tr', 'tre'];
+const H_FKEYS = ['dur', 'bgId', 'pp', 'ppKey', 'ppEase', 'texts', 'cam', 'shake', 'flash', 'lip', 'scene', 'tr', 'tre', 'ghost'];
 const histFrameStr = f => JSON.stringify(H_FKEYS.map(k => f[k] === undefined ? null : f[k]));
 const histPartCopy = p => ({ ...p, alts: (p.alts || []).map(a => ({ ...a })) });
 function histSnap() {
@@ -2387,7 +2398,8 @@ function updateWaves() {
   const vcs = voiceClips().map(c => ({ pk: audioPeaks(c.buf), vi: voiceStart(c) })).filter(v => v.pk), vp = vcs.length ? vcs : null;
   const vi = vp ? vp[0].vi : 0, vStarts = new Set(vcs.map(v => v.vi));
   const sfxAt = new Set((A.sfx || []).map(x => x.frameId));
-  const key = (vp ? 'v' + vcs.map(v => v.vi).join('.') : '') + (mp ? 'm' : '') + '|' + [...sfxAt].join(',') + '|' + S.frames.map(f => f.dur).join(',') + '|' + S.frames.length;
+  const bt = A.music ? musicBeats() : null;
+  const key = (vp ? 'v' + vcs.map(v => v.vi).join('.') : '') + (mp ? 'm' : '') + (bt ? 'b' : '') + '|' + [...sfxAt].join(',') + '|' + S.frames.map(f => f.dur).join(',') + '|' + S.frames.length;
   if (key === waveKey) return; waveKey = key;
   const T = frameStartTimes();
   S.frames.forEach((f, i) => {
@@ -2413,9 +2425,88 @@ function updateWaves() {
     const VCOL = ['#ffb21e', '#5be37d', '#ff7ad9', '#7fd8ff'];
     if (vp) vp.forEach((v, k) => draw(v.pk, T[i] - (T[v.vi] || 0), VCOL[k % VCOL.length]));
     if (vp && vStarts.has(i)) { x.fillStyle = '#ff3b9a'; x.fillRect(0, 0, 2, h); }
+    if (bt) { x.fillStyle = '#ffd23f'; const t0 = T[i], t1 = T[i + 1]; for (const b of bt.times) { if (b < t0 - 1e-4) continue; if (b >= t1 - 1e-4) break; const px = Math.round((b - t0) / (t1 - t0) * w); x.fillRect(Math.min(w - 2, px), 0, 2, h); } }
   });
 }
 
+/* ===== 🥁 music beats (like CapCut's auto beat marks): onset strength → tempo by autocorrelation → best phase → a beat grid.
+   Runs once per music file (cached), all local. Yellow ticks on the timeline; frames can be timed to land on the beats. ===== */
+const beatCache = new WeakMap();
+function beatsFromSamples(d, sr) {
+  const hop = Math.round(sr * 0.01), n = Math.floor(d.length / hop); if (n < 200) return null;
+  const eL = new Float32Array(n), eH = new Float32Array(n); let lp = 0, prev = 0;
+  for (let i = 0; i < n; i++) { let a = 0, b = 0; for (let j = i * hop, e = j + hop; j < e; j++) { const v = d[j]; lp += 0.06 * (v - lp); a += lp * lp; const hp = v - prev; prev = v; b += hp * hp; } eL[i] = Math.log(1 + 1000 * a / hop); eH[i] = Math.log(1 + 1000 * b / hop); }
+  const on = new Float32Array(n);
+  for (let i = 1; i < n; i++) on[i] = Math.max(0, eL[i] - eL[i - 1]) * 1.5 + Math.max(0, eH[i] - eH[i - 1]);
+  // remove the slow average so only the hits stay
+  const W2 = 25, cs = new Float64Array(n + 1); for (let i = 0; i < n; i++) cs[i + 1] = cs[i] + on[i];
+  const o = new Float32Array(n); for (let i = 0; i < n; i++) { const a = Math.max(0, i - W2), b = Math.min(n, i + W2 + 1); o[i] = Math.max(0, on[i] - (cs[b] - cs[a]) / (b - a)); }
+  // tempo 70–180 BPM, preferring ~115
+  let best = -1, L = 0; const ac = [];
+  for (let lag = 33; lag <= 86; lag++) { let sum = 0; for (let i = lag; i < n; i++) sum += o[i] * o[i - lag]; sum /= (n - lag); const bpm = 6000 / lag, wgt = Math.exp(-0.5 * Math.pow(Math.log2(bpm / 115) / 0.9, 2)); ac[lag] = sum; if (sum * wgt > best) { best = sum * wgt; L = lag; } }
+  if (!L || best <= 0) return null;
+  const y0 = ac[L - 1] || ac[L], y2 = ac[L + 1] || ac[L], den = y0 - 2 * ac[L] + y2, P = L + (den ? clamp(0.5 * (y0 - y2) / den, -0.5, 0.5) : 0);
+  let bp = 0, bs = -1;
+  for (let ph = 0; ph < P; ph += 0.5) { let sc = 0; for (let t = ph; t < n; t += P) { const k = Math.round(t); sc += Math.max(o[k] || 0, 0.7 * (o[k - 1] || 0), 0.7 * (o[k + 1] || 0)); } if (sc > bs) { bs = sc; bp = ph; } }
+  const times = []; for (let t = bp; t < n; t += P) times.push(t * hop / sr);
+  return { bpm: 60 * sr / (P * hop), period: P * hop / sr, times, dur: d.length / sr };
+}
+function musicBeats() {
+  const A = S.audio || {}, ab = A.music && A.music.buf; if (!ab) return null;
+  const c = beatCache.get(ab); if (c) return c.b || null;
+  const ent = {}; beatCache.set(ab, ent);
+  (async () => {
+    try {
+      const ac = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 22050, 22050), b = await ac.decodeAudioData(ab.slice(0));
+      let d = b.getChannelData(0); if (b.numberOfChannels > 1) { const r = b.getChannelData(1), m = new Float32Array(d.length); for (let i = 0; i < d.length; i++) m[i] = (d[i] + r[i]) / 2; d = m; }
+      ent.b = beatsFromSamples(d, b.sampleRate);
+    } catch (e) { console.error(e); ent.b = null; }
+    ent.done = true; waveKey = ''; updateWaves(); beatSync();
+  })();
+  return null;
+}
+function beatSync() {
+  const el = document.getElementById('beatInfo'); if (!el) return;
+  const A = S.audio || {}, bt = A.music ? musicBeats() : null, ent = A.music && beatCache.get(A.music.buf);
+  el.textContent = !A.music ? 'thêm nhạc nền trước' : bt ? `${Math.round(bt.bpm)} nhịp/phút` : ent && ent.done ? 'không tìm được nhịp' : 'đang nghe nhạc…';
+  $('#beatSnap').disabled = $('#beatFit').disabled = !bt;
+}
+// beat (or half-beat) times, continued past the end of the song with the same tempo
+function beatGrid(bt, half, until) {
+  const g = []; for (const t of bt.times) { g.push(t); if (half) g.push(t + bt.period / 2); }
+  let t = bt.times[bt.times.length - 1] + bt.period; while (t < until + bt.period * 2) { g.push(t); if (half) g.push(t + bt.period / 2); t += bt.period; }
+  return g.sort((a, b) => a - b);
+}
+// 🎯 make the next frame start on the beat nearest to where it starts now
+function beatSnap() {
+  const bt = musicBeats(); if (!bt) return; const i = S.cur, f = S.frames[i], T = frameStartTimes();
+  const g = beatGrid(bt, false, T[i + 1] + 2).filter(b => b > T[i] + 0.04); if (!g.length) return;
+  let e = g[0]; for (const b of g) if (Math.abs(b - T[i + 1]) < Math.abs(e - T[i + 1])) e = b;
+  const nd = Math.max(20, Math.round((e - T[i]) * 1000)); if (nd === f.dur) { toast('Frame sau đã vào đúng nhịp', 1500); return; }
+  f.dur = nd; updateFrameUI(); scheduleSave(); requestRender(); toast(`Frame ${i + 1} dài ${(nd / 1000).toFixed(2)}s → frame ${i + 2} vào đúng nhịp`, 2200);
+}
+// 🥁 each frame of the range lasts `per` beats (0.5, 1, 2, 4), starting from the first beat after the range start
+async function beatFitDialog() {
+  const bt = musicBeats(); if (!bt) return;
+  const sel = msel && msel.size > 1 ? S.frames.map((g, i) => msel.has(g.id) ? i : -1).filter(i => i >= 0) : null;
+  const a = sel ? sel[0] : S.cur, b = sel ? sel[sel.length - 1] : S.frames.length - 1;
+  let per = 1;
+  const v = await modal({ title: '🥁 Khớp nhịp nhạc', html: `<p class="lbl">Nhạc ${Math.round(bt.bpm)} nhịp/phút. Frame ${a + 1}–${b + 1} (${sel ? 'các frame đang chọn' : 'từ frame này tới cuối'}): mỗi frame dài đúng</p>
+<div class="mrow"><button class="chip small" data-bper="0.5">½ nhịp</button><button class="chip small on" data-bper="1">1 nhịp</button><button class="chip small" data-bper="2">2 nhịp</button><button class="chip small" data-bper="4">4 nhịp</button></div>
+<p class="lbl" style="font-size:12px">Hợp với đoạn ghép ảnh, ăn mừng, tư thế đổi theo nhạc. Hoàn tác 1 lần là về như cũ.</p>`,
+    buttons: [{ label: 'Huỷ', value: null }, { label: '🥁 Khớp', value: 'go', primary: true }],
+    onOpen: ov => ov.querySelectorAll('[data-bper]').forEach(x => x.addEventListener('click', () => { ov.querySelectorAll('[data-bper]').forEach(y => y.classList.toggle('on', y === x)); per = +x.dataset.bper; })) });
+  if (v !== 'go') return;
+  beatFit(a, b, per);
+}
+function beatFit(a, b, per) {
+  const bt = musicBeats(); if (!bt) return 0; const T = frameStartTimes(), half = per < 1, step = half ? 1 : Math.round(per);
+  const g = beatGrid(bt, half, T[a] + (b - a + 2) * per * bt.period).filter(t => t > T[a] + 0.03);
+  let end = T[a], j = step - 1, c = 0;   // the first frame ends on the first beat(s) after it starts, then every `per` beats
+  for (let i = a; i <= b; i++, j += step) { const e = g[j]; if (e == null) break; const f = S.frames[i], nd = Math.max(20, Math.round(e * 1000) - Math.round(end * 1000)); end = e; if (f.dur !== nd) f.dur = nd; c++; }
+  updateFrameUI(); scheduleSave(); requestRender(); toast(`🥁 ${c} frame đã khớp nhịp (${per === 0.5 ? '½' : per} nhịp mỗi frame)`, 2200);
+  return c;
+}
 /* ========= Playback ========= */
 let playIdx = 0, playTimer = null, playT0 = 0, playFT0 = 0, playAC = null, playStopAudio = () => {};
 // preview speed (1, 0.5, 0.25: slow motion to check the movement) and play range ([a, b] from the multi-selected frames, or null = whole film)
@@ -2438,14 +2529,14 @@ async function buildPlayCache() {
   const ph = playCacheSize(S.frames.length), k = ph / H, pw = Math.round(W * k);
   for (let i = 0; i < S.frames.length; i++) {
     const f = S.frames[i], bg = bgOf(f);
-    const live = ppSmoothOn(), key = f.ver + ':' + (bg ? bg.id + '.' + bg.ver : '') + ':' + pw + ':' + (S.bgVideo ? 'v' : '') + (live ? 's' : '');
+    const live = ppSmoothOn(), key = ghostKey(i) + f.ver + ':' + (bg ? bg.id + '.' + bg.ver : '') + ':' + pw + ':' + (S.bgVideo ? 'v' : '') + (live ? 's' : '');
     if (f.play && f.playKey === key) continue;
-    await ensureLoaded(f);
+    await ghostLoad(f); await ensureLoaded(f);
     if (!f.play) f.play = makeCanvas(pw, ph); else { f.play.width = pw; f.play.height = ph; }
     const x = f.play.getContext('2d');
     if (S.bgVideo) x.clearRect(0, 0, pw, ph); else { x.fillStyle = '#fff'; x.fillRect(0, 0, pw, ph); }
     if (bg && bg.canvas) x.drawImage(bg.canvas, 0, 0, pw, ph);
-    drawCol(x, f, pw, ph); if (f.canvas) x.drawImage(f.canvas, 0, 0, pw, ph);
+    drawCol(x, f, pw, ph); drawGhosts(x, f, pw, ph); if (f.canvas) x.drawImage(f.canvas, 0, 0, pw, ph);
     if (!live && S.pp && S.showPP) { x.save(); x.scale(pw / W, ph / H); drawPuppet(x, f.pp, f.lip); x.restore(); }
     if (!live && f.vec && f.vec.length) { x.save(); x.scale(pw / W, ph / H); drawVec(x, f.vec); x.restore(); }
     f.playKey = key;
@@ -2456,7 +2547,7 @@ async function startPlay() {
   if (stroke) strokeEnd(); commitFloating(); motionClose(); rigClose();
   $('#saveState').textContent = 'Đang chuẩn bị phát…';
   await buildPlayCache(); setSaveState();
-  playing = true; playRange = playRangeGet(); trSrc = playTrSrc;
+  playing = true; playRange = playRangeOnce || playRangeGet(); playRangeOnce = null; trSrc = playTrSrc;
   playIdx = playRange && (S.cur < playRange[0] || S.cur > playRange[1]) ? playRange[0] : S.cur;
   playT0 = pNow() - frameStartTimes()[playIdx] * 1000; playAudioFrom(playIdx);
   if (playRange) toast(`Phát đoạn frame ${playRange[0] + 1}–${playRange[1] + 1}` + (S.loop ? ' (lặp)' : ''), 1600);
@@ -5593,13 +5684,74 @@ function fxEdit(fn) { const f = curFrame(), before = fxState(f); fn(f); pushEntr
 const fxFont = st => st === 'caption' ? '800 {s}px system-ui,-apple-system,sans-serif' : "{s}px Bangers, 'Impact', 'Arial Black', sans-serif";
 function fxLines(t) { return String(t.str || '').split('\n'); }
 const fxBoxes = new Map();
-function drawTexts(ctx, f, selId) {
+/* --- ✨ animated text (like CapCut / 万彩 text animations): t.an = how it comes in, t.lp = a loop while it stays, t.ao = how it leaves.
+   Time-based over the run of neighbouring frames that hold the same text id (made by "Giữ cho"), so it works with holds and copies.
+   Only moves when the film plays / exports (drawFrameFx passes the frame index); editing and still pictures show it at rest. --- */
+const TX_IN = { '': 'Không', pop: '💥 Bật ra', type: '⌨ Gõ từng chữ', up: '⬆ Bay lên', drop: '⬇ Rơi nảy', zoom: '🔍 Thu từ to', spin: '🌀 Xoay vào', fade: '🌫 Hiện dần' };
+const TX_LP = { '': 'Không', shake: '〰 Rung', pulse: '💓 Đập nhịp', float: '☁ Bồng bềnh', wiggle: '↔ Lắc lư' };
+const TX_OUT = { '': 'Không', fade: '🌫 Mờ đi', shrink: '🔻 Thu nhỏ', up: '⬆ Bay đi' };
+function txRun(i, id) {
+  const n = S.frames.length, has = k => (S.frames[k].texts || []).some(x => x.id === id);
+  let a = i, b = i; while (a > 0 && has(a - 1)) a--; while (b < n - 1 && has(b + 1)) b++; return [a, b];
+}
+const txChars = t => fxLines(t).reduce((m, l) => m + l.length, 0);
+const txInDur = t => t.an === 'type' ? clamp(txChars(t) * 0.06, 0.3, 2.5) : ({ pop: 0.35, up: 0.4, drop: 0.6, zoom: 0.35, spin: 0.45, fade: 0.5 }[t.an] || 0);
+const backOut = u => { const c = 1.9; return 1 + (c + 1) * Math.pow(u - 1, 3) + c * Math.pow(u - 1, 2); };
+// how text t looks at time tIn into frame i: {k scale, a alpha, dx, dy, r degrees, ch = visible characters or -1}
+function txAnim(t, i, tIn) {
+  const o = { k: 1, a: 1, dx: 0, dy: 0, r: 0, ch: -1 }; if (!t.an && !t.lp && !t.ao) return o;
+  const T = frameStartTimes(), [a, b] = txRun(i, t.id), tau = T[i] + tIn, u0 = tau - T[a], left = T[b + 1] - tau, s = t.size || 90;
+  if (t.an) {
+    const d = txInDur(t), u = clamp(u0 / d, 0, 1), e = EASE.out(u);
+    if (t.an === 'pop') { o.k = Math.max(0, backOut(u)); o.a = Math.min(1, u * 3); }
+    else if (t.an === 'type') o.ch = Math.floor(u * txChars(t) + 1e-6);
+    else if (t.an === 'up') { o.dy = (1 - e) * s * 2.5; o.a = u; }
+    else if (t.an === 'drop') { o.dy = -(1 - EASE.bounce(u)) * H * 0.3; o.a = Math.min(1, u * 4); }
+    else if (t.an === 'zoom') { o.k = lerp(3, 1, e); o.a = u; }
+    else if (t.an === 'spin') { o.r = -(1 - e) * 200; o.k = e; }
+    else if (t.an === 'fade') o.a = u;
+  }
+  if (t.lp) {
+    if (t.lp === 'shake') { o.dx += s * 0.05 * Math.sin(u0 * 61) * Math.cos(u0 * 23); o.dy += s * 0.05 * Math.cos(u0 * 53) * Math.sin(u0 * 31); }
+    else if (t.lp === 'pulse') o.k *= 1 + 0.09 * Math.max(0, Math.sin(u0 * Math.PI * 4));
+    else if (t.lp === 'float') o.dy += s * 0.12 * Math.sin(u0 * Math.PI * 1.6);
+    else if (t.lp === 'wiggle') o.r += 7 * Math.sin(u0 * Math.PI * 3);
+  }
+  if (t.ao) {
+    const d = t.ao === 'up' ? 0.4 : 0.35, u = clamp(1 - left / d, 0, 1);
+    if (t.ao === 'fade') o.a *= 1 - u;
+    else if (t.ao === 'shrink') o.k *= Math.max(0, 1 - u * u);
+    else if (t.ao === 'up') { o.dy -= EASE.in(u) * s * 3; o.a *= 1 - u; }
+  }
+  return o;
+}
+// the moments a GIF must split a frame into small steps for the text to move
+function txWins(T) {
+  const out = [], seen = new Set();
+  S.frames.forEach((f, i) => (f.texts || []).forEach(t => {
+    if ((!t.an && !t.lp && !t.ao) || seen.has(t.id + ':' + i)) return;
+    const [a, b] = txRun(i, t.id); for (let k = a; k <= b; k++) seen.add(t.id + ':' + k);
+    if (t.lp) { out.push({ t0: T[a], t1: T[b + 1] }); return; }
+    if (t.an) out.push({ t0: T[a], t1: T[a] + txInDur(t) + 0.05 });
+    if (t.ao) out.push({ t0: T[b + 1] - 0.45, t1: T[b + 1] });
+  }));
+  return out;
+}
+function drawTexts(ctx, f, selId, fi, tIn) {
   for (const t of (f.texts || [])) {
+    const A = fi != null && !trSkip ? txAnim(t, fi, tIn || 0) : null;
+    if (A && (A.a <= 0.003 || A.k <= 0.003 || A.ch === 0)) continue;
     const lines = fxLines(t), s = t.size || 90, lh = s * 1.05;
     ctx.save(); ctx.translate(t.x, t.y); ctx.rotate((t.rot || 0) * DEG);
+    if (A) { ctx.translate(A.dx, A.dy); if (A.r) ctx.rotate(A.r * DEG); if (A.k !== 1) ctx.scale(A.k, A.k); if (A.a < 1) ctx.globalAlpha *= A.a; }
     ctx.font = fxFont(t.style).replace('{s}', s); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
-    const txt = t.style === 'caption' ? lines : lines.map(l => l.toUpperCase());
+    let txt = t.style === 'caption' ? lines : lines.map(l => l.toUpperCase());
     const w = Math.max(...txt.map(l => ctx.measureText(l).width), 10), h = lh * txt.length;
+    if (A && A.ch >= 0) {   // typing: the box keeps its full size, letters appear one by one (left-aligned so they don't jump)
+      let left = A.ch; const full = txt; txt = full.map(l => { const p = l.slice(0, Math.max(0, left)); left -= l.length; return p; });
+      ctx.textAlign = 'left'; const ws = full.map(l => ctx.measureText(l).width);
+      txt = txt.map((l, k) => ({ l, x: -ws[k] / 2 }));
+    }
     if (t.style === 'bubble') {
       const rx = w / 2 + s * 0.6, ry = h / 2 + s * 0.45;
       ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
@@ -5611,10 +5763,11 @@ function drawTexts(ctx, f, selId) {
       for (let i = 0; i < n * 2; i++) { const a = i / (n * 2) * Math.PI * 2, rr = i % 2 ? R * 0.72 : R; ctx.lineTo(Math.cos(a) * rr * (w / Math.max(w, h) * 0.5 + 0.6), Math.sin(a) * rr * (h / Math.max(w, h) * 0.5 + 0.55)); }
       ctx.closePath(); ctx.fillStyle = '#ffd400'; ctx.fill(); ctx.lineWidth = s * 0.07; ctx.strokeStyle = '#111'; ctx.stroke();
     }
-    txt.forEach((l, i) => {
-      const y = (i - (txt.length - 1) / 2) * lh;
-      if (t.style === 'bubble') { ctx.fillStyle = t.color && t.color !== '#ffe14d' ? t.color : '#111'; ctx.fillText(l, 0, y); }
-      else { ctx.lineWidth = s * (t.style === 'caption' ? 0.16 : 0.2); ctx.strokeStyle = t.style === 'shout' ? '#fff' : '#111'; ctx.strokeText(l, 0, y); ctx.fillStyle = t.style === 'shout' ? (t.color === '#ffe14d' ? '#e0141e' : t.color) : (t.color || '#ffe14d'); ctx.fillText(l, 0, y); }
+    txt.forEach((l0, i) => {
+      const y = (i - (txt.length - 1) / 2) * lh, l = typeof l0 === 'string' ? l0 : l0.l, x0 = typeof l0 === 'string' ? 0 : l0.x;
+      if (!l) return;
+      if (t.style === 'bubble') { ctx.fillStyle = t.color && t.color !== '#ffe14d' ? t.color : '#111'; ctx.fillText(l, x0, y); }
+      else { ctx.lineWidth = s * (t.style === 'caption' ? 0.16 : 0.2); ctx.strokeStyle = t.style === 'shout' ? '#fff' : '#111'; ctx.strokeText(l, x0, y); ctx.fillStyle = t.style === 'shout' ? (t.color === '#ffe14d' ? '#e0141e' : t.color) : (t.color || '#ffe14d'); ctx.fillText(l, x0, y); }
     });
     fxBoxes.set(t.id, { x: t.x, y: t.y, w: w + s, h: h + s * 0.6, rot: t.rot || 0 });
     if (selId === t.id) { ctx.setLineDash([12, 8]); ctx.lineWidth = 4; ctx.strokeStyle = '#ff3b9a'; ctx.strokeRect(-w / 2 - s * 0.5, -h / 2 - s * 0.3, w + s, h + s * 0.6); }
@@ -5695,10 +5848,11 @@ function camBadges() {
     ck.title = g.cam ? 'Camera key ở frame này' : 'Vẫn đang zoom (giữ từ camera key trước)';
   });
 }
-function fxSyncBar() { updateWaves(); camBadges(); trBadges(); trSyncBar();
+function fxSyncBar() { updateWaves(); camBadges(); trBadges(); trSyncBar(); ghostSync();
   const bar = $('#fxbar'), show = S.tool === 'fx' && !panelHidden.fx; bar.hidden = !show; updPanelPill(); if (!show) return;
   const f = curFrame(), t = (f.texts || []).find(x => x.id === fxSel);
-  ['#fxEditTxt', '#fxSize', '#fxRot', '#fxDelTxt', '#fxKeep', '#fxColorTxt'].forEach(id => $(id).disabled = !t);
+  ['#fxEditTxt', '#fxSize', '#fxRot', '#fxDelTxt', '#fxKeep', '#fxColorTxt', '#txIn', '#txLp', '#txOut', '#txPrev'].forEach(id => $(id).disabled = !t);
+  txSyncBar(t);
   document.querySelectorAll('[data-fxs]').forEach(b => b.classList.toggle('on', t ? t.style === b.dataset.fxs : fxNewStyle === b.dataset.fxs));
   if (t) { $('#fxSize').value = t.size || 90; $('#fxRot').value = t.rot || 0; }
   const cam = camEdit(S.cur); $('#fxZoom').value = Math.round(cam.z * 100); $('#fxZoomVal').textContent = Math.round(cam.z * 100) + '%';
@@ -5710,9 +5864,30 @@ function fxSyncBar() { updateWaves(); camBadges(); trBadges(); trSyncBar();
   $('#fxSfxList').innerHTML = sf.map(x => `<button class="chip small" data-sfxdel="${x.id}" title="Bỏ âm thanh này">${(SFX[x.kind] || {}).label || x.kind} ✕</button>`).join('');
   $('#fxSfxList').querySelectorAll('[data-sfxdel]').forEach(b => b.addEventListener('click', () => { S.audio.sfx = S.audio.sfx.filter(x => x.id !== b.dataset.sfxdel); fxSyncBar(); scheduleSave(); }));
   const A = S.audio || {};
-  $('#fxMusicName').textContent = A.music ? '🎵 ' + A.music.name : 'chưa có'; voiceRows();
+  $('#fxMusicName').textContent = A.music ? '🎵 ' + A.music.name : 'chưa có'; voiceRows(); beatSync();
   $('#fxMusicDel').disabled = !A.music; $('#fxLip').disabled = !voiceClips().length;
   $('#fxMusicVol').value = Math.round(((A.music && A.music.vol) ?? 0.6) * 100);
+}
+function txSyncBar(t) {
+  const fill = (id, L) => { const el = $(id); if (!el.options.length) el.innerHTML = Object.entries(L).map(([k, v]) => `<option value="${k}">${v}</option>`).join(''); };
+  fill('#txIn', TX_IN); fill('#txLp', TX_LP); fill('#txOut', TX_OUT);
+  $('#txIn').value = t ? t.an || '' : ''; $('#txLp').value = t ? t.lp || '' : ''; $('#txOut').value = t ? t.ao || '' : '';
+  if (!t) { $('#txInfo').textContent = 'Chạm 1 chữ trên khung để chọn'; return; }
+  const [a, b] = txRun(S.cur, t.id); $('#txInfo').textContent = a === b ? 'chữ này chỉ ở 1 frame (dùng Giữ cho để kéo dài)' : `chữ ở frame ${a + 1}–${b + 1}`;
+}
+// set the animation of the selected text on every neighbouring frame that holds it (undo: automatic snapshot)
+function txSetAnim(key, val) {
+  const t = (curFrame().texts || []).find(x => x.id === fxSel); if (!t) return;
+  const [a, b] = txRun(S.cur, t.id);
+  for (let k = a; k <= b; k++) { const g = S.frames[k], x = (g.texts || []).find(y => y.id === t.id); if (!x) continue; if (val) x[key] = val; else delete x[key]; g.ver++; }
+  scheduleSave(); fxSyncBar(); requestRender();
+  if (val) toast('Bấm ▶ Xem thử (hoặc Phát) để thấy chữ chuyển động', 2000);
+}
+let playRangeOnce = null;   // a play range for one preview (▶ Xem thử), else the multi-selection
+function txPreview() {
+  const t = (curFrame().texts || []).find(x => x.id === fxSel); if (!t) return;
+  if (playing) stopPlay(); const [a, b] = txRun(S.cur, t.id);
+  playRangeOnce = [a, Math.min(S.frames.length - 1, b + 1)]; startPlay();
 }
 let fxNewStyle = 'comic';
 async function fxAskText(init) {
@@ -5912,11 +6087,48 @@ function voiceDel(k) {
   if (!still) S.frames.forEach(f => { if (!f.lip) return; const l = { ...f.lip }; if (!rest.length || (mouth && l.pid === mouth.id)) { delete l.pid; delete l.lv; } if (l.m && mouth) { l.m = { ...l.m }; delete l.m[mouth.id]; if (!Object.keys(l.m).length) delete l.m; } if (!rest.length) delete l.m; const nl = Object.keys(l).length ? l : null; if (JSON.stringify(nl) !== JSON.stringify(f.lip)) { f.lip = nl; f.ver++; queueThumbFor(f); } });
   waveKey = ''; updateWaves(); fxSyncBar(); scheduleSave(); requestRender();
 }
+/* ===== 👻 afterimage (残影, bóng mờ lướt): f.ghost = {n, c} → faded copies of the character from the n frames before,
+   drawn under this frame's character (lines layer, puppet, vector lines), optionally tinted. Stops at a scene start. ===== */
+let ghC = null;
+function ghostList(f) {
+  const g = f.ghost; if (!g || !g.n) return []; const i = S.frames.indexOf(f), out = [];
+  for (let k = 1; k <= g.n && i - k >= 0; k++) { if (S.frames[i - k + 1].scene && i - k + 1 > 0) break; out.push([k, S.frames[i - k]]); }
+  return out;
+}
+const ghostKey = i => { const f = S.frames[i]; return f.ghost ? 'g' + f.ghost.n + (f.ghost.c || '') + ghostList(f).map(([, p]) => p.ver).join('.') + ':' : ''; };
+async function ghostLoad(f) { for (const [, p] of ghostList(f)) await ensureLoaded(p); }
+function drawGhosts(ctx, f, w, h) {
+  const L = ghostList(f); if (!L.length) return;
+  if (!ghC || ghC.width !== W || ghC.height !== H) ghC = makeCanvas();
+  const x = ghC.getContext('2d'), n = f.ghost.n;
+  for (const [k, p] of [...L].reverse()) {
+    x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1; x.clearRect(0, 0, W, H);
+    if (S.showChar && p.canvas) x.drawImage(p.canvas, 0, 0); else if (!p.canvas) ensureLoaded(p).then(requestRender);
+    if (S.pp && S.showPP) drawPuppet(x, p.pp, p.lip);
+    if (S.showVec && p.vec && p.vec.length) drawVec(x, p.vec);
+    if (f.ghost.c) { x.globalCompositeOperation = 'source-atop'; x.globalAlpha = 0.65; x.fillStyle = f.ghost.c; x.fillRect(0, 0, W, H); }
+    x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
+    ctx.save(); ctx.globalAlpha = 0.55 * (n - k + 1) / n; if (w) ctx.drawImage(ghC, 0, 0, w, h); else ctx.drawImage(ghC, 0, 0); ctx.restore();
+  }
+}
+SETTINGS_KEYS.push('ghOpt'); S.ghOpt = { n: 3, c: '' };
+// turn the afterimage on/off for frame i0 and the next cnt-1 frames (or the multi-selected frames); undo = automatic snapshot
+function ghostSet(on, idx) {
+  for (const i of idx) { const f = S.frames[i]; if (!f) continue; if (on) f.ghost = { n: S.ghOpt.n, c: S.ghOpt.c || undefined }; else delete f.ghost; f.ver++; f.playKey = ''; queueThumbFor(f); }
+  scheduleSave(); fxSyncBar(); requestRender();
+}
+function ghostSync() {
+  const f = curFrame(); if (!f || !$('#ghBtn')) return;
+  $('#ghBtn').classList.toggle('on', !!f.ghost); $('#ghBtn').textContent = f.ghost ? '👻 Tắt ở frame này' : '👻 Bật ở frame này';
+  const n = f.ghost ? f.ghost.n : S.ghOpt.n, c = f.ghost ? f.ghost.c || '' : S.ghOpt.c || '';
+  document.querySelectorAll('[data-ghn]').forEach(b => b.classList.toggle('on', +b.dataset.ghn === n));
+  document.querySelectorAll('[data-ght]').forEach(b => b.classList.toggle('on', b.dataset.ght === c));
+}
 /* --- final frame composition (used by playback & video export) --- */
 function drawFrameBase(ctx, f, bg, live) {
   if (S.bgVideo) ctx.clearRect(0, 0, W, H); else { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); }
   if (bg && bg.canvas && S.showBg) ctx.drawImage(bg.canvas, 0, 0);
-  drawCol(ctx, f);
+  drawCol(ctx, f); drawGhosts(ctx, f);
   if (f.canvas && S.showChar) ctx.drawImage(f.canvas, 0, 0);
   if (live) return;   // puppet + lines are drawn per video frame (smooth motion)
   if (S.pp && S.showPP) drawPuppet(ctx, f.pp, f.lip);
@@ -5933,7 +6145,7 @@ function drawFrameFx0(ctx, i, baseImg, tsec, tInFrame, vid, over) {
   ctx.save(); camApply(ctx, cam, f.shake || 0, tsec, i);
   if (S.bgVideo) { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); if (S.showBg) drawVideoCover(ctx, vid || bgVid.el); }
   ctx.drawImage(baseImg, 0, 0, W, H); if (over) over(ctx); ctx.restore();
-  drawTexts(ctx, f, null);
+  drawTexts(ctx, f, null, i, tInFrame);
   if (f.flash) { const a = Math.max(0, 0.9 * (1 - tInFrame / Math.max(0.05, f.dur / 1000))); ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(0, 0, W, H); }
 }
 /* ===== 🎞 Transitions (chuyển cảnh): fade, crossfade, TV turning off, wipe, push, zoom blur, glitch, iris =====
@@ -6040,7 +6252,7 @@ function trSrcCache(live) {
     async prep(t, T) {
       const need = trOthers(t, T);
       for (const [j, c] of m) if (!need.includes(j)) { c.width = 0; m.delete(j); }
-      for (const j of need) if (!m.has(j)) { const f = S.frames[j]; await ensureLoaded(f); const bg = bgOf(f); if (bg) await ensureLoaded(bg); const c = makeCanvas(); drawFrameBase(c.getContext('2d'), f, bg, live); m.set(j, c); }
+      for (const j of need) if (!m.has(j)) { const f = S.frames[j]; await ghostLoad(f); await ensureLoaded(f); const bg = bgOf(f); if (bg) await ensureLoaded(bg); const c = makeCanvas(); drawFrameBase(c.getContext('2d'), f, bg, live); m.set(j, c); }
       trSrc = j => m.has(j) ? { img: m.get(j), live } : null;
     },
     done() { for (const c of m.values()) c.width = 0; m.clear(); trSrc = null; }
@@ -6126,7 +6338,7 @@ function gifEncoder(w, h) {
 }
 // one finished frame (background, colour, lines, puppet, vector, camera, texts, flash) drawn into ctx at W×H
 async function renderFinalFrame(ctx, i, base, tIn = 0, withTr = false) {
-  const f = S.frames[i]; await ensureLoaded(f); const bg = bgOf(f); if (bg) await ensureLoaded(bg);
+  const f = S.frames[i]; await ghostLoad(f); await ensureLoaded(f); const bg = bgOf(f); if (bg) await ensureLoaded(bg);
   const bx = base.getContext('2d'); drawFrameBase(bx, f, bg);
   if (S.bgVideo && bgVid.ready) { const v = bgVid.el; try { v.currentTime = bgVideoTimeAt(i); await new Promise(r => { v.onseeked = r; setTimeout(r, 600); }); } catch (e) {} }
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.restore();
@@ -6149,13 +6361,13 @@ async function exportGif(gw) {
   if (exportBusy) return; exportBusy = true;
   const k = Math.min(1, gw / W), w = Math.round(W * k) & ~1, h = Math.round(H * k) & ~1;
   const big = makeCanvas(), bctx = big.getContext('2d'), base = makeCanvas(), small = makeCanvas(w, h), sx = small.getContext('2d', { willReadFrequently: true });
-  const enc = gifEncoder(w, h), pm = progress('Đang tạo GIF…'), T = frameStartTimes(), trs = trList(T), ts = trSrcCache(false);
+  const enc = gifEncoder(w, h), pm = progress('Đang tạo GIF…'), T = frameStartTimes(), trs = trList(T), txw = txWins(T), ts = trSrcCache(false);
   try {
     for (let i = 0; i < S.frames.length; i++) {
       pm.set(`Đang tạo GIF ${i + 1}/${S.frames.length}…`); await new Promise(r => setTimeout(r, 0));
       // inside a transition the frame is split into 1/20 s pictures so the fade / TV-off moves in the GIF too
       const a = T[i], b = T[i + 1], pts = new Set([a]);
-      for (const x of trs) { const u0 = Math.max(a, x.t0), u1 = Math.min(b, x.t1); if (u1 <= u0) continue; for (let u = u0; u < u1 - 1e-4; u += 0.05) pts.add(+u.toFixed(4)); if (u1 < b - 1e-4) pts.add(+u1.toFixed(4)); }
+      for (const x of [...trs, ...txw]) { const u0 = Math.max(a, x.t0), u1 = Math.min(b, x.t1); if (u1 <= u0) continue; for (let u = u0; u < u1 - 1e-4; u += 0.05) pts.add(+u.toFixed(4)); if (u1 < b - 1e-4) pts.add(+u1.toFixed(4)); }
       const arr = [...pts].sort((p, q) => p - q).filter((u, k, l) => k === 0 || u - l[k - 1] > 0.009);
       for (let k = 0; k < arr.length; k++) {
         const u = arr[k], nx = k + 1 < arr.length ? arr[k + 1] : b;
@@ -6285,7 +6497,7 @@ async function exportVideoFast(msg, isCancelled) {
     for (let n = 0; n < N; n++) {
       if (isCancelled()) throw new Error('cancel'); if (err) throw err;
       const t = n / VX_FPS; let i = T.findIndex((v, k) => k < S.frames.length && t < T[k + 1]); if (i < 0) i = S.frames.length - 1;
-      if (i !== bi) { const f = S.frames[i]; await ensureLoaded(f); const bg = bgOf(f); if (bg) await ensureLoaded(bg); drawFrameBase(bx, f, bg, live); bi = i; evictSoon(); }
+      if (i !== bi) { const f = S.frames[i]; await ghostLoad(f); await ensureLoaded(f); const bg = bgOf(f); if (bg) await ensureLoaded(bg); drawFrameBase(bx, f, bg, live); bi = i; evictSoon(); }
       await ts.prep(t, T);
       drawFrameFx(ox, i, base, t, t - T[i], null, live ? ppLiveOver(i, t - T[i], false) : null);
       const vf = new VideoFrame(out, { timestamp: Math.round(t * 1e6), duration: Math.round(1e6 / VX_FPS) });
@@ -6412,7 +6624,7 @@ async function exportVideo() {
     const tmp = makeCanvas(), tx = tmp.getContext('2d');
     for (let i = 0; i < S.frames.length; i++) {
       if (cancelled) throw new Error('cancel');
-      msg(`Chuẩn bị frame ${i + 1}/${S.frames.length}`); const f = S.frames[i]; await ensureLoaded(f);
+      msg(`Chuẩn bị frame ${i + 1}/${S.frames.length}`); const f = S.frames[i]; await ghostLoad(f); await ensureLoaded(f);
       drawFrameBase(tx, f, bgOf(f), live); blobs.push(await new Promise(r => tmp.toBlob(r, S.bgVideo ? 'image/png' : 'image/jpeg', 0.93)));
     }
     tmp.width = 0;
@@ -7212,6 +7424,17 @@ function camPresetApply(p) {
 }
 $('#fxShake').addEventListener('change', e => fxEdit(f => { f.shake = +e.target.value; }));
 $('#fxFlash').addEventListener('click', () => fxEdit(f => { f.flash = !f.flash; }));
+$('#txIn').addEventListener('change', e => txSetAnim('an', e.target.value));
+$('#txLp').addEventListener('change', e => txSetAnim('lp', e.target.value));
+$('#txOut').addEventListener('change', e => txSetAnim('ao', e.target.value));
+$('#txPrev').addEventListener('click', txPreview);
+$('#beatSnap').addEventListener('click', beatSnap);
+$('#beatFit').addEventListener('click', beatFitDialog);
+const ghIdx = () => { const sel = msel && msel.size > 1 ? S.frames.map((g, i) => msel.has(g.id) ? i : -1).filter(i => i >= 0) : []; return sel.length ? sel : [S.cur]; };
+$('#ghBtn').addEventListener('click', () => { const on = !curFrame().ghost, idx = ghIdx(); ghostSet(on, idx); toast(on ? `👻 Bóng mờ lướt ở ${idx.length} frame — thấy rõ khi nhân vật di chuyển nhanh` : 'Đã tắt bóng mờ', 2200); });
+$('#ghNext').addEventListener('click', () => { const n = clamp(+$('#ghNextN').value || 1, 1, 60), idx = []; for (let i = S.cur; i < Math.min(S.frames.length, S.cur + n); i++) idx.push(i); ghostSet(true, idx); toast(`👻 Bóng mờ lướt ở frame ${S.cur + 1}–${idx[idx.length - 1] + 1}`, 2000); });
+document.querySelectorAll('[data-ghn]').forEach(b => b.addEventListener('click', () => { S.ghOpt = { ...S.ghOpt, n: +b.dataset.ghn }; saveSettings(); if (curFrame().ghost) ghostSet(true, ghIdx()); else ghostSync(); }));
+document.querySelectorAll('[data-ght]').forEach(b => b.addEventListener('click', () => { S.ghOpt = { ...S.ghOpt, c: b.dataset.ght }; saveSettings(); if (curFrame().ghost) ghostSet(true, ghIdx()); else ghostSync(); }));
 Object.entries(SFX).forEach(([k, v]) => { const b = document.createElement('button'); b.className = 'chip small'; b.textContent = '🔊 ' + v.label; b.addEventListener('click', () => { sfxPreview(k); S.audio = S.audio || {}; S.audio.sfx = S.audio.sfx || []; S.audio.sfx.push({ id: newId(), frameId: curFrame().id, kind: k, vol: 0.9 }); fxSyncBar(); scheduleSave(); toast(`Đã gắn "${v.label}" vào frame ${S.cur + 1}`); }); $('#fxSfx').append(b); });
 /* 🎞 Chuyển cảnh tab */
 // the transition the tab edits right now: on the current frame, before it (⏮) or after it (⏭)
@@ -7616,7 +7839,7 @@ async function saveProject() {
       v: 2, W, H, cur: S.cur,
       bgs: S.bgs.map(b => ({ id: b.id, png: ref('b:' + b.id, b.png) })),
       name: S.projName || 'Dự án', poses: S.poses || [],
-      frames: S.frames.map(f => ({ id: f.id, dur: f.dur, bgId: f.bgId, png: ref('f:' + f.id, f.png), col: ref('c:' + f.id, f.colPng), vec: f.vec, pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || null, tr: f.tr || null, tre: f.tre || null })),
+      frames: S.frames.map(f => ({ id: f.id, dur: f.dur, bgId: f.bgId, png: ref('f:' + f.id, f.png), col: ref('c:' + f.id, f.colPng), vec: f.vec, pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || null, tr: f.tr || null, tre: f.tre || null, ghost: f.ghost || null })),
       audio: A ? { ...A, music: slim(A.music), voice: slim(A.voice), voices: (A.voices || []).map((v, k) => ({ ...v, buf: ref('m:v' + (v.id || k), v.buf) })) } : null,
       bgVideo: S.bgVideo ? { ...S.bgVideo, buf: ref('m:video', S.bgVideo.buf) } : null,
       pp: S.pp ? { parts: S.pp.parts.map(p => ({ id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null, png: p.png, alts: (p.alts || []).map(a => ({ png: a.png, dx: a.dx || 0, dy: a.dy || 0 })) })) } : null,
@@ -7643,7 +7866,7 @@ async function saveProject() {
 async function loadProjectData(p) {
   W = p.W; H = p.H; setupWorkCanvases();
   S.bgs = p.bgs.map(b => ({ kind: 'bg', id: b.id, ver: 0, png: b.png || null, pngVer: 0, canvas: null }));
-  S.frames = p.frames.map(f => ({ kind: 'char', id: f.id, dur: f.dur, bgId: f.bgId, ver: 0, png: f.png || null, pngVer: 0, canvas: null, col: null, colPng: f.col || null, colVer: 0, colPngVer: 0, thumb: null, play: null, playKey: '', vec: f.vec || [], pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || undefined, tr: f.tr || undefined, tre: f.tre || undefined }));
+  S.frames = p.frames.map(f => ({ kind: 'char', id: f.id, dur: f.dur, bgId: f.bgId, ver: 0, png: f.png || null, pngVer: 0, canvas: null, col: null, colPng: f.col || null, colVer: 0, colPngVer: 0, thumb: null, play: null, playKey: '', vec: f.vec || [], pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || undefined, tr: f.tr || undefined, tre: f.tre || undefined, ghost: f.ghost || undefined }));
   S.audio = p.audio || null; S.bgVideo = p.bgVideo || null; bgVideoSetup();
   S.projName = p.name || S.projName || 'Dự án'; S.poses = p.poses || [];
   loaded.length = 0; undoStack.length = 0; redoStack.length = 0; undoBytes = 0;
@@ -7795,7 +8018,7 @@ async function exportZip() {
         files.push({ name: linesName, data: new Uint8Array(await (await toBlob(comp)).arrayBuffer()) });
       }
       meta.push({ index: i + 1, file: `frames/frame_${n}.png`, char_layer: `layers/char_${n}.png`, color_layer: colorName, lines_layer: linesName, bg_layer: bgFile.get(f.bgId), duration_ms: f.dur,
-        pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], camera: camAt(i), cam_key: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || null, tr: f.tr || null, tre: f.tre || null,
+        pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], camera: camAt(i), cam_key: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || null, tr: f.tr || null, tre: f.tre || null, ghost: f.ghost || null,
         vector: f.vec.map(st => ({ c: st.c, w: +st.w.toFixed(2), a: st.a, pts: st.pts.map(q => [+q.x.toFixed(1), +q.y.toFixed(1)]) })) });
     }
     comp.width = 0;
@@ -7842,7 +8065,7 @@ async function importZip(file) {
       if (!bgId) { bgId = newId(); bgs.push({ id: bgId, png: null }); }
       const vec = (fr.vector || []).map(st => ({ id: newId(), c: st.c, w: st.w, a: st.a, pts: st.pts.map(([x, y]) => ({ x, y })) }));
       const dc = fr.color_layer && z.get(fr.color_layer);
-      return { id: newId(), dur: fr.duration_ms || 100, bgId, vec, col: dc ? dc.buffer.slice(dc.byteOffset, dc.byteOffset + dc.byteLength) : null, pp: fr.pp || {}, ppKey: fr.ppKey, ppEase: fr.ppEase, texts: fr.texts || [], cam: fr.cam_key || null, shake: fr.shake || 0, flash: !!fr.flash, lip: fr.lip || null, scene: fr.scene || undefined, tr: fr.tr || undefined, tre: fr.tre || undefined, png: d ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : null };
+      return { id: newId(), dur: fr.duration_ms || 100, bgId, vec, col: dc ? dc.buffer.slice(dc.byteOffset, dc.byteOffset + dc.byteLength) : null, pp: fr.pp || {}, ppKey: fr.ppKey, ppEase: fr.ppEase, texts: fr.texts || [], cam: fr.cam_key || null, shake: fr.shake || 0, flash: !!fr.flash, lip: fr.lip || null, scene: fr.scene || undefined, tr: fr.tr || undefined, tre: fr.tre || undefined, ghost: fr.ghost || undefined, png: d ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : null };
     });
     if (!frames.length) throw new Error('ZIP không có frame nào');
     pm.set('Đang mở…');
@@ -9527,6 +9750,9 @@ function helpHtml() {
 <li>Bảng công cụ che khung? Bấm <b>✕</b> để đóng bảng (công cụ vẫn bật), bấm <b>☰ Mở bảng</b> góc dưới hoặc chạm lại biểu tượng công cụ để mở lại.</li>
 <li><b>Nền</b>: vẽ/nhập nền 1 lần ở lớp Nền (dùng chung cho các frame), hoặc <b>🎞 Nền video</b> để đặt một đoạn video chạy phía sau nhân vật. Không cần vẽ nền từng frame — khi xuất video app tự ghép tất cả.</li>
 <li><b>✨ Chữ & FX</b>: thêm chữ truyện tranh/bóng thoại/hét/phụ đề (kéo để dời), camera zoom + chạm đặt tâm (tự lia mượt giữa các camera key), rung, chớp sáng; <b>🎞 Chuyển cảnh</b> (mờ qua đen/trắng, hoà cảnh, 📺 tắt/bật màn hình TV có tiếng tách, lau ngang, đẩy sang, phóng mờ, glitch, khép tròn): chọn Đầu frame / Sau frame rồi chạm 1 kiểu, hiện cả khi phát, xuất video và GIF; nhạc nền, lồng tiếng + 🗣 tự nhép miệng; âm thanh hiệu ứng có sẵn. <b>🎬 Video</b> xuất MP4/WebM có tiếng.</li>
+<li><b>✨ Chữ động</b> (Chữ & FX → 🔤 Chữ): chạm 1 chữ → chọn <b>Vào</b> (bật ra, gõ từng chữ, bay lên, rơi nảy, thu từ to, xoay vào, hiện dần), <b>Lặp</b> (rung, đập nhịp, bồng bềnh, lắc lư), <b>Ra</b> (mờ đi, thu nhỏ, bay đi) → ▶ Xem thử. Dùng <b>Giữ cho N frame</b> để chữ ở lâu hơn; chữ chạy khi phát, video và GIF.</li>
+<li><b>👻 Bóng mờ lướt</b> (Chữ & FX → 🎥 Camera): bật ở frame nhân vật lao nhanh (cú sút, cú đá): vài bản mờ của các frame trước hiện phía sau. Chọn số bóng và màu (Thật/Xanh/Vàng/Đỏ), hoặc <b>Cho N frame</b>.</li>
+<li><b>🥁 Nhịp nhạc</b> (Chữ & FX → 🎵 Âm thanh): thêm nhạc nền, app tự tìm nhịp (vạch vàng dưới frame). <b>🎯 Frame sau vào đúng nhịp</b> = cú sút/cú ngã rơi đúng nhịp; <b>🥁 Khớp nhịp…</b> = mỗi frame dài ½/1/2/4 nhịp.</li>
 <li><b>📁 Dự án</b>: lưu nhiều bài, mở/đổi tên/nhân bản/xoá.</li>
 <li><b>🧩 Nhân vật ghép</b> (công cụ Ghép): Nhập ảnh → Nhân vật ghép → kéo khớp → Cắt tự động. Chạm mảnh, kéo để xoay quanh khớp. Cách làm hoạt hình: đặt tư thế A → Nhân bản frame → đặt tư thế B → quay lại A → <b>Tạo frame giữa</b>. Có mẫu Đi/Chạy/Nhảy/Vẫy/Gật/Lắc đầu/Thở, Nói/Chớp mắt (khoanh tách mảnh Miệng/Mắt rồi đặt vai trò).</li>
 <li><b>🎨 Tách nét + màu</b>: Nhập ảnh → tab <b>🎨 Tách nét + màu</b>. App tự lấy nét viền tối vào lớp <b>Nhân vật</b> và màu gốc của từng vùng vào lớp <b>Màu</b> (tô lấn dưới nét). Hợp với ảnh 🤖 AI nhân vật. Ở tab 🧩 Nhân vật ghép có công tắc <b>Làm sạch</b> để nét rõ, màu phẳng trước khi cắt mảnh.</li>
