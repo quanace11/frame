@@ -1705,11 +1705,15 @@ function liftSelection(poly) {
   // the layers this mode takes
   let lineO = onBg ? bgO : fr, takeLine = true, takeCol = !onBg && !!fr.col, takeVec = !onBg, takeBg = false, only = null;
   if (mode === 'all') { lineO = fr; takeCol = !!fr.col; takeVec = true; takeBg = !!(S.showBg && bgO && bgO.canvas); }
+  // 🧩 looks at everything you see: the frame's lines + colour, and the drawn (not white) part of lớp Nền,
+  // because a picture's colour may sit in another layer than its lines (then only the lines would move)
+  else if (mode === 'part') { lineO = fr; takeCol = !!fr.col; takeVec = true; takeBg = !!(S.showBg && bgO && bgO.canvas); }
   else if (mode === 'layer' && !onBg) { only = S.layer; takeLine = only === 'char'; takeCol = only === 'col' && !!fr.col; takeVec = only === 'vec'; }
   if (!lineO || !lineO.canvas) return;
   let rect, mc;
   if (mode === 'part') {
     const srcs = [];
+    if (takeBg) srcs.push(x => x.drawImage(bgO.canvas, 0, 0));
     if (takeCol) srcs.push(x => x.drawImage(fr.col, 0, 0));
     srcs.push(x => x.drawImage(lineO.canvas, 0, 0));
     if (takeVec && S.showVec && fr.vec && fr.vec.length) srcs.push(x => drawVec(x, fr.vec));
@@ -1732,13 +1736,30 @@ function liftSelection(poly) {
     const csnap = makeCanvas(); csnap.getContext('2d').drawImage(fr.col, 0, 0);
     Object.assign(floating, { cc: cutPiece(fr.col, rect, mc), csnap });
   }
+  if (takeBg && mode === 'part' && !inkCount(bgO.canvas, rect, mc)) takeBg = false;   // nothing drawn in lớp Nền there: leave it alone
   if (takeBg) { // background piece: its "before" is kept now (before the hole), so undo / Huỷ bring the background back
     const sn = makeCanvas(); sn.getContext('2d').drawImage(bgO.canvas, 0, 0);
     floating.extra = [{ cv: bgO.canvas, o: bgO, col: false, snap: sn }];
-    floating.bc = cutPiece(bgO.canvas, rect, mc); bgO.ver++;
+    floating.bc = cutPiece(bgO.canvas, rect, mode === 'part' ? inkMask(bgO.canvas, rect, mc) : mc); bgO.ver++;
   }
   if (takeVec && !floatLiftVec(floating, poly) && only === 'vec') { floating.snap.width = 0; floating = null; toast('Không có nét vector nào nằm trong vòng khoanh'); requestRender(); return; }
+  if (mode === 'pic' && !onBg && S.showBg && bgO && bgO.canvas && inkCount(bgO.canvas, rect, mc) > bw * bh * 0.05)
+    toast('Một phần hình trong vòng nằm ở lớp Nền nên không đi theo. Muốn lấy cả nó: Huỷ, rồi chọn 🧩 Từng mảng (hoặc 🔲 Tất cả + nền)', 5000);
+  else if (mode === 'pic' && onBg && [fr.canvas, fr.col].some(cv => cv && inkCount(cv, rect, mc) > bw * bh * 0.02))
+    toast('Đang lấy lớp Nền, phần hình ở lớp Nhân vật/Màu không đi theo. Muốn lấy cả hình: Huỷ, rồi chọn 🧩 Từng mảng', 5000);
   showSelbar(); requestRender();
+}
+// the part of a mask where the layer has drawing that is not plain white paper (used for lớp Nền)
+function inkMask(cv, rect, mc) {
+  const [bx, by, bw, bh] = rect, d = cv.getContext('2d').getImageData(bx, by, bw, bh), a = d.data;
+  const m = mc.getContext('2d').getImageData(0, 0, bw, bh), md = m.data;
+  for (let i = 0; i < a.length; i += 4) if (a[i + 3] < 20 || (a[i] > 235 && a[i + 1] > 235 && a[i + 2] > 235)) md[i + 3] = 0;
+  const out = makeCanvas(bw, bh); out.getContext('2d').putImageData(m, 0, 0); return out;
+}
+function inkCount(cv, rect, mc) {
+  const [bx, by, bw, bh] = rect, a = cv.getContext('2d').getImageData(bx, by, bw, bh).data, md = mc.getContext('2d').getImageData(0, 0, bw, bh).data;
+  let n = 0; for (let i = 0; i < a.length; i += 4) if (md[i + 3] > 127 && a[i + 3] >= 20 && !(a[i] > 235 && a[i + 1] > 235 && a[i + 2] > 235)) n++;
+  return n;
 }
 /* vector strokes (lớp Nét) inside the loop move together with the picture: they are drawn into the lifted lines
    (become pixels when put down) and leave f.vec; floating.vecBefore keeps the old list for undo / Huỷ */
