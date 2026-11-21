@@ -556,7 +556,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <div class="mrow" data-tab="audio"><span class="lbl"><b>Nhạc nền:</b></span><span class="lbl" id="fxMusicName"></span><button class="chip small" id="fxMusicPick">Chọn file</button><button class="chip small" id="fxMusicDel">✕</button><span class="lbl">Âm lượng</span><input type="range" id="fxMusicVol" min="0" max="100"></div>
       <div class="mrow" data-tab="audio" style="flex-wrap:wrap"><span class="lbl" title="App nghe nhạc nền và tìm nhịp (beat), như tự động bắt nhịp của CapCut: vạch vàng trên timeline = nhịp"><b>🥁 Nhịp nhạc:</b></span><span class="lbl" id="beatInfo"></span>
         <button class="chip small" id="beatSnap" title="Kéo dài/rút ngắn frame này để frame sau bắt đầu đúng nhịp gần nhất (cú sút, cú ngã rơi đúng nhịp)">🎯 Frame sau vào đúng nhịp</button><button class="chip small" id="beatFit" title="Mỗi frame (đang chọn nhiều, hoặc từ frame này tới cuối) dài đúng 1 / 2 / ½ nhịp, như video ghép ảnh theo nhạc">🥁 Khớp nhịp…</button></div>
-      <div class="mrow" data-tab="audio"><span class="lbl"><b>Lồng tiếng:</b></span><button class="chip small" id="fxVoicePick" title="Thêm 1 câu thoại, bắt đầu từ frame đang xem. Thêm nhiều giọng để 2 nhân vật nói chuyện với nhau">＋ Thêm giọng (bắt đầu ở frame này)</button><button class="chip small on" id="fxLip" title="Tự nhép miệng nhân vật ghép theo âm lượng giọng (mỗi giọng nhép miệng nhân vật của nó)">🗣 Tự nhép miệng theo giọng</button></div>
+      <div class="mrow" data-tab="audio"><span class="lbl"><b>Lồng tiếng:</b></span><button class="chip small" id="fxVoicePick" title="Thêm 1 câu thoại, bắt đầu từ frame đang xem. Thêm nhiều giọng để 2 nhân vật nói chuyện với nhau">＋ Thêm giọng (bắt đầu ở frame này)</button><button class="chip small on" id="fxVoiceRec" title="Thu câu thoại bằng micro của máy, bắt đầu từ frame đang xem, tự cắt khoảng lặng">🎙 Thu giọng</button><button class="chip small on" id="fxLip" title="Tự nhép miệng nhân vật ghép theo âm lượng giọng (mỗi giọng nhép miệng nhân vật của nó)">🗣 Tự nhép miệng theo giọng</button></div>
       <div class="mrow" data-tab="audio" id="fxVoiceList" style="flex-wrap:wrap;gap:4px"></div>
       <div class="mrow" data-tab="audio"><span class="lbl"><b>Âm thanh hiệu ứng</b> (chạm để nghe & gắn vào frame này):</span><span id="fxSfx" class="mrow"></span></div>
       <div class="mrow" data-tab="audio"><span class="lbl">Đã gắn ở frame này:</span><span id="fxSfxList" class="mrow"></span><span style="flex:1"></span><button class="chip small on" id="fxExport">🎬 Xuất video</button></div>
@@ -6242,6 +6242,81 @@ function voiceDel(k) {
   if (!still) S.frames.forEach(f => { if (!f.lip) return; const l = { ...f.lip }; if (!rest.length || (mouth && l.pid === mouth.id)) { delete l.pid; delete l.lv; } if (l.m && mouth) { l.m = { ...l.m }; delete l.m[mouth.id]; if (!Object.keys(l.m).length) delete l.m; } if (!rest.length) delete l.m; const nl = Object.keys(l).length ? l : null; if (JSON.stringify(nl) !== JSON.stringify(f.lip)) { f.lip = nl; f.ver++; queueThumbFor(f); } });
   waveKey = ''; updateWaves(); fxSyncBar(); scheduleSave(); requestRender();
 }
+/* ===== 🎙 record a voice line right in the app (tablet mic): level meter, trim the silence at both ends,
+   pick which character says it, save as a WAV voice clip starting at the current frame, optional auto lip sync ===== */
+function wavEncode(ch, sr) {
+  const n = ch.length, b = new ArrayBuffer(44 + n * 2), v = new DataView(b), w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) { const s = Math.max(-1, Math.min(1, ch[i])); v.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true); }
+  return b;
+}
+// [start, end] sample range without the quiet head and tail (keeps 0.12 s around the speech)
+function voiceTrimRange(d, sr) {
+  const win = Math.max(1, Math.round(sr * 0.01)), nw = Math.ceil(d.length / win), r = new Float32Array(nw);
+  let peak = 0; for (let k = 0; k < nw; k++) { let s = 0; const a = k * win, e = Math.min(d.length, a + win); for (let i = a; i < e; i++) s += d[i] * d[i]; r[k] = Math.sqrt(s / Math.max(1, e - a)); if (r[k] > peak) peak = r[k]; }
+  const th = Math.max(0.01, peak * 0.12); let a = 0, z = nw - 1; while (a < nw && r[a] < th) a++; while (z > a && r[z] < th) z--;
+  if (a >= nw) return [0, d.length];
+  const pad = Math.round(sr * 0.12); return [Math.max(0, a * win - pad), Math.min(d.length, (z + 1) * win + pad)];
+}
+async function voiceRecordDialog() {
+  if (playing) stopPlay();
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) { toast('Máy/trình duyệt này không cho thu âm. Thu bằng app ghi âm rồi bấm ＋ Thêm giọng', 5000); return; }
+  const mouths = S.pp ? S.pp.parts.filter(p => p.role === 'mouth') : [];
+  const st = { stream: null, rec: null, chunks: [], ac: null, raf: 0, t0: 0, buf: null, sr: 44100, url: '', out: null };
+  const stopMic = () => { cancelAnimationFrame(st.raf); if (st.stream) st.stream.getTracks().forEach(t => t.stop()); st.stream = null; if (st.ac) { st.ac.close().catch(() => {}); st.ac = null; } };
+  const html = `<p style="margin-top:0">Giọng mới bắt đầu ở <b>frame ${S.cur + 1}</b>. Bấm nút đỏ, nói câu thoại, bấm lại để dừng.</p>
+${mouths.length > 1 ? `<label class="lbl">Ai nói câu này? <select id="vrMouth" class="chip small">${mouths.map(p => `<option value="${p.id}">${escHtml(p.name)}</option>`).join('')}</select></label>` : ''}
+<div style="display:flex;align-items:center;gap:14px;margin:12px 0">
+  <button class="btn" id="vrGo" aria-label="Thu" style="width:72px;height:72px;border-radius:50%;background:#ff3b5c;color:#fff;font-size:28px;flex:none">●</button>
+  <div style="flex:1"><div id="vrTime" style="font-size:22px;font-variant-numeric:tabular-nums">0.0 s</div>
+    <div style="height:12px;border-radius:6px;background:var(--panel2);overflow:hidden;margin-top:6px"><div id="vrLvl" style="height:100%;width:0;background:#3ddc84;transition:width .05s"></div></div>
+    <div id="vrMsg" class="lbl" style="font-size:13px;margin-top:6px">Sẵn sàng</div></div></div>
+<audio id="vrPlay" controls hidden style="width:100%"></audio>
+<label class="lbl" style="display:block;margin-top:8px"><input type="checkbox" id="vrTrim" checked> Cắt khoảng lặng ở đầu và cuối</label>
+<label class="lbl" style="display:block"><input type="checkbox" id="vrLip" ${mouths.length ? 'checked' : 'disabled'}> Tự nhép miệng nhân vật theo giọng${mouths.length ? '' : ' (cần mảnh vai trò Miệng)'}</label>`;
+  const res = await modal({ title: '🎙 Thu giọng', html, dismissable: false, buttons: [{ label: 'Huỷ', value: null }, { label: '✓ Dùng giọng này', primary: true, value: 'use', action: () => !!st.buf || (toast('Chưa thu gì — bấm nút đỏ để thu'), false) }], onOpen: ov => {
+    const q = s => ov.querySelector(s), go = q('#vrGo'), msg = q('#vrMsg');
+    const fmt = s => s.toFixed(1) + ' s';
+    const prep = () => {
+      if (!st.buf) return;
+      const d = st.buf.getChannelData(0), [a, z] = q('#vrTrim').checked ? voiceTrimRange(d, st.buf.sampleRate) : [0, d.length];
+      st.out = wavEncode(d.subarray(a, z), st.buf.sampleRate);
+      if (st.url) URL.revokeObjectURL(st.url); st.url = URL.createObjectURL(new Blob([st.out], { type: 'audio/wav' }));
+      const p = q('#vrPlay'); p.src = st.url; p.hidden = false;
+      msg.textContent = `Đã thu ${fmt(d.length / st.buf.sampleRate)}${a > 0 || z < d.length ? ` → giữ ${fmt((z - a) / st.buf.sampleRate)} sau khi cắt khoảng lặng` : ''}. Nghe thử bên dưới, chưa ưng thì bấm ● thu lại.`;
+    };
+    q('#vrTrim').addEventListener('change', prep);
+    go.addEventListener('click', async () => {
+      if (st.rec) { st.rec.stop(); return; }
+      try { st.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
+      catch (e) { msg.textContent = '⚠ Không mở được micro. Hãy cho phép app dùng micro trong cài đặt trình duyệt rồi thử lại.'; return; }
+      st.chunks = []; st.rec = new MediaRecorder(st.stream);
+      st.rec.ondataavailable = e => { if (e.data && e.data.size) st.chunks.push(e.data); };
+      st.rec.onstop = async () => {
+        stopMic(); st.rec = null; go.textContent = '●'; go.style.background = '#ff3b5c'; q('#vrLvl').style.width = '0';
+        msg.textContent = 'Đang xử lý…';
+        try { const ab = await new Blob(st.chunks, { type: st.chunks[0] && st.chunks[0].type || '' }).arrayBuffer(); const ac = new OfflineAudioContext(1, 44100, 44100); st.buf = await ac.decodeAudioData(ab); prep(); }
+        catch (e) { console.warn(e); st.buf = null; msg.textContent = '⚠ Không đọc được bản thu. Thử lại nhé.'; }
+      };
+      // level meter
+      try { st.ac = new (window.AudioContext || window.webkitAudioContext)(); const an = st.ac.createAnalyser(); an.fftSize = 1024; st.ac.createMediaStreamSource(st.stream).connect(an); const a = new Float32Array(an.fftSize);
+        const tick = () => { an.getFloatTimeDomainData(a); let s = 0; for (const x of a) s += x * x; q('#vrLvl').style.width = Math.min(100, Math.sqrt(s / a.length) * 400) + '%'; q('#vrTime').textContent = fmt((performance.now() - st.t0) / 1000); st.raf = requestAnimationFrame(tick); }; st.raf = requestAnimationFrame(tick); } catch (e) {}
+      st.t0 = performance.now(); st.rec.start(); go.textContent = '■'; go.style.background = '#c2185b'; msg.textContent = '🔴 Đang thu… bấm ■ để dừng'; q('#vrPlay').hidden = true;
+    });
+    const mo = new MutationObserver(() => { if (!ov.isConnected) { mo.disconnect(); if (st.rec) { st.rec.onstop = null; try { st.rec.stop(); } catch (e) {} } stopMic(); } });
+    mo.observe(document.body, { childList: true });
+    st.ov = ov;
+  } });
+  const ov = st.ov, mSel = ov && ov.querySelector('#vrMouth'), lip = ov && ov.querySelector('#vrLip').checked;
+  if (st.url) setTimeout(() => URL.revokeObjectURL(st.url), 1000);
+  if (res !== 'use' || !st.out) return;
+  const n = voiceClips().length + 1, clip = { name: `🎙 Giọng thu ${n}`, buf: st.out, vol: 1, frameId: curFrame().id };
+  voiceAdd(clip); if (mSel) clip.mouth = mSel.value;
+  waveKey = ''; updateWaves(); fxSyncBar(); scheduleSave();
+  if (lip && voiceMouth(clip)) await fxLipSync(); else toast(`Đã thêm giọng ${n} — bấm Phát để nghe`, 3000);
+}
+$('#fxVoiceRec').addEventListener('click', voiceRecordDialog);
 /* ===== 👻 afterimage (残影, bóng mờ lướt): f.ghost = {n, c} → faded copies of the character from the n frames before,
    drawn under this frame's character (lines layer, puppet, vector lines), optionally tinted. Stops at a scene start. ===== */
 let ghC = null;
