@@ -1619,13 +1619,16 @@ async function pasteDialog() {
 
 /* ========= Undo ========= */
 const undoStack = [], redoStack = [];
+// deep history: up to 400 steps; memory cap depends on the device (pixel steps only store the changed rectangle)
+const UNDO_MAX = 400, UNDO_BYTES = (navigator.deviceMemory || 4) >= 8 ? 450e6 : (navigator.deviceMemory || 4) >= 4 ? 280e6 : 160e6;
 let undoBytes = 0;
 function vecBytes(v) { let n = 0; for (const st of v) n += st.pts.length * 24 + 64; return n; }
 function pushEntry(e) {
   e.bytes = e.bytes != null && !e.multi ? e.bytes : e.add ? 0 : e.ppose ? 200 : e.multi ? e.multi.reduce((a, x) => a + (x.bytes || 0), 0) : e.vec ? vecBytes(e.before) + vecBytes(e.after) : e.before.data.length + e.after.data.length;
   undoStack.push(e); undoBytes += e.bytes;
   for (const x of redoStack) undoBytes -= x.bytes; redoStack.length = 0;
-  while (undoStack.length > 1 && (undoStack.length > 100 || undoBytes > 160e6)) undoBytes -= undoStack.shift().bytes;
+  while (undoStack.length > 1 && (undoStack.length > UNDO_MAX || undoBytes > UNDO_BYTES)) undoBytes -= undoStack.shift().bytes;
+  if (!histPushing) histCovered = true;
   updUndoBtns();
 }
 function pixEntry(o, rect, before, after, col) { const e = { t: targetOf(o), rect, before, after }; if (col) e.col = true; e.bytes = before.data.length + after.data.length; return e; }
@@ -1664,6 +1667,7 @@ async function applyEntry(e, key) {
     tintCache.clear(); ppRetween(); buildStrip(); await selectFrame(S.cur); scheduleSave();
     return null;
   }
+  if (e.snap) { await histApply(e.snap, key); return null; }
   if (e.sfxadd) {
     S.audio = S.audio || {}; S.audio.sfx = S.audio.sfx || [];
     const ids = new Set(e.sfxadd.map(x => x.id)); S.audio.sfx = S.audio.sfx.filter(x => !ids.has(x.id));
@@ -1681,16 +1685,17 @@ async function applyEntry(e, key) {
   else { await ensureLoaded(o); const cv = e.col ? colOf(o, true) : o.canvas; if (e.col) o.colVer++; cv.getContext('2d').putImageData(e[key], e.rect[0], e.rect[1]); }
   markEdited(o); return o;
 }
-const entryAlive = e => e.partpix ? !!ppPart(e.pid) : e.add || e.fdel || e.ford || e.del || e.wipe || e.sfxadd ? true : e.multi ? e.multi.some(entryAlive) : !!objByTarget(e.t);
+const entryAlive = e => e.partpix ? !!ppPart(e.pid) : e.add || e.fdel || e.ford || e.del || e.wipe || e.sfxadd || e.snap ? true : e.multi ? e.multi.some(entryAlive) : !!objByTarget(e.t);
 async function applyHistory(from, to, key) {
   if (stroke || action) return;
   if (ppSetup && ppSetup.stage === 'paint') { ppLabHistory(key === 'before'); return; }
   if (floating) { cancelFloating(); updUndoBtns(); return; }
+  histFlush();
   let e;
   while ((e = from.pop())) { if (entryAlive(e)) break; undoBytes -= e.bytes; }
   if (!e) { toast(key === 'before' ? 'Không còn gì để hoàn tác' : 'Không còn gì để làm lại'); updUndoBtns(); return; }
   const o = await applyEntry(e, key);
-  to.push(e);
+  to.push(e); histRebase();
   if (o && o.kind === 'char' && o !== curFrame()) await selectFrame(S.frames.indexOf(o));
   else if (o && o.kind === 'bg' && bgOf(curFrame()) !== o) { const i = S.frames.findIndex(f => f.bgId === o.id); if (i >= 0) await selectFrame(i); }
   toast(key === 'before' ? 'Hoàn tác' : 'Làm lại', 700);
@@ -1698,6 +1703,79 @@ async function applyHistory(from, to, key) {
 }
 const undo = () => applyHistory(undoStack, redoStack, 'before');
 const redo = () => applyHistory(redoStack, undoStack, 'after');
+
+/* ===== Undo for everything else (automatic) =====
+   Every change that is saved calls scheduleSave(). Shortly after, the light project state (frame timing/order, backgrounds,
+   puppet parts, poses, keyframes, text/camera/effects, sounds, rig, tracing image, video background…) is compared with
+   the last known state. If it changed and no dedicated undo step was pushed for it, one "snapshot" step is pushed.
+   Pixels and vector lines keep their own (cheaper) undo steps; this only stores the light state + object references. */
+let histBase = null, histCovered = false, histPushing = false, histT = null;
+const histTok = new WeakMap(); let histTokN = 0;
+const histId = o => { if (!histTok.has(o)) histTok.set(o, ++histTokN); return '#' + histTok.get(o); };
+const histBig = x => x && typeof x === 'object' && (x instanceof ArrayBuffer || ArrayBuffer.isView(x) || typeof x.getContext === 'function' || (typeof ImageBitmap !== 'undefined' && x instanceof ImageBitmap) || (typeof ImageData !== 'undefined' && x instanceof ImageData));
+const histJSON = v => JSON.stringify(v, (k, x) => histBig(x) ? histId(x) : x);
+const H_FKEYS = ['dur', 'bgId', 'pp', 'ppKey', 'ppEase', 'texts', 'cam', 'shake', 'flash', 'lip'];
+const histFrameStr = f => JSON.stringify(H_FKEYS.map(k => f[k] === undefined ? null : f[k]));
+const histPartCopy = p => ({ ...p, alts: (p.alts || []).map(a => ({ ...a })) });
+function histSnap() {
+  const A = S.audio;
+  const g = {
+    frames: S.frames.slice(), bgs: S.bgs.slice(), cur: S.cur,
+    pp: S.pp ? { parts: S.pp.parts.slice(), meta: S.pp.parts.map(histPartCopy) } : null,
+    rig: S.rig ? JSON.stringify(S.rig) : null,
+    audio: A ? { ...A, music: A.music ? { ...A.music } : A.music, voice: A.voice ? { ...A.voice } : A.voice, sfx: (A.sfx || []).map(x => ({ ...x })) } : null,
+    bgVideo: S.bgVideo ? { ...S.bgVideo } : null, ref: { ...REF }, poses: (S.poses || []).slice()
+  };
+  g.sig = histJSON([g.frames.map(f => f.id), g.bgs.map(b => b.id), g.pp && g.pp.meta, g.rig, g.audio, g.bgVideo, g.ref, g.poses]);
+  g.fm = new Map(g.frames.map(f => [f, histFrameStr(f)]));
+  return g;
+}
+function histRebase() { clearTimeout(histT); histT = null; histBase = histSnap(); histCovered = false; }
+const histReset = histRebase;
+function histSoon() { clearTimeout(histT); histT = setTimeout(histCheck, 400); }
+// long jobs (progress window, a drag, a pending stroke) finish first, so one action = one step
+const histBusy = () => !!(stroke || action || document.querySelector('.ov'));
+function histCheck() {
+  histT = null;
+  if (!histBase) { histRebase(); return; }
+  if (histBusy()) { histT = setTimeout(histCheck, 400); return; }
+  const now = histSnap();
+  if (histCovered) { histBase = now; histCovered = false; return; }
+  const fr = [];
+  for (const [f, a] of now.fm) { const b = histBase.fm.get(f); if (b !== undefined && b !== a) fr.push([f, b, a]); }
+  if (now.sig !== histBase.sig || fr.length) {
+    let bytes = 2000; for (const [, b, a] of fr) bytes += b.length + a.length;
+    histPushing = true; pushEntry({ snap: { before: histBase, after: now, fr }, bytes }); histPushing = false;
+  }
+  histBase = now;
+}
+// record a pending change right away (before undo/redo runs)
+function histFlush() { if (!histT) return; clearTimeout(histT); histT = null; if (!stroke && !action) histCheck(); }
+async function histApply(sn, key) {
+  const G = sn[key], beforeKey = key === 'before';
+  if (playing) stopPlay(); commitFloating(); motionClose(); rigClose();
+  const vidChanged = (S.bgVideo && S.bgVideo.buf) !== (G.bgVideo && G.bgVideo.buf);
+  S.frames = G.frames.slice(); S.bgs = G.bgs.slice();
+  for (let i = loaded.length - 1; i >= 0; i--) if (!S.frames.includes(loaded[i])) loaded.splice(i, 1);
+  for (const f of S.frames) if (f.canvas && !loaded.includes(f)) loaded.push(f);
+  for (const b of S.bgs) if (!b.canvas || !b.canvas.width) { b.canvas = null; await ensureLoaded(b); }
+  for (const [f, b, a] of sn.fr) { const v = JSON.parse(beforeKey ? b : a); H_FKEYS.forEach((k, i) => { f[k] = v[i] === null ? undefined : v[i]; }); f.ver++; queueThumbFor(f); }
+  const ppWas = histJSON(S.pp && S.pp.parts.map(histPartCopy));
+  if (!G.pp) S.pp = null;
+  else {
+    S.pp = S.pp || { parts: [] }; S.pp.parts = G.pp.parts.slice();
+    G.pp.meta.forEach((m, i) => { const p = G.pp.parts[i]; for (const k of Object.keys(p)) if (!(k in m)) delete p[k]; Object.assign(p, histPartCopy(m)); });
+  }
+  if (ppSel && !ppPart(ppSel)) ppSel = null;
+  if (ppWas !== histJSON(S.pp && S.pp.parts.map(histPartCopy))) S.frames.forEach(f => { f.ver++; queueThumbFor(f); });
+  S.rig = G.rig ? JSON.parse(G.rig) : null;
+  const A = G.audio; S.audio = A ? { ...A, music: A.music ? { ...A.music } : A.music, voice: A.voice ? { ...A.voice } : A.voice, sfx: (A.sfx || []).map(x => ({ ...x })) } : null;
+  S.bgVideo = G.bgVideo ? { ...G.bgVideo } : null; if (vidChanged) bgVideoSetup();
+  Object.assign(REF, G.ref); updateRefUI();
+  S.poses = G.poses.slice();
+  S.cur = clamp(S.frames.includes(G.frames[G.cur]) ? S.frames.indexOf(G.frames[G.cur]) : G.cur, 0, S.frames.length - 1);
+  tintCache.clear(); buildStrip(); await selectFrame(S.cur); ppSyncBar(); fxSyncBar(); updateWaves(); requestRender(); scheduleSave();
+}
 
 /* ========= Edits, thumbnails, save scheduling ========= */
 function markEdited(o) { o.ver++; queueThumbFor(o); scheduleSave(); updUndoBtns(); }
@@ -1868,7 +1946,7 @@ function moveFrame(d) {
 }
 function gcBgs() {
   const used = new Set(S.frames.map(f => f.bgId));
-  S.bgs = S.bgs.filter(b => { if (used.has(b.id)) return true; if (b.canvas) b.canvas.width = 0; return false; });
+  S.bgs = S.bgs.filter(b => used.has(b.id));   // removed backgrounds keep their canvas: ↶ can bring them back
 }
 async function newBg(copy) {
   if (playing) stopPlay(); commitFloating();
@@ -3493,7 +3571,7 @@ async function ppCutLasso(poly) {
   cx.save(); cx.translate(-x0, -y0); polyPath(cx, lp); cx.clip(); cx.drawImage(src.c, 0, 0); cx.restore();
   const a = cx.getImageData(0, 0, c.width, c.height).data; let any = false; for (let i = 3; i < a.length; i += 4) if (a[i] > 20) { any = true; break; }
   if (!any) { toast('Vùng khoanh không có hình của mảnh đang chọn'); return; }
-  if (!ppKeep) { const sx = src.c.getContext('2d'); sx.save(); polyPath(sx, lp); sx.globalCompositeOperation = 'destination-out'; sx.fill(); sx.restore(); await encodePart(src); }
+  if (!ppKeep) { const nc = makeCanvas(src.c.width, src.c.height); nc.getContext('2d').drawImage(src.c, 0, 0); src.c = nc; const sx = src.c.getContext('2d'); sx.save(); polyPath(sx, lp); sx.globalCompositeOperation = 'destination-out'; sx.fill(); sx.restore(); await encodePart(src); }
   // pivot: point of the new piece nearest to the parent's pivot
   let best = { x: src.ox + (x0 + x1) / 2, y: src.oy + y0 }, bd = Infinity;
   for (let y = 0; y < c.height; y += 2) for (let xx = 0; xx < c.width; xx += 2) if (a[(y * c.width + xx) * 4 + 3] > 60) { const X = src.ox + x0 + xx, Y = src.oy + y0 + y, dd = Math.hypot(X - src.px, Y - src.py); if (dd < bd) { bd = dd; best = { x: X, y: Y }; } }
@@ -3794,7 +3872,7 @@ $('#ppParent').addEventListener('change', e => { const p = ppPart(ppSel); if (!p
 $('#ppRename').addEventListener('click', async () => { const p = ppPart(ppSel); if (!p) return; let val = null; await modal({ title: 'Đổi tên mảnh', html: `<input id="ppNameIn" value="${p.name.replace(/"/g, '&quot;')}" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text)">`, buttons: [{ label: 'Huỷ', value: null }, { label: 'Lưu', primary: true, action: () => { val = document.getElementById('ppNameIn').value.trim(); } }] }); if (val) { p.name = val.slice(0, 40); ppSyncBar(); scheduleSave(); } });
 $('#ppUp').addEventListener('click', () => { const p = ppPart(ppSel); if (!p) return; p.z += 1.5; ppRenormZ(); S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); ppSyncBar(); scheduleSave(); requestRender(); });
 $('#ppDown').addEventListener('click', () => { const p = ppPart(ppSel); if (!p) return; p.z -= 1.5; ppRenormZ(); S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); ppSyncBar(); scheduleSave(); requestRender(); });
-$('#ppDel').addEventListener('click', async () => { const p = ppPart(ppSel); if (!p) return; const ok = await modal({ title: `Xoá mảnh "${p.name}"?`, html: '<p>Mảnh bị xoá khỏi mọi frame, không hoàn tác được. Mảnh con sẽ gắn sang mảnh cha.</p>', buttons: [{ label: 'Huỷ', value: false }, { label: 'Xoá', value: true, cls: 'danger' }] }); if (!ok) return; S.pp.parts.forEach(c => { if (c.parent === p.id) c.parent = p.parent; }); S.pp.parts = S.pp.parts.filter(x => x.id !== p.id); ppSel = null; S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); ppSyncBar(); scheduleSave(); requestRender(); });
+$('#ppDel').addEventListener('click', async () => { const p = ppPart(ppSel); if (!p) return; const ok = await modal({ title: `Xoá mảnh "${p.name}"?`, html: '<p>Mảnh bị xoá khỏi mọi frame, mảnh con sẽ gắn sang mảnh cha. Lỡ tay thì bấm ↶ Hoàn tác.</p>', buttons: [{ label: 'Huỷ', value: false }, { label: 'Xoá', value: true, cls: 'danger' }] }); if (!ok) return; S.pp.parts.forEach(c => { if (c.parent === p.id) c.parent = p.parent; }); S.pp.parts = S.pp.parts.filter(x => x.id !== p.id); ppSel = null; S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); ppSyncBar(); scheduleSave(); requestRender(); });
 document.querySelectorAll('[data-ppd]').forEach(b => b.addEventListener('click', () => { ppDrag = b.dataset.ppd; ppCutMode = false; ppPaint = null; ppSyncBar(); requestRender(); }));
 let ppSlBefore = null;
 const ppSlStart = () => { if (!ppSlBefore) ppSlBefore = ppState(curFrame()); };
@@ -3836,7 +3914,7 @@ $('#ppVarDel').addEventListener('click', async () => { const sel = ppPart(ppSel)
   const ok = await modal({ title: 'Xoá hình này?', html: '<p>Các frame đang dùng hình này sẽ về hình gốc.</p>', buttons: [{ label: 'Huỷ', value: false }, { label: 'Xoá', value: true, cls: 'danger' }] }); if (!ok) return;
   sel.alts.splice(v - 1, 1); S.frames.forEach(fr => { const q = fr.pp && fr.pp[sel.id]; if (q && q.v) { if (q.v === v) delete q.v; else if (q.v > v) q.v--; } fr.ver++; queueThumbFor(fr); }); ppSyncBar(); scheduleSave(); requestRender(); });
 $('#ppDelChar').addEventListener('click', async () => { const sel = ppPart(ppSel); if (!sel) return; const ch = ppCharOf(sel), list = S.pp.parts.filter(p => ppCharOf(p) === ch);
-  const ok = await modal({ title: `Xoá cả nhân vật (${list.length} mảnh)?`, html: '<p>Không hoàn tác được.</p>', buttons: [{ label: 'Huỷ', value: false }, { label: 'Xoá', value: true, cls: 'danger' }] }); if (!ok) return;
+  const ok = await modal({ title: `Xoá cả nhân vật (${list.length} mảnh)?`, html: '<p>Lỡ tay thì bấm ↶ Hoàn tác để lấy lại.</p>', buttons: [{ label: 'Huỷ', value: false }, { label: 'Xoá', value: true, cls: 'danger' }] }); if (!ok) return;
   const ids = new Set(list.map(p => p.id)); S.pp.parts = S.pp.parts.filter(p => !ids.has(p.id)); if (!S.pp.parts.length) S.pp = null; ppSel = null; S.frames.forEach(fr => { if (fr.pp) ids.forEach(id => delete fr.pp[id]); fr.ver++; queueThumbFor(fr); }); ppSyncBar(); scheduleSave(); requestRender(); });
 $('#ppKeyBtn').addEventListener('click', () => ppKeyEdit(f => { f.ppKey = !ppIsKey(f); }));
 $('#ppEase').addEventListener('change', e => ppKeyEdit(f => { f.ppEase = e.target.value; }));
@@ -4438,7 +4516,7 @@ async function projectsDialog() {
           if (v) { if (id === curProjId) { S.projName = v.slice(0, 60); updateProjLabel(); await saveProject(); } else { const p = await idbGet('project:' + id); if (p) { p.name = v.slice(0, 60); await idbPut('project:' + id, p); } const L = await projIndex(); const it = L.find(x => x.id === id); if (it) { it.name = v.slice(0, 60); await idbPut('projects', L); } } close(); projectsDialog(); } }
         else if (act === 'dup') { const p = await idbGet('project:' + id); if (!p) return; const nid = newId(); p.name = (p.name || 'Dự án') + ' (bản sao)'; await copyProjectBlobs(id, nid, p); await idbPut('project:' + nid, p); const L = await projIndex(); L.push({ ...item, id: nid, name: p.name, updated: Date.now() }); await idbPut('projects', L); close(); projectsDialog(); }
         else if (act === 'del') {
-          const ok = await modal({ title: `Xoá dự án "${item.name}"?`, html: '<p>Không hoàn tác được.</p>', buttons: [{ label: 'Huỷ', value: false }, { label: 'Xoá', value: true, cls: 'danger' }] });
+          const ok = await modal({ title: `Xoá dự án "${item.name}"?`, html: '<p>Lỡ tay thì bấm ↶ Hoàn tác để lấy lại.</p>', buttons: [{ label: 'Huỷ', value: false }, { label: 'Xoá', value: true, cls: 'danger' }] });
           if (!ok) return; await idbDel('project:' + id); try { await deleteProjectBlobs(id); } catch (e) { console.error(e); } const L = (await projIndex()).filter(x => x.id !== id); await idbPut('projects', L);
           if (id === curProjId) { close(); if (L.length) { curProjId = null; await openProject(L.sort((a, b) => b.updated - a.updated)[0].id); } else await createProject(1080, 1920); }
           else { close(); projectsDialog(); }
@@ -5880,7 +5958,7 @@ function setSaveState(t) { const el = $('#saveState'); el.textContent = t || (st
 let savedBlobs = new Map(), savedBlobsProj = null, saveFails = 0, saveRetryT = null, saveWarned = false;
 const blobPrefix = id => 'blob:' + id + ':';
 const blobRange = id => IDBKeyRange.bound(blobPrefix(id), blobPrefix(id) + '￿');
-function scheduleSave() { clearTimeout(saveT); $('#saveState').textContent = 'Chưa lưu…'; saveT = setTimeout(autoSave, 1500); }
+function scheduleSave() { histSoon(); clearTimeout(saveT); $('#saveState').textContent = 'Chưa lưu…'; saveT = setTimeout(autoSave, 1500); }
 function autoSave() { if (stroke || playing) { saveT = setTimeout(autoSave, 1500); return; } saveT = null; saveProject(); }
 async function idbBlobPut(rec, recKey, blobs, pid, gc) {
   const db = await idbOpen();
@@ -5977,7 +6055,7 @@ async function loadProjectData(p) {
   resizeView();
   await ensureLoaded(curFrame());
   for (const f of S.frames) await drawThumb(f);
-  buildStrip(); await selectFrame(S.cur); updUndoBtns();
+  buildStrip(); await selectFrame(S.cur); updUndoBtns(); histReset();
 }
 function newProject(w, h) {
   W = w; H = h; setupWorkCanvases();
@@ -5987,7 +6065,7 @@ function newProject(w, h) {
   const b = newBgObj(); S.bgs = [b];
   const f = newFrameObj(b.id); S.frames = [f]; loaded.push(f);
   clearRef(true); updateRefUI(); S.rig = null; S.pp = null; ppSetup = null; ppSel = null; S.audio = null; S.bgVideo = null; bgVideoSetup();
-  S.cur = 0; setLayer(S.lineLayer === 'vec' ? 'vec' : 'char'); resizeView(); drawThumb(f); buildStrip(); updUndoBtns(); requestRender(); scheduleSave();
+  S.cur = 0; setLayer(S.lineLayer === 'vec' ? 'vec' : 'char'); resizeView(); drawThumb(f); buildStrip(); updUndoBtns(); requestRender(); scheduleSave(); histReset();
 }
 
 /* ========= ZIP (store, no compression) ========= */
@@ -7585,7 +7663,7 @@ async function init() {
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }
 /* ========= Installed app (PWA): offline + updates ========= */
-const APP_VERSION = '2026.11.20-2357';
+const APP_VERSION = '2026.11.21-0004';
 let swReg = null, swUpdating = false;
 (function setupPWA() {
   let top = false; try { top = window.top === window; } catch (e) {}

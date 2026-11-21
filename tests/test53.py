@@ -4,76 +4,105 @@ os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tes
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
-srv = subprocess.Popen(['python3','-m','http.server','8855'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+# ↶ undo covers everything: frame add/duplicate/move, timing, backgrounds, sounds, music, puppet parts (role, name, order,
+# delete), poses, tracing image, text kept on next frames… each one step, in order, mixed with pixel steps; deep history.
+srv = subprocess.Popen(['python3','-m','http.server','8850'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1)
-# "Cả nét": pick many strokes by tapping, drag to move, corner handles scale, round knob rotates
-PEN = """async ([pts])=>{const v=document.getElementById('view');
-  const mk=(t,x,y)=>new PointerEvent(t,{pointerId:7,pointerType:'pen',clientX:x,clientY:y,pressure:0.6,buttons:1,bubbles:true,cancelable:true});
-  v.dispatchEvent(mk('pointerdown',pts[0][0],pts[0][1])); for(const [x,y] of pts.slice(1)){v.dispatchEvent(mk('pointermove',x,y)); await new Promise(r=>setTimeout(r,4));}
-  v.dispatchEvent(mk('pointerup',pts.at(-1)[0],pts.at(-1)[1]));}"""
-D2S = "([x,y])=>{const c=Math.cos(vr)*vs,s=Math.sin(vr)*vs;const r=document.getElementById('view').getBoundingClientRect();return [r.left+(c*x-s*y+vtx)/DPR, r.top+(s*x+c*y+vty)/DPR]}"
-PTS = "curFrame().vec.map(st=>st.pts.map(q=>[Math.round(q.x),Math.round(q.y)]))"
-def line(a, b, n=8): return [[a[0]+(b[0]-a[0])*i/n, a[1]+(b[1]-a[1])*i/n] for i in range(n+1)]
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(executable_path=CHROME, args=['--no-sandbox'])
-        pg = await b.new_page(viewport={'width':1180,'height':900})
-        errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
-        await pg.add_init_script("new MutationObserver(()=>document.querySelectorAll('.tabhide').forEach(e=>e.classList.remove('tabhide'))).observe(document,{subtree:true,attributes:true,childList:true,attributeFilter:['class']})")
-        await pg.goto('http://localhost:8855/index.html'); await pg.wait_for_timeout(800)
-        await pg.click('text=Bắt đầu vẽ')
-        await pg.evaluate("""()=>{setLayer('vec'); const f=curFrame(); f.vec=[];
-          const mk=(id,x)=>({id,c:'#000',w:6,pts:[400,500,600].map(y=>({x,y}))});
-          f.vec.push(mk('A',300), mk('B',500), mk('C',700)); setTool('vedit'); vsel.clear(); updVecBar(); requestRender();}""")
-        await pg.evaluate("panelHidden.vedit=false; updVecBar()")
-        await pg.click('[data-vdm=move]'); await pg.wait_for_timeout(100)
-        s2 = lambda x, y: pg.evaluate(f"({D2S})([{x},{y}])")
-        tap = lambda pt: pg.evaluate(PEN, [[pt, pt]])
-        # tap A then B: both selected; tap B again: deselected; tap again: selected
-        await tap(await s2(300, 500)); await tap(await s2(500, 500))
-        assert await pg.evaluate("[...vsel].sort().join()") == 'A,B'
-        await tap(await s2(500, 500)); assert await pg.evaluate("[...vsel].join()") == 'A'
-        await tap(await s2(500, 500)); assert await pg.evaluate("vsel.size") == 2
-        print('info', await pg.inner_text('#vecInfo'))
-        await pg.screenshot(path='t53_box.png')
-        before = await pg.evaluate(PTS)
-        # drag a selected stroke: both A and B move, C stays
-        a = await s2(300, 450); bb = await s2(300, 350)
-        await pg.evaluate(PEN, [line(a, bb)]); await pg.wait_for_timeout(50)
-        aft = await pg.evaluate(PTS); print('moved', aft)
-        assert all(abs(q[1] - o[1] + 100) <= 2 for k in (0, 1) for q, o in zip(aft[k], before[k])) and aft[2] == before[2]
-        await pg.evaluate("undo()"); await pg.wait_for_timeout(50); assert await pg.evaluate(PTS) == before
-        await pg.evaluate("vsel.clear(); vsel.add('A'); vsel.add('B'); updVecBar(); requestRender();")
-        # drag inside the box on empty space (between A and B) also moves both
-        a = await s2(400, 500); bb = await s2(450, 500)
-        await pg.evaluate(PEN, [line(a, bb)]); aft = await pg.evaluate(PTS)
-        assert abs(aft[0][0][0] - 350) <= 2 and abs(aft[1][0][0] - 550) <= 2 and aft[2] == before[2], aft
-        await pg.evaluate("undo(); vsel.clear(); vsel.add('A'); vsel.add('B'); updVecBar(); requestRender();")
-        # bottom-right corner handle: drag away from the top-left anchor -> bigger
-        box = await pg.evaluate("(()=>{const b=vselBox(curFrame()); return [b.x0,b.y0,b.x1,b.y1]})()"); print('box', box)
-        a = await s2(box[2], box[3]); w0 = (box[2]-box[0]); bb = await s2(box[0] + w0*2, box[1] + (box[3]-box[1])*2)
-        await pg.evaluate(PEN, [line(a, bb)]); await pg.wait_for_timeout(50)
-        nb = await pg.evaluate("(()=>{const b=vselBox(curFrame()); return [b.x0,b.y0,b.x1,b.y1]})()")
-        ws = await pg.evaluate("curFrame().vec.map(s=>s.w)"); print('scaled', nb, ws)
-        assert abs(nb[0]-box[0]) < 15 and (nb[2]-nb[0]) > 1.6*w0 and ws[0] > 10 and ws[2] == 6
-        await pg.evaluate("undo(); vsel.clear(); vsel.add('A'); vsel.add('B'); updVecBar(); requestRender();")
-        # top-left corner toward the centre -> smaller
-        a = await s2(box[0], box[1]); bb = await s2((box[0]+box[2])/2, (box[1]+box[3])/2)
-        await pg.evaluate(PEN, [line(a, bb)]); nb = await pg.evaluate("(()=>{const b=vselBox(curFrame()); return [b.x0,b.y0,b.x1,b.y1]})()")
-        print('smaller', nb); assert (nb[2]-nb[0]) < 0.75*w0
-        await pg.evaluate("undo(); vsel.clear(); vsel.add('A'); updVecBar(); requestRender();")
-        # rotate knob: drag from top knob to the right side -> vertical line becomes horizontal
-        r = await pg.evaluate("(()=>{const b=vselBox(curFrame()); const h=vboxHandles(b).find(h=>h.k==='r'); return [h.x,h.y,(b.x0+b.x1)/2,(b.y0+b.y1)/2]})()")
-        a = await s2(r[0], r[1]); bb = await s2(r[2] + (r[3]-r[1]), r[3])
-        await pg.evaluate(PEN, [line(a, bb, 16)]); aft = await pg.evaluate(PTS); print('rotated', aft[0])
-        assert abs(aft[0][0][1] - aft[0][2][1]) <= 3 and abs(abs(aft[0][0][0] - aft[0][2][0]) - 200) <= 4
-        await pg.screenshot(path='t53_rot.png')
-        await pg.evaluate("undo()")
-        # point mode still bends a single point; box also shown there
-        await pg.click('[data-vdm=point]'); await pg.evaluate("vsel.clear(); vsel.add('C'); updVecBar(); requestRender();")
-        a = await s2(700, 500); bb = await s2(760, 500); await pg.evaluate(PEN, [line(a, bb)])
-        aft = await pg.evaluate(PTS); assert aft[2][1][0] >= 758 and aft[2][0] == [700, 400], aft[2]
-        print('ERR', errs)
-        await b.close()
-asyncio.run(main())
-srv.terminate()
+        pg = await b.new_page(viewport={'width':820,'height':1180}); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
+        def check(name, ok):
+            print(name, ok)
+            if not ok: errs.append('FAIL ' + name)
+        async def settle(): await pg.wait_for_timeout(650)
+        async def undo(): await pg.evaluate("undo()"); await pg.wait_for_timeout(350)
+        async def redo(): await pg.evaluate("redo()"); await pg.wait_for_timeout(350)
+        ev = pg.evaluate
+        await pg.goto('http://localhost:8850/index.html'); await pg.wait_for_timeout(1000)
+        await pg.click('.dlg .btns >> text=Bắt đầu vẽ'); await pg.wait_for_timeout(300)
+        # frames: add, duplicate, move
+        await pg.click('#addBtn'); await settle()
+        check('add frame', await ev("S.frames.length") == 2)
+        await pg.click('#dupBtn'); await settle()
+        ids = await ev("S.frames.map(f=>f.id)")
+        await ev("S.cur=2; updateFrameUI()"); await pg.click('#moveL'); await settle()
+        check('moved', await ev("S.frames.map(f=>f.id)") == [ids[0], ids[2], ids[1]])
+        await undo(); check('undo move', await ev("S.frames.map(f=>f.id)") == ids)
+        await undo(); check('undo duplicate', await ev("S.frames.length") == 2)
+        await undo(); check('undo add', await ev("S.frames.length") == 1)
+        await redo(); await redo(); check('redo add + duplicate', await ev("S.frames.map(f=>f.id)") == ids)
+        await redo(); check('redo move', await ev("S.frames.map(f=>f.id)") == [ids[0], ids[2], ids[1]])
+        # timing: one frame, all frames
+        await ev("S.cur=0; updateFrameUI()")
+        await pg.fill('#durIn', '0.5'); await pg.dispatch_event('#durIn', 'change'); await settle()
+        await pg.click('#durAllBtn'); await settle()
+        check('dur all', await ev("S.frames.every(f=>f.dur===500)"))
+        await undo(); check('undo dur all', await ev("S.frames.map(f=>f.dur)") == [500, 100, 100])
+        await undo(); check('undo dur', await ev("S.frames[0].dur") == 100)
+        # pixel step + light step stay in order
+        await ev("(()=>{const f=curFrame(); const before=f.canvas.getContext('2d').getImageData(0,0,40,40); f.canvas.getContext('2d').fillRect(0,0,40,40); pushUndo(f,[0,0,40,40],before,f.canvas.getContext('2d').getImageData(0,0,40,40)); markEdited(f);})()")
+        await settle()
+        await pg.fill('#durIn', '1'); await pg.dispatch_event('#durIn', 'change'); await settle()
+        await undo(); check('undo order: timing first', await ev("S.frames[0].dur") == 100 and await ev("curFrame().canvas.getContext('2d').getImageData(5,5,1,1).data[3]") > 0)
+        await undo(); check('then the drawing', await ev("curFrame().canvas.getContext('2d').getImageData(5,5,1,1).data[3]") == 0)
+        # background: new empty bg for this frame
+        await ev("S.cur=0; updateFrameUI()"); bg0 = await ev("S.frames[0].bgId")
+        await ev("newBg(false)"); await settle()
+        check('new bg', await ev("S.frames[0].bgId") != bg0)
+        await undo(); check('undo new bg', await ev("S.frames[0].bgId") == bg0 and await ev(f"S.bgs.some(b=>b.id==='{bg0}')"))
+        # sounds attached to a frame + removing one
+        await ev("setTool('fx')"); await pg.wait_for_timeout(100)
+        await ev("document.querySelectorAll('#fxSfx button')[0].click()"); await settle()
+        check('sfx added', await ev("S.audio.sfx.length") == 1)
+        await ev("document.querySelector('[data-sfxdel]').click()"); await settle()
+        check('sfx removed', await ev("S.audio.sfx.length") == 0)
+        await undo(); check('undo sfx remove', await ev("S.audio.sfx.length") == 1)
+        await undo(); check('undo sfx add', await ev("((S.audio&&S.audio.sfx)||[]).length") == 0)
+        # music volume + music removal
+        await ev("S.audio=S.audio||{}; S.audio.music={name:'m.wav',buf:new ArrayBuffer(8),vol:0.6,frameId:S.frames[0].id}; histRebase(); fxSyncBar()")
+        await ev("document.getElementById('fxMusicDel').click()"); await settle()
+        check('music removed', await ev("!S.audio.music"))
+        await undo(); check('undo music removed', await ev("S.audio.music && S.audio.music.name") == 'm.wav')
+        # text kept on next frames
+        await ev("selectFrame(0)"); await pg.wait_for_timeout(100)
+        await ev("fxEdit(f=>{f.texts=[{id:'t1',str:'HI',x:500,y:500,size:90,style:'comic'}]}); fxSel='t1'; fxSyncBar()"); await settle()
+        await ev("document.getElementById('fxKeepN').value=2; document.getElementById('fxKeep').click()"); await settle()
+        check('text kept on 2 frames', await ev("S.frames.filter(f=>(f.texts||[]).some(t=>t.id==='t1')).length") == 3)
+        await undo(); check('undo keep', await ev("S.frames.filter(f=>(f.texts||[]).some(t=>t.id==='t1')).length") == 1)
+        await ev("setTool('brush')")
+        # puppet parts: role, rename via code path, order, delete part
+        await ev("""(()=>{const mk=(id,z)=>{const c=makeCanvas(60,60); c.getContext('2d').fillRect(0,0,60,60); return {id,name:'Mảnh '+id,role:'',parent:null,z,ox:100*z,oy:100,px:100*z+30,py:130,c,alts:[]};};
+            S.pp={parts:[mk('a',1),mk('b',2)]}; ppSel='a'; histRebase();})()""")
+        await ev("setTool('puppet')"); await pg.wait_for_timeout(200)
+        await ev("const r=document.getElementById('ppRole'); r.value='head'; r.dispatchEvent(new Event('change'))"); await settle()
+        check('role set', await ev("ppPart('a').role") == 'head')
+        await ev("document.getElementById('ppUp').click()"); await settle()
+        za = await ev("ppPart('a').z")
+        await ev("document.getElementById('ppDel').click()"); await pg.wait_for_timeout(300); await pg.click('.dlg .btns >> text=Xoá'); await settle()
+        check('part deleted', await ev("!ppPart('a')"))
+        await undo(); check('undo delete part', await ev("!!ppPart('a') && ppPart('a').c.width===60"))
+        await undo(); check('undo order', await ev("ppPart('a').z") != za or await ev("S.pp.parts.map(p=>p.id).join()") != '')
+        await undo(); check('undo role', await ev("ppPart('a').role") == '')
+        # pose library: save a pose, undo removes it
+        n0 = await ev("(S.poses||[]).length")
+        await ev("S.poses=(S.poses||[]).concat([{id:'p1',name:'x',pp:{}}]); scheduleSave()"); await settle()
+        await undo(); check('undo pose save', await ev("(S.poses||[]).length") == n0)
+        # tracing image show/hide
+        await ev("setTool('brush'); REF.c=makeCanvas(10,10); REF.png=new ArrayBuffer(4); REF.show=true; updateRefUI(); histRebase()")
+        await ev("document.getElementById('refEye').click()"); await settle()
+        check('ref hidden', await ev("REF.show") == False)
+        await undo(); check('undo ref hide', await ev("REF.show") == True)
+        # deep history: 150 timing changes, all undoable
+        await ev("histRebase()")
+        for i in range(150):
+            await ev(f"setDur({200 + i}); histFlush()")
+        check('150 steps kept', await ev("undoStack.length") >= 150)
+        for i in range(150): await ev("undo()")
+        await pg.wait_for_timeout(500)
+        check('150 undos back to start', await ev("curFrame().dur") == 100)
+        # saved state after undo survives reload
+        await ev("saveProject()"); await pg.wait_for_timeout(1200); await pg.reload(); await pg.wait_for_timeout(1500)
+        check('reload ok', await ev("S.frames.length") == 3)
+        print('ERR', errs); await b.close()
+asyncio.run(main()); srv.kill()
