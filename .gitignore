@@ -2,3 +2,5 @@ tests/out/
 __pycache__/
 *.zip
 .DS_Store
+index.html
+sw.js
