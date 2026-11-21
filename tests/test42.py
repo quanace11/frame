@@ -42,7 +42,7 @@ async def main():
         await pg.evaluate("undo()"); await pg.wait_for_timeout(300); print('undo removes', await pg.evaluate(CNT) == 0)
         await pg.evaluate("redo()"); await pg.wait_for_timeout(300); print('redo restores', await pg.evaluate(CNT) == c)
         # clearing the voice keeps the blink
-        await pg.evaluate("S.audio = S.audio || {}; S.audio.voice = {buf:new ArrayBuffer(8), frameId:S.frames[0].id}; S.frames[5].lip = {...(S.frames[5].lip||{}), pid: ppByRole('head').id, lv: 1}"); await pg.evaluate("fxSyncBar(); document.querySelector('[data-vdel=\"0\"]').click()")
+        await pg.evaluate("S.audio = S.audio || {}; S.audio.voice = {buf:new ArrayBuffer(8), frameId:S.frames[0].id}; S.frames[5].lip = {...(S.frames[5].lip||{}), pid: ppByRole('head').id, lv: 1}"); await pg.evaluate("voiceDel(0)")
         print('voice clear keeps blink', await pg.evaluate(CNT) == c, 'mouth lip cleared', await pg.evaluate("!S.frames.some(f=>f.lip&&f.lip.pid)"))
         # save + reload
         await pg.evaluate("saveProject()"); await pg.wait_for_timeout(2500)

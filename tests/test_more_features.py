@@ -94,7 +94,7 @@ async def main():
         im = Image.open('more_cover.png'); wh = await pg.evaluate('[W,H]')
         check('cover PNG full size', list(im.size) == wh, str(im.size))
         crop = im.convert('RGB').crop((0, int(wh[1]*0.08), wh[0], int(wh[1]*0.3))).resize((108, 44))
-        red = sum(1 for q in crop.getdata() if q[0] > 180 and q[1] < 70 and q[2] < 70)
+        bt = crop.tobytes(); red = sum(1 for k in range(0, len(bt), 3) if bt[k] > 180 and bt[k+1] < 70 and bt[k+2] < 70)
         check('cover has the red title band near the top', red > 200, str(red))
         nf = await pg.evaluate('S.frames.length')
         await pg.evaluate("()=>{coverDialog()}"); await pg.wait_for_selector('#cvTxt'); await pg.wait_for_timeout(300)
