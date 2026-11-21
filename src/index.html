@@ -87,6 +87,11 @@ input[type=range]{width:110px;accent-color:var(--accent);height:28px}
 .layer.on{border-color:var(--accent)}
 .layer.on .name{background:var(--accent);color:var(--accent-ink)}
 .layer.hidden .eye{color:var(--danger)}
+/* 👆 big buttons for fingers (Menu → Nút to) */
+body.bigui .sw{width:42px;height:42px;border-width:3px}
+body.bigui .layer .name,body.bigui .layer .eye,body.bigui #top .layer .name,body.bigui #top .layer .eye{min-height:46px;padding:9px 14px;font-size:15px}
+body.bigui .chip,body.bigui .tbtn{min-height:44px;font-size:15px} body.bigui .chip.small{min-height:42px;font-size:14px;padding:7px 11px}
+body.bigui .tool{width:66px;min-height:62px;font-size:12px} body.bigui .tool svg{width:28px;height:28px}
 #bgInfo{font-size:11px;color:var(--muted)}
 .spacer{flex:1}
 #saveState{font-size:11px;color:var(--muted);white-space:nowrap}
@@ -227,6 +232,7 @@ body:not([data-tool=fill]) #gapBtn,body:not([data-tool=fill]) #autoColBtn{displa
 .fr .sfxb{position:absolute;right:3px;top:18px;font-size:10px;background:#000b;padding:0 3px;border-radius:6px}
 .fr.hasw .dur,.fr.hasw .shared{bottom:21px}
 .fr .shared{position:absolute;left:3px;bottom:3px;width:8px;height:8px;border-radius:50%}
+.fr.scst{border-left:4px solid #ff3b9a} .fr .scb{position:absolute;left:22px;top:3px;max-width:calc(100% - 44px);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;background:#ff3b9a;color:#fff;font-size:10px;padding:1px 5px;border-radius:6px;pointer-events:none}
 .addfr{flex:none;border:2px dashed var(--line);border-radius:8px;background:transparent;color:var(--muted);font-size:26px;cursor:pointer}
 .tbtn{border:1px solid var(--line);background:var(--panel2);border-radius:10px;padding:7px 11px;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:13px}
 .tbtn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -504,7 +510,8 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
         <button class="chip small" id="ballHit" title="Frame cuối: bóng bẹp lại + tia va chạm">💥 Đập cuối</button><button class="chip small" id="ballTrail" title="Vệt gió phía sau bóng">〰 Vệt bay</button><button class="chip small" id="ballSnd" title="Tiếng sút, vút, cốp">🔊 Tiếng</button></div>
       <div class="mrow" data-tab="gag"><span class="lbl"><b>⚡ Combo hài 1 chạm</b> (chọn rồi chạm lên khung):</span><button class="chip small" data-gag="shock" title="Zoom sát mặt + chớp + rung + sóng sốc + !!">😱 Sốc</button><button class="chip small" data-gag="ballface" title="Bóng bay vào mặt, đập bẹp, chữ BONK, sao quay vòng">🤕 Bóng vào mặt</button><button class="chip small" data-gag="goal" title="Còi + khán giả hò reo + chữ VÀOOO! + pháo giấy + zoom vào cầu thủ">🥅 VÀO!</button><button class="chip small" data-gag="dizzy" title="Sao quay vòng trên đầu + tiếng choáng, chim kêu">💫 Choáng</button><button class="chip small" data-gag="angry" title="Bốc khói trên đầu + GRRR! + rung + zoom chậm vào mặt">😡 Tức điên</button></div>
       <div class="mrow" data-tab="audio"><span class="lbl"><b>Nhạc nền:</b></span><span class="lbl" id="fxMusicName"></span><button class="chip small" id="fxMusicPick">Chọn file</button><button class="chip small" id="fxMusicDel">✕</button><span class="lbl">Âm lượng</span><input type="range" id="fxMusicVol" min="0" max="100"></div>
-      <div class="mrow" data-tab="audio"><span class="lbl"><b>Lồng tiếng:</b></span><span class="lbl" id="fxVoiceName"></span><button class="chip small" id="fxVoicePick" title="Giọng bắt đầu từ frame đang xem">Chọn file (bắt đầu ở frame này)</button><button class="chip small" id="fxVoiceDel">✕</button><button class="chip small on" id="fxLip" title="Tự nhép miệng nhân vật ghép theo âm lượng giọng">🗣 Tự nhép miệng theo giọng</button></div>
+      <div class="mrow" data-tab="audio"><span class="lbl"><b>Lồng tiếng:</b></span><button class="chip small" id="fxVoicePick" title="Thêm 1 câu thoại, bắt đầu từ frame đang xem. Thêm nhiều giọng để 2 nhân vật nói chuyện với nhau">＋ Thêm giọng (bắt đầu ở frame này)</button><button class="chip small on" id="fxLip" title="Tự nhép miệng nhân vật ghép theo âm lượng giọng (mỗi giọng nhép miệng nhân vật của nó)">🗣 Tự nhép miệng theo giọng</button></div>
+      <div class="mrow" data-tab="audio" id="fxVoiceList" style="flex-wrap:wrap;gap:4px"></div>
       <div class="mrow" data-tab="audio"><span class="lbl"><b>Âm thanh hiệu ứng</b> (chạm để nghe & gắn vào frame này):</span><span id="fxSfx" class="mrow"></span></div>
       <div class="mrow" data-tab="audio"><span class="lbl">Đã gắn ở frame này:</span><span id="fxSfxList" class="mrow"></span><span style="flex:1"></span><button class="chip small on" id="fxExport">🎬 Xuất video</button></div>
     </div>
@@ -596,9 +603,10 @@ let toastT;
 function toast(msg, ms = 1800) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
 
 /* ========= Settings ========= */
-const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','lineLayer','uiHide','panelHidden','brush','eraserType','recentColors','brushOp'];
+const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','lineLayer','uiHide','panelHidden','brush','eraserType','recentColors','brushOp','bigUi','fastVideo'];
 function loadSettings() { try { const o = JSON.parse(localStorage.getItem('fs-settings') || '{}'); for (const k of SETTINGS_KEYS) if (k in o) { if (k === 'panelHidden') Object.assign(panelHidden, o[k]); else S[k] = o[k]; } } catch (e) {}
   S.uiHide = Object.assign({ rail: false, top: false, tl: false }, S.uiHide); }
+function applyBigUi() { document.body.classList.toggle('bigui', !!S.bigUi); }
 function saveSettings() { try { const o = {}; for (const k of SETTINGS_KEYS) o[k] = S[k]; localStorage.setItem('fs-settings', JSON.stringify(o)); } catch (e) {} }
 
 /* ========= Objects (frames + backgrounds), lazy loading ========= */
@@ -1840,7 +1848,7 @@ const histTok = new WeakMap(); let histTokN = 0;
 const histId = o => { if (!histTok.has(o)) histTok.set(o, ++histTokN); return '#' + histTok.get(o); };
 const histBig = x => x && typeof x === 'object' && (x instanceof ArrayBuffer || ArrayBuffer.isView(x) || typeof x.getContext === 'function' || (typeof ImageBitmap !== 'undefined' && x instanceof ImageBitmap) || (typeof ImageData !== 'undefined' && x instanceof ImageData));
 const histJSON = v => JSON.stringify(v, (k, x) => histBig(x) ? histId(x) : x);
-const H_FKEYS = ['dur', 'bgId', 'pp', 'ppKey', 'ppEase', 'texts', 'cam', 'shake', 'flash', 'lip'];
+const H_FKEYS = ['dur', 'bgId', 'pp', 'ppKey', 'ppEase', 'texts', 'cam', 'shake', 'flash', 'lip', 'scene'];
 const histFrameStr = f => JSON.stringify(H_FKEYS.map(k => f[k] === undefined ? null : f[k]));
 const histPartCopy = p => ({ ...p, alts: (p.alts || []).map(a => ({ ...a })) });
 function histSnap() {
@@ -1849,7 +1857,7 @@ function histSnap() {
     frames: S.frames.slice(), bgs: S.bgs.slice(), cur: S.cur,
     pp: S.pp ? { parts: S.pp.parts.slice(), meta: S.pp.parts.map(histPartCopy) } : null,
     rig: S.rig ? JSON.stringify(S.rig) : null,
-    audio: A ? { ...A, music: A.music ? { ...A.music } : A.music, voice: A.voice ? { ...A.voice } : A.voice, sfx: (A.sfx || []).map(x => ({ ...x })) } : null,
+    audio: A ? { ...A, music: A.music ? { ...A.music } : A.music, voice: A.voice ? { ...A.voice } : A.voice, voices: (A.voices || []).map(x => ({ ...x })), sfx: (A.sfx || []).map(x => ({ ...x })) } : null,
     bgVideo: S.bgVideo ? { ...S.bgVideo } : null, ref: { ...REF }, poses: (S.poses || []).slice()
   };
   g.sig = histJSON([g.frames.map(f => f.id), g.bgs.map(b => b.id), g.pp && g.pp.meta, g.rig, g.audio, g.bgVideo, g.ref, g.poses]);
@@ -1895,7 +1903,7 @@ async function histApply(sn, key) {
   if (ppSel && !ppPart(ppSel)) ppSel = null;
   if (ppWas !== histJSON(S.pp && S.pp.parts.map(histPartCopy))) S.frames.forEach(f => { f.ver++; queueThumbFor(f); });
   S.rig = G.rig ? JSON.parse(G.rig) : null;
-  const A = G.audio; S.audio = A ? { ...A, music: A.music ? { ...A.music } : A.music, voice: A.voice ? { ...A.voice } : A.voice, sfx: (A.sfx || []).map(x => ({ ...x })) } : null;
+  const A = G.audio; S.audio = A ? { ...A, music: A.music ? { ...A.music } : A.music, voice: A.voice ? { ...A.voice } : A.voice, voices: (A.voices || []).map(x => ({ ...x })), sfx: (A.sfx || []).map(x => ({ ...x })) } : null;
   S.bgVideo = G.bgVideo ? { ...G.bgVideo } : null; if (vidChanged) bgVideoSetup();
   Object.assign(REF, G.ref); updateRefUI();
   S.poses = G.poses.slice();
@@ -1940,6 +1948,7 @@ function buildStrip() {
     const sh = document.createElement('span'); sh.className = 'shared'; sh.style.background = BG_COLORS[bgOrder.indexOf(f.bgId) % BG_COLORS.length]; sh.title = 'Màu chấm = nhóm nền';
     const wv = document.createElement('canvas'); wv.className = 'wave'; wv.hidden = true;
     el.append(wv, idx, dur, sh);
+    if (f.scene && i > 0) { el.classList.add('scst'); const sb = document.createElement('span'); sb.className = 'scb'; sb.textContent = '🎬 ' + f.scene; sb.title = 'Đầu cảnh — Menu → 🎬 Cảnh để dời/nhân bản'; el.append(sb); }
     if (S.pp) { const kk = document.createElement('span'); kk.className = 'key' + (ppIsKey(f) ? '' : ' auto'); kk.textContent = ppIsKey(f) ? '🔑' : '∿'; el.append(kk); }
     el.classList.toggle('msel', !!(msel && msel.has(f.id)));
     el.addEventListener('click', e => { if (el._lp) { el._lp = false; return; } if (playing) stopPlay(); if (mselOn || e.shiftKey || e.ctrlKey || e.metaKey) { mselTap(i, e.shiftKey); return; } selectFrame(i); });
@@ -2195,12 +2204,13 @@ function audioPeaks(ab) {
   return null;
 }
 function updateWaves() {
-  const A = S.audio || {}, vp = A.voice ? audioPeaks(A.voice.buf) : null, mp = A.music ? audioPeaks(A.music.buf) : null;
-  const vi = A.voice ? Math.max(0, S.frames.findIndex(f => f.id === A.voice.frameId)) : 0;
+  const A = S.audio || {}, mp = A.music ? audioPeaks(A.music.buf) : null;
+  const vcs = voiceClips().map(c => ({ pk: audioPeaks(c.buf), vi: voiceStart(c) })).filter(v => v.pk), vp = vcs.length ? vcs : null;
+  const vi = vp ? vp[0].vi : 0, vStarts = new Set(vcs.map(v => v.vi));
   const sfxAt = new Set((A.sfx || []).map(x => x.frameId));
-  const key = (vp ? 'v' + vi : '') + (mp ? 'm' : '') + '|' + [...sfxAt].join(',') + '|' + S.frames.map(f => f.dur).join(',') + '|' + S.frames.length;
+  const key = (vp ? 'v' + vcs.map(v => v.vi).join('.') : '') + (mp ? 'm' : '') + '|' + [...sfxAt].join(',') + '|' + S.frames.map(f => f.dur).join(',') + '|' + S.frames.length;
   if (key === waveKey) return; waveKey = key;
-  const T = frameStartTimes(), v0 = T[vi] || 0;
+  const T = frameStartTimes();
   S.frames.forEach((f, i) => {
     const el = f.el; if (!el) return;
     const cv = el.querySelector('.wave'); if (!cv) return;
@@ -2221,14 +2231,18 @@ function updateWaves() {
       }
     };
     if (mp) draw(mp, T[i], 'rgba(120,190,255,.6)');
-    if (vp) draw(vp, T[i] - v0, '#ffb21e');
-    if (vp && i === vi) { x.fillStyle = '#ff3b9a'; x.fillRect(0, 0, 2, h); }
+    const VCOL = ['#ffb21e', '#5be37d', '#ff7ad9', '#7fd8ff'];
+    if (vp) vp.forEach((v, k) => draw(v.pk, T[i] - (T[v.vi] || 0), VCOL[k % VCOL.length]));
+    if (vp && vStarts.has(i)) { x.fillStyle = '#ff3b9a'; x.fillRect(0, 0, 2, h); }
   });
 }
 
 /* ========= Playback ========= */
 let playIdx = 0, playTimer = null, playT0 = 0, playFT0 = 0, playAC = null, playStopAudio = () => {};
-const hasAudio = () => !!(S.audio && (S.audio.music || S.audio.voice || (S.audio.sfx || []).length));
+// voice clips: S.audio.voice is the first one (older projects have only that), S.audio.voices the extra ones (2 players can talk)
+const voiceClips = () => { const A = S.audio || {}; return [A.voice, ...(A.voices || [])].filter(Boolean); };
+const voiceStart = c => Math.max(0, S.frames.findIndex(f => f.id === c.frameId));
+const hasAudio = () => !!(S.audio && (S.audio.music || voiceClips().length || (S.audio.sfx || []).length));
 async function playAudioFrom(i) { playStopAudio(); playStopAudio = () => {}; if (!hasAudio()) return; try { if (!playAC) playAC = new (window.AudioContext || window.webkitAudioContext)(); const T = frameStartTimes(); playStopAudio = await scheduleAudio(playAC, playAC.destination, T[i], T[T.length - 1]); } catch (e) { console.error(e); } }
 // Playback renders every frame to a small canvas first. Keep that cache inside a memory budget (lower
 // resolution for long films) and free it a while after playback stops, so RAM doesn't grow forever.
@@ -3372,7 +3386,9 @@ function ppPoseAt(i, tIn, wrap) {
 function drawPuppet(ctx, pose, lip) {
   if (!S.pp || !S.pp.parts.length) return;
   if (lip && lip.eb) { pose = { ...(pose || {}) }; for (const id in lip.eb) { const ep = ppPart(id), a = lip.eb[id]; if (!ep || !a) continue; const q = pose[id] = { ...(pose[id] || {}) }; if (ep.alts && ep.alts.length) { const L = ep.alts.length; if (a >= 1) q.v = L; else if (L >= 2) q.v = 1; } else q.sy = (q.sy == null ? 1 : q.sy) * (1 - 0.9 * a); } }
-  if (lip && lip.pid) { const mp = ppPart(lip.pid); if (mp) { const q = { ...((pose && pose[mp.id]) || {}) }; if (mp.alts && mp.alts.length) { const v = Math.round(lip.lv * mp.alts.length); if (v) q.v = v; else delete q.v; } else q.sy = (q.sy == null ? 1 : q.sy) * (1 + 0.8 * lip.lv); pose = { ...(pose || {}), [mp.id]: q }; } }
+  const lipOpen = (pid, lv) => { const mp = ppPart(pid); if (mp) { const q = { ...((pose && pose[mp.id]) || {}) }; if (mp.alts && mp.alts.length) { const v = Math.round(lv * mp.alts.length); if (v) q.v = v; else delete q.v; } else q.sy = (q.sy == null ? 1 : q.sy) * (1 + 0.8 * lv); pose = { ...(pose || {}), [mp.id]: q }; } };
+  if (lip && lip.pid) lipOpen(lip.pid, lip.lv);
+  if (lip && lip.m) for (const id in lip.m) if (id !== lip.pid) lipOpen(id, lip.m[id]);
   const M = ppMats(pose), byId = {}; S.pp.parts.forEach(p => byId[p.id] = p);
   for (const p of [...S.pp.parts].sort((a, b) => a.z - b.z)) {
     const q = pose && pose[p.id]; if ((q && q.h) || !p.c) continue;
@@ -5232,8 +5248,8 @@ function fxSyncBar() { updateWaves(); camBadges();
   $('#fxSfxList').innerHTML = sf.map(x => `<button class="chip small" data-sfxdel="${x.id}" title="Bỏ âm thanh này">${(SFX[x.kind] || {}).label || x.kind} ✕</button>`).join('');
   $('#fxSfxList').querySelectorAll('[data-sfxdel]').forEach(b => b.addEventListener('click', () => { S.audio.sfx = S.audio.sfx.filter(x => x.id !== b.dataset.sfxdel); fxSyncBar(); scheduleSave(); }));
   const A = S.audio || {};
-  $('#fxMusicName').textContent = A.music ? '🎵 ' + A.music.name : 'chưa có'; $('#fxVoiceName').textContent = A.voice ? '🎤 ' + A.voice.name : 'chưa có';
-  $('#fxMusicDel').disabled = !A.music; $('#fxVoiceDel').disabled = !A.voice; $('#fxLip').disabled = !A.voice;
+  $('#fxMusicName').textContent = A.music ? '🎵 ' + A.music.name : 'chưa có'; voiceRows();
+  $('#fxMusicDel').disabled = !A.music; $('#fxLip').disabled = !voiceClips().length;
   $('#fxMusicVol').value = Math.round(((A.music && A.music.vol) ?? 0.6) * 100);
 }
 let fxNewStyle = 'comic';
@@ -5355,28 +5371,28 @@ async function sfxPreview(kind) { try { const ac = new (window.AudioContext || w
 const decCache = new WeakMap();
 async function decodeAB(ac, ab) { if (decCache.has(ab)) return decCache.get(ab); const b = await ac.decodeAudioData(ab.slice(0)); decCache.set(ab, b); return b; }
 function frameStartTimes() { const t = [0]; S.frames.forEach((f, i) => t.push(t[i] + f.dur / 1000)); return t; }
-async function scheduleAudio(ac, dest, offsetSec, totalSec) {
-  const A = S.audio || {}, srcs = [], T = frameStartTimes(), now = ac.currentTime + 0.05;
+async function scheduleAudio(ac, dest, offsetSec, totalSec, lead = 0.05) {
+  const A = S.audio || {}, srcs = [], T = frameStartTimes(), now = ac.currentTime + lead;
   const play = (buf, at, off, vol) => { const s = ac.createBufferSource(), g = ac.createGain(); s.buffer = buf; g.gain.value = vol; s.connect(g).connect(dest); s.start(at, off); srcs.push(s); };
   try {
     if (A.music) { const b = await decodeAB(ac, A.music.buf); if (offsetSec < b.duration) play(b, now, offsetSec, A.music.vol ?? 0.6); }
-    if (A.voice) { const vi = Math.max(0, S.frames.findIndex(f => f.id === A.voice.frameId)), vs = T[vi] || 0, b = await decodeAB(ac, A.voice.buf); if (offsetSec < vs + b.duration) play(b, now + Math.max(0, vs - offsetSec), Math.max(0, offsetSec - vs), A.voice.vol ?? 1); }
+    for (const c of voiceClips()) { const vs = T[voiceStart(c)] || 0, b = await decodeAB(ac, c.buf); if (offsetSec < vs + b.duration && vs <= totalSec) play(b, now + Math.max(0, vs - offsetSec), Math.max(0, offsetSec - vs), c.vol ?? 1); }
     for (const x of (A.sfx || [])) { const i = S.frames.findIndex(f => f.id === x.frameId); if (i < 0) continue; const st = T[i]; if (st < offsetSec - 0.01 || st > totalSec) continue; const b = await sfxBuffer(x.kind); play(b, now + st - offsetSec, 0, x.vol ?? 0.9); }
   } catch (e) { console.error(e); }
   return () => srcs.forEach(s => { try { s.stop(); } catch (e) {} });
 }
 /* --- lip sync from a voice track --- */
+// each voice clip moves the mouth of its own character (clip.mouth); a clip without one uses the selected character's mouth
+function voiceMouth(c) { const p = c && c.mouth && ppPart(c.mouth); return p && p.role === 'mouth' ? p : ppByRole('mouth'); }
 async function fxLipSync() {
-  const A = S.audio || {}; if (!A.voice) { toast('Chưa có giọng — bấm 🎤 Chọn file giọng'); return; }
-  const mouth = ppByRole('mouth');
-  if (!mouth) { toast('Cần mảnh vai trò "Miệng": Ghép → chọn Đầu → ✂ Khoanh tách miệng (giữ chỗ cũ) → Vai trò Miệng. Thêm hình miệng há để đẹp hơn.', 6000); return; }
-  const ac = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100, 44100);
-  const buf = await decodeAB(ac, A.voice.buf), data = buf.getChannelData(0), sr = buf.sampleRate, dur = buf.duration;
-  let vi = S.frames.findIndex(f => f.id === A.voice.frameId); if (vi < 0) { vi = S.cur; A.voice.frameId = S.frames[vi].id; }
-  let T = frameStartTimes(); const need = T[vi] + dur - T[S.frames.length];
+  const clips = voiceClips(); if (!clips.length) { toast('Chưa có giọng — bấm ＋ Thêm giọng'); return; }
+  if (!clips.some(c => voiceMouth(c))) { toast('Cần mảnh vai trò "Miệng": Ghép → chọn Đầu → ✂ Khoanh tách miệng (giữ chỗ cũ) → Vai trò Miệng. Thêm hình miệng há để đẹp hơn.', 6000); return; }
+  const ac = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100, 44100), dec = [];
+  for (const c of clips) { if (!S.frames.some(f => f.id === c.frameId)) c.frameId = S.frames[S.cur].id; const buf = await decodeAB(ac, c.buf); dec.push({ c, data: buf.getChannelData(0), sr: buf.sampleRate, dur: buf.duration, mouth: voiceMouth(c) }); }
+  let T = frameStartTimes(); const need = Math.max(...dec.map(d => T[voiceStart(d.c)] + d.dur)) - T[S.frames.length];
   if (need > 0.05) {
     const fd = 0.1, n = Math.ceil(need / fd);
-    const ok = await modal({ title: 'Giọng dài hơn số frame', html: `<p>Giọng dài ${dur.toFixed(1)}s. Thêm <b>${n} frame</b> (0.1s/frame, giữ nguyên tư thế frame cuối) để đủ dài?</p>`, buttons: [{ label: 'Không', value: false }, { label: 'Thêm frame', value: true, primary: true }] });
+    const ok = await modal({ title: 'Giọng dài hơn số frame', html: `<p>Giọng kéo dài tới ${(need + T[S.frames.length]).toFixed(1)}s. Thêm <b>${n} frame</b> (0.1s/frame, giữ nguyên tư thế frame cuối) để đủ dài?</p>`, buttons: [{ label: 'Không', value: false }, { label: 'Thêm frame', value: true, primary: true }] });
     if (ok) {
       const pm = progress('Đang thêm frame…'); const last = S.frames[S.frames.length - 1]; await ensureLoaded(last);
       const blank = !last.png && last.ver === 0;
@@ -5384,13 +5400,48 @@ async function fxLipSync() {
       pm.close(); for (const f of S.frames.slice(-n)) await drawThumb(f); ppRetween(); buildStrip(); evictSoon(); T = frameStartTimes();
     }
   }
-  const rms = (a, b) => { let s = 0, c = 0; for (let i = Math.max(0, Math.floor(a * sr)); i < Math.min(data.length, Math.floor(b * sr)); i += 4) { s += data[i] * data[i]; c++; } return c ? Math.sqrt(s / c) : 0; };
-  const lv = S.frames.map((f, i) => { const a = T[i] - T[vi], b = T[i + 1] - T[vi]; return b <= 0 || a >= dur ? null : rms(Math.max(0, a), Math.min(dur, b)); });
-  const mx = Math.max(0.0001, ...lv.filter(v => v != null));
-  let count = 0;
-  S.frames.forEach((f, i) => { const v = lv[i]; const n2 = v == null ? null : v / mx; const nv = n2 == null ? null : n2 < 0.12 ? 0 : n2 < 0.45 ? 0.5 : 1; const old = JSON.stringify(f.lip || null); const eb = f.lip && f.lip.eb; f.lip = nv == null ? (eb ? { eb } : null) : eb ? { pid: mouth.id, lv: nv, eb } : { pid: mouth.id, lv: nv }; if (JSON.stringify(f.lip) !== old) { f.ver++; queueThumbFor(f); count++; } });
+  const byMouth = new Map(); let used = 0;
+  for (const d of dec) {
+    if (!d.mouth) continue; const vi = voiceStart(d.c), { data, sr, dur } = d;
+    const rms = (a, b) => { let s = 0, c = 0; for (let i = Math.max(0, Math.floor(a * sr)); i < Math.min(data.length, Math.floor(b * sr)); i += 4) { s += data[i] * data[i]; c++; } return c ? Math.sqrt(s / c) : 0; };
+    const lv = S.frames.map((f, i) => { const a = T[i] - T[vi], b = T[i + 1] - T[vi]; return b <= 0 || a >= dur ? null : rms(Math.max(0, a), Math.min(dur, b)); });
+    const mx = Math.max(0.0001, ...lv.filter(v => v != null)), arr = byMouth.get(d.mouth.id) || new Array(S.frames.length).fill(null);
+    lv.forEach((v, i) => { if (v == null) return; const n2 = v / mx, q = n2 < 0.12 ? 0 : n2 < 0.45 ? 0.5 : 1; arr[i] = Math.max(arr[i] ?? 0, q); used++; });
+    byMouth.set(d.mouth.id, arr);
+  }
+  S.frames.forEach((f, i) => {
+    const old = JSON.stringify(f.lip || null), m = {}; for (const [id, arr] of byMouth) if (arr[i] != null) m[id] = arr[i];
+    const l = {}; if (f.lip && f.lip.eb) l.eb = f.lip.eb; if (Object.keys(m).length) l.m = m;
+    f.lip = Object.keys(l).length ? l : null; if (JSON.stringify(f.lip) !== old) { f.ver++; queueThumbFor(f); }
+  });
   scheduleSave(); requestRender(); fxSyncBar();
-  toast(`Đã nhép miệng theo giọng trên ${lv.filter(v => v != null).length} frame${mouth.alts && mouth.alts.length ? '' : ' (thêm hình miệng há cho mảnh Miệng để đẹp hơn)'}`, 4000);
+  const noAlt = [...byMouth.keys()].some(id => { const p = ppPart(id); return p && !(p.alts && p.alts.length); });
+  toast(`Đã nhép miệng ${byMouth.size > 1 ? byMouth.size + ' nhân vật ' : ''}theo ${clips.length} giọng${noAlt ? ' (thêm hình miệng há cho mảnh Miệng để đẹp hơn)' : ''}`, 4000);
+}
+// one row per voice clip: which character speaks it, where it starts, delete
+function voiceCharList() { if (!S.pp) return []; const roots = S.pp.parts.filter(p => !p.parent); return roots.map((r, k) => ({ id: r.id, name: 'Nhân vật ' + (k + 1), mouth: S.pp.parts.find(p => p.role === 'mouth' && ppCharOf(p) === r.id) })).filter(x => x.mouth); }
+function voiceRows() {
+  const el = document.getElementById('fxVoiceList'); if (!el) return;
+  const clips = voiceClips(), chars = voiceCharList();
+  el.innerHTML = clips.length ? clips.map((c, k) => {
+    const m = voiceMouth(c), opts = chars.map(ch => `<option value="${ch.mouth.id}"${m && m.id === ch.mouth.id ? ' selected' : ''}>${ch.name}</option>`).join('');
+    return `<span class="vrow" data-vk="${k}"><span class="lbl">🎤 ${k + 1}. ${String(c.name).replace(/</g, '&lt;').slice(0, 28)} · từ frame ${voiceStart(c) + 1}</span>${chars.length > 1 ? `<select class="chip small" data-vmouth="${k}" title="Nhân vật nói câu này (miệng nào nhép)">${opts}</select>` : ''}<button class="chip small" data-vhere="${k}" title="Dời giọng này để bắt đầu ở frame đang xem">📍 Bắt đầu ở frame này</button><button class="chip small" data-vdel="${k}" title="Bỏ giọng này">✕</button></span>`;
+  }).join('') : '<span class="lbl">chưa có</span>';
+  el.querySelectorAll('[data-vmouth]').forEach(sel => sel.addEventListener('change', () => { const c = voiceClips()[+sel.dataset.vmouth]; if (c) { c.mouth = sel.value; scheduleSave(); toast('Bấm 🗣 Tự nhép miệng để cập nhật'); } }));
+  el.querySelectorAll('[data-vhere]').forEach(b => b.addEventListener('click', () => { const c = voiceClips()[+b.dataset.vhere]; if (c) { c.frameId = curFrame().id; waveKey = ''; updateWaves(); fxSyncBar(); scheduleSave(); toast('Giọng bắt đầu ở frame ' + (S.cur + 1) + ' — bấm 🗣 Tự nhép miệng để cập nhật'); } }));
+  el.querySelectorAll('[data-vdel]').forEach(b => b.addEventListener('click', () => voiceDel(+b.dataset.vdel)));
+}
+function voiceAdd(clip) {
+  S.audio = S.audio || {}; const A = S.audio; clip.id = clip.id || newId();
+  const m = ppByRole('mouth'); if (m) clip.mouth = m.id;
+  if (!A.voice) A.voice = clip; else { A.voices = A.voices || []; A.voices.push(clip); }
+}
+function voiceDel(k) {
+  const A = S.audio; if (!A) return; const clips = voiceClips(), c = clips[k]; if (!c) return;
+  const mouth = voiceMouth(c), rest = clips.filter(x => x !== c), still = mouth && rest.some(x => { const mm = voiceMouth(x); return mm && mm.id === mouth.id; });
+  if (c === A.voice) { A.voice = (A.voices || []).shift() || null; } else A.voices = (A.voices || []).filter(x => x !== c);
+  if (!still) S.frames.forEach(f => { if (!f.lip) return; const l = { ...f.lip }; if (!rest.length || (mouth && l.pid === mouth.id)) { delete l.pid; delete l.lv; } if (l.m && mouth) { l.m = { ...l.m }; delete l.m[mouth.id]; if (!Object.keys(l.m).length) delete l.m; } if (!rest.length) delete l.m; const nl = Object.keys(l).length ? l : null; if (JSON.stringify(nl) !== JSON.stringify(f.lip)) { f.lip = nl; f.ver++; queueThumbFor(f); } });
+  waveKey = ''; updateWaves(); fxSyncBar(); scheduleSave(); requestRender();
 }
 /* --- final frame composition (used by playback & video export) --- */
 function drawFrameBase(ctx, f, bg, live) {
@@ -5484,11 +5535,12 @@ async function exportImagesDialog() {
   const n = S.frames.length, secs = (frameStartTimes()[n]).toFixed(1);
   const v = await modal({ title: '🖼 Xuất GIF / ảnh PNG', html: `<p class="lbl">Không có tiếng. Có chữ, camera, hiệu ứng như video. ${n} frame · ${secs}s.</p>
 <div class="set-row"><span>GIF động — cỡ chiều ngang</span><span class="grp"><button class="chip small" data-gw="320">320</button><button class="chip small on" data-gw="480">480</button><button class="chip small" data-gw="720">720</button></span></div>`,
-    buttons: [{ label: 'Huỷ', value: null }, { label: '🖼 Ảnh frame này (PNG)', value: 'one' }, { label: '🗂 Mọi frame (ZIP PNG)', value: 'seq' }, { label: '🎞 GIF động', value: 'gif', primary: true }],
+    buttons: [{ label: 'Huỷ', value: null }, { label: '📸 Ảnh bìa chữ to', value: 'cover' }, { label: '🖼 Ảnh frame này (PNG)', value: 'one' }, { label: '🗂 Mọi frame (ZIP PNG)', value: 'seq' }, { label: '🎞 GIF động', value: 'gif', primary: true }],
     onOpen: ov => ov.querySelectorAll('[data-gw]').forEach(b => b.addEventListener('click', () => { ov.querySelectorAll('[data-gw]').forEach(x => x.classList.toggle('on', x === b)); exportGifW = +b.dataset.gw; })) });
   if (v === 'gif') return exportGif(exportGifW);
   if (v === 'seq') return exportPngSeq();
   if (v === 'one') return exportPngOne();
+  if (v === 'cover') return coverDialog();
 }
 let exportGifW = 480, exportBusy = false;
 async function exportGif(gw) {
@@ -5533,6 +5585,195 @@ async function exportPngOne() {
   await renderFinalFrame(big.getContext('2d'), S.cur, base);
   await deliverFile(await toBlob(big), `frame-${S.cur + 1}-${stamp()}.png`); big.width = base.width = 0;
 }
+/* ===== ⚡ fast video export: WebCodecs encodes the frames as fast as the device draws them (no real-time wait),
+   the sound is mixed offline, and both are packed into an MP4 file right here (no library, works offline) ===== */
+const VX_FPS = 30;
+async function fastVideoCfg(w, h) {
+  if (typeof VideoEncoder === 'undefined' || typeof VideoFrame === 'undefined') return null;
+  for (const codec of ['avc1.640028', 'avc1.4d0028', 'avc1.42e028', 'avc1.640033', 'avc1.4d0033', 'avc1.42e033']) {
+    const c = { codec, width: w, height: h, bitrate: 8e6, framerate: VX_FPS, avc: { format: 'avc' } };
+    try { if ((await VideoEncoder.isConfigSupported(c)).supported) return c; } catch (e) {}
+  }
+  return null;
+}
+async function fastAudioCfg(sr, ch) {
+  if (typeof AudioEncoder === 'undefined' || typeof AudioData === 'undefined') return null;
+  for (const codec of ['mp4a.40.2', 'opus']) { const c = { codec, sampleRate: sr, numberOfChannels: ch, bitrate: 160000 }; try { if ((await AudioEncoder.isConfigSupported(c)).supported) return c; } catch (e) {} }
+  return null;
+}
+const vxU8 = v => v instanceof Uint8Array ? v : v instanceof ArrayBuffer ? new Uint8Array(v) : new Uint8Array(v.buffer, v.byteOffset, v.byteLength);
+// minimal MP4 writer: one sample per chunk (so video and sound can be interleaved by time), moov at the end
+function mp4Mux({ w, h, fps, vDesc, vSamples, audio }) {
+  const u16 = n => [(n >> 8) & 255, n & 255], u32 = n => [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255];
+  const str = s => [...s].map(c => c.charCodeAt(0));
+  const box = (type, ...parts) => {
+    const arrs = parts.map(p => p instanceof Uint8Array ? p : new Uint8Array(p)), len = 8 + arrs.reduce((a, b) => a + b.length, 0);
+    const o = new Uint8Array(len); o.set(u32(len), 0); o.set(str(type), 4); let k = 8; for (const a of arrs) { o.set(a, k); k += a.length; } return o;
+  };
+  const fbox = (type, v, fl, ...parts) => box(type, [v, (fl >> 16) & 255, (fl >> 8) & 255, fl & 255], ...parts);
+  const MATRIX = [...u32(0x10000), ...u32(0), ...u32(0), ...u32(0), ...u32(0x10000), ...u32(0), ...u32(0), ...u32(0), ...u32(0x40000000)];
+  const VTS = fps * 1000, vDur = vSamples.length * 1000, movDur = Math.round(vSamples.length / fps * 1000);
+  // interleave samples by time → file offsets
+  const items = vSamples.map((s, i) => ({ s, t: i / fps, tr: 'v' }));
+  if (audio) { let t = 0; for (const s of audio.samples) { items.push({ s, t: t / audio.sr, tr: 'a' }); t += s.dur; } }
+  items.sort((a, b) => a.t - b.t || (a.tr === 'v' ? -1 : 1));
+  const ftyp = box('ftyp', str('isom'), u32(512), str('isomiso2avc1mp41'));
+  let off = ftyp.length + 8, mdLen = 0;
+  for (const it of items) { it.off = off; off += it.s.data.length; mdLen += it.s.data.length; }
+  const mdatHead = new Uint8Array([...u32(8 + mdLen), ...str('mdat')]);
+  const stco = tr => { const L = items.filter(x => x.tr === tr); return fbox('stco', 0, 0, u32(L.length), L.flatMap(x => u32(x.off))); };
+  const stsz = L => fbox('stsz', 0, 0, u32(0), u32(L.length), L.flatMap(s => u32(s.data.length)));
+  const stsc = fbox('stsc', 0, 0, u32(1), u32(1), u32(1), u32(1));
+  const dinf = box('dinf', fbox('dref', 0, 0, u32(1), fbox('url ', 0, 1)));
+  const tkhd = (id, dur, vol, tw, th) => fbox('tkhd', 0, 3, u32(0), u32(0), u32(id), u32(0), u32(dur), u32(0), u32(0), u16(0), u16(0), u16(vol), u16(0), MATRIX, u32(tw << 16), u32(th << 16));
+  const mdhd = (ts, dur) => fbox('mdhd', 0, 0, u32(0), u32(0), u32(ts), u32(dur), u16(0x55c4), u16(0));
+  const hdlr = (t, name) => fbox('hdlr', 0, 0, u32(0), str(t), u32(0), u32(0), u32(0), str(name), [0]);
+  const keys = vSamples.map((s, i) => s.key ? i + 1 : 0).filter(Boolean);
+  const avc1 = box('avc1', new Array(6).fill(0), u16(1), u16(0), u16(0), u32(0), u32(0), u32(0), u16(w), u16(h), u32(0x480000), u32(0x480000), u32(0), u16(1), new Array(32).fill(0), u16(0x18), u16(0xffff), box('avcC', vDesc));
+  const vtrak = box('trak', tkhd(1, movDur, 0, w, h), box('mdia', mdhd(VTS, vDur), hdlr('vide', 'VideoHandler'),
+    box('minf', fbox('vmhd', 0, 1, u16(0), u16(0), u16(0), u16(0)), dinf,
+      box('stbl', fbox('stsd', 0, 0, u32(1), avc1), fbox('stts', 0, 0, u32(1), u32(vSamples.length), u32(1000)), fbox('stss', 0, 0, u32(keys.length), keys.flatMap(k => u32(k))), stsc, stsz(vSamples), stco('v')))));
+  let atrak = null;
+  if (audio) {
+    const A = audio, aDur = A.samples.reduce((a, s) => a + s.dur, 0), aEntry = [new Array(6).fill(0), u16(1), u32(0), u32(0), u16(A.ch), u16(16), u16(0), u16(0), u32(A.sr << 16)].flat();
+    let sd;
+    if (A.codec === 'opus') {
+      const d = A.desc && A.desc.length >= 19 ? A.desc : null, pre = d ? d[10] | (d[11] << 8) : 312, rate = d ? (d[12] | (d[13] << 8) | (d[14] << 16) | (d[15] << 24)) >>> 0 : A.sr;
+      sd = box('Opus', aEntry, box('dOps', [0, A.ch], u16(pre), u32(rate), u16(0), [0]));
+    } else {
+      const fi = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000].indexOf(A.sr);
+      const asc = A.desc && A.desc.length ? [...A.desc] : [(2 << 3) | (fi >> 1), ((fi & 1) << 7) | (A.ch << 3)];
+      const dsi = [5, asc.length, ...asc], dcd = [4, 13 + dsi.length, 0x40, 0x15, 0, 0, 0, ...u32(160000), ...u32(160000), ...dsi], es = [3, 3 + dcd.length + 3, ...u16(1), 0, ...dcd, 6, 1, 2];
+      sd = box('mp4a', aEntry, fbox('esds', 0, 0, es));
+    }
+    const stts = []; let run = null;
+    for (const s of A.samples) { if (run && run[1] === s.dur) run[0]++; else stts.push(run = [1, s.dur]); }
+    atrak = box('trak', tkhd(2, Math.round(aDur / A.sr * 1000), 0x100, 0, 0), box('mdia', mdhd(A.sr, aDur), hdlr('soun', 'SoundHandler'),
+      box('minf', fbox('smhd', 0, 0, u16(0), u16(0)), dinf,
+        box('stbl', fbox('stsd', 0, 0, u32(1), sd), fbox('stts', 0, 0, u32(stts.length), stts.flatMap(r => [...u32(r[0]), ...u32(r[1])])), stsc, stsz(A.samples), stco('a')))));
+  }
+  const mvhd = fbox('mvhd', 0, 0, u32(0), u32(0), u32(1000), u32(movDur), u32(0x10000), u16(0x100), new Array(10).fill(0), MATRIX, new Array(24).fill(0), u32(audio ? 3 : 2));
+  const moov = atrak ? box('moov', mvhd, vtrak, atrak) : box('moov', mvhd, vtrak);
+  return new Blob([ftyp, mdatHead, ...items.map(it => it.s.data), moov], { type: 'video/mp4' });
+}
+// the whole sound track (music, voices, sound effects) rendered offline → AudioBuffer
+async function vxMixAudio(total, sr) {
+  const oc = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(2, Math.max(1, Math.ceil(total * sr)), sr);
+  await scheduleAudio(oc, oc.destination, 0, total, 0);
+  return oc.startRendering();
+}
+// returns the finished MP4 blob, or null when this device cannot encode (the caller then records in real time)
+async function exportVideoFast(msg, isCancelled) {
+  const w = W & ~1, h = H & ~1, vcfg = await fastVideoCfg(w, h); if (!vcfg) return null;
+  const T = frameStartTimes(), total = T[T.length - 1], N = Math.max(1, Math.ceil(total * VX_FPS - 1e-6)), live = ppSmoothOn();
+  let err = null, vDesc = null; const vSamples = [];
+  const enc = new VideoEncoder({ output: (c, meta) => { if (meta && meta.decoderConfig && meta.decoderConfig.description) vDesc = new Uint8Array(vxU8(meta.decoderConfig.description)); const d = new Uint8Array(c.byteLength); c.copyTo(d); vSamples.push({ data: d, key: c.type === 'key' }); }, error: e => { err = e; } });
+  enc.configure(vcfg);
+  const out = makeCanvas(w, h), ox = out.getContext('2d'), base = makeCanvas(), bx = base.getContext('2d');
+  let bi = -1;
+  try {
+    for (let n = 0; n < N; n++) {
+      if (isCancelled()) throw new Error('cancel'); if (err) throw err;
+      const t = n / VX_FPS; let i = T.findIndex((v, k) => k < S.frames.length && t < T[k + 1]); if (i < 0) i = S.frames.length - 1;
+      if (i !== bi) { const f = S.frames[i]; await ensureLoaded(f); const bg = bgOf(f); if (bg) await ensureLoaded(bg); drawFrameBase(bx, f, bg, live); bi = i; evictSoon(); }
+      drawFrameFx(ox, i, base, t, t - T[i], null, live ? ppLiveOver(i, t - T[i], false) : null);
+      const vf = new VideoFrame(out, { timestamp: Math.round(t * 1e6), duration: Math.round(1e6 / VX_FPS) });
+      enc.encode(vf, { keyFrame: n % (VX_FPS * 2) === 0 }); vf.close();
+      while (enc.encodeQueueSize > 3) await new Promise(r => setTimeout(r, 1));
+      if (n % 5 === 0) { msg(`⚡ Xuất nhanh: ${t.toFixed(1)} / ${total.toFixed(1)} giây`); await new Promise(r => setTimeout(r, 0)); }
+    }
+    await enc.flush(); if (err) throw err;
+  } finally { try { enc.close(); } catch (e) {} out.width = base.width = 0; }
+  if (!vDesc || !vSamples.length) return null;
+  let audio = null;
+  if (hasAudio()) {
+    msg('⚡ Đang trộn âm thanh…');
+    let acfg = await fastAudioCfg(48000, 2); const sr = 48000;
+    if (acfg) {
+      const buf = await vxMixAudio(total, sr), ch = 2, samples = []; let adesc = null, aerr = null;
+      const aenc = new AudioEncoder({ output: (c, meta) => { if (meta && meta.decoderConfig && meta.decoderConfig.description) adesc = new Uint8Array(vxU8(meta.decoderConfig.description)); const d = new Uint8Array(c.byteLength); c.copyTo(d); samples.push({ data: d, dur: Math.round((c.duration || 0) * sr / 1e6) || (acfg.codec === 'opus' ? 960 : 1024) }); }, error: e => { aerr = e; } });
+      aenc.configure(acfg);
+      const L = buf.length, step = 4800, c0 = buf.getChannelData(0), c1 = buf.numberOfChannels > 1 ? buf.getChannelData(1) : c0;
+      for (let o = 0; o < L; o += step) {
+        const n = Math.min(step, L - o), data = new Float32Array(n * ch); data.set(c0.subarray(o, o + n), 0); data.set(c1.subarray(o, o + n), n);
+        const ad = new AudioData({ format: 'f32-planar', sampleRate: sr, numberOfFrames: n, numberOfChannels: ch, timestamp: Math.round(o / sr * 1e6), data });
+        aenc.encode(ad); ad.close(); if (aerr) break;
+      }
+      await aenc.flush(); try { aenc.close(); } catch (e) {}
+      if (!aerr && samples.length) audio = { codec: acfg.codec === 'opus' ? 'opus' : 'aac', sr, ch, desc: adesc, samples };
+      else console.error(aerr);
+    }
+    if (!audio) return null;   // keep the sound: fall back to real-time recording
+  }
+  msg('⚡ Đang đóng gói MP4…');
+  return mp4Mux({ w, h, fps: VX_FPS, vDesc, vSamples, audio });
+}
+/* ===== 📸 Shorts cover image (thumbnail): a frame + a big title, saved as PNG at full size ===== */
+const coverOpt = { text: '', style: 'yellow', pos: 'top', size: 1, dim: true, fi: null };
+function drawCoverText(ctx, o) {
+  const lines = String(o.text || '').toUpperCase().split('\n').map(l => l.trim()).filter(Boolean); if (!lines.length) return;
+  ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+  const font = s => `${s}px Bangers, 'Impact', 'Arial Black', sans-serif`;
+  let s = Math.min(W, H) * 0.2 * (o.size || 1); ctx.font = font(s);
+  const wmax = Math.max(...lines.map(l => ctx.measureText(l).width)); if (wmax > W * 0.9) s *= W * 0.9 / wmax;
+  s = Math.max(20, s); ctx.font = font(s);
+  const lh = s * 1.08, bh = lh * lines.length, cy = o.pos === 'mid' ? H * 0.5 : o.pos === 'bot' ? H * 0.72 : H * 0.2;
+  if (o.dim) { const g = ctx.createLinearGradient(0, cy - bh, 0, cy + bh); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.5, 'rgba(0,0,0,.45)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(0, cy - bh, W, bh * 2); }
+  ctx.translate(W / 2, cy); ctx.rotate(-3 * DEG);
+  lines.forEach((l, i) => {
+    const y = (i - (lines.length - 1) / 2) * lh, w = ctx.measureText(l).width;
+    if (o.style === 'band') { ctx.fillStyle = i % 2 ? '#111' : '#e0141e'; ctx.fillRect(-w / 2 - s * 0.25, y - lh / 2 + s * 0.04, w + s * 0.5, lh - s * 0.08); ctx.fillStyle = '#fff'; ctx.fillText(l, 0, y + s * 0.04); return; }
+    ctx.lineWidth = s * 0.22; ctx.strokeStyle = o.style === 'white' ? '#e0141e' : '#111'; ctx.strokeText(l, 0, y);
+    ctx.lineWidth = s * 0.1; ctx.strokeStyle = '#111'; if (o.style === 'white') ctx.strokeText(l, 0, y);
+    ctx.fillStyle = o.style === 'white' ? '#fff' : i % 2 ? '#fff' : '#ffe14d'; ctx.fillText(l, 0, y);
+  });
+  ctx.restore();
+}
+async function coverDialog() {
+  if (playing) stopPlay(); if (stroke) strokeEnd(); commitFloating();
+  try { await document.fonts.load('100px Bangers'); } catch (e) {}
+  if (coverOpt.fi == null || coverOpt.fi >= S.frames.length) coverOpt.fi = S.cur;
+  if (!coverOpt.text) { const t = S.frames.flatMap(f => f.texts || []).find(t => t.str); coverOpt.text = t ? t.str.slice(0, 40) : (S.projName && S.projName !== 'Dự án' ? S.projName : ''); }
+  const full = makeCanvas(), base = makeCanvas(), fx = full.getContext('2d'); let ready = false;
+  const pw = W > H ? 360 : 220, ph = Math.round(pw * H / W);
+  const B = (k, v, l) => `<button class="chip small${coverOpt[k] === v ? ' on' : ''}" data-cv="${k}" data-v="${v}">${l}</button>`;
+  const html = `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start"><canvas id="cvPrev" width="${pw * 2}" height="${ph * 2}" style="width:${pw}px;height:${ph}px;border-radius:10px;background:#222;flex:none"></canvas>
+<div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:8px">
+<textarea id="cvTxt" rows="2" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:18px" placeholder="Chữ thật to, vd. CÚ SÚT LỖI!">${coverOpt.text.replace(/</g, '&lt;')}</textarea>
+<div class="mrow"><span class="lbl">Frame</span><button class="chip small" id="cvPrevF">◀</button><span class="lbl" id="cvF"></span><button class="chip small" id="cvNextF">▶</button></div>
+<div class="mrow" style="flex-wrap:wrap">${B('style', 'yellow', 'Vàng viền đen')}${B('style', 'white', 'Trắng viền đỏ')}${B('style', 'band', 'Dải màu')}</div>
+<div class="mrow" style="flex-wrap:wrap"><span class="lbl">Chỗ</span>${B('pos', 'top', 'Trên')}${B('pos', 'mid', 'Giữa')}${B('pos', 'bot', 'Dưới')}</div>
+<div class="mrow"><span class="lbl">Cỡ</span><input type="range" id="cvSize" min="0.4" max="1.6" step="0.05" value="${coverOpt.size}"><label class="lbl"><input type="checkbox" id="cvDim" ${coverOpt.dim ? 'checked' : ''}> làm tối sau chữ</label></div>
+<p class="lbl" style="font-size:12px">Ảnh bìa ${W}×${H}. Trên YouTube Shorts: chọn ảnh này khi tải video lên (hoặc dùng làm frame đầu).</p></div></div>`;
+  let act = null;
+  await modal({ title: '📸 Ảnh bìa Shorts', html, buttons: [{ label: 'Đóng', value: null }, { label: '＋ Thêm làm frame đầu', action: () => { act = 'frame'; } }, { label: '💾 Lưu ảnh bìa (PNG)', primary: true, action: () => { act = 'save'; } }],
+    onOpen: ov => {
+      const pv = ov.querySelector('#cvPrev'), px = pv.getContext('2d');
+      const paint = () => { px.setTransform(1, 0, 0, 1, 0, 0); px.clearRect(0, 0, pv.width, pv.height); if (!ready) return; px.drawImage(full, 0, 0, pv.width, pv.height); px.setTransform(pv.width / W, 0, 0, pv.height / H, 0, 0); drawCoverText(px, coverOpt); };
+      const load = async () => { ready = false; ov.querySelector('#cvF').textContent = `${coverOpt.fi + 1}/${S.frames.length}`; await renderFinalFrame(fx, coverOpt.fi, base); ready = true; paint(); };
+      ov.querySelector('#cvTxt').addEventListener('input', e => { coverOpt.text = e.target.value.slice(0, 80); paint(); });
+      ov.querySelector('#cvSize').addEventListener('input', e => { coverOpt.size = +e.target.value; paint(); });
+      ov.querySelector('#cvDim').addEventListener('change', e => { coverOpt.dim = e.target.checked; paint(); });
+      ov.querySelectorAll('[data-cv]').forEach(b => b.addEventListener('click', () => { coverOpt[b.dataset.cv] = b.dataset.v; ov.querySelectorAll(`[data-cv="${b.dataset.cv}"]`).forEach(x => x.classList.toggle('on', x === b)); paint(); }));
+      ov.querySelector('#cvPrevF').addEventListener('click', () => { coverOpt.fi = (coverOpt.fi - 1 + S.frames.length) % S.frames.length; load(); });
+      ov.querySelector('#cvNextF').addEventListener('click', () => { coverOpt.fi = (coverOpt.fi + 1) % S.frames.length; load(); });
+      load();
+    } });
+  if (act) {
+    if (!ready) await renderFinalFrame(fx, coverOpt.fi, base);
+    drawCoverText(fx, coverOpt);
+    if (act === 'save') await deliverFile(await toBlob(full), `bia-${(S.projName || 'video').replace(/[^\p{L}\p{N} _-]/gu, '').trim() || 'video'}-${stamp()}.png`);
+    else await coverAsFrame(full);
+  }
+  full.width = base.width = 0;
+}
+// the cover as a short first frame (0.5 s) so the video opens on it (pixels in the character layer of a new frame)
+async function coverAsFrame(img) {
+  const f0 = S.frames[0], f = newFrameObj(f0.bgId); f.dur = 500;
+  f.canvas.getContext('2d').drawImage(img, 0, 0); f.ver = 1;
+  S.frames.unshift(f); loaded.push(f);   // frame order is in the automatic undo snapshot → one undo step removes it
+  await drawThumb(f); buildStrip(); await selectFrame(0); scheduleSave(); toast('Đã thêm ảnh bìa làm frame đầu (0,5 giây)');
+}
 /* --- video export (MediaRecorder, real time) --- */
 async function exportVideo() {
   if (playing) stopPlay(); if (stroke) strokeEnd(); commitFloating();
@@ -5544,6 +5785,17 @@ async function exportVideo() {
   let cancelled = false;
   const ov = document.createElement('div'); ov.className = 'ov'; ov.innerHTML = '<div class="dlg" style="max-width:360px;text-align:center"><h3>Đang xuất video…</h3><div class="body" id="vxMsg">Chuẩn bị frame…</div><div class="btns" style="justify-content:center"><button class="btn" id="vxCancel">Huỷ</button></div></div>';
   document.body.append(ov); const msg = t => ov.querySelector('#vxMsg').textContent = t; ov.querySelector('#vxCancel').onclick = () => { cancelled = true; };
+  const doneDlg = async (blob, ext, total, fast) => {
+    S.exported = true;
+    await modal({ title: 'Video đã xong 🎉', html: `<p>${total.toFixed(1)} giây · ${(blob.size / 1048576).toFixed(1)} MB · ${ext.toUpperCase()}${fast ? ' · ⚡ xuất nhanh' : ''}</p>${ext === 'webm' ? '<p class="lbl" style="font-size:12px">Trình duyệt này chỉ quay được WebM. YouTube/TikTok đều nhận WebM; nếu cần MP4 hãy gửi file cho Claude chuyển.</p>' : ''}`,
+      buttons: [{ label: 'Đóng', value: null }, { label: 'Lưu video', primary: true, action: async () => { await deliverFile(blob, `${(S.projName || 'video').replace(/[^\p{L}\p{N} _-]/gu, '').trim() || 'video'}-${stamp()}.${ext}`); } }] });
+  };
+  if (!S.bgVideo && S.fastVideo !== false) {
+    try {
+      const fb = await exportVideoFast(msg, () => cancelled);
+      if (fb) { ov.remove(); await doneDlg(fb, 'mp4', frameStartTimes()[S.frames.length], true); return; }
+    } catch (e) { if (e.message === 'cancel') { ov.remove(); toast('Đã huỷ xuất video'); return; } console.error(e); msg('Xuất nhanh lỗi, chuyển sang quay thường…'); }
+  }
   try {
     const blobs = [], live = ppSmoothOn();
     const tmp = makeCanvas(), tx = tmp.getContext('2d');
@@ -5564,7 +5816,7 @@ async function exportVideo() {
       try { vid.currentTime = (S.bgVideo.offset || 0) % (vid.duration || 1); } catch (e) {}
       await new Promise(r => { vid.onseeked = r; setTimeout(r, 800); });
     }
-    const hasAudio = !!(S.audio && (S.audio.music || S.audio.voice || (S.audio.sfx || []).length)) || !!(vid && S.bgVideo.audio);
+    const hasAudio = !!(S.audio && (S.audio.music || voiceClips().length || (S.audio.sfx || []).length)) || !!(vid && S.bgVideo.audio);
     if (vid && S.bgVideo.audio) { try { const src = ac.createMediaElementSource(vid), g = ac.createGain(); g.gain.value = S.bgVideo.vol ?? 0.7; src.connect(g).connect(dest); } catch (e) { console.error(e); } }
     if (hasAudio) dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
     const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8e6 }), chunks = [];
@@ -5591,9 +5843,8 @@ async function exportVideo() {
     rec.stop(); stopAudio(); if (vid) { vid.pause(); vid.remove(); } await done; ac.close(); stream.getTracks().forEach(t => t.stop()); out.width = 0;
     ov.remove();
     if (cancelled) { toast('Đã huỷ xuất video'); return; }
-    const blob = new Blob(chunks, { type: mime.split(';')[0] }); S.exported = true;
-    await modal({ title: 'Video đã xong 🎉', html: `<p>${total.toFixed(1)} giây · ${(blob.size / 1048576).toFixed(1)} MB · ${ext.toUpperCase()}</p>${ext === 'webm' ? '<p class="lbl" style="font-size:12px">Trình duyệt này chỉ quay được WebM. YouTube/TikTok đều nhận WebM; nếu cần MP4 hãy gửi file cho Claude chuyển.</p>' : ''}`,
-      buttons: [{ label: 'Đóng', value: null }, { label: 'Lưu video', primary: true, action: async () => { await deliverFile(blob, `${(S.projName || 'video').replace(/[^\p{L}\p{N} _-]/gu, '').trim() || 'video'}-${stamp()}.${ext}`); } }] });
+    const blob = new Blob(chunks, { type: mime.split(';')[0] });
+    await doneDlg(blob, ext, total, false);
   } catch (e) { ov.remove(); if (e.message !== 'cancel') { console.error(e); toast('Lỗi xuất video: ' + e.message, 4000); } else toast('Đã huỷ'); }
 }
 /* ===== ⚽ Ball path + ⚡ one-tap gag combos: everything drawn in code (original), one undo step each ===== */
@@ -6349,12 +6600,11 @@ function camPresetApply(p) {
 $('#fxShake').addEventListener('change', e => fxEdit(f => { f.shake = +e.target.value; }));
 $('#fxFlash').addEventListener('click', () => fxEdit(f => { f.flash = !f.flash; }));
 Object.entries(SFX).forEach(([k, v]) => { const b = document.createElement('button'); b.className = 'chip small'; b.textContent = '🔊 ' + v.label; b.addEventListener('click', () => { sfxPreview(k); S.audio = S.audio || {}; S.audio.sfx = S.audio.sfx || []; S.audio.sfx.push({ id: newId(), frameId: curFrame().id, kind: k, vol: 0.9 }); fxSyncBar(); scheduleSave(); toast(`Đã gắn "${v.label}" vào frame ${S.cur + 1}`); }); $('#fxSfx').append(b); });
-const pickAudio = (input, key) => { input.addEventListener('change', async e => { const file = e.target.files[0]; e.target.value = ''; if (!file) return; if (file.size > 40e6) { toast('File quá lớn (tối đa 40 MB)'); return; } const buf = await file.arrayBuffer(); try { const ac = new OfflineAudioContext(1, 44100, 44100); await ac.decodeAudioData(buf.slice(0)); } catch (err) { toast('Không đọc được file âm thanh này'); return; } S.audio = S.audio || {}; S.audio[key] = { name: file.name.slice(0, 60), buf, vol: key === 'music' ? 0.6 : 1, frameId: curFrame().id }; fxSyncBar(); scheduleSave(); toast(key === 'music' ? 'Đã thêm nhạc nền — bấm Phát để nghe' : 'Đã thêm giọng — bấm 🗣 Tự nhép miệng theo giọng', 3500); }); };
+const pickAudio = (input, key) => { input.addEventListener('change', async e => { const file = e.target.files[0]; e.target.value = ''; if (!file) return; if (file.size > 40e6) { toast('File quá lớn (tối đa 40 MB)'); return; } const buf = await file.arrayBuffer(); try { const ac = new OfflineAudioContext(1, 44100, 44100); await ac.decodeAudioData(buf.slice(0)); } catch (err) { toast('Không đọc được file âm thanh này'); return; } S.audio = S.audio || {}; const clip = { name: file.name.slice(0, 60), buf, vol: key === 'music' ? 0.6 : 1, frameId: curFrame().id }; if (key === 'voice') voiceAdd(clip); else S.audio[key] = clip; waveKey = ''; updateWaves(); fxSyncBar(); scheduleSave(); toast(key === 'music' ? 'Đã thêm nhạc nền — bấm Phát để nghe' : `Đã thêm giọng ${voiceClips().length} — bấm 🗣 Tự nhép miệng theo giọng`, 3500); }); };
 pickAudio($('#musicFile'), 'music'); pickAudio($('#voiceFile'), 'voice');
 $('#fxMusicPick').addEventListener('click', () => $('#musicFile').click());
 $('#fxVoicePick').addEventListener('click', () => $('#voiceFile').click());
 $('#fxMusicDel').addEventListener('click', () => { if (S.audio) { S.audio.music = null; fxSyncBar(); scheduleSave(); } });
-$('#fxVoiceDel').addEventListener('click', () => { if (S.audio) { S.audio.voice = null; S.frames.forEach(f => { if (f.lip && f.lip.pid) { f.lip = f.lip.eb ? { eb: f.lip.eb } : null; f.ver++; } }); fxSyncBar(); scheduleSave(); requestRender(); } });
 $('#fxMusicVol').addEventListener('change', e => { if (S.audio && S.audio.music) { S.audio.music.vol = e.target.value / 100; scheduleSave(); } });
 $('#fxLip').addEventListener('click', fxLipSync);
 $('#moveL').addEventListener('click', () => moveFrame(-1));
@@ -6661,7 +6911,7 @@ async function resolveProjectRefs(p, pid) {
   savedBlobs = new Map(); savedBlobsProj = pid;
   for (const b of p.bgs || []) b.png = await resolveRef(b.png);
   for (const f of p.frames || []) { f.png = await resolveRef(f.png); f.col = await resolveRef(f.col); }
-  if (p.audio) for (const k of ['music', 'voice']) if (p.audio[k]) p.audio[k].buf = await resolveRef(p.audio[k].buf);
+  if (p.audio) { for (const k of ['music', 'voice']) if (p.audio[k]) p.audio[k].buf = await resolveRef(p.audio[k].buf); for (const v of p.audio.voices || []) v.buf = await resolveRef(v.buf); }
   if (p.bgVideo) p.bgVideo.buf = await resolveRef(p.bgVideo.buf);
   return p;
 }
@@ -6688,8 +6938,8 @@ async function saveProject() {
       v: 2, W, H, cur: S.cur,
       bgs: S.bgs.map(b => ({ id: b.id, png: ref('b:' + b.id, b.png) })),
       name: S.projName || 'Dự án', poses: S.poses || [],
-      frames: S.frames.map(f => ({ id: f.id, dur: f.dur, bgId: f.bgId, png: ref('f:' + f.id, f.png), col: ref('c:' + f.id, f.colPng), vec: f.vec, pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null })),
-      audio: A ? { ...A, music: slim(A.music), voice: slim(A.voice) } : null,
+      frames: S.frames.map(f => ({ id: f.id, dur: f.dur, bgId: f.bgId, png: ref('f:' + f.id, f.png), col: ref('c:' + f.id, f.colPng), vec: f.vec, pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || null })),
+      audio: A ? { ...A, music: slim(A.music), voice: slim(A.voice), voices: (A.voices || []).map((v, k) => ({ ...v, buf: ref('m:v' + (v.id || k), v.buf) })) } : null,
       bgVideo: S.bgVideo ? { ...S.bgVideo, buf: ref('m:video', S.bgVideo.buf) } : null,
       pp: S.pp ? { parts: S.pp.parts.map(p => ({ id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null, png: p.png, alts: (p.alts || []).map(a => ({ png: a.png, dx: a.dx || 0, dy: a.dy || 0 })) })) } : null,
       rig: S.rig || null,
@@ -6715,7 +6965,7 @@ async function saveProject() {
 async function loadProjectData(p) {
   W = p.W; H = p.H; setupWorkCanvases();
   S.bgs = p.bgs.map(b => ({ kind: 'bg', id: b.id, ver: 0, png: b.png || null, pngVer: 0, canvas: null }));
-  S.frames = p.frames.map(f => ({ kind: 'char', id: f.id, dur: f.dur, bgId: f.bgId, ver: 0, png: f.png || null, pngVer: 0, canvas: null, col: null, colPng: f.col || null, colVer: 0, colPngVer: 0, thumb: null, play: null, playKey: '', vec: f.vec || [], pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null }));
+  S.frames = p.frames.map(f => ({ kind: 'char', id: f.id, dur: f.dur, bgId: f.bgId, ver: 0, png: f.png || null, pngVer: 0, canvas: null, col: null, colPng: f.col || null, colVer: 0, colPngVer: 0, thumb: null, play: null, playKey: '', vec: f.vec || [], pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || undefined }));
   S.audio = p.audio || null; S.bgVideo = p.bgVideo || null; bgVideoSetup();
   S.projName = p.name || S.projName || 'Dự án'; S.poses = p.poses || [];
   loaded.length = 0; undoStack.length = 0; redoStack.length = 0; undoBytes = 0;
@@ -6867,7 +7117,7 @@ async function exportZip() {
         files.push({ name: linesName, data: new Uint8Array(await (await toBlob(comp)).arrayBuffer()) });
       }
       meta.push({ index: i + 1, file: `frames/frame_${n}.png`, char_layer: `layers/char_${n}.png`, color_layer: colorName, lines_layer: linesName, bg_layer: bgFile.get(f.bgId), duration_ms: f.dur,
-        pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], camera: camAt(i), cam_key: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null,
+        pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], camera: camAt(i), cam_key: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || null,
         vector: f.vec.map(st => ({ c: st.c, w: +st.w.toFixed(2), pts: st.pts.map(q => [+q.x.toFixed(1), +q.y.toFixed(1)]) })) });
     }
     comp.width = 0;
@@ -6914,7 +7164,7 @@ async function importZip(file) {
       if (!bgId) { bgId = newId(); bgs.push({ id: bgId, png: null }); }
       const vec = (fr.vector || []).map(st => ({ id: newId(), c: st.c, w: st.w, pts: st.pts.map(([x, y]) => ({ x, y })) }));
       const dc = fr.color_layer && z.get(fr.color_layer);
-      return { id: newId(), dur: fr.duration_ms || 100, bgId, vec, col: dc ? dc.buffer.slice(dc.byteOffset, dc.byteOffset + dc.byteLength) : null, pp: fr.pp || {}, ppKey: fr.ppKey, ppEase: fr.ppEase, texts: fr.texts || [], cam: fr.cam_key || null, shake: fr.shake || 0, flash: !!fr.flash, lip: fr.lip || null, png: d ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : null };
+      return { id: newId(), dur: fr.duration_ms || 100, bgId, vec, col: dc ? dc.buffer.slice(dc.byteOffset, dc.byteOffset + dc.byteLength) : null, pp: fr.pp || {}, ppKey: fr.ppKey, ppEase: fr.ppEase, texts: fr.texts || [], cam: fr.cam_key || null, shake: fr.shake || 0, flash: !!fr.flash, lip: fr.lip || null, scene: fr.scene || undefined, png: d ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : null };
     });
     if (!frames.length) throw new Error('ZIP không có frame nào');
     pm.set('Đang mở…');
@@ -8156,6 +8406,53 @@ $('#mselBar').addEventListener('click', e => {
   else if (k === 'done') mselEnd();
 });
 
+/* ===== 🎬 Scenes (cảnh): split a long film into named parts; move a whole scene earlier/later, copy it, select it =====
+   f.scene = name on the FIRST frame of a scene (frame 1 is always the start of scene 1). Order is in the automatic undo. */
+function sceneList() {
+  const out = []; S.frames.forEach((f, i) => { if (i === 0 || f.scene) out.push({ a: i, name: f.scene || 'Cảnh 1' }); });
+  const T = frameStartTimes(); out.forEach((s, k) => { s.b = (k + 1 < out.length ? out[k + 1].a : S.frames.length) - 1; s.sec = T[s.b + 1] - T[s.a]; });
+  return out;
+}
+const sceneNames = () => sceneList().forEach(s => { S.frames[s.a].scene = s.name; });   // a moved scene keeps its own name
+function sceneMove(k, dir) {
+  const L = sceneList(), j = k + dir; if (j < 0 || j >= L.length) return;
+  sceneNames(); const before = S.frames.map(f => f.id), blocks = L.map(s => S.frames.slice(s.a, s.b + 1)), cur = S.frames[S.cur];
+  [blocks[k], blocks[j]] = [blocks[j], blocks[k]]; S.frames = blocks.flat();
+  if (!S.frames[0].scene) S.frames[0].scene = 'Cảnh 1';
+  pushEntry({ ford: { before, after: S.frames.map(f => f.id) }, bytes: 0 });
+  S.cur = S.frames.indexOf(cur); tintCache.clear(); ppRetween(); buildStrip(); selectFrame(S.cur); scheduleSave(); updUndoBtns();
+}
+function sceneSelect(s) { mselStart(); msel.clear(); for (let i = s.a; i <= s.b; i++) msel.add(S.frames[i].id); mselLast = s.b; mselSync(); selectFrame(s.a); }
+async function sceneAsk(title, init) {
+  let v = null;
+  await modal({ title, html: `<input id="scName" maxlength="30" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:18px" value="${String(init).replace(/"/g, '&quot;')}">`,
+    buttons: [{ label: 'Huỷ', value: null }, { label: 'Xong', primary: true, action: () => { v = document.getElementById('scName').value.trim(); } }], onOpen: ov => setTimeout(() => { const i = ov.querySelector('#scName'); i.focus(); i.select(); }, 50) });
+  return v ? v.slice(0, 30) : null;
+}
+async function shotsDialog() {
+  if (playing) stopPlay(); commitFloating();
+  const L = sceneList(), esc = t => String(t).replace(/</g, '&lt;');
+  const rows = L.map((s, k) => `<div class="set-row" style="flex-wrap:wrap;gap:4px"><span style="flex:1;min-width:140px"><b>🎬 ${k + 1}. ${esc(s.name)}</b><br><span class="lbl" style="font-size:12px">frame ${s.a + 1}–${s.b + 1} · ${s.sec.toFixed(1)}s</span></span>
+<span class="grp" style="flex-wrap:wrap;gap:4px"><button class="chip small" data-sc="go" data-k="${k}">Đi tới</button><button class="chip small" data-sc="up" data-k="${k}" ${k ? '' : 'disabled'} title="Đưa cả cảnh lên trước cảnh trước nó">⬆</button><button class="chip small" data-sc="down" data-k="${k}" ${k < L.length - 1 ? '' : 'disabled'} title="Đưa cả cảnh ra sau cảnh sau nó">⬇</button><button class="chip small" data-sc="sel" data-k="${k}" title="Chọn mọi frame của cảnh: xoá, nhân bản, đảo ngược, đổi thời lượng, kéo dời">☑ Chọn</button><button class="chip small" data-sc="dup" data-k="${k}" title="Nhân bản cả cảnh ngay sau nó">⧉</button><button class="chip small" data-sc="ren" data-k="${k}" title="Đổi tên">✎</button>${k ? `<button class="chip small" data-sc="rm" data-k="${k}" title="Bỏ mốc cảnh: gộp vào cảnh trước">✕</button>` : ''}</span></div>`).join('');
+  const cs = L.findIndex((s, k) => S.cur >= s.a && S.cur <= s.b);
+  let act = null;
+  await modal({ title: '🎬 Cảnh (chia phim dài)', html: `<p class="lbl" style="font-size:13px">Mỗi cảnh là một đoạn frame liền nhau. Đặt mốc ở frame đầu của cảnh, rồi dời cả cảnh lên/xuống, nhân bản hoặc chọn cả cảnh để sửa một lượt.</p>${rows}`,
+    buttons: [{ label: 'Đóng', value: null }, { label: `＋ Cảnh mới từ frame ${S.cur + 1}`, primary: true, action: () => { act = { sc: 'new' }; } }],
+    onOpen: (ov, close) => ov.querySelectorAll('[data-sc]').forEach(b => b.addEventListener('click', () => { act = { sc: b.dataset.sc, k: +b.dataset.k }; close(null); })) });
+  if (!act) return;
+  const s = L[act.k];
+  if (act.sc === 'new') {
+    if (S.cur === 0 || S.frames[S.cur].scene) { toast(S.cur === 0 ? 'Frame 1 luôn là đầu cảnh 1 — chọn frame khác để mở cảnh mới' : 'Frame này đã là đầu một cảnh'); return; }
+    const n = await sceneAsk('Tên cảnh mới', `Cảnh ${cs + 2}`); if (!n) return;
+    S.frames[S.cur].scene = n; buildStrip(); scheduleSave(); toast(`Cảnh "${n}" bắt đầu ở frame ${S.cur + 1}`);
+  } else if (act.sc === 'go') selectFrame(s.a);
+  else if (act.sc === 'up' || act.sc === 'down') { sceneMove(act.k, act.sc === 'up' ? -1 : 1); return shotsDialog(); }
+  else if (act.sc === 'sel') { sceneSelect(s); toast(`Đã chọn ${s.b - s.a + 1} frame của "${s.name}"`); }
+  else if (act.sc === 'dup') { sceneNames(); sceneSelect(s); await mselDuplicate(); const i0 = mselIdx()[0]; if (i0 != null) { S.frames[i0].scene = s.name + ' (2)'; buildStrip(); scheduleSave(); } mselEnd(); }
+  else if (act.sc === 'ren') { const n = await sceneAsk('Đổi tên cảnh', s.name); if (n) { S.frames[s.a].scene = n; buildStrip(); scheduleSave(); } return shotsDialog(); }
+  else if (act.sc === 'rm') { delete S.frames[s.a].scene; buildStrip(); scheduleSave(); return shotsDialog(); }
+}
+
 /* ===== on-canvas frame flipper: ◀ n/N ▶ ＋ near the drawing; hold an arrow to peek at the neighbour frame like flipping paper ===== */
 var flipPeek = null;
 function flipHold(btn, onTap, onHold, onRelease) {
@@ -8271,6 +8568,8 @@ $('#menuBtn').addEventListener('click', () => {
   <button class="btn" data-m="update">🔄 Kiểm tra cập nhật</button>
   <button class="btn primary" data-m="video">🎬 Xuất video (MP4)</button>
   <button class="btn" data-m="gif">🖼 Xuất GIF / ảnh PNG</button>
+  <button class="btn" data-m="cover">📸 Ảnh bìa Shorts (chữ to)</button>
+  <button class="btn" data-m="scenes">🎬 Cảnh: chia phim dài, dời cả cảnh</button>
   <button class="btn primary" data-m="export">⬇ Xuất ZIP (gửi Claude)</button>
   <button class="btn" data-m="open">📂 Mở dự án từ ZIP</button>
   <button class="btn" data-m="scene">🏞 Nền vẽ sẵn (phòng, lớp học, phố, biển…)</button>
@@ -8283,6 +8582,8 @@ $('#menuBtn').addEventListener('click', () => {
   <button class="btn" data-m="new916">＋ Dự án mới 9:16 (Shorts)</button>
   <button class="btn" data-m="new169">＋ Dự án mới 16:9</button>
 </div>
+<div class="set-row"><span>👆 Nút to cho ngón tay (chấm màu, lớp, nút công cụ)</span><input type="checkbox" class="switch" id="sBigUi" ${S.bigUi ? 'checked' : ''}></div>
+<div class="set-row"><span>⚡ Xuất video nhanh (không phải chờ hết phim)</span><input type="checkbox" class="switch" id="sFastV" ${S.fastVideo !== false ? 'checked' : ''}></div>
 <div class="set-row"><span>Ngón tay cũng vẽ (khi không có bút)</span><input type="checkbox" class="switch" id="sFinger" ${S.fingerDraw ? 'checked' : ''}></div>
 <div class="set-row"><span>Xoay khung bằng 2 ngón</span><input type="checkbox" class="switch" id="sRotG" ${S.rotGesture !== false ? 'checked' : ''}></div>
 <div class="set-row"><span>🧲 Bán kính hút nét (px)</span><input type="range" id="sSnapR" min="6" max="80" value="${S.snapR}"></div>
@@ -8293,6 +8594,8 @@ $('#menuBtn').addEventListener('click', () => {
 <div class="set-row"><span>Kích thước khung</span><span class="lbl">${W} × ${H}</span></div>`;
   modal({ title: 'Menu', html, buttons: [{ label: 'Đóng', value: null, primary: true }], onOpen: (ov, close) => {
     ov.querySelector('#sFinger').addEventListener('change', e => { S.fingerDraw = e.target.checked; saveSettings(); });
+    ov.querySelector('#sBigUi').addEventListener('change', e => { S.bigUi = e.target.checked; applyBigUi(); saveSettings(); });
+    ov.querySelector('#sFastV').addEventListener('change', e => { S.fastVideo = e.target.checked; saveSettings(); });
     ov.querySelector('#sRotG').addEventListener('change', e => { S.rotGesture = e.target.checked; saveSettings(); });
     ov.querySelector('#sSnapR').addEventListener('input', e => { S.snapR = +e.target.value; snapField = null; saveSettings(); });
     ov.querySelector('#sSmooth').addEventListener('input', e => { S.smooth = e.target.value / 100; saveSettings(); });
@@ -8306,6 +8609,8 @@ $('#menuBtn').addEventListener('click', () => {
       else if (m === 'scene') sceneDialog();
       else if (m === 'video') exportVideo();
       else if (m === 'gif') exportImagesDialog();
+      else if (m === 'cover') coverDialog();
+      else if (m === 'scenes') shotsDialog();
       else if (m === 'projects') projectsDialog();
       else if (m === 'sync') syncDialog();
       else if (m === 'export') exportZip();
@@ -8325,7 +8630,7 @@ $('#menuBtn').addEventListener('click', () => {
 
 /* ========= Init ========= */
 async function init() {
-  loadSettings();
+  loadSettings(); applyBigUi();
   S.ballOpt = { obj: 'ball', n: 8, ease: 'even', size: 1, hit: true, trail: true, sound: true, ...(S.ballOpt || {}) }; ballWire(); ballSyncBar();
   S.size = clamp(Math.round(S.size) || 8, 1, SIZE_MAX);
   if (!S.brushOp || typeof S.brushOp !== 'object') S.brushOp = {};

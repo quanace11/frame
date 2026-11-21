@@ -42,7 +42,7 @@ async def main():
         # voice + lip sync (adds frames)
         await pg.set_input_files('#voiceFile',os.path.join(ASSETS,'voice.wav')); await pg.wait_for_timeout(500)
         await pg.click('#fxLip'); await pg.wait_for_selector('text=Thêm frame', timeout=10000); await pg.click('.dlg .btns >> text=Thêm frame'); await pg.wait_for_timeout(2000)
-        print('frames', await pg.evaluate('S.frames.length'), 'lip', await pg.evaluate('S.frames.map(f=>f.lip?f.lip.lv:"-").join(",")'))
+        print('frames', await pg.evaluate('S.frames.length'), 'lip', await pg.evaluate('S.frames.map(f=>f.lip&&f.lip.m?Object.values(f.lip.m)[0]:"-").join(",")'))
         # music + sfx at frame 3, camera key zoom at frame 8
         await pg.set_input_files('#musicFile',os.path.join(ASSETS,'music.wav')); await pg.wait_for_timeout(500)
         await pg.click('.fr >> nth=3'); await pg.wait_for_timeout(200)
