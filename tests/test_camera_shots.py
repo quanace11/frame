@@ -46,7 +46,9 @@ async def main():
         c = await pg.evaluate("S.frames[1].cam"); check('move inside box', abs(c['x'] - W * 0.5) < 3 and abs(c['z'] - 2) < 0.05)
         bx = await pg.evaluate("(()=>{const b=camBox(camEdit(1));return [b.cx+b.hw,b.cy+b.hh,b.cx,b.cy]})()")
         await drag(line([bx[0], bx[1]], [bx[2] + (bx[0] - bx[2]) * 0.5, bx[3] + (bx[1] - bx[3]) * 0.5]))
-        check('corner drag zooms in', abs(await pg.evaluate("S.frames[1].cam.z") - 4) < 0.15)
+        tl0 = [bx[2] - (bx[0] - bx[2]), bx[3] - (bx[1] - bx[3])]
+        tl1 = await pg.evaluate("(()=>{const b=camBox(camEdit(1));return [b.cx-b.hw,b.cy-b.hh]})()")
+        check('corner drag zooms in, opposite corner stays', abs(await pg.evaluate("S.frames[1].cam.z") - 8 / 3) < 0.1 and abs(tl0[0] - tl1[0]) < 3 and abs(tl0[1] - tl1[1]) < 3)
         # 4) frame 3 (one long 3 s still): 🎬 push in on a tap, over 1 s, starting from frame 2's shot
         await pg.evaluate("S.cur=2; updateFrameUI(); fxSyncBar()"); await pg.click('#camPushIn')
         check('push armed', await pg.evaluate("camPresetMode") == 'push')
