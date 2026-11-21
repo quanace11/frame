@@ -91,6 +91,30 @@ async def main():
         await lasso(pg, 380, 770, 620, 1120); await pg.click('#selCancel'); await pg.wait_for_timeout(100)
         print('cancel restores bg', await pg.evaluate(f"{A}({BG},470,880)>200"))
 
+        # 5. colour in lớp Nền, lines in lớp Nhân vật (a picture whose colour went into the background): 🧩 moves both
+        await pg.evaluate("""(()=>{const f=curFrame(); f.canvas.getContext('2d').clearRect(0,0,W,H); f.col.getContext('2d').clearRect(0,0,W,H);
+          const bx=bgOf(f).canvas.getContext('2d'); bx.fillStyle='#fff'; bx.fillRect(0,0,W,H); bx.fillStyle='#fdd835'; bx.beginPath(); bx.arc(500,1400,80,Math.PI,0); bx.fill();
+          bx.fillStyle='#f1c27d'; bx.beginPath(); bx.arc(500,1400,80,0,Math.PI); bx.fill(); bx.fillStyle='#d32f2f'; bx.fillRect(380,1490,240,300);
+          const x=f.canvas.getContext('2d'); x.lineWidth=6; x.strokeStyle='#111'; x.beginPath(); x.arc(500,1400,80,0,Math.PI*2); x.stroke(); x.strokeRect(380,1490,240,300);
+          bgOf(f).ver++; f.ver++; f.colVer++; requestRender();})()""")
+        await pg.click('[data-selm=part]'); await pg.wait_for_timeout(100)
+        await lasso(pg, 400, 1300, 600, 1520)
+        print('bg colour lifted with the lines', await pg.evaluate(f"!!floating && !!floating.bc && {A}({BG},500,1350)===0 && {A}({BG},500,1440)===0 && {A}({LN},500,1320)===0"))
+        print('shirt + white paper left', await pg.evaluate(f"{A}({BG},500,1510)>200 && {A}({BG},420,1310)>200"))
+        await drag(pg, [500, 1400], [250, 1400]); await pg.click('#selDone'); await pg.wait_for_timeout(200)
+        print('head colour moved', await pg.evaluate(f"(()=>{{const d=bgOf(curFrame()).canvas.getContext('2d').getImageData(250,1350,1,1).data;return d[0]>200&&d[1]>180&&d[2]<120}})() && {A}({LN},250,1320)>200"))
+        await pg.evaluate("undo()"); await pg.wait_for_timeout(200)
+        print('undo puts bg colour back', await pg.evaluate(f"(()=>{{const d=bgOf(curFrame()).canvas.getContext('2d').getImageData(500,1350,1,1).data;return d[0]>200&&d[1]>180&&d[2]<120}})() && {A}({LN},500,1320)>200"))
+        # 6. lines in lớp Nền while lớp Nền is the chosen layer, colour in lớp Màu: 🧩 still takes both
+        await pg.evaluate("""(()=>{const f=curFrame(); f.canvas.getContext('2d').clearRect(0,0,W,H); const bx=bgOf(f).canvas.getContext('2d'); bx.fillStyle='#fff'; bx.fillRect(0,0,W,H);
+          bx.lineWidth=6; bx.strokeStyle='#111'; bx.beginPath(); bx.arc(500,1400,80,0,Math.PI*2); bx.stroke();
+          const k=f.col.getContext('2d'); k.fillStyle='#fdd835'; k.beginPath(); k.arc(500,1400,78,0,Math.PI*2); k.fill(); bgOf(f).ver++; f.ver++; f.colVer++; setLayer('bg'); requestRender();})()""")
+        await lasso(pg, 400, 1300, 600, 1520)
+        print('lines in Nền + colour in Màu both lifted', await pg.evaluate(f"!!floating && {A}({COL},500,1400)===0 && (()=>{{const d=bgOf(curFrame()).canvas.getContext('2d').getImageData(500,1321,1,1).data;return !(d[3]>200&&d[0]<80)}})()"))
+        await pg.click('#selCancel'); await pg.wait_for_timeout(100)
+        print('cancel restores both', await pg.evaluate(f"{A}({COL},500,1400)>200 && (()=>{{const d=bgOf(curFrame()).canvas.getContext('2d').getImageData(500,1321,1,1).data;return d[3]>200&&d[0]<80}})()"))
+        await pg.evaluate("setLayer('char')")
+
         # 4. 👤 default still works as before
         await pg.click('[data-selm=pic]')
         await lasso(pg, 380, 770, 620, 1120)
