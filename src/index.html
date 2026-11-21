@@ -537,9 +537,15 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
         <button class="chip small" id="ghNext" title="Bật bóng mờ cho frame này và N-1 frame sau">Cho</button><input type="number" id="ghNextN" value="4" min="1" max="60" style="width:46px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">frame</span></div>
 
       <div class="mrow" data-tab="cam"><span class="lbl"><b>Đổi cảnh ở frame này:</b></span><button class="chip small" data-camtr="cut" title="Tới frame này hình đổi ngay sang khung camera mới (như cắt sang cảnh khác)">✂ Cắt cảnh</button><button class="chip small" data-camtr="smooth" title="Từ frame này camera từ từ đẩy/lia tới khung mới">〰 Đẩy mượt</button><span class="lbl">trong</span><input type="range" id="camD" min="0.3" max="5" step="0.1" style="width:90px"><span class="val" id="camDVal"></span>
-        <span class="lbl">Nhanh:</span><button class="chip small" id="camCutIn" title="Chạm nút rồi chạm lên chỗ cần chú ý: cắt thẳng sang cận cảnh">🔍 Cận cảnh</button><button class="chip small" id="camPushIn" title="Chạm nút rồi chạm lên chỗ cần chú ý: camera từ từ đẩy vào">🎬 Đẩy vào từ từ</button></div>
+        </div>
+      <div class="mrow" data-tab="cam" style="flex-wrap:wrap"><span class="lbl" title="Các cách zoom hay dùng khi làm phim. Chạm nút rồi chạm lên chỗ cần chú ý (mặt nhân vật, cái TV…)"><b>🎬 Kỹ thuật zoom phim:</b></span><button class="chip small" id="camCutIn" title="Chạm nút rồi chạm lên chỗ cần chú ý: cắt thẳng sang cận cảnh">🔍 Cận cảnh</button><button class="chip small" id="camPushIn" title="Push-in: chạm nút rồi chạm lên chỗ cần chú ý, camera từ từ đẩy vào (tạo căng thẳng, cảm xúc)">🎬 Đẩy vào từ từ</button><span id="camFxBtns"></span>
+        <label class="lbl" title="Gắn tiếng (vút, trống) cho zoom giật / 3 nhịp"><input type="checkbox" id="camSnd" checked> 🔊 Kèm tiếng</label></div>
+      <div class="mrow" data-tab="cam" style="flex-wrap:wrap"><span class="lbl" title="Khung hình theo cỡ cảnh trong phim, tính theo nhân vật (hoặc hình) trên frame này"><b>🧍 Cỡ cảnh:</b></span><span id="camShotBtns"></span></div>
+      <div class="mrow" data-tab="cam" style="flex-wrap:wrap" id="camMoveRow"><span class="lbl"><b>Chỉnh khung:</b></span><button class="chip small" data-camside="start" title="Sửa khung lúc camera BẮT ĐẦU chạy (khung xanh)">▶ Khung đầu</button><button class="chip small" data-camside="end" title="Sửa khung lúc camera chạy TỚI NƠI (khung cam)">⏹ Khung cuối</button><button class="chip small" id="camSwap" title="Đổi chỗ khung đầu và khung cuối (đẩy vào ⇄ kéo ra)">⇄ Đảo chiều</button>
+        <span class="lbl">Kiểu chạy</span><select id="camEase" class="chip small"></select>
+        <button class="chip small" id="camHit" title="Camera rung mạnh lúc tới nơi rồi tắt dần (như cú va chạm)">💥 Rung khi tới</button><button class="chip small" id="camHand" title="Camera hơi lắc lư như quay cầm tay, tới camera key sau">📷 Cầm tay</button><button class="chip small" id="camPrev" title="Phát từ frame này để xem camera chạy">▶ Xem thử</button></div>
       <div class="mrow" data-tab="cam"><span class="lbl" id="camStat" style="flex-basis:100%;color:#ffb21e"></span></div>
-      <div class="mrow" data-tab="cam"><span class="lbl" style="font-size:11px">Kéo trên khung để vẽ khung camera (vd. quanh người + TV) · kéo trong khung để dời · kéo chấm góc để zoom. Khung cam = cảnh quay ở frame này.</span></div>
+      <div class="mrow" data-tab="cam"><span class="lbl" style="font-size:11px">Kéo trên khung để vẽ khung camera (vd. quanh người + TV) · kéo trong khung để dời · kéo chấm góc để to/nhỏ (góc đối diện đứng yên). Camera chạy mượt có 2 khung: ▶ Khung đầu và ⏹ Khung cuối, chọn khung nào thì kéo khung đó.</span></div>
       <div class="mrow" data-tab="gag"><span class="lbl"><b>⚽ Đường bay:</b></span><button class="chip small on" id="ballGo" title="Kéo 1 ngón/bút trên khung để vẽ đường bay; bóng tự bay theo đường đó qua các frame tiếp theo">✏️ Vẽ đường bay</button>
         <button class="chip small" data-bobj="ball">⚽ Bóng</button><button class="chip small" data-bobj="boot">👟 Giày</button>
         <span class="lbl">Số frame</span><input type="number" id="ballN" min="2" max="60" value="8" style="width:56px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px"><span class="lbl">Cỡ</span><input type="range" id="ballSize" min="0.5" max="2.5" step="0.05" style="width:90px">
@@ -896,13 +902,21 @@ function render() {
   if (f.texts && f.texts.length) drawTexts(c, f, S.tool === 'fx' ? fxSel : null);
   if (S.safe) drawSafeZone(c, px);
   if (S.tool === 'fx') {
-    const { cx, cy, hw, hh, z } = camBox(camEdit(S.cur));
-    if (f.cam && f.cam.tr === 'smooth') {   // where the push starts from (thin) → where it ends (the key)
-      const b0 = camBox(camAt(S.cur)); c.save(); c.setLineDash([4 * px, 8 * px]); c.lineWidth = 2 * px; c.strokeStyle = '#9ad'; c.strokeRect(b0.cx - b0.hw, b0.cy - b0.hh, b0.hw * 2, b0.hh * 2);
-      c.beginPath(); c.moveTo(b0.cx, b0.cy); c.lineTo(cx, cy); c.stroke(); c.restore();
+    const { cx, cy, hw, hh, z } = camBox(camEditBox(S.cur));
+    if (camCanStart(f)) {   // a move: the other box (thin) with an arrow from the start shot to the end shot
+      const st = camSide === 'start', bA = camBox(camAt(S.cur, 0)), bB = camBox(camEdit(S.cur)), o = st ? bB : bA;
+      c.save(); c.setLineDash([4 * px, 8 * px]); c.lineWidth = 2 * px; c.strokeStyle = st ? '#ffb21e' : '#9ad'; c.strokeRect(o.cx - o.hw, o.cy - o.hh, o.hw * 2, o.hh * 2);
+      c.setLineDash([]); c.strokeStyle = '#fff'; c.lineWidth = 3 * px; c.beginPath(); c.moveTo(bA.cx, bA.cy); c.lineTo(bB.cx, bB.cy); c.stroke();
+      const an = Math.atan2(bB.cy - bA.cy, bB.cx - bA.cx), L = 22 * px; if (Math.hypot(bB.cx - bA.cx, bB.cy - bA.cy) > L) { c.beginPath(); c.moveTo(bB.cx, bB.cy); c.lineTo(bB.cx - L * Math.cos(an - 0.45), bB.cy - L * Math.sin(an - 0.45)); c.moveTo(bB.cx, bB.cy); c.lineTo(bB.cx - L * Math.cos(an + 0.45), bB.cy - L * Math.sin(an + 0.45)); c.stroke(); }
+      c.font = `bold ${22 * px}px system-ui`; c.textBaseline = 'top'; c.lineWidth = 5 * px; c.strokeStyle = '#000';
+      for (const [b, t, col, e] of [[bA, '▶ Đầu', '#9ad', 0], [bB, '⏹ Cuối', '#ffb21e', 1]]) {   // start label top-left, end label bottom-right
+        c.textAlign = e ? 'right' : 'left'; c.textBaseline = e ? 'bottom' : 'top';
+        const tx = e ? b.cx + b.hw - 8 * px : b.cx - b.hw + 8 * px, ty = e ? b.cy + b.hh - 8 * px : b.cy - b.hh + 8 * px; c.strokeText(t, tx, ty); c.fillStyle = col; c.fillText(t, tx, ty);
+      }
+      c.restore();
     }
     if (z > 1.001) { c.save(); c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.rect(0, 0, W, H); c.rect(cx - hw, cy - hh, hw * 2, hh * 2); c.fill('evenodd'); c.restore(); }
-    c.save(); c.setLineDash([14 * px, 10 * px]); c.lineWidth = 3 * px; c.strokeStyle = f.cam ? '#ffb21e' : '#9ad'; c.strokeRect(cx - hw, cy - hh, hw * 2, hh * 2); c.restore();
+    c.save(); c.setLineDash([14 * px, 10 * px]); c.lineWidth = 3 * px; c.strokeStyle = camSide === 'start' && camCanStart(f) ? '#4fc3ff' : f.cam ? '#ffb21e' : '#9ad'; c.strokeRect(cx - hw, cy - hh, hw * 2, hh * 2); c.restore();
     if (TABS.fx === 'cam') {   // corner handles: drag to zoom in/out
       c.save(); c.fillStyle = '#ffb21e'; c.strokeStyle = '#111'; c.lineWidth = 2 * px; const r = 11 * px;
       for (const [qx, qy] of [[cx - hw, cy - hh], [cx + hw, cy - hh], [cx - hw, cy + hh], [cx + hw, cy + hh]]) { c.beginPath(); c.arc(qx, qy, r, 0, Math.PI * 2); c.fill(); c.stroke(); }
@@ -5926,6 +5940,40 @@ function fxHit(f, p) {
 // begins ON this frame: tr 'cut' = jump straight to it, tr 'smooth' = start moving here and arrive after d seconds.
 // Time-based, so a single long still frame can still push in slowly. tIn = seconds into frame i.
 const camPlain = c => ({ z: c.z || 1, x: c.x, y: c.y });
+// how a smooth key moves (c.e); c.s = the shot it starts from (else wherever the camera was), so a move can live on one frame
+const CAM_EASE = {
+  inout: EASE.inout, linear: EASE.linear, in: EASE.in, out: EASE.out,
+  crash: t => { const u = clamp(t, 0, 1), c1 = 2.2, v = u - 1; return 1 + (c1 + 1) * v * v * v + c1 * v * v; },   // fast, overshoots a bit, settles
+  steps: t => t <= 0 ? 0 : Math.min(1, Math.ceil(t * 3 - 1e-9) / 3)   // 3 hard jumps closer (dramatic "dun dun DUN")
+};
+const CAM_EASE_LABEL = { inout: 'Mượt (chậm–nhanh–chậm)', linear: 'Đều (Ken Burns)', out: 'Nhanh rồi chậm dần', in: 'Chậm rồi nhanh dần', crash: 'Giật nhanh (crash zoom)', steps: '3 nhịp giật' };
+// extra camera life that is not a framing: impact shake when a move arrives (c.hit px) and a handheld sway (c.hh) that
+// lasts until the next key. Only drawn in the final picture (playback / video / GIF), never in the edit box.
+function camFx(i, tIn = 0) {
+  const n = S.frames.length, out = { sh: 0, ox: 0, oy: 0 }; if (!n) return out;
+  i = clamp(i, 0, n - 1); const T = frameStartTimes(), tau = T[i] + Math.max(0, tIn);
+  let hh = null;
+  S.frames.forEach((f, k) => {
+    const c = f.cam; if (!c || T[k] > tau) return;
+    hh = c.hh ? { c, t0: T[k] } : null;
+    if (c.hit) { const ta = T[k] + (c.tr === 'smooth' ? Math.max(0.05, c.d || 1) * (c.e === 'crash' ? 0.55 : 1) : 0), q = (tau - ta) / 0.45; if (q >= 0 && q < 1) out.sh += c.hit * (1 - q) * (1 - q); }
+  });
+  if (hh) { const t = tau, a = W * 0.006 * hh.c.hh / Math.max(1, hh.c.z || 1); out.ox = a * (Math.sin(t * 1.7) + 0.5 * Math.sin(t * 3.1 + 1.3)); out.oy = a * (Math.cos(t * 1.3 + 0.4) + 0.5 * Math.sin(t * 2.6 + 2.1)); }
+  return out;
+}
+// the moments a GIF must split a frame into small steps so camera moves show (pushes, crash zooms, shakes, handheld)
+function camWins(T) {
+  const out = [], n = S.frames.length;
+  S.frames.forEach((f, k) => {
+    const c = f.cam; if (!c) return;
+    let e = k + 1; while (e < n && !S.frames[e].cam) e++;
+    const d = c.tr === 'smooth' ? Math.max(0.05, c.d || 1) : 0;
+    if (d) out.push({ t0: T[k], t1: Math.min(T[e], T[k] + d) });
+    if (c.hit) out.push({ t0: T[k] + d * (c.e === 'crash' ? 0.55 : 1), t1: Math.min(T[e], T[k] + d + 0.45) });
+    if (c.hh) out.push({ t0: T[k], t1: T[e], step: 0.1 });
+  });
+  return out;
+}
 function camAt(i, tIn = 0) {
   const def = { z: 1, x: W / 2, y: H / 2 }, n = S.frames.length; if (!n) return def;
   i = clamp(i, 0, n - 1);
@@ -5938,7 +5986,7 @@ function camAt(i, tIn = 0) {
     // value of this key's segment at time t (t ≥ T[k], before the next key)
     const at = t => {
       const c = S.frames[k].cam; let a = C;
-      if (c.tr === 'smooth') { const d = Math.max(0.05, c.d || 1), u = EASE.inout(clamp((t - T[k]) / d, 0, 1)); a = { z: lerp(start.z, C.z, u), x: lerp(start.x, C.x, u), y: lerp(start.y, C.y, u) }; }
+      if (c.tr === 'smooth') { const d = Math.max(0.05, c.d || 1), u = (CAM_EASE[c.e] || EASE.inout)(clamp((t - T[k]) / d, 0, 1)), A = c.s ? camPlain(c.s) : start; a = { z: lerp(A.z, C.z, u), x: lerp(A.x, C.x, u), y: lerp(A.y, C.y, u) }; }
       if (next && !next.tr && nk > k + 1) { const u = EASE.inout(clamp((t - T[k]) / Math.max(1e-6, T[nk] - T[k]), 0, 1)), B = camPlain(next); a = { z: lerp(a.z, B.z, u), x: lerp(a.x, B.x, u), y: lerp(a.y, B.y, u) }; }
       return a;
     };
@@ -5954,10 +6002,26 @@ const CAM_ZMAX = 8;
 SETTINGS_KEYS.push('camTr', 'camD');
 S.camTr = 'cut'; S.camD = 1;
 // set frame f's camera key; a new key takes the chosen transition (✂ cut / 〰 smooth), an existing one keeps its own
+const camClamp = c => { const z = clamp(c.z || 1, 1, CAM_ZMAX), hw = W / (2 * z), hh = H / (2 * z); return { z, x: clamp(c.x, hw, W - hw), y: clamp(c.y, hh, H - hh) }; };
 function camKeySet(f, c, tr) {
-  const z = clamp(c.z || 1, 1, CAM_ZMAX), hw = W / (2 * z), hh = H / (2 * z), o = f.cam || {};
-  f.cam = { z, x: clamp(c.x, hw, W - hw), y: clamp(c.y, hh, H - hh), tr: tr || o.tr || S.camTr };
-  if (f.cam.tr === 'smooth') f.cam.d = o.d || S.camD;
+  const o = f.cam || {};
+  f.cam = { ...camClamp(c), tr: tr || o.tr || S.camTr };
+  if (f.cam.tr === 'smooth') { f.cam.d = o.d || S.camD; if (o.s) f.cam.s = o.s; if (o.e) f.cam.e = o.e; }   // re-framing keeps how the move runs
+  if (o.hit) f.cam.hit = o.hit; if (o.hh) f.cam.hh = o.hh; if (o.k && (f.cam.tr === 'smooth') === (o.tr === 'smooth')) f.cam.k = o.k;
+}
+// which box the Camera tab edits: the shot the key moves TO (end), or — for a smooth move — the shot it starts FROM
+let camSide = 'end';
+const camCanStart = f => !!(f && f.cam && f.cam.tr === 'smooth');
+const camEditBox = i => camSide === 'start' && camCanStart(S.frames[i]) ? camAt(i, 0) : camEdit(i);
+function camSetBox(f, c) {
+  if (camSide === 'start' && camCanStart(f)) f.cam = { ...f.cam, s: camClamp(c) };
+  else camKeySet(f, c);
+}
+// the box's corner opposite to the dragged one stays put; the new 9:16 box reaches the finger
+function camCornerBox(b, corner, p) {
+  const ax = b.cx - corner[0] * b.hw, ay = b.cy - corner[1] * b.hh;
+  const w = Math.max(W / CAM_ZMAX, Math.abs(p.x - ax), Math.abs(p.y - ay) * W / H), hgt = w * H / W, z = clamp(W / w, 1, CAM_ZMAX);
+  return { z, x: ax + corner[0] * w / 2, y: ay + corner[1] * hgt / 2 };
 }
 // a dragged rectangle → the smallest 9:16 shot that shows all of it
 function camFromRect(x0, y0, x1, y1) { const w = Math.max(8, Math.abs(x1 - x0)), h = Math.max(8, Math.abs(y1 - y0)); return { z: clamp(Math.min(W / w, H / h), 1, CAM_ZMAX), x: (x0 + x1) / 2, y: (y0 + y1) / 2 }; }
@@ -5975,6 +6039,7 @@ function camStatus(i) {
   const until = e < n ? `tới hết frame ${e}, frame ${e + 1} có key khác` : 'tới hết phim';
   if (k < 0) return `Frame ${i + 1}: toàn cảnh (chưa có camera key nào trước đó).`;
   if (z <= 1.01 && !(f.cam && f.cam.tr === 'smooth')) return `Frame ${i + 1}: toàn cảnh${f.cam ? ' (key ↩ ở frame này)' : ''}, giữ ${until}.`;
+  if (f.cam && f.cam.k && CAM_FX[f.cam.k]) return `Frame ${i + 1}: ${CAM_FX[f.cam.k].label} trong ${(f.cam.d || 0).toFixed(1)} giây, tới zoom ${pct}, giữ ${until}. Bấm ▶ Khung đầu / ⏹ Khung cuối để chỉnh từng khung.`;
   return f.cam ? `Frame ${i + 1}: key zoom ${pct}. Zoom này giữ ${until}. Muốn hết zoom: sang frame cần dừng rồi bấm ↩ Bỏ zoom từ đây.`
     : `Frame ${i + 1}: vẫn zoom (giữ từ key ở frame ${k + 1}), kéo ${until}. Bấm ↩ Bỏ zoom từ đây để về toàn cảnh từ frame này.`;
 }
@@ -5987,7 +6052,7 @@ function camBadges() {
     if (!g.cam && !zoomed) { if (ck) ck.remove(); return; }
     if (!ck) { ck = document.createElement('span'); g.el.append(ck); }
     ck.className = 'camk' + (g.cam ? '' : ' held');
-    ck.textContent = g.cam ? (g.cam.z <= 1.01 ? '🎥↩' : g.cam.tr === 'smooth' ? '🎥〰' : g.cam.tr === 'cut' ? '🎥✂' : '🎥') : '🔍';
+    ck.textContent = g.cam ? (g.cam.tr === 'smooth' && (g.cam.s || g.cam.z > 1.01) ? '🎥〰' : g.cam.z <= 1.01 ? '🎥↩' : g.cam.tr === 'cut' ? '🎥✂' : '🎥') : '🔍';
     ck.title = g.cam ? 'Camera key ở frame này' : 'Vẫn đang zoom (giữ từ camera key trước)';
   });
 }
@@ -5998,10 +6063,15 @@ function fxSyncBar() { updateWaves(); camBadges(); trBadges(); trSyncBar(); ghos
   txSyncBar(t);
   document.querySelectorAll('[data-fxs]').forEach(b => b.classList.toggle('on', t ? t.style === b.dataset.fxs : fxNewStyle === b.dataset.fxs));
   if (t) { $('#fxSize').value = t.size || 90; $('#fxRot').value = t.rot || 0; }
-  const cam = camEdit(S.cur); $('#fxZoom').value = Math.round(cam.z * 100); $('#fxZoomVal').textContent = Math.round(cam.z * 100) + '%';
+  const cam = camEditBox(S.cur); $('#fxZoom').value = Math.round(cam.z * 100); $('#fxZoomVal').textContent = Math.round(cam.z * 100) + '%';
   $('#fxCamKey').classList.toggle('on', !!f.cam); $('#fxCamKey').textContent = f.cam ? '🗑 Xoá key ở frame này' : '＋ Đặt key ở frame này';
   $('#camWide').disabled = !f.cam && camAt(S.cur).z <= 1.01; $('#camStat').textContent = camStatus(S.cur);
   $('#fxPick').classList.toggle('on', fxCamPick); $('#camPushIn').classList.toggle('on', camPresetMode === 'push'); $('#camCutIn').classList.toggle('on', camPresetMode === 'cut');
+  document.querySelectorAll('[data-camfx]').forEach(b => b.classList.toggle('on', camPresetMode === b.dataset.camfx));
+  { const mv = camCanStart(f), side = mv ? camSide : 'end';
+    document.querySelectorAll('[data-camside]').forEach(b => { b.classList.toggle('on', b.dataset.camside === side); b.disabled = !mv; });
+    $('#camSwap').disabled = $('#camEase').disabled = !mv; $('#camEase').value = mv ? f.cam.e || 'inout' : 'inout';
+    $('#camHit').classList.toggle('on', !!(f.cam && f.cam.hit)); $('#camHand').classList.toggle('on', !!(f.cam && f.cam.hh)); }
   { const tr = f.cam ? (f.cam.tr || 'old') : S.camTr; document.querySelectorAll('[data-camtr]').forEach(b => b.classList.toggle('on', b.dataset.camtr === tr)); const d = f.cam && f.cam.tr === 'smooth' ? f.cam.d || 1 : S.camD; $('#camD').value = d; $('#camDVal').textContent = d.toFixed(1) + 's'; $('#camD').disabled = tr !== 'smooth'; } $('#fxShake').value = f.shake || 0; $('#fxFlash').classList.toggle('on', !!f.flash);
   const sf = (S.audio && S.audio.sfx || []).filter(x => x.frameId === f.id);
   $('#fxSfxList').innerHTML = sf.map(x => `<button class="chip small" data-sfxdel="${x.id}" title="Bỏ âm thanh này">${(SFX[x.kind] || {}).label || x.kind} ✕</button>`).join('');
@@ -6296,8 +6366,8 @@ function drawFrameFx(ctx, i, baseImg, tsec, tInFrame, vid, over) {
   drawFrameFx0(ctx, i, baseImg, tsec, tInFrame, vid, over);
 }
 function drawFrameFx0(ctx, i, baseImg, tsec, tInFrame, vid, over) {
-  const f = S.frames[i], cam = camAt(i, tInFrame || 0);
-  ctx.save(); camApply(ctx, cam, f.shake || 0, tsec, i);
+  const f = S.frames[i], cam = camAt(i, tInFrame || 0), cf = camFx(i, tInFrame || 0);
+  ctx.save(); camApply(ctx, { z: cam.z, x: cam.x + cf.ox, y: cam.y + cf.oy }, (f.shake || 0) + cf.sh, tsec, i);
   if (S.bgVideo) { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); if (S.showBg) drawVideoCover(ctx, vid || bgVid.el); }
   ctx.drawImage(baseImg, 0, 0, W, H); if (over) over(ctx); ctx.restore();
   drawTexts(ctx, f, null, i, tInFrame);
@@ -6516,13 +6586,13 @@ async function exportGif(gw) {
   if (exportBusy) return; exportBusy = true;
   const k = Math.min(1, gw / W), w = Math.round(W * k) & ~1, h = Math.round(H * k) & ~1;
   const big = makeCanvas(), bctx = big.getContext('2d'), base = makeCanvas(), small = makeCanvas(w, h), sx = small.getContext('2d', { willReadFrequently: true });
-  const enc = gifEncoder(w, h), pm = progress('Đang tạo GIF…'), T = frameStartTimes(), trs = trList(T), txw = txWins(T), ts = trSrcCache(false);
+  const enc = gifEncoder(w, h), pm = progress('Đang tạo GIF…'), T = frameStartTimes(), trs = trList(T), txw = [...txWins(T), ...camWins(T)], ts = trSrcCache(false);
   try {
     for (let i = 0; i < S.frames.length; i++) {
       pm.set(`Đang tạo GIF ${i + 1}/${S.frames.length}…`); await new Promise(r => setTimeout(r, 0));
       // inside a transition the frame is split into 1/20 s pictures so the fade / TV-off moves in the GIF too
       const a = T[i], b = T[i + 1], pts = new Set([a]);
-      for (const x of [...trs, ...txw]) { const u0 = Math.max(a, x.t0), u1 = Math.min(b, x.t1); if (u1 <= u0) continue; for (let u = u0; u < u1 - 1e-4; u += 0.05) pts.add(+u.toFixed(4)); if (u1 < b - 1e-4) pts.add(+u1.toFixed(4)); }
+      for (const x of [...trs, ...txw]) { const u0 = Math.max(a, x.t0), u1 = Math.min(b, x.t1); if (u1 <= u0) continue; for (let u = u0; u < u1 - 1e-4; u += x.step || 0.05) pts.add(+u.toFixed(4)); if (u1 < b - 1e-4) pts.add(+u1.toFixed(4)); }
       const arr = [...pts].sort((p, q) => p - q).filter((u, k, l) => k === 0 || u - l[k - 1] > 0.009);
       for (let k = 0; k < arr.length; k++) {
         const u = arr[k], nx = k + 1 < arr.length ? arr[k + 1] : b;
@@ -7385,11 +7455,11 @@ function startAction(e, isTouch) {
     const t = fxHit(f, p);
     if (t) { fxSel = t.id; action = { ...base, kind: 'fxmove', t, last: p, before: fxState(f) }; fxSyncBar(); requestRender(); return; }
     if (camPresetMode) { camPresetApply(p); return; }
-    if (fxCamPick) { fxEdit(fr => { const c0 = camEdit(S.cur); camKeySet(fr, { z: Math.max(c0.z, 1.5), x: p.x, y: p.y }); }); return; }
+    if (fxCamPick) { fxEdit(fr => { const c0 = camEditBox(S.cur); camSetBox(fr, { z: Math.max(c0.z, 1.5), x: p.x, y: p.y }); }); return; }
     if (TABS.fx === 'cam' && !panelHidden.fx) {   // Camera tab: drag the box to move it, a corner to zoom, or outside it to draw a new shot
-      const b = camBox(camEdit(S.cur)), tol = 30 * DPR / vs, before = fxState(f);
+      const b = camBox(camEditBox(S.cur)), tol = 30 * DPR / vs, before = fxState(f);
       const corner = [[-1, -1], [1, -1], [-1, 1], [1, 1]].find(([sx, sy]) => Math.hypot(p.x - (b.cx + sx * b.hw), p.y - (b.cy + sy * b.hh)) <= tol);
-      if (corner && b.z > 1.001) action = { ...base, kind: 'camsize', b, before, d0: Math.hypot(p.x - b.cx, p.y - b.cy) };
+      if (corner) action = { ...base, kind: 'camsize', b, before, corner };
       else if (b.z > 1.001 && Math.abs(p.x - b.cx) < b.hw && Math.abs(p.y - b.cy) < b.hh) action = { ...base, kind: 'cammove', b, before, p0: p };
       else action = { ...base, kind: 'camdraw', before, p0: p, r: null };
       fxSel = null; fxSyncBar(); requestRender(); return;
@@ -7438,9 +7508,9 @@ function moveAction(e) {
     for (const ev of list) vecMove(toDoc(ev, action.rect));
   } else if (action.kind === 'cammove' || action.kind === 'camsize' || action.kind === 'camdraw') {
     const p = toDoc(e, action.rect), f = curFrame(), b = action.b;
-    if (action.kind === 'cammove') camKeySet(f, { z: b.z, x: b.cx + p.x - action.p0.x, y: b.cy + p.y - action.p0.y });
-    else if (action.kind === 'camsize') camKeySet(f, { z: b.z * action.d0 / Math.max(1, Math.hypot(p.x - b.cx, p.y - b.cy)), x: b.cx, y: b.cy });
-    else { action.r = [Math.min(action.p0.x, p.x), Math.min(action.p0.y, p.y), Math.max(action.p0.x, p.x), Math.max(action.p0.y, p.y)]; if (Math.max(action.r[2] - action.r[0], action.r[3] - action.r[1]) > 40) camKeySet(f, camFromRect(...action.r)); }
+    if (action.kind === 'cammove') camSetBox(f, { z: b.z, x: b.cx + p.x - action.p0.x, y: b.cy + p.y - action.p0.y });
+    else if (action.kind === 'camsize') camSetBox(f, camCornerBox(b, action.corner, p));
+    else { action.r = [Math.min(action.p0.x, p.x), Math.min(action.p0.y, p.y), Math.max(action.p0.x, p.x), Math.max(action.p0.y, p.y)]; if (Math.max(action.r[2] - action.r[0], action.r[3] - action.r[1]) > 40) camSetBox(f, camFromRect(...action.r)); }
     requestRender();
   } else if (action.kind === 'fxmove') {
     const p = toDoc(e, action.rect); action.t.x += p.x - action.last.x; action.t.y += p.y - action.last.y; action.last = p; requestRender();
@@ -7653,30 +7723,122 @@ fxSl('#fxSize', (t, v) => t.size = v); fxSl('#fxRot', (t, v) => t.rot = v);
 $('#fxColorTxt').addEventListener('click', () => { const f = curFrame(), t = (f.texts || []).find(x => x.id === fxSel); if (t) fxEdit(() => { t.color = S.color; }); });
 $('#fxDelTxt').addEventListener('click', () => fxEdit(f => { f.texts = (f.texts || []).filter(x => x.id !== fxSel); fxSel = null; }));
 $('#fxKeep').addEventListener('click', () => { const f = curFrame(), t = (f.texts || []).find(x => x.id === fxSel); if (!t) return; const n = clamp(+$('#fxKeepN').value || 1, 1, 500); let c = 0; for (let i = S.cur + 1; i <= Math.min(S.frames.length - 1, S.cur + n); i++) { const g = S.frames[i]; g.texts = (g.texts || []).filter(x => x.id !== t.id); g.texts.push({ ...t }); g.ver++; c++; } scheduleSave(); toast(`Đã chép chữ sang ${c} frame sau`); });
-$('#fxZoom').addEventListener('change', e => fxEdit(f => { const c0 = camEdit(S.cur); camKeySet(f, { z: e.target.value / 100, x: c0.x, y: c0.y }); }));
+$('#fxZoom').addEventListener('change', e => fxEdit(f => { const c0 = camEditBox(S.cur); camSetBox(f, { z: e.target.value / 100, x: c0.x, y: c0.y }); }));
 $('#fxZoom').addEventListener('input', e => { $('#fxZoomVal').textContent = e.target.value + '%'; });
 $('#fxPick').addEventListener('click', () => { fxCamPick = !fxCamPick; camPresetMode = null; fxSyncBar(); if (fxCamPick) toast('Chạm lên chỗ muốn camera nhìn vào (vd. mặt nhân vật)', 3000); });
 $('#fxCamKey').addEventListener('click', () => fxEdit(f => { if (f.cam) f.cam = null; else camKeySet(f, camAt(S.cur)); }));
 document.querySelectorAll('[data-camtr]').forEach(b => b.addEventListener('click', () => {
   S.camTr = b.dataset.camtr; saveSettings();
   const f = curFrame();
-  if (f.cam) fxEdit(fr => { fr.cam = { ...fr.cam, tr: S.camTr }; if (S.camTr === 'smooth') fr.cam.d = fr.cam.d || S.camD; else delete fr.cam.d; });
+  if (f.cam) fxEdit(fr => { fr.cam = { ...fr.cam, tr: S.camTr }; if (S.camTr === 'smooth') fr.cam.d = fr.cam.d || S.camD; else { delete fr.cam.d; delete fr.cam.s; delete fr.cam.e; delete fr.cam.k; } });
   else fxSyncBar();
   toast(S.camTr === 'cut' ? '✂ Cắt cảnh: tới frame này hình đổi ngay sang khung camera mới' : `〰 Đẩy mượt: từ frame này camera từ từ tiến tới khung mới trong ${S.camD} giây`, 3500);
 }));
 $('#camD').addEventListener('input', e => { $('#camDVal').textContent = (+e.target.value).toFixed(1) + 's'; });
 $('#camD').addEventListener('change', e => { S.camD = +e.target.value; saveSettings(); const f = curFrame(); if (f.cam && f.cam.tr === 'smooth') fxEdit(fr => { fr.cam = { ...fr.cam, d: S.camD }; }); else fxSyncBar(); });
 $('#camWide').addEventListener('click', () => { fxEdit(f => camKeySet(f, { z: 1, x: W / 2, y: H / 2 }, 'cut')); toast('↩ Từ frame này về toàn cảnh (thấy hết khung)', 2500); });
+// one-tap shots: pick the kind, then tap what to look at (the TV, a face…). Film zoom techniques, each one camera key on
+// this frame (time-based, so it works inside one long frame too), one undo step (with its sound when 🔊 is on).
+let camPresetMode = null;
+const camNextKeyTime = i => { const T = frameStartTimes(), n = S.frames.length; let e = i + 1; while (e < n && !S.frames[e].cam) e++; return T[e] - T[i]; };
+const CAM_FX = {
+  cut: { label: '🔍 Cận cảnh', hint: 'cắt thẳng sang cận cảnh' },
+  push: { label: '🎬 Đẩy vào từ từ', hint: 'camera từ từ đẩy vào' },
+  pull: { label: '🔙 Kéo ra', tip: 'Pull-out / reveal: bắt đầu sát chỗ chạm rồi từ từ lùi ra cho thấy cả cảnh (bất ngờ, cô đơn, kết cảnh)', hint: 'bắt đầu sát chỗ đó rồi lùi ra' },
+  crash: { label: '⚡ Zoom giật', tip: 'Crash zoom: lao vút vào chỗ chạm trong ¼ giây, vượt đà rồi khựng + rung (sốc, phát hiện, hài)', hint: 'lao vút vào', sfx: 'whoosh' },
+  steps: { label: '🥁 Zoom 3 nhịp', tip: 'Dramatic zoom: giật vào 3 lần, mỗi lần gần hơn (kịch tính kiểu "tèn tèn TEN")', hint: 'giật vào 3 nhịp', sfx: 'drum' },
+  kb: { label: '🖼 Lia + zoom chậm', tip: 'Ken Burns: vừa lia vừa zoom thật chậm và đều suốt đoạn, tới chỗ chạm (cảnh tĩnh, ảnh, kể chuyện)', hint: 'vừa lia vừa zoom chậm tới đó' },
+  pan: { label: '↔ Lia máy', tip: 'Pan: giữ nguyên độ zoom, camera lia sang chỗ chạm (theo nhân vật, chuyển sự chú ý)', hint: 'lia sang đó' }
+};
+function camPreset(kind) { camPresetMode = camPresetMode === kind ? null : kind; fxCamPick = false; fxSyncBar(); if (camPresetMode) toast(`Chạm lên chỗ muốn người xem chú ý (vd. cái TV, mặt nhân vật): ${CAM_FX[kind].hint}`, 3500); }
+function camShotKey(f, key, sfx) {   // f.cam = key, one undo step (+ its sound effect)
+  const before = fxState(f); f.cam = key; const e = { t: targetOf(f), fxe: true, before, after: fxState(f), bytes: 400 };
+  S.audio = S.audio || {}; S.audio.sfx = S.audio.sfx || [];
+  if (sfx && SFX[sfx] && $('#camSnd').checked && !S.audio.sfx.some(x => x.frameId === f.id && x.kind === sfx)) {
+    const add = [{ id: newId(), frameId: f.id, kind: sfx, vol: 0.9 }]; S.audio.sfx.push(...add); pushEntry({ multi: [e, { t: e.t, sfxadd: add, bytes: 200 }], t: e.t });
+  } else pushEntry(e);
+  f.ver++; queueThumbFor(f); scheduleSave(); fxSyncBar(); requestRender();
+}
+function camPresetApply(p) {
+  const kind = camPresetMode, f = curFrame(); camPresetMode = null;
+  // start from the shot coming in from earlier frames (not this frame's old key), so trying presets again doesn't stack
+  const old = f.cam; f.cam = null; const prev = camAt(S.cur), c0 = prev; f.cam = old;
+  const Z = z => clamp(z, 1, CAM_ZMAX), at = z => camClamp({ z: Z(z), x: p.x, y: p.y });
+  const mirror = z => camClamp({ z: Z(z), x: W / 2 + (W / 2 - p.x) * 0.7, y: H / 2 + (H / 2 - p.y) * 0.5 });
+  let key, msg;
+  if (kind === 'cut' || kind === 'push') {
+    key = { ...at(Math.max(2, c0.z * 1.5)), tr: kind === 'push' ? 'smooth' : 'cut' }; if (kind === 'push') { key.d = S.camD; key.k = 'push'; }
+    msg = kind === 'push' ? `🎬 Từ frame này camera từ từ đẩy vào trong ${key.d} giây.` : '✂ Tới frame này cắt sang cận cảnh.';
+  } else if (kind === 'pull') {
+    const end = c0.z > 1.05 ? camClamp(c0) : { z: 1, x: W / 2, y: H / 2 };
+    key = { ...end, tr: 'smooth', d: Math.max(2, S.camD), s: at(Math.max(2.5, end.z * 2)), k: 'pull' }; msg = `🔙 Bắt đầu sát chỗ chạm rồi lùi ra trong ${key.d} giây.`;
+  } else if (kind === 'crash') {
+    key = { ...at(Math.max(3, c0.z * 2)), tr: 'smooth', d: 0.25, e: 'crash', hit: 18, k: 'crash' }; msg = '⚡ Zoom giật: lao vào trong ¼ giây rồi rung.';
+  } else if (kind === 'steps') {
+    key = { ...at(Math.max(3, c0.z * 2.5)), tr: 'smooth', d: 0.9, e: 'steps', hit: 10, k: 'steps' }; if (prev.z <= 1.05) key.s = { z: 1, x: W / 2, y: H / 2 }; msg = '🥁 Zoom 3 nhịp: giật vào 3 lần, mỗi lần gần hơn.';
+  } else if (kind === 'kb') {
+    const z1 = Math.max(1.35, c0.z * 1.25), d = clamp(Math.round(camNextKeyTime(S.cur) * 10) / 10, 1.5, 12);
+    key = { ...at(z1), tr: 'smooth', d, e: 'linear', s: mirror(Math.max(1.1, z1 * 0.8)), k: 'kb' }; msg = `🖼 Lia + zoom chậm đều trong ${d} giây.`;
+  } else if (kind === 'pan') {
+    const z = Math.max(1.6, c0.z);
+    key = { ...at(z), tr: 'smooth', d: Math.max(1.2, S.camD), s: prev.z > 1.05 ? camClamp({ z, x: prev.x, y: prev.y }) : mirror(z), k: 'pan' }; msg = `↔ Lia sang chỗ chạm trong ${key.d} giây.`;
+  } else return;
+  camSide = 'end'; camShotKey(f, key, CAM_FX[kind].sfx);
+  toast(msg + ' Kéo khung/góc khung để chỉnh, ▶ Xem thử để xem.', 4000);
+}
+// 🧍 shot sizes (film framing) around the character, or the drawing when there is no cut-out character
+const CAM_SHOTS = {
+  wide: { label: 'Toàn cảnh', tip: 'Thấy hết khung hình (wide shot)' },
+  full: { label: 'Toàn thân', tip: 'Cả người từ đầu tới chân (full shot)', a: -0.06, b: 1.06 },
+  med: { label: 'Trung cảnh', tip: 'Từ thắt lưng trở lên (medium shot)', a: -0.05, b: 0.55 },
+  close: { label: 'Cận cảnh', tip: 'Đầu và vai (close-up)', a: -0.03, b: 0.3 },
+  ecu: { label: 'Đặc tả', tip: 'Sát mặt / đôi mắt (extreme close-up)', a: 0.05, b: 0.2 }
+};
+async function camSubject(f) {   // {x0, y0, x1, y1, hx}: what is on the frame, hx = middle of its top part (the head)
+  await ensureLoaded(f);
+  const k = 0.25, w = Math.ceil(W * k), h = Math.ceil(H * k), cv = makeCanvas(w, h), x = cv.getContext('2d', { willReadFrequently: true }); x.scale(k, k);
+  const hasPP = S.pp && S.pp.parts.length && S.showPP;
+  if (hasPP) drawPuppet(x, f.pp, f.lip);
+  else { if (f.col && S.showCol) x.drawImage(f.col, 0, 0); if (f.canvas) x.drawImage(f.canvas, 0, 0); if (f.vec && S.showVec) drawVec(x, f.vec); }
+  const d = x.getImageData(0, 0, w, h).data; cv.width = 0; let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) if (d[(yy * w + xx) * 4 + 3] > 30) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (yy < y0) y0 = yy; if (yy > y1) y1 = yy; }
+  if (x1 < 0) return null;
+  let sx = 0, sn = 0; const top = y0 + Math.max(1, (y1 - y0) * 0.18);
+  for (let yy = y0; yy <= top; yy++) for (let xx = x0; xx <= x1; xx++) if (d[(yy * w + xx) * 4 + 3] > 30) { sx += xx; sn++; }
+  return { x0: x0 / k, y0: y0 / k, x1: (x1 + 1) / k, y1: (y1 + 1) / k, hx: (sn ? sx / sn : (x0 + x1) / 2) / k };
+}
+async function camShotApply(kind) {
+  const f = curFrame(), K = CAM_SHOTS[kind]; let c;
+  if (kind === 'wide') c = { z: 1, x: W / 2, y: H / 2 };
+  else {
+    const b = await camSubject(f); if (!b) { toast('Frame này chưa có nhân vật hay hình nào để lấy khung'); return; }
+    const bh = b.y1 - b.y0, ya = b.y0 + bh * K.a, yb = b.y0 + bh * K.b, hgt = yb - ya;
+    if (kind === 'full') { const r = camFromRect(b.x0 - (b.x1 - b.x0) * 0.08, ya, b.x1 + (b.x1 - b.x0) * 0.08, yb); c = r; }
+    else { const wd = hgt * W / H; c = camFromRect(b.hx - wd / 2, ya, b.hx + wd / 2, yb); }
+  }
+  fxEdit(fr => camSetBox(fr, c));
+  toast(`🧍 ${K.label}${camSide === 'start' && camCanStart(f) ? ' (khung đầu)' : ''}. Kéo khung/góc khung để chỉnh thêm.`, 2500);
+}
+$('#camFxBtns').innerHTML = Object.entries(CAM_FX).filter(([k]) => k !== 'cut' && k !== 'push').map(([k, v]) => `<button class="chip small" data-camfx="${k}" title="${v.tip}">${v.label}</button>`).join('');
+$('#camShotBtns').innerHTML = Object.entries(CAM_SHOTS).map(([k, v]) => `<button class="chip small" data-camshot="${k}" title="${v.tip}">${v.label}</button>`).join('');
+$('#camEase').innerHTML = Object.entries(CAM_EASE_LABEL).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
 $('#camPushIn').addEventListener('click', () => camPreset('push'));
 $('#camCutIn').addEventListener('click', () => camPreset('cut'));
-// one-tap shots: pick the kind, then tap what to look at (the TV, a face…): zoom ×2 there as a cut or a slow push
-let camPresetMode = null;
-function camPreset(kind) { camPresetMode = camPresetMode === kind ? null : kind; fxCamPick = false; fxSyncBar(); if (camPresetMode) toast('Chạm lên chỗ muốn người xem chú ý (vd. cái TV, mặt nhân vật)', 3500); }
-function camPresetApply(p) {
-  const kind = camPresetMode, c0 = camEdit(S.cur); camPresetMode = null;
-  fxEdit(fr => { fr.cam = null; const keep = S.camTr; S.camTr = kind === 'push' ? 'smooth' : 'cut'; camKeySet(fr, { z: Math.min(CAM_ZMAX, Math.max(2, c0.z * 1.5)), x: p.x, y: p.y }); S.camTr = keep; });
-  toast(kind === 'push' ? `🎬 Từ frame này camera từ từ đẩy vào trong ${curFrame().cam.d} giây. Kéo khung/góc khung để chỉnh.` : '✂ Tới frame này cắt sang cận cảnh. Kéo khung/góc khung để chỉnh.', 4000);
-}
+document.querySelectorAll('[data-camfx]').forEach(b => b.addEventListener('click', () => camPreset(b.dataset.camfx)));
+document.querySelectorAll('[data-camshot]').forEach(b => b.addEventListener('click', () => camShotApply(b.dataset.camshot)));
+document.querySelectorAll('[data-camside]').forEach(b => b.addEventListener('click', () => { camSide = b.dataset.camside; fxSyncBar(); requestRender(); }));
+$('#camSwap').addEventListener('click', () => { const f = curFrame(); if (!camCanStart(f)) return; const a = camAt(S.cur, 0), e = camPlain(f.cam); fxEdit(fr => { fr.cam = { ...fr.cam, ...camClamp(a), s: camClamp(e) }; }); toast('⇄ Đã đảo chiều: khung đầu ⇄ khung cuối', 2000); });
+$('#camEase').addEventListener('change', e => { const f = curFrame(); if (!camCanStart(f)) return; fxEdit(fr => { fr.cam = { ...fr.cam, e: e.target.value }; if (e.target.value === 'inout') delete fr.cam.e; }); });
+const camEnsureKey = fr => { if (!fr.cam) camKeySet(fr, camAt(S.cur)); };
+$('#camHit').addEventListener('click', () => fxEdit(fr => { camEnsureKey(fr); fr.cam = { ...fr.cam }; if (fr.cam.hit) delete fr.cam.hit; else fr.cam.hit = 16; }));
+$('#camHand').addEventListener('click', () => fxEdit(fr => {
+  camEnsureKey(fr); fr.cam = { ...fr.cam };
+  if (fr.cam.hh) delete fr.cam.hh; else { fr.cam.hh = 1; if (fr.cam.z < 1.08) Object.assign(fr.cam, camClamp({ z: 1.1, x: fr.cam.x, y: fr.cam.y })); toast('📷 Camera hơi lắc như quay cầm tay (zoom nhẹ 110% để không lộ mép)', 3000); }
+}));
+$('#camPrev').addEventListener('click', () => {
+  if (playing) stopPlay(); const n = S.frames.length; let e = S.cur + 1; while (e < n && !S.frames[e].cam) e++;
+  playRangeOnce = [S.cur, Math.min(n - 1, Math.max(S.cur + 1, e))]; startPlay();
+});
 $('#fxShake').addEventListener('change', e => fxEdit(f => { f.shake = +e.target.value; }));
 $('#fxFlash').addEventListener('click', () => fxEdit(f => { f.flash = !f.flash; }));
 $('#txIn').addEventListener('change', e => txSetAnim('an', e.target.value));
