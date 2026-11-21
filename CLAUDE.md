@@ -8,7 +8,8 @@ Chủ dự án: Quan (frontend dev, nói tiếng Việt). **Toàn bộ chữ tr�
 |---|---|
 | `src/index.html` | **Mã nguồn duy nhất của app.** Một file HTML gồm CSS + JS, không framework, không bundler. Chỉ sửa ở đây. |
 | `tools/build.py` | Build `src/index.html` thành `index.html` ở thư mục gốc: chèn version vào `__APP_VERSION__`, thêm thẻ manifest/icon, tạo `sw.js`, `manifest.webmanifest`, `icons/`. Cần Pillow. |
-| `index.html`, `sw.js`, `manifest.webmanifest`, `icons/` | **File được build ra.** GitHub Pages chạy các file này. Không sửa tay. |
+| `index.html`, `sw.js` | **File được build ra, không commit** (đã gitignore). GitHub Action `.github/workflows/pages.yml` tự build và đăng lên Pages mỗi lần push lên `main`. Ở máy thì build để chạy test. |
+| `manifest.webmanifest`, `icons/` | Cũng do build tạo ra, ít khi đổi, vẫn commit. Không sửa tay. |
 | `ort.wasm.min.js`, `ort-wasm-simd-threaded.*` | onnxruntime-web 1.31.1 (WASM, numThreads=1) |
 | `u2netp-model.js` | Model tách nền u2netp, nhúng base64 (`window.U2NETP_B64`) |
 | `migan-1/2/3.js` | Model vá hình MI-GAN, base64 chia 3 phần, mỗi phần < 16 MB (`window.MIGAN_B64_1..3`) |
@@ -24,8 +25,8 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
 - Cài đặt: `pip install playwright pillow` và có Chrome (đặt `CHROME=/đường/dẫn` nếu không phải `/usr/bin/google-chrome`).
 - Test chạy trên **bản đã build ở thư mục gốc**, nên phải build trước rồi mới test. Ảnh chụp màn hình lưu vào `tests/out/` (đã gitignore).
 - Kiểm tra cú pháp nhanh: tách `<script>` ra file rồi chạy `node --check`.
-- Mỗi lần push lên `main` thì app đã cài trên tablet tự hiện "Có bản cập nhật mới" (service worker: network-first cho index.html, cache-first cho model lớn).
-- Viết test mới theo mẫu `tests/test21.py`: đầu file có header chuẩn (ROOT/ASSETS/OUT/CHROME), mở `http.server` ở một cổng riêng, dòng cuối in `ERR []`.
+- Mỗi lần push lên `main`, Action **Pages** build rồi đăng app (mất khoảng 1 phút). Sau đó app đã cài trên tablet tự hiện "Có bản cập nhật mới" (service worker: network-first cho index.html, cache-first cho model lớn).
+- Test mới đặt tên theo tính năng `tests/test_<tên>.py` (không đánh số, để 2 nhánh không trùng tên; `run_all.py` nhận cả 2 kiểu). Viết theo mẫu `tests/test21.py`: đầu file có header chuẩn (ROOT/ASSETS/OUT/CHROME), mở `http.server` ở một cổng riêng, dòng cuối in `ERR []`.
 - Test nào chạm vào bảng có tab thì thêm init script xoá class `.tabhide` (xem test22).
 
 ## Ràng buộc quan trọng
@@ -74,12 +75,12 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
   - **🎨 Tách nét + màu** (tab trong Import dialog, `splitLineColor`): nét tối (`inkAlpha`) → lớp Nhân vật, màu gốc từng vùng (Màu phẳng: gom về vài màu chính mỗi vùng) → lớp Màu, lan dưới nét. `floatFromImage(line, col)` đặt cả 2 lớp (floating `cc`/`csnap`). Tab Nhân vật ghép có công tắc Làm sạch (`st.ppClean`). Test48.
   - **Caricature** (tab 🤪 Biếm hoạ trong Import dialog): `cariFindHead` (tìm cổ từ mask u2netp), `cariToon` (bilateral + k-means + nét DoG), `cariCompose` (đầu to/thân nhỏ/phồng mặt/viền ngoài). Kết quả cache trong `st.cariC`: đổi thanh hình dáng chỉ chạy lại `cariCompose`.
   - **AI tạo nhân vật** (nút 🤖 AI nhân vật, `aiCharDialog`): gửi ảnh mẫu phong cách (image 1, có sẵn vẽ bằng code `aiStyleRefCanvas` hoặc ảnh người dùng chọn, IndexedDB `ai-style-ref`) + ảnh chụp (photo 2) + câu lệnh tới Gemini `generateContent` (`geminiGenerate`, model mặc định `gemini-2.5-flash-image`). Kết quả lưu IndexedDB `ai-chars`, ✂ Cắt mảnh = `openImport` chế độ Nhân vật ghép. **Key Gemini chỉ nằm trong localStorage `fs-gemini-key`** (gửi qua header `x-goog-api-key`), không bao giờ commit/hardcode, không lưu vào dự án/ZIP. Test dùng API giả (test30).
-  - **☁ Đồng bộ tablet ↔ laptop** (Menu → ☁, nút ☁ cạnh "Đã lưu", `syncDialog`/`syncNow`/`syncOnce`): qua **repo GitHub riêng tư** của người dùng bằng git data API (blobs/trees/commits/refs, 1 commit mỗi lần, ref PATCH không force → bị từ chối thì làm lại). Repo: `index.json` + `p/<id>/rec.json` (bản ghi IndexedDB, binary → `{$b: git sha}`, ref blob → `{$r, $v}`) + `p/<id>/b/<sha>` (ảnh không đổi thì không gửi lại). Trạng thái lần đồng bộ trước ở IDB `sync-state` (`items[id] = {l, r}`, `dels`): chỉ máy này sửa → gửi, chỉ máy kia → nhận (dự án đang mở thì mở lại), cả hai → giữ 2 bản "(từ máy khác)". Tự đồng bộ: 20 s sau khi lưu (`syncSoon`), khi mở app, khi ẩn/hiện app. **Token chỉ ở localStorage `fs-sync-gh-token`**, không vào dự án/ZIP/repo; repo Public bị từ chối. Service worker không cache request khác origin. Test57 (GitHub giả, 2 máy).
+  - **☁ Đồng bộ tablet ↔ laptop** (Menu → ☁, nút ☁ cạnh "Đã lưu", `syncDialog`/`syncNow`/`syncOnce`): qua **repo GitHub riêng tư** của người dùng bằng git data API (blobs/trees/commits/refs, 1 commit mỗi lần, ref PATCH không force → bị từ chối thì làm lại). Repo: `index.json` + `p/<id>/rec.json` (bản ghi IndexedDB, binary → `{$b: git sha}`, ref blob → `{$r, $v}`) + `p/<id>/b/<sha>` (ảnh không đổi thì không gửi lại). Trạng thái lần đồng bộ trước ở IDB `sync-state` (`items[id] = {l, r}`, `dels`): chỉ máy này sửa → gửi, chỉ máy kia → nhận (dự án đang mở thì mở lại), cả hai → giữ 2 bản "(từ máy khác)". Tự đồng bộ: 20 s sau khi lưu (`syncSoon`), khi mở app, khi ẩn/hiện app. **Token chỉ ở localStorage `fs-sync-gh-token`**, không vào dự án/ZIP/repo; repo Public bị từ chối. Service worker không cache request khác origin. `tests/test_sync.py` (GitHub giả, 2 máy).
   - Image → vector (centre-line tracing), Snap-to-line, Delete all
   - Input (cử chỉ, phím tắt), Toolbar, Modal, Persistence, ZIP, Import dialog
   - Video nền, Panel tabs, Wizard (🚀 Làm nhanh), Menu/Help, Init, PWA
 
 ## Ghi chú khi làm cùng nhau
 - Làm trên nhánh `feat/...` hoặc `fix/...`, chạy test, rồi merge vào `main`. `main` luôn phải build được và test pass.
-- Commit `src/` cùng với file đã build ở thư mục gốc trong cùng một commit, để Pages luôn khớp với mã nguồn.
+- Chỉ commit `src/` (và test). **Không commit `index.html`/`sw.js`**: trước đây mỗi nhánh đều commit 2 file này với số phiên bản mới, nên PR nào cũng xung đột với PR khác.
 - File lớn (model) không đổi thì đừng commit lại.
