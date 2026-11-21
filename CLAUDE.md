@@ -25,7 +25,7 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
 - Test chạy trên **bản đã build ở thư mục gốc**, nên phải build trước rồi mới test. Ảnh chụp màn hình lưu vào `tests/out/` (đã gitignore).
 - Kiểm tra cú pháp nhanh: tách `<script>` ra file rồi chạy `node --check`.
 - Mỗi lần push lên `main` thì app đã cài trên tablet tự hiện "Có bản cập nhật mới" (service worker: network-first cho index.html, cache-first cho model lớn).
-- Viết test mới theo mẫu `tests/test21.py`: đầu file có header chuẩn (ROOT/ASSETS/OUT/CHROME), mở `http.server` ở một cổng riêng, dòng cuối in `ERR []`.
+- Test mới đặt tên theo tính năng `tests/test_<tên>.py` (không đánh số, để 2 nhánh không trùng tên). Viết theo mẫu `tests/test21.py`: đầu file có header chuẩn (ROOT/ASSETS/OUT/CHROME), mở `http.server` ở một cổng riêng, dòng cuối in `ERR []`.
 - Test nào chạm vào bảng có tab thì thêm init script xoá class `.tabhide` (xem test22).
 
 ## Ràng buộc quan trọng
@@ -51,7 +51,8 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
   - **Kéo đổi chỗ frame** (`frPointerDown` → `frDragStart/Move/Drop`, `moveFramesTo` + entry `ford`): chuột kéo ngay; cảm ứng giữ 0,5 s rồi kéo (giữ mà không kéo = chọn nhiều như cũ). Frame đang chọn nhiều thì cả nhóm đi cùng.
   - **Cỡ / Độ đậm** (trong Strokes): `setSize`/`setOp`/`syncSizeOp`/`wireSizeOp` (nút − + giữ để lặp, bấm số = `sizeOpPop`). Thanh cỡ không tuyến tính (`sizeToPos`/`posToSize`). Độ đậm lưu riêng cho mỗi bút/kiểu tẩy trong `S.brushOp` (`curOp()`), mặc định = `B.op0`/`B.alpha`; bút dab vượt `op0` thì tăng flow (`flowK`). Tẩy cũng dùng độ đậm (xoá nhạt).
 - **Nét vector**
-  - Vector line layer: `vecStart`/`vecMove`/`vecEnd`. Chế độ kéo chấm `S.vdm` gồm `point` / `soft` / `move`.
+  - Vector line layer: `vecStart`/`vecMove`/`vecEnd`. Chế độ kéo chấm `S.vdm` gồm `point` / `soft` / `move` / `multi`.
+  - **Nhiều chấm** (`multi`): khoanh chọn chấm (`vecMultiLasso`, chặt: bỏ chấm sát viền vùng khoanh, `distToPoly`), chấm cam = chọn/đi theo, chấm xanh = đứng yên. Chạm 1 chấm = thêm/bỏ; chạm nhanh 2 lần cùng chấm = bỏ cả nét (`vpLastTap`); nút ➖ Khoanh bớt (`vpMinus`) = khoanh để bỏ chọn. Cả nét: khoanh chỉ lấy nét có ≥ 75% chiều dài trong vùng (`strokeInsideFrac`). Zoom tối đa `ZOOM_MAX` = 48× vừa khung. Test56.
   - Motion generator; Rig xương + biểu cảm; Gap filling (diffusion + MI-GAN)
 - **Cut-out puppet** (`S.pp.parts`: `{id, role, parent, z, ox, oy, px, py, c, alts[], asset?}`)
   - Mỗi frame có `f.pp[partId] = {r, dx, dy, sx, sy, v, h}`. FK dùng ma trận 2×3 (`ppMats`).
@@ -59,7 +60,7 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
   - Cắt tự động 2 bước: `ppFitJoints` (+ `ppFitLimbs`: tìm bàn tay/bàn chân là đầu mút xa nhất khi đi bên trong hình; tay áp sát thân thì tìm theo viền) → `ppLabBegin` chia vùng (`ppAutoLabels`: lan từ xương, qua nét viền tốn thêm) và cho người dùng tô sửa (`ppSetup.hand`, bút / chạm cả mảng / khoanh, giá trị theo `PP_R10`, 10 = bỏ đi) → `ppAutoCut`. Nút "Sửa lại vùng cắt" mở lại từ `ppLastCut` (chỉ trong phiên), cắt lại giữ tư thế theo vai trò.
   - `ppPresetPose` (đi, chạy, nhảy...), `ppTween`/`ppRetween` (frame giữa tự cập nhật theo keyframe 🔑).
   - **〰 Uốn mềm khớp** (`S.ppSoft`): `drawPuppet` vẽ tay/chân bằng lưới tam giác (`ppDrawSoft`), điểm gần khớp trộn ma trận 2 mảnh (`ppSkinMat`, `ppSoftJoints`): khuỷu/gối trộn 2 phía, vai/hông chỉ phía tay/chân. `ppGeom` cache trục xương + bề rộng chi (WeakMap, không lưu).
-  - **🌊 Phát mượt** (`S.ppSmooth`): khi phát/xuất video, cache frame không có puppet + nét vector, rồi vẽ trực tiếp tư thế nội suy `ppPoseAt(i, tInFrame, wrap)` (cubic đơn điệu, frame dài giữ dáng rồi chuyển trong 0.16 s cuối, ease `hold` thì nhảy) qua `drawFrameFx(..., over=ppLiveOver(...))`. Test56.
+  - **🌊 Phát mượt** (`S.ppSmooth`): khi phát/xuất video, cache frame không có puppet + nét vector, rồi vẽ trực tiếp tư thế nội suy `ppPoseAt(i, tInFrame, wrap)` (cubic đơn điệu, frame dài giữ dáng rồi chuyển trong 0.16 s cuối, ease `hold` thì nhảy) qua `drawFrameFx(..., over=ppLiveOver(...))`. `tests/test_khop_mem.py`.
 - **Kho hình** (`ASSET_CATS`, `assetDialog`, `assetToPart`, `assetToFrame`)
   - Mắt, miệng, biểu cảm, tay, hiệu ứng.
   - Hiệu ứng động (`ANIM_CATS`: 💫 Choáng, 🥊 Đánh nhau, 💥 Chữ âm thanh): mỗi hình là vòng lặp nhiều frame, hàm vẽ nhận `o.t`, số frame + âm thanh ở `items[k][2]` = `{n, sfx}`. `assetToFrameAnim` đặt frame 0, bấm ✓ thì `assetStampAnim` vẽ tiếp lên các frame sau (thiếu thì thêm frame), gắn SFX và ghi undo.
