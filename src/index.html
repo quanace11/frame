@@ -208,6 +208,8 @@ body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:
 #selbar[hidden]{display:none}
 #selbar .selplace{display:flex;flex-wrap:wrap;align-items:center;gap:6px;width:100%;border-top:1px solid var(--line);padding-top:6px} #selbar .selplace[hidden]{display:none}
 #selbar .chip.small{min-height:42px}
+#selTween{display:flex;flex-wrap:wrap;align-items:center;gap:6px;width:100%;border-top:1px solid var(--line);padding-top:6px} #selTween[hidden]{display:none}
+#selTween input[type=number]{width:60px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px;color:var(--text);min-height:42px}
 #playHint{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:#000a;padding:6px 12px;border-radius:10px;font-size:12px;pointer-events:none}
 #playHint[hidden]{display:none}
 /* Timeline */
@@ -372,6 +374,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <span class="lbl">Cỡ</span><input type="range" id="selScale" min="10" max="300" step="1" value="100"><span class="val" id="selScaleVal">100%</span>
       <span class="lbl">Xoay</span><input type="range" id="selRot" min="-180" max="180" step="1" value="0"><span class="val" id="selRotVal">0°</span>
       <button class="chip small" id="selFlip">Lật ngang</button>
+      <button class="chip small" id="selTw" title="Làm hình di chuyển qua nhiều frame: kéo hình tới chỗ kết thúc, app tự vẽ các frame ở giữa (trượt, chạy, bay…)">🎞 Chuyển động</button>
       <button class="chip small" id="selCopy" title="Chép vùng chọn để dán sang frame khác (giữ đúng vị trí, cỡ, góc xoay)">📋 Chép</button>
       <button class="chip small" id="selStamp" title="In một bản tại chỗ, vẫn giữ vùng chọn để kéo tiếp">Nhân bản</button>
       <button class="chip small" id="selVec" title="Biến nét pixel trong vùng chọn thành nét vector sửa được, giữ nguyên vị trí">→ Nét vector</button>
@@ -379,6 +382,11 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <button class="chip small" id="selCancel">Huỷ</button>
       <button class="chip small on" id="selDone">Xong</button>
       <div id="selPlace" class="selplace"><span class="lbl">Đặt</span><button class="chip small" data-fpl="top" title="Hình nằm trên cùng, che nét vẽ ở dưới">⬆ Trên cùng</button><button class="chip small" data-fpl="under" title="Hình nằm sau nét vẽ và màu của frame này, vẫn trước nền">⬇ Sau nét vẽ</button><button class="chip small" data-fpl="bg" title="Hình vào lớp Nền: sau nét vẽ và màu, nhưng đè lên hình đã có trong nền">🖼 Lên nền</button><button class="chip small" data-fpl="bottom" title="Hình nằm dưới cùng: sau mọi thứ, kể cả hình đã có trong lớp Nền">⏬ Dưới cùng</button><button class="chip small" id="selPart" title="Biến hình thành mảnh ghép riêng: đưa lên trước hoặc ra sau nhân vật ghép, dời và xoay theo từng frame">🧩 Thành mảnh ghép</button></div>
+      <div id="selTween" hidden><span class="lbl" style="color:var(--text);width:100%">🎞 Hình mờ = chỗ bắt đầu. Kéo hình tới chỗ <b>kết thúc</b> (Xoay = nghiêng, Cỡ = lại gần)</span>
+        <span class="lbl">Số frame</span><input type="number" id="twN" min="2" max="120" value="12">
+        <span class="lbl">Đường</span><span id="twPath"><button class="chip small" data-twp="line">Thẳng</button><button class="chip small" data-twp="bump">Rung nhẹ</button><button class="chip small" data-twp="arc">Vòng cung</button><button class="chip small" data-twp="hop">Nảy</button></span>
+        <span class="lbl">Tốc độ</span><span id="twEase"><button class="chip small" data-twe="out">Chậm dần</button><button class="chip small" data-twe="linear">Đều</button><button class="chip small" data-twe="in">Nhanh dần</button><button class="chip small" data-twe="inout">Mượt</button></span>
+        <button class="chip small" id="twCancel">✕ Bỏ</button><button class="chip small on" id="twGo">✓ Tạo frame</button></div>
     </div>
     <div id="refbar" class="bar" hidden>
       <span class="lbl" style="color:var(--text)">Ảnh mờ — kéo bằng bút để dời</span>
@@ -845,6 +853,7 @@ function render() {
     c.strokeStyle = '#000'; c.stroke(); c.lineDashOffset = 7 * px; c.strokeStyle = '#fff'; c.stroke();
     c.setLineDash([]); c.lineDashOffset = 0;
   }
+  if (floating && floating.c && floating.tw) renderTween(c, px);
   if (floating && floating.c) {
     c.save(); c.translate(floating.cx, floating.cy); c.rotate(floating.rot); c.scale(floating.scale * floating.flip, floating.scale);
     const k = 1 / floating.scale;
@@ -1519,8 +1528,21 @@ function liftSelection(poly) {
     const kx = o.col.getContext('2d'); kx.save(); polyPath(kx, poly); kx.globalCompositeOperation = 'destination-out'; kx.fill(); kx.restore();
     Object.assign(floating, { cc, csnap });
   }
+  floatLiftVec(floating, poly);
   showSelbar(); requestRender();
 }
+/* vector strokes (lớp Nét) inside the loop move together with the picture: they are drawn into the lifted lines
+   (become pixels when put down) and leave f.vec; floating.vecBefore keeps the old list for undo / Huỷ */
+function floatLiftVec(fl, poly) {
+  const f = fl.o; if (!fl || f.kind !== 'char' || !S.showVec || !f.vec || !f.vec.length) return 0;
+  const pick = f.vec.filter(st => strokeInsideFrac(st, poly) >= 0.75); if (!pick.length) return 0;
+  const [bx, by] = [fl.cx - fl.c.width / 2, fl.cy - fl.c.height / 2], x = fl.c.getContext('2d');
+  x.save(); x.translate(-bx, -by); drawVec(x, pick); x.restore();
+  fl.vecBefore = cloneVec(f.vec); const ids = new Set(pick.map(st => st.id)); f.vec = f.vec.filter(st => !ids.has(st.id)); vsel.clear();
+  return pick.length;
+}
+function floatVecEntry(fl) { return fl.vecBefore ? vecEntry(fl.o, fl.vecBefore, cloneVec(fl.o.vec)) : null; }
+function floatVecRestore(fl) { if (fl.vecBefore) { fl.o.vec = fl.vecBefore; fl.vecBefore = null; } }
 function floatFromImage(bmp, colBmp) {
   if (S.layer === 'vec' || S.layer === 'col' || (colBmp && S.layer === 'bg')) setLayer('char');            // pixels go into a pixel layer
   if (S.tool === 'vedit' || S.tool === 'puppet') setTool('brush');
@@ -1649,6 +1671,7 @@ async function floatToPart() {
     fl.o.colVer++; fl.csnap.width = 0;
   }
   fl.snap.width = 0;
+  { const ve = floatVecEntry(fl); if (ve) entries.push(ve); }
   const s0 = histSnap();
   if (!S.pp) { S.pp = { parts: [] }; S.frames.forEach(f => { if (!f.pp) f.pp = {}; }); }
   const nProp = S.pp.parts.filter(q => /^Hình \d+$/.test(q.name)).length + 1;
@@ -1681,8 +1704,9 @@ function commitFloating() {
     const entries = [pixEntry(f.o, rect, before, after)];
     if (f.csnap && f.o.col) { entries.push(pixEntry(f.o, rect, f.csnap.getContext('2d').getImageData(...rect), f.o.col.getContext('2d').getImageData(...rect), true)); f.o.colVer++; }
     for (const x of f.extra || []) { entries.push(pixEntry(x.o, rect, x.snap.getContext('2d').getImageData(...rect), x.cv.getContext('2d').getImageData(...rect), x.col)); x.snap.width = 0; if (x.o !== f.o) markEdited(x.o); }
+    const ve = floatVecEntry(f); if (ve) entries.push(ve);
     pushEntry(entries.length > 1 ? { multi: entries } : entries[0]);
-  } else if (f.extra) restoreFloatExtra(f);
+  } else { if (f.extra) restoreFloatExtra(f); floatVecRestore(f); }
   f.extra = null;
   if (f.csnap) f.csnap.width = 0;
   if (f.anim && f.o.kind === 'char') { const keep = makeCanvas(); keep.getContext('2d').drawImage(f.snap, 0, 0); assetStampAnim(f, keep); }
@@ -1692,7 +1716,7 @@ function cancelFloating() {
   if (!floating) return;
   const f = floating; floating = null; hideSelbar();
   if (f.o.canvas) { const lx = f.o.canvas.getContext('2d'); lx.save(); lx.globalCompositeOperation = 'copy'; lx.drawImage(f.snap, 0, 0); lx.restore(); }
-  restoreFloatCol(f); restoreFloatExtra(f);
+  restoreFloatCol(f); restoreFloatExtra(f); floatVecRestore(f);
   f.snap.width = 0; f.o.ver++; queueThumbFor(f.o); requestRender();
 }
 function restoreFloatCol(f) {
@@ -1704,9 +1728,102 @@ function showSelbar() {
   const sb = $('#selbar'); sb.hidden = false;
   $('#selScale').value = Math.round(floating.scale * 100); $('#selScaleVal').textContent = Math.round(floating.scale * 100) + '%';
   $('#selRot').value = 0; $('#selRotVal').textContent = '0°';
-  syncFloatPlace();
+  syncFloatPlace(); twSync();
 }
 function hideSelbar() { $('#selbar').hidden = true; }
+
+/* ===== 🎞 tween a lifted picture over many frames (knee slide, run in, fly away…):
+   the place it was lifted at = start, drag it to the end, pick frames / path / speed → each frame gets the picture
+   at the in-between place, size and tilt. Missing frames are added (copies of this frame without the picture). One undo step. ===== */
+const TW = { path: 'line', ease: 'out' };
+function twStart() {
+  const fl = floating; if (!fl || !fl.c) return;
+  if (fl.o.kind !== 'char') { toast('Chuyển động chỉ làm được với hình ở lớp Nhân vật (không phải lớp Nền)'); return; }
+  if (fl.anim) { toast('Hiệu ứng động đã tự chạy qua nhiều frame rồi'); return; }
+  if (fl.tw) { twStop(); return; }
+  fl.tw = { cx: fl.cx, cy: fl.cy, scale: fl.scale, rot: fl.rot, flip: fl.flip };
+  twSync(); requestRender(); toast('Kéo hình tới chỗ kết thúc, rồi bấm ✓ Tạo frame', 3000);
+}
+function twStop() { if (floating) floating.tw = null; twSync(); requestRender(); }
+function twSync() {
+  const on = !!(floating && floating.tw); $('#selTween').hidden = !on; $('#selTw').classList.toggle('on', on);
+  if (floating) $('#selPlace').hidden = on || !!floating.anim || !floating.c;   // less to cover the drawing while picking the end
+  document.querySelectorAll('[data-twp]').forEach(b => b.classList.toggle('on', b.dataset.twp === TW.path));
+  document.querySelectorAll('[data-twe]').forEach(b => b.classList.toggle('on', b.dataset.twe === TW.ease));
+}
+// place of the picture at step k of n (0 = start, n-1 = end)
+function twPoseAt(fl, k, n) {
+  const A = fl.tw, u = n > 1 ? k / (n - 1) : 1, t = (EASE[TW.ease] || EASE.linear)(u), d = Math.hypot(fl.cx - A.cx, fl.cy - A.cy);
+  let x = A.cx + (fl.cx - A.cx) * t, y = A.cy + (fl.cy - A.cy) * t;
+  if (TW.path === 'arc') y -= Math.sin(Math.PI * t) * Math.max(80, d * 0.35);
+  else if (TW.path === 'hop') y -= Math.abs(Math.sin(Math.PI * t * 3)) * Math.max(30, d * 0.1);
+  else if (TW.path === 'bump' && k > 0 && k < n - 1) y -= (k % 2 ? 1 : -1) * Math.max(3, Math.min(10, fl.c.height * fl.scale * 0.006));   // a slide over grass: tiny up/down shake
+  return { cx: x, cy: y, scale: A.scale + (fl.scale - A.scale) * t, rot: A.rot + (fl.rot - A.rot) * t, flip: t < 0.5 ? A.flip : fl.flip };
+}
+function twN() { return clamp(parseInt($('#twN').value) || 12, 2, 120); }
+function renderTween(c, px) {
+  const fl = floating, n = twN(), save = { cx: fl.cx, cy: fl.cy, scale: fl.scale, rot: fl.rot, flip: fl.flip };
+  c.save(); c.globalAlpha = 0.35; Object.assign(fl, fl.tw); if (fl.cc) drawFloating(c, fl.cc); drawFloating(c); Object.assign(fl, save); c.restore();
+  const pts = []; for (let k = 0; k < n; k++) pts.push(twPoseAt(fl, k, n));
+  c.save(); c.lineWidth = 3 * px; c.setLineDash([10 * px, 7 * px]); c.strokeStyle = '#ff3b9a';
+  c.beginPath(); pts.forEach((q, i) => i ? c.lineTo(q.cx, q.cy) : c.moveTo(q.cx, q.cy)); c.stroke(); c.setLineDash([]);
+  c.fillStyle = '#ff3b9a'; c.strokeStyle = '#fff'; c.lineWidth = 1.5 * px;
+  for (const q of pts) { c.beginPath(); c.arc(q.cx, q.cy, 6 * px, 0, Math.PI * 2); c.fill(); c.stroke(); }
+  c.restore();
+}
+async function twMake() {
+  const fl = floating; if (!fl || !fl.tw || !fl.c) return;
+  const n = twN(), i0 = S.frames.indexOf(fl.o); if (i0 < 0) return;
+  const pl = floatPlace(fl) === 'under' ? 'under' : 'top';
+  floating = null; hideSelbar();
+  const pm = progress('Đang tạo ' + n + ' frame…'); await new Promise(r => setTimeout(r, 30));
+  try {
+    const base = fl.o, rest = cloneCv(base.canvas), restCol = base.col ? cloneCv(base.col) : null;
+    const pix = [], added = [];
+    const put = (fr, pose) => {   // draw the picture into frame fr at pose; returns the changed rect
+      const P = { ...fl, ...pose }, save = floating; floating = P;
+      const r = rectFromBox(floatBox(), 2);
+      const lx = fr.canvas.getContext('2d'), kx = fl.cc || pl === 'under' ? colOf(fr, true).getContext('2d') : null;
+      if (pl === 'under') { kx.save(); kx.globalCompositeOperation = 'destination-over'; drawFloating(kx, fl.c); if (fl.cc) drawFloating(kx, fl.cc); kx.restore(); }
+      else { if (fl.cc) { drawFloating(kx, fl.cc); lx.save(); lx.globalCompositeOperation = 'destination-out'; drawFloating(lx, fl.cc); lx.restore(); } drawFloating(lx, fl.c); }
+      floating = save; if (kx) fr.colVer++; fr.ver++; return r;
+    };
+    for (let k = n - 1; k >= 0; k--) {   // last first: frame 1 is the source, new frames copy it without the picture
+      const pose = twPoseAt(fl, k, n);
+      if (k === 0) {   // the frame it was lifted from: undo goes back to before the lift
+        const save = floating; floating = { ...fl, ...pose }; const box = unionBox(fl.dirty, floatBox()); floating = save;
+        put(base, pose); const r = rectFromBox(box, 2); if (!r) continue;
+        pix.push(pixEntry(base, r, fl.snap.getContext('2d').getImageData(...r), base.canvas.getContext('2d').getImageData(...r)));
+        if (base.col) pix.push(pixEntry(base, r, fl.csnap ? fl.csnap.getContext('2d').getImageData(...r) : new ImageData(r[2], r[3]), base.col.getContext('2d').getImageData(...r), true));
+        continue;
+      }
+      let fr = S.frames[i0 + k];
+      if (!fr) {
+        while (S.frames.length + added.length < i0 + k + 1) {   // build the missing frames once, in order
+          const nf = newFrameObj(base.bgId); nf.dur = base.dur; nf.canvas.getContext('2d').drawImage(rest, 0, 0); if (restCol) { colOf(nf, true).getContext('2d').drawImage(restCol, 0, 0); nf.colVer = 1; }
+          nf.ver = 1; nf.pngVer = 0; nf.vec = cloneVec(base.vec); nf.pp = ppClone(base.pp); nf.texts = JSON.parse(JSON.stringify(base.texts || [])); added.push(nf);
+        }
+        fr = added[i0 + k - S.frames.length]; put(fr, pose); continue;
+      }
+      await ensureLoaded(fr);
+      const save = floating; floating = { ...fl, ...pose }; const r = rectFromBox(floatBox(), 2); floating = save; if (!r) continue;
+      const lb = fr.canvas.getContext('2d').getImageData(...r), hadCol = !!fr.col, cb = hadCol ? fr.col.getContext('2d').getImageData(...r) : new ImageData(r[2], r[3]);
+      put(fr, pose);
+      pix.push(pixEntry(fr, r, lb, fr.canvas.getContext('2d').getImageData(...r)));
+      if (fr.col) pix.push(pixEntry(fr, r, cb, fr.col.getContext('2d').getImageData(...r), true));
+      markEdited(fr);
+    }
+    rest.width = 0; if (restCol) restCol.width = 0;
+    const multi = [...pix], ve = floatVecEntry(fl); if (ve) multi.push(ve);
+    if (added.length) { const last = S.frames[S.frames.length - 1]; S.frames.push(...added); loaded.push(...added); multi.push({ t: targetOf(last), add: { frames: added, index: S.frames.length - added.length, dur0: last.dur, dur1: last.dur }, bytes: 0 }); }
+    if (multi.length) pushEntry({ multi, t: targetOf(base) });
+    fl.snap.width = 0; if (fl.csnap) fl.csnap.width = 0; fl.extra = null;
+    markEdited(base);
+    for (const f of added) await drawThumb(f);
+    buildStrip(); updateFrameUI(); scheduleSave(); evictSoon(); requestRender();
+  } finally { pm.close(); }
+  toast(`Đã tạo chuyển động qua ${n} frame (frame ${i0 + 1}–${i0 + n}) — bấm ▶ Phát để xem, hoàn tác 1 lần để bỏ`, 4000);
+}
 
 /* ===== copy / paste a selection across frames ===== */
 let selClip = null;
@@ -2408,6 +2525,28 @@ function colLiftStart(f) {
   const hole = makeCanvas(); hole.getContext('2d').drawImage(f.col, 0, 0);
   return { cc, x0, y0, x1, y1, snap, hole, m: [1, 0, 0, 1, 0, 0] };
 }
+/* colour inside a lasso loop (or the whole frame when poly is null) lifts with the strokes picked by that loop:
+   lines traced from a picture have gaps, so "colour enclosed by the lines" alone often left the colour behind */
+function colLiftPoly(f, poly) {
+  if (!f.col || !S.showCol) return null;
+  let x0 = 0, y0 = 0, x1 = W - 1, y1 = H - 1;
+  if (poly) { x0 = W; y0 = H; x1 = -1; y1 = -1; for (const q of poly) { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y); }
+    x0 = Math.max(0, Math.floor(x0)); y0 = Math.max(0, Math.floor(y0)); x1 = Math.min(W - 1, Math.ceil(x1)); y1 = Math.min(H - 1, Math.ceil(y1)); }
+  const bw = x1 - x0 + 1, bh = y1 - y0 + 1; if (bw < 3 || bh < 3) return null;
+  const snap = makeCanvas(); snap.getContext('2d').drawImage(f.col, 0, 0);
+  const cc = makeCanvas(bw, bh), cx = cc.getContext('2d');
+  cx.save(); cx.translate(-x0, -y0); if (poly) { polyPath(cx, poly); cx.clip(); } cx.drawImage(f.col, 0, 0); cx.restore();
+  const kx = f.col.getContext('2d'); kx.save(); if (poly) { polyPath(kx, poly); kx.globalCompositeOperation = 'destination-out'; kx.fill(); } else kx.clearRect(0, 0, W, H); kx.restore();
+  const hole = makeCanvas(); hole.getContext('2d').drawImage(f.col, 0, 0);
+  return { cc, x0, y0, x1, y1, snap, hole, m: [1, 0, 0, 1, 0, 0] };
+}
+// the loop that picked the current stroke selection (Sửa nét): dragging those strokes moves the colour inside it too
+let vselLoop = null;
+const vselKey = () => [...vsel].sort().join(',');
+function vselLoopSet(poly) { vselLoop = vsel.size ? { poly: poly && poly.map(q => ({ x: q.x, y: q.y })), key: vselKey() } : null; }
+function vselLoopOk() { return vselLoop && vsel.size && vselLoop.key === vselKey(); }
+function colLiftSel(f) { return vselLoopOk() ? colLiftPoly(f, vselLoop.poly) : colLiftStart(f); }
+function vselLoopMove(m) { if (vselLoopOk() && vselLoop.poly) vselLoop.poly = vselLoop.poly.map(q => ({ x: m[0] * q.x + m[2] * q.y + m[4], y: m[1] * q.x + m[3] * q.y + m[5] })); }
 function colLiftApply(f, L, m) {      // m: canvas transform [a, b, c, d, e, f] in document space
   const kx = f.col.getContext('2d'); kx.save(); kx.globalCompositeOperation = 'copy'; kx.drawImage(L.hole, 0, 0);
   kx.globalCompositeOperation = 'source-over'; kx.setTransform(m[0], m[1], m[2], m[3], m[4], m[5]); kx.drawImage(L.cc, L.x0, L.y0); kx.restore(); L.m = m; f.colVer++;
@@ -2421,7 +2560,7 @@ function colLiftEnd(f, L) {           // -> pixel undo entry for the Màu layer
   L.snap.width = L.hole.width = L.cc.width = 0; return e;
 }
 function vxformMove(a, p, f) {
-  if (!a.moved) { if (Math.hypot(p.x - a.start.x, p.y - a.start.y) < 3 * DPR / vs) return; a.col = colLiftStart(f); }
+  if (!a.moved) { if (Math.hypot(p.x - a.start.x, p.y - a.start.y) < 3 * DPR / vs) return; a.col = colLiftSel(f); }
   a.moved = true; const h = a.h;
   let m, ws = 1;
   if (h.k === 's') {
@@ -2516,7 +2655,9 @@ function vecMultiMove(a, p, f) {
     if (Math.hypot(dx, dy) < 10 * DPR / vs) return;   // a bit of finger/pen wobble still counts as a tap
     if (a.tap) { const s = vpGet(a.tap.st.id); if (!s || !s.has(a.tap.i)) { if (!vpsel.has(a.tap.st.id) || !vsel.has(a.tap.st.id)) vpsel.set(a.tap.st.id, new Set()); vpsel.get(a.tap.st.id).add(a.tap.i); } }
     a.moved = true; a.w = vpWeights(f); updVecBar();
+    a.col = vpoly ? colLiftPoly(f, vpoly) : vselLoopOk() && !vselLoop.poly ? colLiftPoly(f, null) : null;
   }
+  if (a.col) colLiftApply(f, a.col, [1, 0, 0, 1, dx, dy]);
   for (const e of a.w) for (let j = 0; j < e.base.length; j++) { const k = e.w[j]; if (!k) continue; e.st.pts[j].x = e.base[j].x + dx * k; e.st.pts[j].y = e.base[j].y + dy * k; }
   if (a.polyBase) vpoly = a.polyBase.map(q => ({ x: q.x + dx, y: q.y + dy }));
   requestRender();
@@ -2599,9 +2740,27 @@ function charHasPixels(f) {
   return false;
 }
 async function vecOfferConvert() {
-  const ok = await modal({ title: 'Đây là nét pixel', html: '<p>Nét này được vẽ ở lớp <b>Nhân vật</b> (dạng pixel) nên chưa sửa được bằng Sửa nét.</p><p>Chuyển các nét pixel của frame này thành <b>nét sửa được</b>? Màu đã tô ở lớp Màu vẫn giữ nguyên.</p><p class="lbl" style="font-size:12px">Mẹo: chọn lớp <b>Nét</b> trước khi vẽ thì nét luôn sửa được, kể cả sau khi tô màu hay đổi công cụ. App sẽ nhớ lớp này cho lần sau.</p>',
-    buttons: [{ label: 'Để sau', value: false }, { label: 'Chuyển thành nét sửa được', value: true, primary: true }] });
-  if (ok) convertPixelsToVector(false);
+  const ok = await modal({ title: 'Đây là nét pixel', html: '<p>Nét này được vẽ ở lớp <b>Nhân vật</b> (dạng pixel) nên chưa sửa được bằng Sửa nét.</p><p><b>Muốn dời cả người</b> (hoặc làm người trượt, chạy qua nhiều frame)? Bấm <b>✋ Dời cả hình</b>: nét và màu đi cùng nhau.</p><p>Muốn uốn từng nét? Chuyển các nét pixel của frame này thành <b>nét sửa được</b>. Màu ở lớp Màu thì vẫn nằm yên.</p><p class="lbl" style="font-size:12px">Mẹo: chọn lớp <b>Nét</b> trước khi vẽ thì nét luôn sửa được, kể cả sau khi tô màu hay đổi công cụ. App sẽ nhớ lớp này cho lần sau.</p>',
+    buttons: [{ label: 'Để sau', value: false }, { label: 'Chuyển thành nét sửa được', value: 'conv' }, { label: '✋ Dời cả hình', value: 'all', primary: true }] });
+  if (ok === 'conv') convertPixelsToVector(false);
+  else if (ok === 'all') liftAll();
+}
+// box around everything drawn on this frame (lines, colour, vector lines), in document pixels
+function frameContentBox(f) {
+  const k = 4, w = Math.ceil(W / k), h = Math.ceil(H / k), c = makeCanvas(w, h), x = c.getContext('2d');
+  x.scale(1 / k, 1 / k); if (f.col && S.showCol) x.drawImage(f.col, 0, 0); if (f.canvas) x.drawImage(f.canvas, 0, 0); if (f.vec && S.showVec) drawVec(x, f.vec);
+  const d = x.getImageData(0, 0, w, h).data; c.width = 0; let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let i = 0; i < w * h; i++) if (d[i * 4 + 3] > 8) { const xx = i % w, yy = (i / w) | 0; if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (yy < y0) y0 = yy; if (yy > y1) y1 = yy; }
+  return x1 < 0 ? null : [Math.max(0, (x0 - 2) * k), Math.max(0, (y0 - 2) * k), Math.min(W, (x1 + 3) * k), Math.min(H, (y1 + 3) * k)];
+}
+// "✋ Dời cả hình": lift everything of this frame (lines + colour + vector lines) as one picture
+async function liftAll() {
+  const f = curFrame(); if (!f) return; await ensureLoaded(f);
+  if (S.tool !== 'lasso') setTool('lasso'); if (S.layer !== 'char') setLayer('char');
+  commitFloating();
+  const b = frameContentBox(f); if (!b) { toast('Frame này chưa có hình nào'); return; }
+  liftSelection([{ x: b[0], y: b[1] }, { x: b[2], y: b[1] }, { x: b[2], y: b[3] }, { x: b[0], y: b[3] }]);
+  if (floating) toast('Đã chọn cả hình — kéo để dời, hoặc bấm 🎞 Chuyển động để tạo các frame trượt/chạy', 4000);
 }
 function vecEraseAt(p) {
   const f = curFrame(), r = Math.max(bsz() / 2, 6 * DPR / vs);
@@ -2623,7 +2782,7 @@ function vecMove(p) {
     if (!a.moved) {
       if (a.start && Math.hypot(p.x - a.start.x, p.y - a.start.y) < 6 * DPR / vs) return;
       if (a.tapId && !a.wasSel) { vsel.clear(); vsel.add(a.tapId); updVecBar(); }
-      a.col = colLiftStart(f);
+      a.col = colLiftSel(f);
     }
     const dx = p.x - a.last.x, dy = p.y - a.last.y; a.last = p; a.moved = true;
     for (const st of f.vec) if (vsel.has(st.id)) for (const q of st.pts) { q.x += dx; q.y += dy; }
@@ -2649,13 +2808,14 @@ function vecEnd() {
     pushVecUndo(f, before); markEdited(f);
   } else if (a.kind === 'verase') { if (a.removed) { pushVecUndo(f, a.before); markEdited(f); } }
   else if (a.kind === 'vlasso' && a.multi) { const poly = lasso; lasso = null; vecMultiLasso(poly, f); }
-  else if (a.kind === 'vmulti') { if (a.moved) { pushVecUndo(f, a.before); markEdited(f); } else vecMultiTap(a); }
+  else if (a.kind === 'vmulti') { if (a.moved && a.col) { const pe = colLiftEnd(f, a.col), ve = vecEntry(f, a.before, cloneVec(f.vec)); pushEntry(pe ? { multi: [pe, ve] } : ve); markEdited(f); } else if (a.moved) { pushVecUndo(f, a.before); markEdited(f); } else vecMultiTap(a); }
   else if (a.kind === 'vlasso') {
     const poly = lasso; lasso = null;
     let area = 0; if (poly.length > 2) for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) area += (poly[j].x + poly[i].x) * (poly[j].y - poly[i].y);
     if (Math.abs(area / 2) < 200) { vsel.clear(); if (poly.length && charPixelAt(f, poly[0])) vecOfferConvert(); }
-    else { vsel.clear(); for (const st of f.vec) if (strokeInsideFrac(st, poly) >= 0.75) vsel.add(st.id); if (!vsel.size) toast('Không có nét nào nằm gọn trong vùng khoanh'); }
+    else { vsel.clear(); for (const st of f.vec) if (strokeInsideFrac(st, poly) >= 0.75) vsel.add(st.id); vselLoopSet(poly); if (!vsel.size) toast('Không có nét nào nằm gọn trong vùng khoanh'); }
   } else if ((a.kind === 'vmove' || a.kind === 'vxform') && a.moved && a.col) {
+    vselLoopMove(a.col.m);
     const pe = colLiftEnd(f, a.col), ve = vecEntry(f, a.before, cloneVec(f.vec)); pushEntry(pe ? { multi: [pe, ve] } : ve); markEdited(f);
   } else if ((a.kind === 'vmove' || a.kind === 'vbend' || a.kind === 'vxform') && a.moved) { pushVecUndo(f, a.before); markEdited(f); }
   else if (a.kind === 'vmove' && a.tapId) { a.wasSel ? vsel.delete(a.tapId) : vsel.add(a.tapId); }
@@ -2723,7 +2883,7 @@ $('#vecDense').addEventListener('click', vecDensify);
 document.querySelectorAll('[data-vdm]').forEach(b => b.addEventListener('click', () => { S.vdm = b.dataset.vdm; saveSettings(); updVecBar(); toast({ point: 'Kéo chấm nào chỉ chấm đó di chuyển. Chạm giữa 2 chấm để thêm chấm mới.', soft: 'Kéo chấm sẽ uốn cong cả đoạn nét lân cận', move: 'Chạm từng nét để chọn nhiều nét (chạm lại để bỏ). Kéo để dời, kéo góc khung để phóng to/thu nhỏ, nút tròn để xoay.', multi: 'Khoanh vùng quanh các chấm (vd cả cẳng chân) rồi kéo bên trong vùng. Chấm không chọn đứng yên làm mốc. Chạm 1 chấm để thêm/bớt, chạm nhanh 2 lần để bỏ cả nét, ➖ Khoanh bớt để bỏ nhiều chấm.' }[S.vdm], 4000); requestRender(); }));
 $('#vecColor').addEventListener('click', () => vecOp((f, sel) => sel.forEach(st => st.c = S.color)));
 $('#vecSmooth').addEventListener('click', () => vecOp((f, sel) => sel.forEach(st => { st.pts = smoothPts(smoothPts(st.pts)); })));
-$('#vecAll').addEventListener('click', () => { const f = curFrame(); vsel.clear(); vpsel.clear(); vpoly = null; f.vec.forEach(st => { vsel.add(st.id); if (S.vdm === 'multi') vpsel.set(st.id, new Set(st.pts.map((_, i) => i))); }); updVecBar(); requestRender(); });
+$('#vecAll').addEventListener('click', () => { const f = curFrame(); vsel.clear(); vpsel.clear(); vpoly = null; f.vec.forEach(st => { vsel.add(st.id); if (S.vdm === 'multi') vpsel.set(st.id, new Set(st.pts.map((_, i) => i))); }); vselLoopSet(null); updVecBar(); requestRender(); });
 $('#vecDel').addEventListener('click', vecDelete);
 $('#vecNone').addEventListener('click', () => { vsel.clear(); updVecBar(); requestRender(); });
 $('#vecMinus').addEventListener('click', () => { vpMinus = !vpMinus; updVecBar(); if (vpMinus) toast('Khoanh quanh các chấm cam bị chọn lố để bỏ chọn. Bấm ➖ lần nữa để tắt.', 3500); requestRender(); });
@@ -6368,7 +6528,7 @@ async function convertPixelsToVector(fromFloating) {
     const fl = floating; floating = null; hideSelbar();
     if (fl.o.canvas) { const lx = fl.o.canvas.getContext('2d'); lx.save(); lx.globalCompositeOperation = 'copy'; lx.drawImage(fl.snap, 0, 0); lx.restore(); }
     restoreFloatCol(fl); restoreFloatExtra(fl); fl.snap.width = 0; fl.o.ver++;
-    f.vec.push(...strokes); pushVecUndo(f, vBefore); markEdited(f);
+    f.vec.push(...strokes); pushVecUndo(f, fl.vecBefore || vBefore); fl.vecBefore = null; markEdited(f);   // vector lines that were lifted are traced again with the rest
   } else {
     const keep = await modal({ title: `Đã dò được ${strokes.length} nét`, html: '<p>Xoá nét pixel cũ ở lớp Nhân vật (frame này) sau khi chuyển sang vector?</p><p class="lbl" style="font-size:12px">Nếu lớp có cả mảng tô màu, hãy chọn Giữ lại.</p>',
       buttons: [{ label: 'Giữ lại pixel', value: 'keep' }, { label: 'Xoá pixel', value: 'clear', primary: true }] });
@@ -6641,8 +6801,8 @@ document.addEventListener('touchmove', e => { if (e.target.closest && e.target.c
 
 /* ========= Toolbar wiring ========= */
 function setTool(t) {
-  if (t === 'lasso' && S.layer === 'vec') t = 'vedit';
-  if (t === 'lasso' && S.layer === 'col') { setLayer('char'); toast('Chọn vùng ở lớp Nhân vật — màu bên dưới đi theo'); }
+  // Chọn vùng always lifts the whole drawing under the loop: pixel lines + colour + vector lines (it used to jump to Sửa nét on lớp Nét)
+  if (t === 'lasso' && (S.layer === 'vec' || S.layer === 'col')) { setLayer('char'); toast('Chọn vùng lấy cả nét vẽ, màu và nét vector bên trong vùng khoanh', 2500); }
   if (t === 'pick' && S.tool !== 'pick') pickBack = S.tool;
   motionClose(); rigClose();
   if (t !== 'lasso' && floating) commitFloating();
@@ -6775,6 +6935,12 @@ $('#selCancel').addEventListener('click', () => { cancelFloating(); updUndoBtns(
 $('#selDone').addEventListener('click', commitFloating);
 $('#selPlace').addEventListener('click', e => { const b = e.target.closest('[data-fpl]'); if (b) setFloatPlace(b.dataset.fpl); });
 $('#selPart').addEventListener('click', () => floatToPart());
+$('#selTw').addEventListener('click', twStart);
+$('#twCancel').addEventListener('click', twStop);
+$('#twGo').addEventListener('click', twMake);
+$('#twN').addEventListener('input', requestRender); $('#twN').addEventListener('keydown', e => e.stopPropagation());
+document.querySelectorAll('[data-twp]').forEach(b => b.addEventListener('click', () => { TW.path = b.dataset.twp; twSync(); requestRender(); }));
+document.querySelectorAll('[data-twe]').forEach(b => b.addEventListener('click', () => { TW.ease = b.dataset.twe; twSync(); requestRender(); }));
 // keyboard (for desktop testing / keyboard covers)
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
@@ -8682,6 +8848,7 @@ function helpHtml() {
 <li><b>🤖 AI nhân vật</b> (thanh trên): chọn ảnh chụp 1 người, AI (Google Gemini) vẽ lại thành nhân vật hoạt hình theo ảnh mẫu phong cách, lưu vào <b>Nhân vật AI</b>; bấm <b>✂ Cắt mảnh</b> để thành Nhân vật ghép. Cần key Gemini của bạn (Menu → 🔑 Key Gemini), key chỉ lưu trên máy này.</li>
 <li><b>☁ Đồng bộ tablet ↔ laptop</b> (Menu): bài được giữ trong một repo GitHub riêng tư của bạn. Cài 1 lần trên mỗi máy (tên repo + token), sau đó app tự gửi bài khi bạn sửa xong hoặc chuyển sang app khác, và tự lấy bài mới khi mở lại. Hai máy cùng sửa 1 dự án thì app giữ cả 2 bản.</li>
 <li><b>🤪 Biếm hoạ</b>: Nhập ảnh → tab "Biếm hoạ". Chọn ảnh chụp 1 người, app tự tách người, phóng to đầu, thu nhỏ thân, phồng giữa mặt và tô màu kiểu hoạt hình. Chỉnh Đầu to / Cỡ thân / Vị trí cổ rồi đưa vào vùng chọn hoặc thành Nhân vật ghép để làm động.</li>
+<li><b>🎞 Chuyển động</b> (trượt gối, chạy vào, bay đi…): dùng <b>Chọn vùng</b> khoanh cả người (nét, màu và nét vector đi cùng nhau) → bấm <b>🎞 Chuyển động</b> → hình mờ là chỗ bắt đầu, kéo hình tới chỗ kết thúc (Xoay = nghiêng, Cỡ = lại gần) → chọn số frame, Đường (Thẳng, Rung nhẹ, Vòng cung, Nảy), Tốc độ (Chậm dần hợp với trượt) → <b>✓ Tạo frame</b>. App tự thêm frame còn thiếu. Hoàn tác 1 lần là bỏ hết.</li>
 <li><b>Lớp Nét</b> (vector): vẽ bằng Bút khi chọn lớp Nét, hoặc nhập ảnh → "Chuyển thành nét vẽ". Công cụ <b>Sửa nét</b>: chạm chọn, kéo để dời, kéo chấm để uốn, khoanh để chọn nhiều, chỉnh Xoay/Cỡ/Dày. Tẩy ở lớp Nét xoá cả nét. <b>Chốt → pixel</b> để gộp vào lớp Nhân vật.</li>
 <li><b>🎬 Tạo chuyển động</b> (trong Sửa nét): chọn nét tay/chân/miệng → chọn kiểu Vẫy, Nhép miệng, Nhún, Lắc → xem thử → Tạo. Muốn vừa vẫy tay vừa nói: tạo vẫy tay trước, quay lại frame đầu, chọn miệng, chọn "Áp lên các frame sau có sẵn".</li>
 <li><b>🦴 Xương & biểu cảm</b> (trong Sửa nét): app tự gắn bộ xương, kéo chấm cho khớp; gán Mắt/Miệng/Lông mày (hoặc Tự đoán); chọn Thân (đi, chạy, nhảy, lăn lộn, vẫy tay, ăn mừng, ngã, thở) và/hoặc Mặt (chớp mắt, nói, cười, khóc, gào thét, giận, ngạc nhiên, buồn) → Tạo frame.</li>
