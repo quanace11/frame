@@ -73,6 +73,7 @@ $('#menuBtn').addEventListener('click', () => {
 </div>
 <div class="set-row"><span>👆 Nút to cho ngón tay (chấm màu, lớp, nút công cụ)</span><input type="checkbox" class="switch" id="sBigUi" ${S.bigUi ? 'checked' : ''}></div>
 <div class="set-row"><span>⚡ Xuất video nhanh (không phải chờ hết phim)</span><input type="checkbox" class="switch" id="sFastV" ${S.fastVideo !== false ? 'checked' : ''}></div>
+<div class="set-row"><span>📝 Nhân vật ghép mờ như giấy can khi cầm Bút / Tẩy / Đổ màu (để đồ qua, đổ màu lên trên)</span><input type="checkbox" class="switch" id="sTrace" ${S.ppTrace !== false ? 'checked' : ''}></div>
 <div class="set-row"><span>Ngón tay cũng vẽ (khi không có bút)</span><input type="checkbox" class="switch" id="sFinger" ${S.fingerDraw ? 'checked' : ''}></div>
 <div class="set-row"><span>Xoay khung bằng 2 ngón</span><input type="checkbox" class="switch" id="sRotG" ${S.rotGesture !== false ? 'checked' : ''}></div>
 <div class="set-row"><span>🧲 Bán kính hút nét (px)</span><input type="range" id="sSnapR" min="6" max="80" value="${S.snapR}"></div>
@@ -85,6 +86,7 @@ $('#menuBtn').addEventListener('click', () => {
     ov.querySelector('#sFinger').addEventListener('change', e => { S.fingerDraw = e.target.checked; saveSettings(); });
     ov.querySelector('#sBigUi').addEventListener('change', e => { S.bigUi = e.target.checked; applyBigUi(); saveSettings(); });
     ov.querySelector('#sFastV').addEventListener('change', e => { S.fastVideo = e.target.checked; saveSettings(); });
+    ov.querySelector('#sTrace').addEventListener('change', e => { S.ppTrace = e.target.checked; saveSettings(); requestRender(); });
     ov.querySelector('#sRotG').addEventListener('change', e => { S.rotGesture = e.target.checked; saveSettings(); });
     ov.querySelector('#sSnapR').addEventListener('input', e => { S.snapR = +e.target.value; snapField = null; saveSettings(); });
     ov.querySelector('#sSmooth').addEventListener('input', e => { S.smooth = e.target.value / 100; saveSettings(); });

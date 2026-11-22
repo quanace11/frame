@@ -9,12 +9,12 @@ function setTool(t) {
   if (t === 'vedit' && S.layer !== 'vec') setLayer('vec');
   if (t !== 'vedit') { vsel.clear(); }
   else { const f = curFrame(); if (f && !f.vec.length && charHasPixels(f)) toast('Nét ở frame này là pixel (lớp Nhân vật). Chạm vào nét để chuyển thành nét sửa được.', 4000); }
-  if (t !== 'puppet') { ppSetup = null; ppCutMode = false; ppPatchMode = false; ppPaint = null; }
+  if (t !== 'puppet') { ppSetup = null; ppCutMode = false; ppPatchMode = false; ppPaint = null; if (HC) { HC = null; lasso = null; } }
   $('#layerPP').classList.toggle('on', t === 'puppet');
   if (t !== 'fx') { fxCamPick = false; ballMode = null; gagMode = null; ballSyncBar(); }
   updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); updBrushBtn(); syncSizeOp(); requestRender();
   document.querySelectorAll('.tool[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
-  document.body.dataset.tool = t; syncLassoBar();
+  document.body.dataset.tool = t; syncLassoBar(); hcSync();
   $('#dropBtn').hidden = !(t === 'fill' || t === 'pick'); $('#dropBtn').classList.toggle('on', t === 'pick');
 }
 function setLayer(l) {
