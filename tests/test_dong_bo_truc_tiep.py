@@ -56,8 +56,10 @@ async def main():
         if t is None: errs.append('PC did not pick up the tablet drawing')
         na, nb = await names(A), await names(B); print('no copies', na, nb)
         if na != ['Dự án 1'] or nb != ['Dự án 1']: errs.append('unexpected copies %s %s' % (na, nb))
-        print('the live check mostly gets "304 nothing new"', ETAG['nm'] > ETAG['ok'], ETAG)
-        if ETAG['nm'] == 0: errs.append('poll does not use the ETag')
+        # nothing changes for 20 s: the live checks get "304 nothing new" (free), no sync runs
+        await A.wait_for_timeout(6000); e0 = dict(ETAG); l0 = await A.evaluate('syncLast'); await A.wait_for_timeout(20000)
+        d304, d200 = ETAG['nm'] - e0['nm'], ETAG['ok'] - e0['ok']; print('idle 20 s: 304 answers', d304, '200 answers', d200, 'no sync ran', await A.evaluate('syncLast') == l0)
+        if d304 < 3 or d200 > 0: errs.append('idle live check not using ETag: 304=%d 200=%d' % (d304, d200))
         # 3. a dialog is open on the tablet: its open project is not swapped under it; closed → it comes soon
         await A.evaluate("window._dlg = modal({title:'Thử', html:'<p>hộp thoại</p>', buttons:[{label:'Đóng', value:null}]})")
         await B.click('#addBtn')
@@ -67,8 +69,8 @@ async def main():
         t = await until(A, "S.frames.length === 3", 30); print('after closing the dialog it came in', t, 's')
         if t is None: errs.append('skipped pull was not retried')
         # 4. a real conflict: both change the project before they can sync → the 2-version dialog, open the other one
-        await A.evaluate("clearInterval(1e9); window._sp = syncPoll; syncPoll = async()=>{}; localStorage.setItem('fs-sync-auto','off')")
-        await B.evaluate("syncPoll = async()=>{}; localStorage.setItem('fs-sync-auto','off')")
+        await A.evaluate("localStorage.setItem('fs-sync-auto','off')")   # no automatic sync on either device → both edit before syncing
+        await B.evaluate("localStorage.setItem('fs-sync-auto','off')")
         await B.click('#addBtn'); await B.wait_for_timeout(1500); await draw(A, [(200, 300), (400, 350)]); await A.wait_for_timeout(1500)
         await B.evaluate("syncNow({manual:true})"); await A.evaluate("syncNow({manual:true})")
         await A.wait_for_selector('.dlg >> text=Hai máy cùng sửa dự án này', timeout=15000)

@@ -6582,7 +6582,7 @@ async function syncRun(opt) {
       const L2 = await projIndex(), got = L2.filter(x => out.pulledIds.includes(x.id)).sort((a, b) => b.updated - a.updated)[0], cur = L2.find(x => x.id === curProjId);
       if (got && got.id !== curProjId && (opt.join || !cur || got.updated > cur.updated) && !saveT && !stroke && !floating) { await openProject(got.id); out.reloaded = true; }
     }
-    syncLast = Date.now(); syncMsg = ''; syncEtag = '';
+    syncLast = Date.now(); syncMsg = '';
     if (out.deferred) syncSoon(4000);   // the open project could not be replaced just now (a dialog was open…): try again soon
     const t = new Date(syncLast).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     setSyncState('☁ ✓', 'Đã đồng bộ lúc ' + t);
@@ -6613,7 +6613,8 @@ async function syncPoll() {
     if (r.status === 304 || !r.ok) return;
     syncEtag = r.headers.get('etag') || ''; sha = ((await r.json()).object || {}).sha;
   } catch (e) { return; }
-  if (sha && sha !== syncHeadSeen && !syncBusy) { setSyncState('☁ ↓', 'Máy khác vừa lưu — đang lấy bản mới…'); syncNow({ quiet: true, live: true }); }
+  if (sha && sha !== syncHeadSeen && !syncBusy) { syncEtag = '';   // compare afresh next time, even if this sync fails
+    setSyncState('☁ ↓', 'Máy khác vừa lưu — đang lấy bản mới…'); syncNow({ quiet: true, live: true }); }
 }
 setInterval(syncPoll, SYNC_POLL_MS);
 // leaving this window (e.g. picking up the tablet after working on the PC): send what is not sent yet right away
