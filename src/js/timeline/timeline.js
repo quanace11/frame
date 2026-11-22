@@ -1,6 +1,15 @@
 /* ========= Timeline UI ========= */
 const strip = $('#strip');
 const BG_COLORS = ['#ffb21e', '#4cd964', '#2f7bff', '#ff3b5c', '#b36bff', '#00c7be'];
+// one waveform canvas per frame, kept across rebuilds and 0×0 until a waveform is drawn (updateWaves sizes it).
+// Before, every rebuild made a new 300×150 canvas per frame: at 100+ frames each Thêm/Nhân bản frame left ~18 MB of
+// dead canvases, and iPad Safari counts those against its canvas memory limit until GC, so new frames failed at ~1xx.
+const waveCv = new WeakMap();
+function waveCanvasOf(f) {
+  let c = waveCv.get(f);
+  if (!c) { c = document.createElement('canvas'); c.width = c.height = 0; c.className = 'wave'; waveCv.set(f, c); }
+  c.hidden = true; return c;
+}
 function buildStrip() {
   strip.innerHTML = '';
   const bgOrder = [];
@@ -12,7 +21,7 @@ function buildStrip() {
     const idx = document.createElement('span'); idx.className = 'idx'; idx.textContent = i + 1;
     const dur = document.createElement('span'); dur.className = 'dur'; dur.textContent = fmtDur(f.dur);
     const sh = document.createElement('span'); sh.className = 'shared'; sh.style.background = BG_COLORS[bgOrder.indexOf(f.bgId) % BG_COLORS.length]; sh.title = 'Màu chấm = nhóm nền';
-    const wv = document.createElement('canvas'); wv.className = 'wave'; wv.hidden = true;
+    const wv = waveCanvasOf(f);
     el.append(wv, idx, dur, sh);
     if (f.scene && i > 0) { el.classList.add('scst'); const sb = document.createElement('span'); sb.className = 'scb'; sb.textContent = '🎬 ' + f.scene; sb.title = 'Đầu cảnh — Menu → 🎬 Cảnh để dời/nhân bản'; el.append(sb); }
     if (S.pp) { const kk = document.createElement('span'); kk.className = 'key' + (ppIsKey(f) ? '' : ' auto'); kk.textContent = ppIsKey(f) ? '🔑' : '∿'; el.append(kk); }
@@ -137,9 +146,17 @@ async function selectFrame(i) {
   [S.frames[i - 1], S.frames[i + 1]].forEach(n => { if (!n) return; ensureLoaded(n).then(requestRender); const nb = bgOf(n); if (nb) ensureLoaded(nb); });
   updateFrameUI(); ppSyncBar(); fxSel = null; fxSyncBar(); bgVideoSync(); requestRender();
 }
-async function addFrame() {
+// Thêm/Nhân bản frame failing (e.g. the tablet ran out of canvas memory: getContext returns null) must say so, not do nothing
+async function frameAddSafe(fn) {
+  try { await fn(); }
+  catch (e) { console.error(e); toast('Không tạo được frame mới: máy hết bộ nhớ — hãy lưu dự án rồi mở lại app', 4000); }
+}
+async function addFrame() { return frameAddSafe(addFrame0); }
+async function dupFrame() { return frameAddSafe(dupFrame0); }
+async function addFrame0() {
   if (playing) stopPlay(); commitFloating();
   const f = newFrameObj(curFrame().bgId);
+  if (!f.canvas.getContext('2d')) throw new Error('no canvas memory');
   S.frames.splice(S.cur + 1, 0, f); loaded.push(f);
   await drawThumb(f); buildStrip(); await selectFrame(S.cur + 1); scheduleSave(); evictSoon();
 }
@@ -167,7 +184,7 @@ async function insertFrames(at, added) {
   pushEntry({ t: targetOf(f0), add: { frames: added, index: at, dur0: f0.dur, dur1: f0.dur }, bytes: 0 });
   for (const f of added) await drawThumb(f);
 }
-async function dupFrame() {
+async function dupFrame0() {
   if (playing) stopPlay(); commitFloating();
   const src = curFrame(); await ensureLoaded(src);
   const f = frameCopyOf(src);

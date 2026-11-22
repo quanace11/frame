@@ -1,11 +1,17 @@
 /* ========= Working canvases ========= */
 let scv, sctx, work, wctx;
 function setupWorkCanvases() {
+  if (scv) scv.width = 0; if (work) work.width = 0;   // free the old ones now (iPad Safari canvas memory)
   scv = makeCanvas(); sctx = scv.getContext('2d');
   work = makeCanvas(); wctx = work.getContext('2d');
   tintCache.clear();
 }
-const tintCache = new Map();
+// onion tints: free a canvas as soon as it leaves the cache (iPad Safari counts dead canvases against its memory limit until GC)
+class TintCache extends Map {
+  delete(k) { const e = this.get(k); if (e) e.c.width = 0; return super.delete(k); }
+  clear() { for (const e of this.values()) e.c.width = 0; super.clear(); }
+}
+const tintCache = new TintCache();
 SETTINGS_KEYS.push('onionPrev', 'onionNext', 'onionTrue', 'onionCol', 'onionPal', 'onionKeys'); S.onionPrev = 1; S.onionNext = 1;
 S.onionTrue = false; S.onionCol = false; S.onionPal = 0; S.onionKeys = false;
 // colour pairs for onion skin: [before near, before far, after near, after far]
