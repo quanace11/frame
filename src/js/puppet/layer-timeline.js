@@ -69,7 +69,7 @@ function lgSync(force) {
   es.disabled = !seg; $('#lgEaseRow').classList.toggle('off', !seg); if (seg) es.value = ppLayerEase(S.frames[seg[0]], sel);
   $('#lgOnion').classList.toggle('on', !!(S.onion && S.onionLayer)); $('#lgOnion').disabled = !has;
   $('#lgSymSave').disabled = !has; $('#lgSymPut').disabled = !has;
-  { const off = has && ppOffAt(f, sel), b = $('#lgOff'); b.disabled = !has; b.textContent = off ? '👁 Hiện ở frame này' : '🙈 Ẩn ở frame này'; b.classList.toggle('on', !!off); }
+  { const off = has && ppOffAt(f, sel), b = $('#lgOff'); b.disabled = !has; b.textContent = off ? '👁 Hiện' : '🙈 Ẩn'; b.title = off ? 'Hiện lại layer đang chọn ở frame này' : 'Ẩn layer đang chọn CHỈ ở frame đang xem, các frame khác vẫn giữ'; b.classList.toggle('on', !!off); }
   $('#lgCopy').disabled = !has; $('#lgPaste').disabled = !has || !LG.clip;
   $('#lgInfo').textContent = has ? `${lyrName(ppPart(sel))} · frame ${S.cur + 1}: ${k ? '🔑 keyframe' : '∿ tự chuyển'}` : 'Chạm 1 dòng layer để chọn · kéo ● để dời keyframe';
 }

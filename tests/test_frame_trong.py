@@ -55,7 +55,7 @@ async def main():
         ok(await pg.evaluate(INK, 1) > 50, 'tween không làm ẩn frame khác')
         # Dòng layer button reflects it
         await pg.evaluate("S.lgOpen=true; lgSync(true)"); await pg.wait_for_timeout(200)
-        ok((await pg.text_content('#lgOff')).startswith('👁'), 'Dòng layer: nút Hiện ở frame này')
+        ok((await pg.text_content('#lgOff')).startswith('👁 Hiện'), 'Dòng layer: nút Hiện ở frame này')
         # undo / redo
         await pg.evaluate('undo()'); await pg.wait_for_timeout(200)
         ok(await pg.evaluate(INK, 0) > 50, 'hoàn tác: hiện lại')
