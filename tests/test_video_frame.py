@@ -27,6 +27,7 @@ async def main():
         check('entry in the Nền menu', await pg.evaluate("!!document.getElementById('vidFramesBtn')"))
         # ---------- dialog: range 0.5–2.5 s, 6 fps → 12 frames ----------
         await pg.set_input_files('#vidFramesFile', CLIP)
+        await pg.click('.dlg .btns >> text=Theo frame')   # 🎬 Thêm video asks: by video or by frame
         await pg.wait_for_selector('#vfV', timeout=15000)
         await pg.fill('#vfA', '0.5'); await pg.dispatch_event('#vfA', 'change')
         await pg.fill('#vfB', '2.5'); await pg.dispatch_event('#vfB', 'change')
@@ -64,6 +65,7 @@ async def main():
         # make the import again from scratch to test undo: undo back to 12, then insert mid
         await pg.evaluate("selectFrame(2)"); await pg.wait_for_timeout(200)
         await pg.set_input_files('#vidFramesFile', CLIP)
+        await pg.click('.dlg .btns >> text=Theo frame')   # 🎬 Thêm video asks: by video or by frame
         await pg.wait_for_selector('#vfV', timeout=15000)
         await pg.fill('#vfA', '0'); await pg.dispatch_event('#vfA', 'change')
         await pg.fill('#vfB', '1'); await pg.dispatch_event('#vfB', 'change')
