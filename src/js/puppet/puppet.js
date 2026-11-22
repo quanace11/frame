@@ -887,6 +887,11 @@ async function ppMakePreset() {
   if (need && !ppByRole(need)) { toast(`Chưa có mảnh vai trò "${PP_ROLES[need]}" — khoanh cắt mảnh đó rồi đặt Vai trò`, 4000); return; }
   const tor = ppByRole('torso'), hgt = tor ? Math.max(200, tor.c.height * 2.2) : H * 0.6;
   const poses = []; for (let k = 1; k < n; k++) poses.push(ppPresetPose(ppPreset, k, n, f0.pp, hgt));
+  if (ppRoots().length >= 2) {   // 2+ characters: inserting frames would freeze the others, so write this one's poses onto the frames that are there
+    const charId = ppSelChar(), r = await ppPutPoses(charId, S.cur + 1, poses.map(P => [P, dur]));
+    toast(`Đã tạo ${PP_PRESETS[ppPreset][0].toLowerCase()} cho nhân vật này trên ${poses.length + 1} frame (nhân vật khác giữ nguyên${r.added ? `, thêm ${r.added} frame` : ''}). Muốn lặp dài hơn: 🔁 Lặp chu kỳ`, 5000);
+    return;
+  }
   const c = await ppInsertFrames(poses, dur); f0.dur = dur; updateFrameUI();
   toast(`Đã tạo ${c} frame ${PP_PRESETS[ppPreset][0].toLowerCase()} — chỉnh tay từng frame nếu cần`, 3500);
 }
@@ -954,7 +959,7 @@ function updPanelPill() {
 }
 function hidePanel(t) { panelHidden[t] = true; saveSettings(); updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
 function showPanel() { panelHidden[S.tool] = false; saveSettings(); updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
-function ppSyncBar() { lyrSync(); lgSync(); ppBlinkInfo(); { const a = $('#ppSoftChk'), b = $('#ppSmoothChk'); if (a) a.checked = !!S.ppSoft; if (b) b.checked = !!S.ppSmooth; }
+function ppSyncBar() { lyrSync(); lgSync(); ppBlinkInfo(); ppCycSync(); { const a = $('#ppSoftChk'), b = $('#ppSmoothChk'); if (a) a.checked = !!S.ppSoft; if (b) b.checked = !!S.ppSmooth; }
   const bar = $('#ppbar'), show = S.tool === 'puppet' && (!panelHidden.puppet || !!ppSetup);
   bar.hidden = !show; updPanelPill(); if (!show) return;
   $('#ppSetupSec').hidden = !ppSetup; $('#ppPoseSec').hidden = !!ppSetup || !S.pp;
@@ -1259,7 +1264,7 @@ async function ppWalk(dir) {
       const P = stand ? ppClone(f0.pp) : ppPresetPose(kind, j % K.cyc, K.cyc, f0.pp, hgt);
       f.pp = { ...(f.pp || {}) }; for (const id of mine) if (P[id]) f.pp[id] = { ...P[id] };
       f.pp[charId] = { ...(f.pp[charId] || {}), fl: turned ? !fl0 : fl0 };
-      f.ppKey = true; if (f.ppK) f.ppK = { ...f.ppK, [charId]: true };
+      ppLayerSetKey(f, charId, true);   // only this character's layer: another character's tween on these frames stays
       f.dur = stand ? 120 : K.dur;
       ppMvEdit(f, mv => { mv[charId] = { x: Math.round((base.x + x(j)) * 10) / 10, y: base.y }; });
       f.ver++; queueThumbFor(f);
@@ -1279,6 +1284,65 @@ async function ppWalk(dir) {
   return { n, N, d, added: added.length };
 }
 document.querySelectorAll('[data-walk]').forEach(b => b.addEventListener('click', () => ppWalk(+b.dataset.walk)));
+/* --- each character has its own motion on the shared frames (like separate layers/symbols in Animate):
+ *  ppRoots = the characters / picture layers; ppPutPoses writes ONE character's poses onto frames at..., adding frames when
+ *  missing (copies of the last frame: the other characters hold their last pose) — other characters are never touched.
+ *  🔁 ppLoopCycle repeats a character's in-place cycle (frames a…b) up to frame `to`, then 〰 Vẽ đường đi moves it across. --- */
+const ppRoots = () => S.pp ? S.pp.parts.filter(p => !p.parent) : [];
+async function ppAddFramesTo(count, durOf) {
+  const added = []; if (S.frames.length >= count) return added;
+  const last = S.frames[S.frames.length - 1]; await ensureLoaded(last);
+  while (S.frames.length + added.length < count) { const f = frameCopyOf(last); if (durOf) f.dur = durOf(S.frames.length + added.length); added.push(f); }
+  S.frames.push(...added); loaded.push(...added); return added;
+}
+function ppSetCharPose(f, charId, P, keepFl) {
+  const mine = S.pp.parts.filter(p => ppCharOf(p) === charId).map(p => p.id), fl = f.pp && f.pp[charId] ? f.pp[charId].fl : undefined;
+  f.pp = { ...(f.pp || {}) };
+  for (const id of mine) { if (P && P[id]) f.pp[id] = { ...P[id] }; else delete f.pp[id]; }
+  if (keepFl && f.pp[charId]) { if (fl) f.pp[charId].fl = fl; else delete f.pp[charId].fl; }
+  ppLayerSetKey(f, charId, true); f.ver++; queueThumbFor(f);
+}
+async function ppSnapStep(fn) {   // fn changes frames / poses / lip; pushed as one undo step
+  if (playing) stopPlay(); if (stroke) strokeEnd(); commitFloating();
+  histFlush(); const hb = histSnap(), out = await fn();
+  ppRetween(); for (const f of (out && out.addedFrames) || []) await drawThumb(f);
+  buildStrip(); updateFrameUI(); render();
+  const ha = histSnap(), fr = [];
+  for (const [g, a] of ha.fm) { const bs = hb.fm.get(g); if (bs !== undefined && bs !== a) fr.push([g, bs, a]); }
+  pushEntry({ multi: [{ snap: { before: hb, after: ha, fr }, bytes: 2000 }] }); histRebase();
+  ppSyncBar(); evictSoon(); scheduleSave(); requestRender(); return out;
+}
+// poses = [[pose, durMs for a new frame], ...] for frames at, at+1, ...
+async function ppPutPoses(charId, at, poses) {
+  return ppSnapStep(async () => {
+    const addedFrames = await ppAddFramesTo(at + poses.length, i => poses[i - at][1]);
+    poses.forEach(([P], k) => ppSetCharPose(S.frames[at + k], charId, P, false));
+    return { addedFrames, added: addedFrames.length };
+  });
+}
+async function ppLoopCycle() {
+  if (!S.pp || !S.pp.parts.length) { toast('Chưa có nhân vật ghép'); return; }
+  const charId = ppSelChar(); if (!charId) return;
+  const n0 = S.frames.length, a = clamp((+$('#cycA').value || 1) - 1, 0, n0 - 1), b = clamp((+$('#cycB').value || n0) - 1, 0, n0 - 1);
+  if (b <= a) { toast('Chu kỳ cần ít nhất 2 frame: frame đầu nhỏ hơn frame cuối'); return; }
+  const L = b - a + 1, to = clamp((+$('#cycTo').value || n0) - 1, 0, 1999);
+  if (to <= b) { toast(`"Lặp tới frame" phải lớn hơn ${b + 1}`); return; }
+  const src = j => S.frames[a + ((j - a) % L)];
+  const r = await ppSnapStep(async () => {
+    const addedFrames = await ppAddFramesTo(to + 1, i => src(i).dur);
+    for (let j = b + 1; j <= to; j++) ppSetCharPose(S.frames[j], charId, src(j).pp, true);
+    // the 〰 path position of this character carries on from the end of the cycle (the frames added copy the last frame)
+    return { addedFrames };
+  });
+  toast(`🔁 Đã lặp chu kỳ frame ${a + 1}–${b + 1} của nhân vật này tới frame ${to + 1}${r.addedFrames.length ? ` (thêm ${r.addedFrames.length} frame)` : ''}. Nhân vật khác giữ nguyên. Giờ về frame ${a + 1} → ✎ Vẽ đường đi qua ${to - a + 1} frame`, 6000);
+  const pn = $('#ppPathN'); if (pn) pn.value = to - a + 1;
+}
+$('#cycGo').addEventListener('click', ppLoopCycle);
+['cycA', 'cycB', 'cycTo'].forEach(id => $('#' + id).addEventListener('input', e => { e.target.dataset.touched = 1; }));
+function ppCycSync() {   // until the person types a number: cycle = all frames now, loop to 3 × that
+  const B = $('#cycB'), T = $('#cycTo'); if (!B || !T) return; const n = S.frames.length;
+  if (!B.dataset.touched) B.value = n; if (!T.dataset.touched) T.value = Math.max(n * 3, 24);
+}
 
 $('#ppBlinkBtn').addEventListener('click', ppAutoBlink);
 $('#ppBake').addEventListener('click', ppBake);
