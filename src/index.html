@@ -1896,6 +1896,14 @@ function liftSelection(poly) {
     mc = makeCanvas(rect[2], rect[3]); const mx = mc.getContext('2d'); mx.translate(-rect[0], -rect[1]); polyPath(mx, poly); mx.fillStyle = '#000'; mx.fill();
   }
   const [bx, by, bw, bh] = rect;
+  if (only && S.showBg && bgO && bgO.canvas) {
+    const empty = only === 'vec' ? !(fr.vec || []).some(st => strokeInsideFrac(st, poly) >= 0.75) : only === 'col' ? !fr.col || !inkCount(fr.col, rect, mc) : !inkCount(fr.canvas, rect, mc);
+    if (empty && inkCount(bgO.canvas, rect, mc) > bw * bh * 0.02) {
+      const nm = { vec: 'Nét', col: 'Màu', char: 'Nhân vật' }[only] || only;
+      setLayer('bg'); toast(`Lớp ${nm} không có gì trong vòng — đã lấy hình ở lớp Nền (vd. khung video)`, 4000);
+      return liftSelection(poly);
+    }
+  }
   const snap = makeCanvas(); snap.getContext('2d').drawImage(lineO.canvas, 0, 0);
   const fc = takeLine ? cutPiece(lineO.canvas, rect, mc) : makeCanvas(bw, bh);
   floating = { t: targetOf(lineO), o: lineO, c: fc, cx: bx + bw / 2, cy: by + bh / 2, scale: 1, rot: 0, flip: 1, snap, dirty: [bx, by, bx + bw, by + bh] };
@@ -3508,7 +3516,7 @@ function vecMultiLasso(poly, f) {
     toast(n ? `Đã bỏ chọn ${n} chấm` : 'Vùng khoanh không có chấm cam nào'); return;
   }
   vpsel.clear(); vpoly = null; vsel.clear();
-  if (Math.abs(area / 2) < 200) { const hit = hitStroke(f.vec, poly[0], 14 * DPR / vs); if (hit) vsel.add(hit.id); else if (charPixelAt(f, poly[0])) vecOfferConvert(); return; }   // tap: show one stroke's points
+  if (Math.abs(area / 2) < 200) { const hit = hitStroke(f.vec, poly[0], 14 * DPR / vs); if (hit) vsel.add(hit.id); else if (charPixelAt(f, poly[0])) vecOfferConvert(); else if (bgPixelAt(f, poly[0])) bgPictureHint(); return; }   // tap: show one stroke's points
   // strict: a point must sit clearly inside the loop, not on its edge (falls back to plain inside if that leaves nothing)
   const m = 8 * DPR / vs, pick = strict => { vsel.clear(); vpsel.clear(); for (const st of f.vec) { const idx = []; st.pts.forEach((q, i) => { if (pip(q, poly) && (!strict || distToPoly(q, poly) >= m)) idx.push(i); }); if (idx.length) { vsel.add(st.id); vpsel.set(st.id, new Set(idx)); } } };
   pick(true); if (!vsel.size) pick(false);
@@ -3548,6 +3556,25 @@ function charHasPixels(f) {
   const d = x.getImageData(0, 0, 108, 192).data; c.width = 0;
   for (let i = 3; i < d.length; i += 4) if (d[i] > 40) return true;
   return false;
+}
+// the picture is in lớp Nền (e.g. a frame made by 🎬 Video → frame): pixels, not vector lines → say how to edit it
+function bgPixelAt(f, p, poly) {
+  const b = bgOf(f); if (!S.showBg || !b || !b.canvas) return false;
+  const pts = poly && poly.length > 2 ? poly : [p], x = b.canvas.getContext('2d');
+  for (const q of pts.filter((_, i) => i % Math.max(1, Math.floor(pts.length / 12)) === 0)) {
+    const px = Math.round(q.x), py = Math.round(q.y); if (px < 0 || py < 0 || px >= W || py >= H) continue;
+    const d = x.getImageData(px, py, 1, 1).data; if (d[3] >= 20 && !(d[0] > 235 && d[1] > 235 && d[2] > 235)) return true;
+  }
+  return false;
+}
+async function bgPictureHint() {
+  const ok = await modal({ title: 'Đây là hình ở lớp Nền', html: `<p>Hình chỗ này (vd. khung tách từ video) nằm ở lớp <b>Nền</b> dạng ảnh, không phải nét vector, nên <b>Sửa nét</b> không kéo được.</p>
+<ul style="margin:6px 0 0;padding-left:20px;line-height:1.5"><li><b>Vẽ đè lên</b>: chọn lớp <b>Nhân vật</b> rồi dùng Bút (đồ theo hình video).</li>
+<li><b>Sửa / xoá trên hình</b>: chọn lớp <b>Nền</b> rồi dùng Bút, Tẩy, Đổ màu.</li>
+<li><b>Cắt, dời, phóng to một phần</b>: Chọn vùng ở lớp Nền.</li></ul>`,
+    buttons: [{ label: 'Đóng', value: null }, { label: '✂ Chọn vùng ở lớp Nền', value: 'lasso' }, { label: '✏️ Vẽ đè ở lớp Nhân vật', value: 'draw', primary: true }] });
+  if (ok === 'draw') { setTool('brush'); setLayer('char'); toast('Vẽ ở lớp Nhân vật, hình video ở dưới vẫn giữ nguyên', 3000); }
+  else if (ok === 'lasso') { setTool('lasso'); setLayer('bg'); toast('Khoanh phần hình muốn cắt / dời', 3000); }
 }
 async function vecOfferConvert() {
   const ok = await modal({ title: 'Đây là nét pixel', html: '<p>Nét này được vẽ ở lớp <b>Nhân vật</b> (dạng pixel) nên chưa sửa được bằng Sửa nét.</p><p><b>Muốn dời cả người</b> (hoặc làm người trượt, chạy qua nhiều frame)? Bấm <b>✋ Dời cả hình</b>: nét và màu đi cùng nhau.</p><p>Muốn uốn từng nét? Chuyển các nét pixel của frame này thành <b>nét sửa được</b>. Màu ở lớp Màu thì vẫn nằm yên.</p><p class="lbl" style="font-size:12px">Mẹo: chọn lớp <b>Nét</b> trước khi vẽ thì nét luôn sửa được, kể cả sau khi tô màu hay đổi công cụ. App sẽ nhớ lớp này cho lần sau.</p>',
@@ -3622,8 +3649,8 @@ function vecEnd() {
   else if (a.kind === 'vlasso') {
     const poly = lasso; lasso = null;
     let area = 0; if (poly.length > 2) for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) area += (poly[j].x + poly[i].x) * (poly[j].y - poly[i].y);
-    if (Math.abs(area / 2) < 200) { vsel.clear(); if (poly.length && charPixelAt(f, poly[0])) vecOfferConvert(); }
-    else { vsel.clear(); for (const st of f.vec) if (strokeInsideFrac(st, poly) >= 0.75) vsel.add(st.id); vselLoopSet(poly); if (!vsel.size) toast('Không có nét nào nằm gọn trong vùng khoanh'); }
+    if (Math.abs(area / 2) < 200) { vsel.clear(); if (poly.length && charPixelAt(f, poly[0])) vecOfferConvert(); else if (poly.length && bgPixelAt(f, poly[0])) bgPictureHint(); }
+    else { vsel.clear(); for (const st of f.vec) if (strokeInsideFrac(st, poly) >= 0.75) vsel.add(st.id); vselLoopSet(poly); if (!vsel.size) { if (!(f.vec && f.vec.length) && bgPixelAt(f, poly[0], poly)) bgPictureHint(); else toast('Không có nét nào nằm gọn trong vùng khoanh'); } }
   } else if ((a.kind === 'vmove' || a.kind === 'vxform') && a.moved && a.col) {
     vselLoopMove(a.col.m);
     const pe = colLiftEnd(f, a.col), ve = vecEntry(f, a.before, cloneVec(f.vec)); pushEntry(pe ? { multi: [pe, ve] } : ve); markEdited(f);

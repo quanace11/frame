@@ -46,6 +46,18 @@ async def main():
         check('picture sits in the Nền layer (frame layer empty)', await pg.evaluate("(async()=>{ const f=S.frames[3]; await ensureLoaded(f); const d=f.canvas.getContext('2d').getImageData(0,0,W,H).data; for(let k=3;k<d.length;k+=400) if(d[k]) return false; return true; })()"))
         th = await pg.evaluate("(()=>{ const t=S.frames[7].thumb; const d=t.getContext('2d').getImageData(t.width>>1,t.height>>1,1,1).data; return [d[0],d[1],d[2]]; })()")
         check('thumbnail shows the video', near(th, [0, 0, 255]))
+        # ---------- editing a video frame: picture is in lớp Nền ----------
+        await pg.evaluate("selectFrame(0)"); await pg.wait_for_timeout(300)
+        r = await pg.evaluate("""(()=>{ setTool('lasso'); S.selMode='layer'; setLayer('vec');
+          liftSelection([{x:W*0.3,y:H*0.3},{x:W*0.7,y:H*0.3},{x:W*0.7,y:H*0.7},{x:W*0.3,y:H*0.7}]);
+          const ok = !!floating && floating.t.type==='bg' && S.layer==='bg'; if (floating) cancelFloating(); return ok; })()""")
+        check('Chọn vùng, only lớp Nét, nothing there: takes the video picture from lớp Nền', r)
+        check('bgPixelAt sees the picture', await pg.evaluate("bgPixelAt(curFrame(), {x:W/2,y:H/2})"))
+        await pg.evaluate("setTool('vedit'); void bgPictureHint()"); await pg.wait_for_timeout(300)
+        await pg.screenshot(path='video_frame_hint.png')
+        await pg.click('.dlg .btns >> text=Vẽ đè ở lớp Nhân vật'); await pg.wait_for_timeout(200)
+        check('hint → draw over on lớp Nhân vật', await pg.evaluate("S.tool==='brush' && S.layer==='char'"))
+        await pg.evaluate("S.selMode='pic'")
         aud = await pg.evaluate("""(async()=>{ const c=S.audio && S.audio.voice; if(!c) return null; const ac=new OfflineAudioContext(1,44100,44100); const ab=await ac.decodeAudioData(c.buf.slice(0));
           const d=ab.getChannelData(0); let e=0; for(let i=0;i<d.length;i+=7) e+=Math.abs(d[i]); return {dur:ab.duration, loud:e/(d.length/7), start:c.frameId===S.frames[0].id, mouth:c.mouth||null}; })()""")
         print('audio', aud)
