@@ -27,6 +27,7 @@ function lgSync(force) {
   es.innerHTML = Object.entries(EASE_LABEL).map(([k2, v]) => `<option value="${k2}">${v}</option>`).join('');
   es.disabled = !seg; $('#lgEaseRow').classList.toggle('off', !seg); if (seg) es.value = ppLayerEase(S.frames[seg[0]], sel);
   $('#lgOnion').classList.toggle('on', !!(S.onion && S.onionLayer)); $('#lgOnion').disabled = !has;
+  $('#lgSymSave').disabled = !has; $('#lgSymPut').disabled = !has;
   $('#lgCopy').disabled = !has; $('#lgPaste').disabled = !has || !LG.clip;
   $('#lgInfo').textContent = has ? `${lyrName(ppPart(sel))} · frame ${S.cur + 1}: ${k ? '🔑 keyframe' : '∿ tự chuyển'}` : 'Chạm 1 dòng layer để chọn · kéo ● để dời keyframe';
 }

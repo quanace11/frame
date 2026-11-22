@@ -182,6 +182,7 @@ function bgMenuPop() {
   const btn = $('#bgMenuBtn');
   if (popEl && popEl._anchor === btn) { closePop(); return; }
   const d = openPop(btn, `<div class="cp-lbl">Nền của frame này: <b class="bgm-info"></b></div>
+    <div class="bgm-row"><button class="chip small on bgm-img">🖼 Ảnh làm nền</button><span>Chọn ảnh, tự phủ kín khung 9:16 (phần tràn ra ngoài bị cắt), kéo để chọn chỗ muốn thấy</span></div>
     <div class="bgm-row" data-k="newBgBtn"><span>Cho frame này nền trống riêng, dùng khi sang cảnh mới</span></div>
     <div class="bgm-row" data-k="splitBgBtn"><span>Sửa nền ở frame này mà không đổi các frame khác</span></div>
     <div class="bgm-row" data-k="bgVidBtn"><span>Dùng một đoạn video làm nền phía sau nhân vật</span></div>
@@ -191,6 +192,7 @@ function bgMenuPop() {
   d.querySelector('.bgm-info').textContent = info.textContent;
   d.querySelectorAll('.bgm-row[data-k]').forEach(r => r.prepend($('#' + r.dataset.k)));
   d.querySelector('.bgm-scene').addEventListener('click', () => { closePop(); sceneDialog(); });
+  d.querySelector('.bgm-img').addEventListener('click', () => { closePop(); bgImagePick(); });
   d._onClose = () => d.querySelectorAll('.bgm-row[data-k] > button').forEach(b => hold.insertBefore(b, info));
   d.addEventListener('click', e => { if (e.target.closest('.bgm-row > button')) setTimeout(closePop, 0); });
 }

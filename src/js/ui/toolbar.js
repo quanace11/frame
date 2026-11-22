@@ -316,6 +316,7 @@ $('#durAllBtn').addEventListener('click', () => { setDur(curFrame().dur, true); 
 $('#selScale').addEventListener('input', e => { if (!floating) return; floating.scale = e.target.value / 100; $('#selScaleVal').textContent = e.target.value + '%'; requestRender(); });
 $('#selRot').addEventListener('input', e => { if (!floating) return; floating.rot = e.target.value * Math.PI / 180; $('#selRotVal').textContent = e.target.value + '°'; requestRender(); });
 $('#selFlip').addEventListener('click', () => { if (floating) { floating.flip *= -1; requestRender(); } });
+$('#selCover').addEventListener('click', floatCover);
 $('#selStamp').addEventListener('click', stampFloating);
 $('#selCopy').addEventListener('click', copyFloating);
 $('#pasteBtn').addEventListener('click', pasteDialog);
