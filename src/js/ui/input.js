@@ -41,6 +41,7 @@ function startAction(e, isTouch) {
     }
     fxSel = null; fxSyncBar(); requestRender(); return;
   }
+  if (S.tool === 'puppet' && HC) { hcStart(p, base); return; }
   if (S.tool === 'puppet') { if (S.pp) ppStart(p, base); else toast('Nhập ảnh → chọn "Nhân vật ghép" để bắt đầu'); return; }
   if (rig) { rigPointer(p, base); return; }
   if (motion) { if (motion.type === 'swing') { motion.pivot = { x: p.x, y: p.y }; motion.pv = motionVec(f.vec, motion.k, motion); requestRender(); } return; }
@@ -99,6 +100,8 @@ function moveAction(e) {
   } else if (action.kind === 'ppjoint') {
     const p = toDoc(e, action.rect), mv = (j, dx, dy) => { ppSetup.J[j].x += dx; ppSetup.J[j].y += dy; (RKIDS[j] || []).forEach(k => mv(k, dx, dy)); };
     mv(action.j, p.x - action.last.x, p.y - action.last.y); action.last = p; requestRender();
+  } else if (action.kind.startsWith('hc')) {
+    hcMove(toDoc(e, action.rect));
   } else if (action.kind.startsWith('pp')) {
     ppMove(toDoc(e, action.rect));
   } else if (action.kind === 'rjoint') {
@@ -124,6 +127,7 @@ function endAction() {
     action = null; fxSyncBar(); requestRender(); return;
   }
   else if (action.kind === 'fxmove') { const f = curFrame(); pushEntry({ t: targetOf(f), fxe: true, before: action.before, after: fxState(f), bytes: 400 }); f.ver++; scheduleSave(); }
+  else if (action.kind.startsWith('hc')) hcEnd();
   else if (action.kind.startsWith('pp') && action.kind !== 'ppjoint') ppEnd();
   else if (action.kind.startsWith('v')) vecEnd();
   else if (action.kind === 'lablasso') { const poly = lasso; lasso = null; if (ppSetup) { ppLabLasso(ppSetup, poly); ppLabSyncBar(); } requestRender(); }
@@ -142,7 +146,8 @@ function abortAction() {
   if (action.kind === 'ballpath' && ballMode) { ballMode.pts = null; requestRender(); }
   if (action.kind === 'vbend' || action.kind === 'vmove' || action.kind === 'verase' || action.kind === 'vmulti' || action.kind === 'vxform') { if (action.col) colLiftAbort(curFrame(), action.col); curFrame().vec = action.before; if (action.kind === 'vmulti' && action.polyBase) vpoly = action.polyBase; requestRender(); }
   if (action.kind === 'pprot' || action.kind === 'ppmove' || action.kind === 'ppik') { ppSetState(curFrame(), action.before); requestRender(); }
-  if (action.kind === 'ppcut' || action.kind === 'pppatch' || action.kind === 'pppath') { lasso = null; lassoOpen = false; requestRender(); }
+  if (action.kind === 'hcjoint' && action.r) action.r.jm = action.jm0 || null;
+  if (action.kind === 'hclasso' || action.kind === 'ppcut' || action.kind === 'pppatch' || action.kind === 'pppath') { lasso = null; lassoOpen = false; requestRender(); }
   if ((action.kind === 'fxmove' || action.kind.startsWith('cam')) && action.before) { fxSetState(curFrame(), action.before); fxSyncBar(); requestRender(); }
   if ((action.kind === 'labpaint' || action.kind === 'lablasso') && ppSetup) { lasso = null; if (ppSetup.undo.length) ppSetup.hand = ppSetup.undo.pop(); ppLabOverlay(ppSetup); requestRender(); }
   action = null;
@@ -178,6 +183,7 @@ function fingerActs(e) {
   const p = toDoc(e, view.getBoundingClientRect());
   // the 8 handles + rotate knob of a ⬚ box stick out past the picture: a finger on them works the box instead of panning
   if (floating) { const k = floating.c && xbHit(floatXbox(), p, true); return !!k && k !== 'in'; }
+  if (HC && S.tool === 'puppet') return !!hcHitJoint(p);
   if (ppSetup) { if (ppSetup.stage === 'paint') return false; const tol = 24 * DPR / vs; return RJ.some(j => Math.hypot(ppSetup.J[j].x - p.x, ppSetup.J[j].y - p.y) <= tol); }
   if (S.tool === 'fx') {
     if (ballMode || gagMode || camPresetMode || fxCamPick || fxHit(f, p)) return true;

@@ -28,7 +28,7 @@ async def main():
             await pg.evaluate(f'(async()=>{{const c=({MKIMG})([{sz},{sz},"{col}"]); await imgToLayer(c)}})()'); await pg.wait_for_timeout(150)
         red, blue = await pg.evaluate('lyrOrder().map(r=>r.id).reverse()')
         await pg.click('#lgBtn'); await pg.wait_for_timeout(100)
-        ok('rows: 2 layers + Vẽ tay', await pg.evaluate("document.querySelectorAll('#lgNames .lgn').length") == 3)
+        ok('rows: 2 layers + Vẽ tay + Nền', await pg.evaluate("document.querySelectorAll('#lgNames .lgn').length") == 4)
         for _ in range(4): await pg.click('#lgAdd'); await pg.wait_for_timeout(250)
         ok('＋ Frame adds tween frames', await pg.evaluate('S.frames.length') == 5 and await pg.evaluate('S.frames.slice(1).every(f=>f.ppKey===false)') and await pg.evaluate('S.cur') == 4)
         # pick red on frame 4 (tap its row name), split, then drag it right

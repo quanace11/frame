@@ -7,7 +7,48 @@
    ＋ Frame = insert a tween frame after this one (the move gets longer), − Frame = remove this frame. */
 SETTINGS_KEYS.push('lgOpen'); S.lgOpen = false;
 var LG = { cw: 32, rh: 34, hd: 18, sig: '', drag: null };   // hd = frame-number ruler on top of the cells
-const lgRows = () => [...lyrOrder().map(r => ({ id: r.id, name: lyrName(r), pp: true, r })), { id: 'draw', name: '✏️ Vẽ tay', pp: false }];
+const lgRows = () => [...lyrOrder().map(r => ({ id: r.id, name: lyrName(r), pp: true, r })), { id: 'draw', name: '✏️ Vẽ tay', pp: false }, { id: 'bg', name: '🖼 Nền', pp: false, bg: true }];
+// 🖼 Nền row: frames that share one background form a span (frame 1–5 = Nền 1, 6–10 = Nền 2…); drag its end to stretch / shrink it
+function lgBgSpans() {
+  const out = [], no = new Map(); let k = 0;
+  S.frames.forEach((f, i) => { const last = out[out.length - 1]; if (last && last.bgId === f.bgId) last.b = i; else { if (!no.has(f.bgId)) no.set(f.bgId, ++k); out.push({ bgId: f.bgId, a: i, b: i, no: no.get(f.bgId) }); } });
+  return out;
+}
+const lgBgSpanAt = i => lgBgSpans().find(s => s.a <= i && i <= s.b);
+async function lgBgRefresh(msg) {
+  gcBgs(); tintCache.clear(); S.frames.forEach(f => queueThumbFor(f)); buildStrip(); await selectFrame(S.cur); scheduleSave(); requestRender(); lgSync(true); if (msg) toast(msg, 2600);
+}
+// the span's last frame goes to frame j: longer = the next frames take this background, shorter = the frames let go take
+// the background that comes after (or a new empty one at the end of the film)
+async function lgBgStretch(sp, j) {
+  if (playing) stopPlay(); commitFloating();
+  j = clamp(j, sp.a, S.frames.length - 1); if (j === sp.b) { lgSync(true); return; }
+  if (j > sp.b) for (let i = sp.b + 1; i <= j; i++) S.frames[i].bgId = sp.bgId;
+  else {
+    const nx = S.frames[sp.b + 1]; let id = nx && nx.bgId;
+    if (!id) { const nb = newBgObj(); S.bgs.push(nb); id = nb.id; }
+    for (let i = j + 1; i <= sp.b; i++) S.frames[i].bgId = id;
+  }
+  await lgBgRefresh(`🖼 Nền ${sp.no}: frame ${sp.a + 1} → ${j + 1}`);
+}
+// 🖼 Nền mới từ đây: a new empty background from this frame to the end of the span it is in (the frames before keep theirs)
+async function lgBgNewFrom() {
+  if (playing) stopPlay(); commitFloating();
+  const sp = lgBgSpanAt(S.cur); if (!sp) return;
+  const nb = newBgObj(); S.bgs.push(nb);
+  for (let i = S.cur; i <= sp.b; i++) S.frames[i].bgId = nb.id;
+  setLayer('bg'); if (S.tool === 'puppet' || S.tool === 'fx' || S.tool === 'vedit') setTool('brush');
+  await lgBgRefresh(`🖼 Nền mới cho frame ${S.cur + 1} → ${sp.b + 1} (lớp Nền đang chọn: vẽ, đổ màu hoặc Nền ▾ → Ảnh làm nền)`);
+}
+// ＋ 1 giây: tween frames after this one, as many as fit in 1 second at this frame's timing
+async function lgAddSecond() {
+  if (playing) stopPlay(); commitFloating();
+  const src = curFrame(); await ensureLoaded(src);
+  const n = clamp(Math.round(1000 / (src.dur || 100)), 1, 60), added = [];
+  for (let k = 0; k < n; k++) { const f = frameCopyOf(src); f.ppKey = false; delete f.ppK; delete f.ppE; added.push(f); loaded.push(f); }
+  await insertFrames(S.cur + 1, added); ppRetween(); buildStrip(); scheduleSave(); evictSoon(); lgSync(true);
+  toast(`＋ Thêm ${n} frame (1 giây). Tới frame cuối, chỉnh dáng = keyframe mới, app tự chuyển ở giữa`, 3000);
+}
 function lgSelRoot() { const s = ppPart(ppSel); return s ? (ppCharOf(s) || s.id) : null; }
 function lgHiddenAt(f, rid) { const q = f.pp && f.pp[rid]; return !!(q && q.h); }
 function lgSync(force) {
@@ -15,7 +56,7 @@ function lgSync(force) {
   if (btn) btn.classList.toggle('on', !!S.lgOpen);
   box.hidden = !S.lgOpen; if (!S.lgOpen) return;
   const rows = lgRows(), sel = lgSelRoot();
-  const sig = JSON.stringify([rows.map(r => [r.id, r.name, r.r && r.r.lh]), S.frames.length, S.cur, sel, S.frames.map(f => [f.ppKey, f.ppK, f.ppE, f.ppEase, rows.map(r => r.pp && lgHiddenAt(f, r.id))])]);
+  const sig = JSON.stringify([rows.map(r => [r.id, r.name, r.r && r.r.lh]), S.frames.length, S.cur, sel, S.frames.map(f => [f.ppKey, f.ppK, f.ppE, f.ppEase, f.bgId, f.dur, rows.map(r => r.pp && lgHiddenAt(f, r.id))])]);
   if (!force && sig === LG.sig) return; LG.sig = sig;
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   $('#lgNames').innerHTML = '<div class="lgnHd">frame</div>' + rows.map(r => `<div class="lgn${r.id === sel ? ' on' : ''}${r.r && r.r.lh ? ' off' : ''}" data-lgr="${r.id}">${r.pp ? (lyrParts(r.id).length > 1 ? '🧍 ' : '🖼 ') : ''}${esc(r.name)}</div>`).join('');
@@ -39,9 +80,22 @@ function lgDraw(rows, sel) {
   // frame numbers (1, 5, 10… like Animate, every one when there are few) — tap one = go to that frame
   x.font = '10px system-ui,sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
   for (let i = 0; i < n; i++) { const no = i + 1; if (n > 12 && no !== 1 && no % 5) continue; x.fillStyle = i === S.cur ? '#ff6b61' : '#8a8f99'; x.fillText(String(no), i * cw + cw / 2, hd / 2 + 1); }
+  // whole seconds of film time (frames keep their own length): a yellow tick + "1s", "2s"… where that second starts
+  { let t = 0, s = 1; x.textAlign = 'left'; for (let i = 0; i < n; i++) { const d = S.frames[i].dur || 100; while (t + d > s * 1000) { const sx = i * cw + cw * (s * 1000 - t) / d; x.fillStyle = '#ffd60a'; x.fillRect(sx, 0, 1.5, hd); x.fillStyle = '#1b1d22'; x.fillRect(sx + 2, 1, 16, 10); x.fillStyle = '#ffd60a'; x.font = '9px system-ui,sans-serif'; x.fillText(s + 's', sx + 3, 6.5); s++; } t += d; } x.textAlign = 'center'; x.font = '10px system-ui,sans-serif'; }
   rows.forEach((r, ri) => {
     const y = hd + ri * rh;
     x.fillStyle = r.id === sel ? 'rgba(255,178,30,.12)' : ri % 2 ? 'rgba(255,255,255,.03)' : 'rgba(255,255,255,.06)'; x.fillRect(0, y, w, rh);
+    if (r.bg) {
+      const dg = LG.drag && LG.drag.bg && LG.drag.moved ? LG.drag : null;
+      lgBgSpans().forEach(s => {
+        let b = s.b; if (dg && dg.bg.a === s.a) b = clamp(s.b + dg.j - dg.i, s.a, n - 1);
+        const x0 = s.a * cw + 3, x1 = (b + 1) * cw - 3, hue = (s.no * 67 + 160) % 360;
+        x.fillStyle = `hsla(${hue},55%,45%,.55)`; x.fillRect(x0, y + 6, x1 - x0, rh - 12);
+        x.fillStyle = '#fff'; x.fillRect(x1 - 4, y + 9, 2, rh - 18);   // the end grip: drag to stretch / shrink
+        if (x1 - x0 > 34) { x.font = '10px system-ui,sans-serif'; x.textAlign = 'left'; x.textBaseline = 'middle'; x.fillStyle = '#fff'; x.fillText('Nền ' + s.no, x0 + 5, y + rh / 2 + 1); }
+      });
+      return;
+    }
     if (!r.pp) { for (let i = 0; i < n; i++) { x.fillStyle = '#8a8f99'; x.beginPath(); x.arc(i * cw + cw / 2, y + rh / 2, 3.5, 0, 7); x.fill(); } return; }
     const keys = []; for (let i = 0; i < n; i++) if (ppLayerKey(S.frames[i], r.id)) keys.push(i);
     // tween bands between keyframes (violet, like a classic tween), with an arrow
@@ -74,7 +128,8 @@ function lgDraw(rows, sel) {
 async function lgPick(i, rid) {
   if (playing) stopPlay();
   if (i !== S.cur && i >= 0 && i < S.frames.length) await selectFrame(i);
-  if (rid && rid !== 'draw') lyrSelect(rid);
+  if (rid && rid !== 'draw' && rid !== 'bg') lyrSelect(rid);
+  else if (rid === 'bg') { if (S.tool === 'puppet' || S.tool === 'fx' || S.tool === 'vedit') setTool('brush'); setLayer('bg'); const sp = lgBgSpanAt(S.cur); if (sp) toast(`🖼 Nền ${sp.no}: frame ${sp.a + 1} → ${sp.b + 1} · kéo cuối thanh nền để kéo dài / rút ngắn`, 2400); }
   else if (rid === 'draw') { if (S.tool === 'puppet' || S.tool === 'fx' || S.tool === 'vedit') setTool('brush'); if (S.layer !== 'char' && S.layer !== 'vec') setLayer(S.lineLayer || 'char'); }
   lgSync(true);
 }
@@ -156,6 +211,8 @@ function lgWire() {
   $('#lgSplit').addEventListener('click', () => lgSetKey(true));
   $('#lgJoin').addEventListener('click', () => lgSetKey(false));
   $('#lgAdd').addEventListener('click', lgAddFrame);
+  $('#lgAddSec').addEventListener('click', lgAddSecond);
+  $('#lgBgNew').addEventListener('click', lgBgNewFrom);
   $('#lgEase').addEventListener('change', e => lgSetEase(e.target.value));
   $('#lgOnion').addEventListener('click', () => {
     const on = !(S.onion && S.onionLayer); S.onionLayer = on; if (on) S.onion = true;
@@ -173,19 +230,20 @@ function lgWire() {
   cv.addEventListener('pointerdown', e => {
     if (e.button > 0) return;
     const c = cell(e), r = lgRows()[c.ri], key = !!(r && r.pp && S.pp && ppLayerKey(S.frames[c.i], r.id));
-    LG.drag = { id: e.pointerId, x0: e.clientX, s0: sc.scrollLeft, i: c.i, j: c.i, ri: c.ri, rid: r && r.id, key, moved: false };
+    LG.drag = { id: e.pointerId, x0: e.clientX, s0: sc.scrollLeft, i: c.i, j: c.i, ri: c.ri, rid: r && r.id, key, moved: false, bg: r && r.bg ? lgBgSpanAt(c.i) : null };
     try { cv.setPointerCapture(e.pointerId); } catch (_) {}
   });
   cv.addEventListener('pointermove', e => {
     const d = LG.drag; if (!d || d.id !== e.pointerId) return;
     if (Math.abs(e.clientX - d.x0) > 6) d.moved = true; if (!d.moved) return;
-    if (d.key) { const j = cell(e).i; if (j !== d.j) { d.j = j; lgDraw(lgRows(), lgSelRoot()); } }
+    if (d.key || d.bg) { const j = cell(e).i; if (j !== d.j) { d.j = j; lgDraw(lgRows(), lgSelRoot()); } }
     else sc.scrollLeft = d.s0 - (e.clientX - d.x0);
   });
   const up = e => {
     const d = LG.drag; if (!d || d.id !== e.pointerId) return; LG.drag = null;
     if (e.type === 'pointercancel') { lgSync(true); return; }
     if (!d.moved) { const rows = lgRows(); if (d.ri < 0) lgPick(d.i, null); else if (rows[d.ri]) lgPick(d.i, rows[d.ri].id); return; }
+    if (d.bg) { lgBgStretch(d.bg, d.bg.b + (d.j - d.i)); return; }
     if (d.key && d.j !== d.i) lgMoveKey(d.rid, d.i, d.j); else lgSync(true);
   };
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);

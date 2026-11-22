@@ -193,7 +193,12 @@
     </div>
     <div id="ppbar" hidden>
       <div class="mrow"><b>🧩 Nhân vật ghép</b><span style="flex:1"></span><button class="chip small" id="ppMini">▾ Thu gọn</button><button class="chip small pclose" data-close="puppet" title="Đóng bảng (công cụ vẫn bật)">✕</button></div>
-      <div id="ppEmpty" class="mrow"><span class="lbl">Chưa có nhân vật ghép. Nhập ảnh (vd. ảnh AI tạo) → chọn <b>Nhân vật ghép</b>.</span><button class="chip small on" id="ppNew">Nhập ảnh</button><button class="chip small on" id="ppLibBtn0" title="Lấy nhân vật đã cắt sẵn ở dự án khác">🧍 Kho nhân vật</button><button class="chip small on" id="kitBtn0" title="Cầu thủ vẽ sẵn, đã cắt mảnh và có khớp: chọn màu áo, số áo rồi thay đầu bằng đầu biếm hoạ">⚽ Cầu thủ mẫu</button></div>
+  <div id="hcBar" hidden>
+      <b>✂ Cắt từng bộ phận</b><span class="lbl" id="hcHint"></span><span class="hcRoles"><button class="chip small" data-hcr="torso"></button><button class="chip small" data-hcr="head"></button><button class="chip small" data-hcr="armL"></button><button class="chip small" data-hcr="foreL"></button><button class="chip small" data-hcr="armR"></button><button class="chip small" data-hcr="foreR"></button><button class="chip small" data-hcr="legL"></button><button class="chip small" data-hcr="shinL"></button><button class="chip small" data-hcr="legR"></button><button class="chip small" data-hcr="shinR"></button><button class="chip small" data-hcr="other"></button></span>
+      <span class="hcAct"><button class="chip small" id="hcUndo" title="Bỏ vùng vừa khoanh">↶ Bỏ vùng cuối</button><button class="chip small" id="hcCancel">Huỷ</button><button class="chip small on" id="hcDone" title="Biến các vùng thành 1 nhân vật có xương, từ frame này về sau">✓ Xong, tạo nhân vật</button></span>
+      <span class="lbl hcTip">Chọn bộ phận rồi khoanh quanh nó trên hình. Bo tròn quá khớp một chút; khớp (chấm hồng) tự đặt giữa chỗ 2 vùng chồng nhau, kéo để chỉnh.</span>
+    </div>
+      <div id="ppEmpty" class="mrow"><span class="lbl">Chưa có nhân vật ghép. Nhập ảnh (vd. ảnh AI tạo) → chọn <b>Nhân vật ghép</b>.</span><button class="chip small on" id="ppNew">Nhập ảnh</button><button class="chip small on hcStart" title="Vẽ nhân vật ở frame này (lớp Nét + Màu), rồi khoanh từng bộ phận: đầu, thân, tay, chân… thành nhân vật có xương">✂ Cắt từng bộ phận</button><button class="chip small on" id="ppLibBtn0" title="Lấy nhân vật đã cắt sẵn ở dự án khác">🧍 Kho nhân vật</button><button class="chip small on" id="kitBtn0" title="Cầu thủ vẽ sẵn, đã cắt mảnh và có khớp: chọn màu áo, số áo rồi thay đầu bằng đầu biếm hoạ">⚽ Cầu thủ mẫu</button></div>
       <div id="ppSetupSec"><div id="ppJointSec">
         <div class="mrow"><span class="lbl"><b>Bước 1 — Đặt khớp:</b> kéo chấm trắng vào vai, khuỷu, cổ tay, hông, gối, cổ chân (kéo khớp cha kéo cả nhánh). Cắt xong, nút <b>✎ Vẽ đường đi</b> và <b>🛷 Trượt gối</b> ở tab 🎞 Tạo frame</span></div>
         <div class="mrow"><label class="lbl"><input type="checkbox" id="ppSplit"> Chia tay/chân 2 đoạn (gập khuỷu, gối)</label>
@@ -223,7 +228,7 @@
         <div class="mrow" data-tab="pose"><button class="chip small" id="ppFlip">Lật</button><button class="chip small" id="ppHide">Ẩn</button><button class="chip small" id="ppReset">Về gốc mảnh</button><button class="chip small" id="ppResetAll">Về gốc tất cả</button>
         </div><div class="mrow" data-tab="parts">
           <button class="chip small" id="ppPatchBtn" title="Khoanh chỗ bị hở/đứt trên mảnh đang chọn để tự vẽ bù">🩹 Vá chỗ hở</button>
-          <button class="chip small" id="ppCutBtn" title="Khoanh để tách một phần của mảnh đang chọn thành mảnh mới">✂ Khoanh tách mảnh</button><label class="lbl"><input type="checkbox" id="ppKeep"> giữ chỗ cũ</label>
+          <button class="chip small hcStart" title="Khoanh từng bộ phận của hình vẽ ở frame này (lớp Nét + Màu) thành 1 nhân vật mới có xương">✂ Cắt từng bộ phận</button><button class="chip small" id="ppCutBtn" title="Khoanh để tách một phần của mảnh đang chọn thành mảnh mới">✂ Khoanh tách mảnh</button><label class="lbl"><input type="checkbox" id="ppKeep"> giữ chỗ cũ</label>
           <button class="chip small" id="ppRecut" title="Mở lại bước tô vùng tay, chân, đầu để cắt lại cho chuẩn — tư thế đã làm vẫn giữ">🖌 Sửa lại vùng cắt</button></div>
         <div class="mrow" data-tab="pose"><span class="lbl"><b>Frame này:</b></span><button class="chip small" id="ppKeyBtn" title="Keyframe = tư thế bạn tự đặt. Frame tự động = app tự tính giữa 2 keyframe">🔑 Keyframe</button>
           <span class="lbl">Chuyển tới keyframe sau:</span><select id="ppEase" class="chip small"></select></div>
@@ -370,7 +375,9 @@
         <button class="tbtn" id="lgSymPut" title="Thả 1 symbol đã lưu lên layer đang chọn, bắt đầu từ frame này">🎬 Thả symbol</button>
         <button class="tbtn" id="lgOnion" title="Onion skin chỉ hiện layer đang chọn ở các frame bên cạnh (dễ canh 1 nhân vật giữa nhiều người)">🧅 Onion layer này</button>
         <button class="tbtn" id="lgAdd" title="Thêm 1 frame tự chuyển ngay sau frame này: chuyển động dài thêm (giống F5 trong Animate)">＋ Frame</button>
+        <button class="tbtn" id="lgAddSec" title="Thêm frame tự chuyển đủ 1 giây sau frame này: tới giây cần thì chỉnh dáng (thành keyframe), app tự chuyển ở giữa">＋ 1 giây</button>
         <button class="tbtn" id="lgDel" title="Xoá frame đang xem: chuyển động ngắn lại">− Frame</button>
+        <button class="tbtn" id="lgBgNew" title="Nền trống mới từ frame này tới hết đoạn nền đang dùng (vd. frame 6 sang cảnh khác). Kéo cuối thanh trên dòng 🖼 Nền để kéo dài / rút ngắn">🖼 Nền mới từ đây</button>
         <span class="lbl lgLegend">● keyframe · <i class="lgTw"></i> tự chuyển · ▭ ẩn</span></div>
       <div id="lgBody"><div id="lgNames"></div><div id="lgScroll"><canvas id="lgCv"></canvas></div></div>
     </div>
@@ -439,6 +446,7 @@
 <script src="js/puppet/layers.js"></script>
 <script src="js/puppet/layer-timeline.js"></script>
 <script src="js/puppet/symbols.js"></script>
+<script src="js/puppet/hand-cut.js"></script>
 <script src="js/project/projects.js"></script>
 <script src="js/project/sync.js"></script>
 <script src="js/fx/text-camera.js"></script>

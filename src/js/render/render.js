@@ -130,6 +130,7 @@ function render() {
     }
   }
   if (floating && floatPlace() === 'under') { if (floating.cc) drawFloating(c, floating.cc); drawFloating(c); }
+  const trace = ppTracing(); if (trace) ppDrawTrace(c, f);
   if (S.showCol && f.col) c.drawImage(stroke && stroke.cv === f.col ? work : f.col, 0, 0);
   if (floating && floating.cc && S.showCol && floatPlace() === 'top') drawFloating(c, floating.cc);
   drawGhosts(c, f);
@@ -142,10 +143,10 @@ function render() {
   if (stroke) drawStrokePred(c);
   if (S.sym && (S.tool === 'brush' || S.tool === 'eraser')) { const q = 1 / vs * DPR; c.save(); c.setLineDash([10 * q, 8 * q]); c.lineWidth = 1.5 * q; c.strokeStyle = 'rgba(125,107,255,.85)'; c.beginPath(); if (S.sym !== 2) { c.moveTo(W / 2, 0); c.lineTo(W / 2, H); } if (S.sym !== 1) { c.moveTo(0, H / 2); c.lineTo(W, H / 2); } c.stroke(); c.restore(); }
   const px = 1 / vs * DPR;
-  if (S.pp && S.showPP && !ppSetup) drawPuppet(c, f.pp, f.lip);
+  if (S.pp && S.showPP && !ppSetup && !trace) drawPuppet(c, f.pp, f.lip);
   if (S.showVec) renderVec(c, rig && rig.pv ? { vec: rig.pv } : rig ? { vec: f.vec } : motion && motion.pv ? { vec: motion.pv } : f, px);
   if (rig) renderRig(c, px);
-  renderPP(c, f, px);
+  if (HC) hcDraw(c, px); else renderPP(c, f, px);
   if (S.tool === 'fx' && TABS.fx === 'look') { c.save(); c.beginPath(); c.rect(0, 0, W, H); c.clip(); drawFocusLines(c, f, S.cur, 0); drawFilter(c, f); c.restore(); }
   if (f.texts && f.texts.length) drawTexts(c, f, S.tool === 'fx' ? fxSel : null);
   if (S.safe) drawSafeZone(c, px);
@@ -192,6 +193,16 @@ function render() {
 /* ========= Shorts safe zone (only on screen, never exported) ========= */
 // Where YouTube Shorts / TikTok cover the video with their own UI. Fractions of the frame for 9:16.
 SETTINGS_KEYS.push('safe'); S.safe = 0;
+/* tracing paper: while drawing with Bút / Tẩy / Đổ màu on the drawing layers, cut-out characters are drawn faded and UNDER
+   the lines + colour (like onion paper), so you can trace over a character and fill colour there. Play / export unchanged. */
+SETTINGS_KEYS.push('ppTrace'); S.ppTrace = true;
+function ppTracing() { return !!(S.pp && S.pp.parts.length && S.showPP && !ppSetup && !playing && (HC || (S.ppTrace && (S.tool === 'brush' || S.tool === 'eraser' || S.tool === 'fill') && S.layer !== 'bg'))); }
+let ppTraceCv = null;
+function ppDrawTrace(c, f) {
+  if (!ppTraceCv || ppTraceCv.width !== W || ppTraceCv.height !== H) ppTraceCv = makeCanvas();
+  const x = ppTraceCv.getContext('2d'); x.clearRect(0, 0, W, H); drawPuppet(x, f.pp, f.lip);
+  c.save(); c.globalAlpha = 0.4; c.drawImage(ppTraceCv, 0, 0); c.restore();
+}
 const SAFE_916 = { l: 0.055, r: 0.15, t: 0.08, b: 0.22 };
 function safeRect() {
   if (H > W * 1.4) { const z = SAFE_916; return { x: W * z.l, y: H * z.t, w: W * (1 - z.l - z.r), h: H * (1 - z.t - z.b), tall: true }; }
