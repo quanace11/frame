@@ -192,7 +192,8 @@ function fingerActs(e) {
   }
   if (S.tool === 'puppet' && S.pp && !rig && !motion) {
     if (ppPathMode) return true;
-    if (ppCutMode || ppPatchMode || ppPaint) return false;
+    if (ppPaint) return ppPaint === 'sel' || ppPaint === 'fill' || ppPaint === 'pick';   // taps work with a finger; brush/eraser strokes need the pen (or 'Ngón tay cũng vẽ')
+    if (ppCutMode || ppPatchMode) return false;
     const sel = ppDrag === 'box' && ppPart(ppSel), b = sel && ppBoxOf(f, ppCharOf(sel) || sel.id);
     return !!(b && xbHit(b, p, true)) || !!ppHit(p, ppPoseFor(f));
   }
