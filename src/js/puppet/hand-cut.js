@@ -22,10 +22,27 @@ async function hcBegin() {
   if (playing) stopPlay(); commitFloating(); await ensureLoaded(f);
   const src = hcSource(f), d = src.getContext('2d').getImageData(0, 0, W, H).data;
   let n = 0; for (let i = 3; i < d.length; i += 16) if (d[i] > 20) n++;
+  if (n < 40 && hcFlattenLayer(f)) return hcBegin();   // an imported picture that became a layer: put it back into the frame, then cut it
   if (n < 40) { toast('Frame này chưa có hình vẽ. Vẽ nhân vật ở lớp Nét / Màu trước (đồ qua ảnh mờ cũng được), rồi bấm ✂ Cắt từng bộ phận', 4500); return; }
   HC = { f, src, ink: d, regs: [], role: 'torso', drag: null };
   setTool('puppet'); hcSync(); requestRender();
   toast('Khoanh Thân trước. Mỗi vùng bo tròn quá khớp một chút, các vùng được chồng lên nhau', 4000);
+}
+/* the frame is empty but the selected layer is a single picture (Nhập ảnh → layer riêng): draw it into this frame's
+   Nhân vật layer where it stands and remove the layer, as one undo step, so ✂ Cắt từng bộ phận can cut it */
+function hcFlattenLayer(f) {
+  if (!S.pp || !S.pp.parts.length) return false;
+  const rid = ppSelChar(), parts = rid ? S.pp.parts.filter(p => ppCharOf(p) === rid) : [];
+  if (parts.length !== 1 || parts[0].lh) return false;
+  histFlush(); const hb = histSnap(), x = f.canvas.getContext('2d'), before = x.getImageData(0, 0, W, H);
+  ppOnlyRoot = rid; try { drawPuppet(x, f.pp, f.lip); } finally { ppOnlyRoot = null; }
+  const after = x.getImageData(0, 0, W, H);
+  S.pp.parts = S.pp.parts.filter(p => p !== parts[0]); if (ppSel === parts[0].id) ppSel = null;
+  markEdited(f); lyrSync(true); ppSyncBar(); render();
+  const ha = histSnap(), fr = [];
+  for (const [g, a] of ha.fm) { const bs = hb.fm.get(g); if (bs !== undefined && bs !== a) fr.push([g, bs, a]); }
+  pushEntry({ multi: [pixEntry(f, [0, 0, W, H], before, after), { snap: { before: hb, after: ha, fr }, bytes: 2000 }] }); histRebase();
+  return true;
 }
 function hcCancel() { HC = null; lasso = null; hcSync(); ppSyncBar(); requestRender(); }
 function hcMask(poly) {

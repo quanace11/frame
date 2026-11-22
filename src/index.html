@@ -95,7 +95,7 @@
       <div class="layer" id="layerRef"><button class="name" id="refEditBtn" title="Chỉnh vị trí/cỡ/độ mờ ảnh mờ">Ảnh mờ</button><button class="eye" id="refEye" title="Ẩn/hiện">👁</button></div>
     </div>
     <span class="spacer"></span>
-    <button class="chip small on" id="wizBtn" title="Trợ lý làm video từng bước">🚀 Làm nhanh</button><button class="chip small" id="aiFxBtn" title="AI vẽ đẹp: làm sạch nét phác, tô màu, vẽ frame giữa (Google Gemini, dùng key của bạn)">🪄 AI vẽ đẹp</button><button class="chip small" id="aiCharBtn" title="AI tạo nhân vật hoạt hình từ ảnh chụp (Google Gemini, dùng key của bạn)">🤖 AI nhân vật</button><button class="chip small" id="assetBtn" title="Kho hình: hiệu ứng động (choáng, đánh nhau, chữ âm thanh), mắt, miệng, tay">🎨 Kho hình</button>
+    <button class="chip small on" id="wizBtn" title="Trợ lý làm video từng bước">🚀 Làm nhanh</button><button class="chip small" id="aiFxBtn" title="AI vẽ đẹp: làm sạch nét phác, tô màu, vẽ frame giữa (Google Gemini, dùng key của bạn)">🪄 AI vẽ đẹp</button><button class="chip small" id="aiCharBtn" title="AI tạo nhân vật hoạt hình từ ảnh chụp (Google Gemini, dùng key của bạn)">🤖 AI nhân vật</button><button class="chip small" id="assetBtn" title="Kho hình: hiệu ứng động (choáng, đánh nhau, chữ âm thanh), mắt, miệng, tay">🎨 Kho hình</button><button class="chip small" id="recolorBtn" title="Thay màu: chạm vào màu trên hình (vd. áo đỏ) rồi chọn màu mới, giữ nếp vải và bóng tối. Chạy trên máy, không cần AI">🖌 Thay màu</button>
     <button class="chip small" id="projBtn" title="Danh sách dự án">📁 Dự án</button><span id="saveState"></span><button class="chip small" id="syncState" hidden title="Đồng bộ giữa các máy">☁</button>
     <button class="chip small hidebtn" id="topHide" title="Thu gọn thanh này thành 1 nút nhỏ để vùng vẽ rộng hơn" aria-label="Thu gọn thanh trên">▴</button>
   </header>
@@ -470,6 +470,7 @@
 <script src="js/draw/reference.js"></script>
 <script src="js/image/processing.js"></script>
 <script src="js/image/caricature.js"></script>
+<script src="js/image/recolor.js"></script>
 <script src="js/ai/ai-char.js"></script>
 <script src="js/ai/ai-draw.js"></script>
 <script src="js/import/import-dialog.js"></script>
