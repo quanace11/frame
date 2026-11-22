@@ -6250,7 +6250,10 @@ const SYNC_TOK_LS = 'fs-sync-gh-token', SYNC_REPO_LS = 'fs-sync-gh-repo', SYNC_A
 const syncCfg = () => { const tok = lsGet(SYNC_TOK_LS).trim(), repo = lsGet(SYNC_REPO_LS).trim().replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/+$/, ''); return tok && /^[\w.-]+\/[\w.-]+$/.test(repo) ? { tok, repo } : null; };
 const syncAuto = () => lsGet(SYNC_AUTO_LS) !== 'off';
 let syncBusy = null, syncAgain = false, syncLast = 0, syncT = null, syncMsg = '';
-function setSyncState(t, title) { const el = document.getElementById('syncState'); if (!el) return; el.hidden = !syncCfg(); el.textContent = t; el.title = title || 'Đồng bộ giữa các máy (bấm để xem)'; }
+function setSyncState(t, title) {
+  const el = document.getElementById('syncState'); if (!el) return; el.hidden = !syncCfg(); el.textContent = t; el.title = title || 'Đồng bộ giữa các máy (bấm để xem)';
+  const m = document.getElementById('syMsg'); if (m && syncCfg() && title) m.textContent = (t.includes('⚠') ? '⚠ ' : t.includes('✓') ? '✓ ' : '☁ ') + title;   // the open ☁ dialog shows the progress too
+}
 function syncErr(status, j) {
   const m = j && j.message || '';
   if (status === 401) return 'Token sai hoặc đã hết hạn. Tạo token mới rồi dán lại.';
@@ -6259,14 +6262,34 @@ function syncErr(status, j) {
   if (status === 404) return 'Không thấy repo. Kiểm tra tên repo, và token đã được chọn cho đúng repo này chưa.';
   return 'GitHub báo lỗi ' + status + (m ? ': ' + m : '');
 }
+// GitHub allows only ~80 "content" writes (blob/tree/commit) a minute: pace the writes, and when GitHub says "slow down"
+// wait and go on instead of failing (a big first upload used to fail half way and nothing reached the other device)
+let ghLastWrite = 0;
+const ghWait = (ms, why) => { if (why) setSyncState('☁ ⏳', why); return new Promise(r => setTimeout(r, ms)); };
 async function gh(cfg, path, { method = 'GET', body, raw } = {}) {
-  let r;
-  try { r = await fetch(SYNC_API + '/repos/' + cfg.repo + path, { method, cache: 'no-store', headers: { Authorization: 'Bearer ' + cfg.tok, Accept: raw ? 'application/vnd.github.raw' : 'application/vnd.github+json', ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined }); }
-  catch (e) { const er = new Error('Không kết nối được GitHub (đang offline?)'); er.offline = true; throw er; }
-  if (!r.ok) { let j = null; try { j = await r.json(); } catch (e) {} const er = new Error(syncErr(r.status, j)); er.status = r.status; er.ghMsg = j && j.message || ''; throw er; }
-  if (raw) return new Uint8Array(await r.arrayBuffer());
-  return r.status === 204 ? null : r.json();
+  for (let attempt = 0; ; attempt++) {
+    if (method !== 'GET') { const w = ghLastWrite + GH_PACE - Date.now(); if (w > 0) await ghWait(w); ghLastWrite = Date.now(); }
+    let r;
+    try { r = await fetch(SYNC_API + '/repos/' + cfg.repo + path, { method, cache: 'no-store', headers: { Authorization: 'Bearer ' + cfg.tok, Accept: 'application/vnd.github+json', ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined }); }
+    catch (e) { const er = new Error('Không kết nối được GitHub (đang offline?)'); er.offline = true; throw er; }
+    if (!r.ok) {
+      let j = null; try { j = await r.json(); } catch (e) {}
+      const m = j && j.message || '', ra = +(r.headers.get('retry-after') || 0), left = r.headers.get('x-ratelimit-remaining'), reset = +(r.headers.get('x-ratelimit-reset') || 0) * 1000;
+      if ((r.status === 403 || r.status === 429) && (/rate limit/i.test(m) || ra || left === '0') && attempt < 8) {
+        const ms = ra ? ra * 1000 : left === '0' && reset ? reset - Date.now() + 1000 : 60000;
+        if (ms <= 6 * 60000) { await ghWait(Math.max(1000, ms), 'GitHub bảo chờ một chút, sẽ tự gửi tiếp…'); continue; }
+      }
+      const er = new Error(syncErr(r.status, j)); er.status = r.status; er.ghMsg = m; throw er;
+    }
+    if (raw) { const j = await r.json(), b = atob(String(j.content || '').replace(/\s+/g, '')), u8 = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u8[i] = b.charCodeAt(i); return u8; }
+    return r.status === 204 ? null : r.json();
+  }
 }
+let GH_PACE = 800;
+// blobs this device already put in the repo (by git sha): a sync cut off half way does not upload them again
+let syncKnown = null;
+async function syncKnownGet(repo) { if (!syncKnown || syncKnown.repo !== repo) { let k = null; try { k = await idbGet('sync-known'); } catch (e) {} syncKnown = k && k.repo === repo ? { repo, set: new Set(k.shas) } : { repo, set: new Set() }; } return syncKnown.set; }
+async function syncKnownSave() { if (syncKnown) try { await idbPut('sync-known', { repo: syncKnown.repo, shas: [...syncKnown.set].slice(-20000) }); } catch (e) {} }
 const u8b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
 const strU8 = s => new TextEncoder().encode(s);
 async function gitSha(u8) { const h = strU8('blob ' + u8.length + '\0'), all = new Uint8Array(h.length + u8.length); all.set(h); all.set(u8, h.length); return [...new Uint8Array(await crypto.subtle.digest('SHA-1', all))].map(b => b.toString(16).padStart(2, '0')).join(''); }
@@ -6334,7 +6357,11 @@ async function syncRun(opt) {
       try { await syncOnce(cfg, out, opt); break; }
       catch (e) { if (e.status === 422 && /fast.?forward|reference/i.test(e.ghMsg || '') && attempt < 3) continue; throw e; }   // another device committed meanwhile → redo on top of it
     }
-    if (opt.join) { const L2 = (await projIndex()).sort((a, b) => b.updated - a.updated); if (L2.length && L2[0].id !== curProjId) { await openProject(L2[0].id); out.reloaded = true; } }
+    // "làm tiếp": after joining, or on open / F5, show the work the other device did last (not this device's older project)
+    if ((opt.join || opt.startup) && out.pulledIds && out.pulledIds.length) {
+      const L2 = await projIndex(), got = L2.filter(x => out.pulledIds.includes(x.id)).sort((a, b) => b.updated - a.updated)[0], cur = L2.find(x => x.id === curProjId);
+      if (got && got.id !== curProjId && (opt.join || !cur || got.updated > cur.updated) && !saveT && !stroke && !floating) { await openProject(got.id); out.reloaded = true; }
+    }
     syncLast = Date.now(); syncMsg = '';
     const t = new Date(syncLast).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     setSyncState('☁ ✓', 'Đã đồng bộ lúc ' + t);
@@ -6363,7 +6390,7 @@ async function syncOnce(cfg, out, opt) {
     await gh(cfg, '/contents/index.json', { method: 'PUT', body: { message: 'Frame Studio: bắt đầu đồng bộ', content: btoa('{"v":1,"projects":[]}'), branch: 'main' } });
     head = (await gh(cfg, '/git/ref/heads/main')).object.sha;
   }
-  const treeSha = (await gh(cfg, '/git/commits/' + head)).tree.sha;
+  let treeSha = (await gh(cfg, '/git/commits/' + head)).tree.sha;
   const tree = await gh(cfg, '/git/trees/' + treeSha + '?recursive=1');
   const paths = new Map(); for (const t of tree.tree || []) if (t.type === 'blob') paths.set(t.path, t.sha);
   const readJson = async p => paths.has(p) ? JSON.parse(new TextDecoder().decode(await gh(cfg, '/git/blobs/' + paths.get(p), { raw: true }))) : null;
@@ -6372,7 +6399,24 @@ async function syncOnce(cfg, out, opt) {
   const st = await syncState(); if (st.repo !== cfg.repo) { st.repo = cfg.repo; st.items = {}; st.dels = []; }
   const local = await projIndex(), Lm = new Map(local.map(x => [x.id, x]));
   st.dels = st.dels.filter(id => !Lm.has(id));
-  const edits = [], newItems = new Map(), newState = {};
+  let edits = [], newItems = new Map(); const newState = {};
+  const known = await syncKnownGet(cfg.repo); for (const [p, sha] of paths) if (p.includes('/b/')) known.add(sha);
+  const upBlob = async (u8, sha) => { if (known.has(sha)) return; await gh(cfg, '/git/blobs', { method: 'POST', body: { content: u8b64(u8), encoding: 'base64' } }); known.add(sha); if (known.size % 10 === 0) syncKnownSave(); };
+  let rIdx = rIndex.projects, idxSha0 = paths.get('index.json');
+  // one commit with what is ready; refused if another device moved main meanwhile (→ the caller redoes the sync)
+  const flush = async () => {
+    const projects = rIdx.filter(x => !newItems.has(x.id)).concat([...newItems.values()]);
+    const idxU8 = strU8(JSON.stringify({ v: 1, projects })), idxSha = await gitSha(idxU8);
+    if (!edits.length && idxSha === idxSha0) return;
+    await upBlob(idxU8, idxSha);
+    edits.push({ path: 'index.json', mode: '100644', type: 'blob', sha: idxSha });
+    const nt = await gh(cfg, '/git/trees', { method: 'POST', body: { base_tree: treeSha, tree: edits } });
+    const cm = await gh(cfg, '/git/commits', { method: 'POST', body: { message: `Frame Studio: đồng bộ ${out.pushed} dự án`, tree: nt.sha, parents: [head] } });
+    await gh(cfg, '/git/refs/heads/main', { method: 'PATCH', body: { sha: cm.sha, force: false } });
+    syncKnownSave();
+    for (const e of edits) { if (e.sha) paths.set(e.path, e.sha); else paths.delete(e.path); }
+    head = cm.sha; treeSha = nt.sha; rIdx = projects; idxSha0 = idxSha; edits = []; newItems = new Map();
+  };
   // 2. pull = copy one remote project into this device (as the same id, or as a copy with a new id)
   const pull = async (rit, asId, name) => {
     const recSha = paths.get(`p/${rit.id}/rec.json`); if (!recSha) return false;
@@ -6385,6 +6429,7 @@ async function syncOnce(cfg, out, opt) {
       if (saveT || saving || stroke || floating || (now && Lm.get(asId) && now.updated !== Lm.get(asId).updated) || (!opt.manual && !opt.startup && document.querySelector('.ov'))) return false;
     }
     await syncWriteLocal(asId, rec, blobs, { ...rit, name: rec.name || rit.name, updated: name ? Date.now() : rit.updated });
+    (out.pulledIds = out.pulledIds || []).push(asId);
     if (asId === curProjId) { curProjId = null; await openProject(asId); out.reloaded = true; }
     out.pulled++; return true;
   };
@@ -6394,13 +6439,14 @@ async function syncOnce(cfg, out, opt) {
     const { json, files } = await syncEncode(rec, it.id), dir = `p/${it.id}/`;
     const recU8 = strU8(JSON.stringify(json)), recSha = await gitSha(recU8);
     const want = new Set(), n0 = edits.length;
-    for (const [sha, u8] of files) { const p = dir + 'b/' + sha; want.add(p); if (paths.get(p) !== sha) { await gh(cfg, '/git/blobs', { method: 'POST', body: { content: u8b64(u8), encoding: 'base64' } }); edits.push({ path: p, mode: '100644', type: 'blob', sha }); } }
-    if (paths.get(dir + 'rec.json') !== recSha) { await gh(cfg, '/git/blobs', { method: 'POST', body: { content: u8b64(recU8), encoding: 'base64' } }); edits.push({ path: dir + 'rec.json', mode: '100644', type: 'blob', sha: recSha }); }
+    let k = 0;
+    for (const [sha, u8] of files) { k++; const p = dir + 'b/' + sha; want.add(p); if (paths.get(p) !== sha) { if (!known.has(sha)) setSyncState(`☁ ↑${k}/${files.size}`, `Đang gửi "${it.name}": ${k}/${files.size} hình`); await upBlob(u8, sha); edits.push({ path: p, mode: '100644', type: 'blob', sha }); } }
+    if (paths.get(dir + 'rec.json') !== recSha) { await upBlob(recU8, recSha); edits.push({ path: dir + 'rec.json', mode: '100644', type: 'blob', sha: recSha }); }
     for (const p of paths.keys()) if (p.startsWith(dir + 'b/') && !want.has(p)) edits.push({ path: p, mode: '100644', type: 'blob', sha: null });
     const r = R.get(it.id);
     if (edits.length === n0 && r && !r.del && r.name === it.name) return r.updated;   // same content already there: leave the remote as it is
     newItems.set(it.id, { id: it.id, name: it.name, updated: it.updated, frames: it.frames, thumb: it.thumb || '' });
-    out.pushed++; return it.updated;
+    out.pushed++; await flush(); return it.updated;   // commit each project as soon as it is up, so the other device gets it even if a later one fails
   };
   const drop = id => { for (const p of paths.keys()) if (p.startsWith(`p/${id}/`)) edits.push({ path: p, mode: '100644', type: 'blob', sha: null }); };
   const ids = new Set([...Lm.keys(), ...R.keys(), ...st.dels]);
@@ -6429,17 +6475,8 @@ async function syncOnce(cfg, out, opt) {
       } else if (await pull(r, id)) newState[id] = { l: r.updated, r: r.updated };
     }
   }
-  // 4. one commit with everything; refused if another device moved main meanwhile (→ the caller redoes the sync)
-  const projects = rIndex.projects.filter(x => !newItems.has(x.id)).concat([...newItems.values()]);
-  const idxU8 = strU8(JSON.stringify({ v: 1, projects })), idxSha = await gitSha(idxU8);
-  if (edits.length || idxSha !== paths.get('index.json')) {
-    await gh(cfg, '/git/blobs', { method: 'POST', body: { content: u8b64(idxU8), encoding: 'base64' } });
-    edits.push({ path: 'index.json', mode: '100644', type: 'blob', sha: idxSha });
-    const nt = await gh(cfg, '/git/trees', { method: 'POST', body: { base_tree: treeSha, tree: edits } });
-    const cm = await gh(cfg, '/git/commits', { method: 'POST', body: { message: `Frame Studio: đồng bộ ${out.pushed} dự án`, tree: nt.sha, parents: [head] } });
-    await gh(cfg, '/git/refs/heads/main', { method: 'PATCH', body: { sha: cm.sha, force: false } });
-  }
-  st.items = newState; st.dels = st.dels.filter(id => R.has(id) && !R.get(id).del && !newItems.has(id));
+  await flush();
+  st.items = newState; st.dels = st.dels.filter(id => { const x = rIdx.find(y => y.id === id); return x && !x.del; });
   await idbPut('sync-state', st);
   if (!curProjId) { const L2 = (await projIndex()).sort((a, b) => b.updated - a.updated); if (L2.length) await openProject(L2[0].id); else await createProject(1080, 1920); }
 }
@@ -6511,8 +6548,8 @@ async function syncDialog() {
         m.textContent = 'Đang kiểm tra…';
         const er = await syncConnect(repo, tok); if (er) { m.textContent = er; return; }
         close(made ? 'made' : 'join');
-        const r = await syncNow({ manual: true, join: !made });
-        if (made && syncCfg()) syncDialog();   // show the new code to copy
+        const r = syncNow({ manual: true, join: !made });
+        if (made && syncCfg()) syncDialog();   // show the new code to copy right away; the first upload goes on behind it
         return r;
       };
       ov.querySelector('#syJoin').addEventListener('click', () => { const cfg = syncCodeParse(ov.querySelector('#syCode').value); if (!cfg) { m.textContent = 'Mã phiên không đúng. Mã bắt đầu bằng FS1-, hãy chép lại cả mã ở máy kia.'; return; } go(cfg.repo, cfg.tok, false); });

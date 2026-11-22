@@ -12,7 +12,7 @@ time.sleep(1)
 DBG = False
 TOK = 'github_pat_TEST_not_real_42'
 class Git:
-    def __init__(s): s.blobs = {}; s.trees = {}; s.commits = {}; s.head = None; s.private = True; s.uploads = 0; s.auth_bad = 0
+    def __init__(s): s.blobs = {}; s.trees = {}; s.commits = {}; s.head = None; s.private = True; s.uploads = 0; s.auth_bad = 0; s.writes = []; s.limit = None; s.limited = 0
     def gsha(s, b): return hashlib.sha1(b'blob %d\0' % len(b) + b).hexdigest()
     def put_tree(s, d): k = hashlib.sha1(json.dumps(sorted(d.items())).encode()).hexdigest(); s.trees[k] = dict(d); return k
     def commit(s, tree, parents): k = hashlib.sha1((tree + ','.join(parents) + str(len(s.commits))).encode()).hexdigest(); s.commits[k] = {'tree': tree, 'parents': parents, 'date': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(time.time() + len(s.commits) * 60))}; return k
@@ -32,6 +32,10 @@ def handle_api(method, path, body, headers):
     if headers.get('authorization') != 'Bearer ' + TOK: G.auth_bad += 1; return 401, {'message': 'Bad credentials'}
     m = re.match(r'/repos/me/frame-data([^?]*)', path)
     if not m: return 404, {'message': 'Not Found'}
+    if method != 'GET' and G.limit:   # GitHub's secondary rate limit on content writes: n per window seconds
+        n, win = G.limit; now = time.time(); G.writes = [t for t in G.writes if now - t < win]
+        if len(G.writes) >= n: G.limited += 1; return 403, {'message': 'You have exceeded a secondary rate limit. Please wait a few minutes before you try again.'}, {'retry-after': '1'}
+        G.writes.append(now)
     p = m.group(1); qs = path.split('?')[1] if '?' in path else ''
     if p == '/commits' and method == 'GET':
         from urllib.parse import parse_qs; return 200, G.log(parse_qs(qs)['path'][0])
@@ -47,7 +51,8 @@ def handle_api(method, path, body, headers):
         return 200, {'tree': [{'path': k, 'type': 'blob', 'sha': v} for k, v in G.trees[p.split('/')[-1]].items()], 'truncated': False}
     if p == '/git/blobs' and method == 'POST':
         b = base64.b64decode(body['content']); h = G.gsha(b); G.blobs[h] = b; G.uploads += 1; return 201, {'sha': h}
-    if p.startswith('/git/blobs/') and method == 'GET': return 200, G.blobs[p.split('/')[-1]]
+    if p.startswith('/git/blobs/') and method == 'GET':   # like the real API: JSON with base64 content split into lines
+        b = base64.encodebytes(G.blobs[p.split('/')[-1]]).decode(); return 200, {'content': b, 'encoding': 'base64'}
     if p == '/git/trees' and method == 'POST':
         d = dict(G.trees[body['base_tree']])
         for e in body['tree']:
@@ -61,14 +66,15 @@ def handle_api(method, path, body, headers):
         if G.commits[body['sha']]['parents'] != [G.head]: return 422, {'message': 'Update is not a fast forward'}
         G.head = body['sha']; return 200, {}
     return 404, {'message': 'Not Found ' + method + ' ' + p}
-CORS = {'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, content-type, accept', 'Access-Control-Allow-Methods': 'GET, POST, PATCH, PUT'}
+# same CORS rules as api.github.com: no Cache-Control / Pragma request headers allowed
+CORS = {'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type, If-Match, If-Modified-Since, If-None-Match, If-Unmodified-Since, Accept-Encoding, X-GitHub-OTP, X-Requested-With, User-Agent', 'Access-Control-Allow-Methods': 'GET, POST, PATCH, PUT, DELETE', 'Access-Control-Expose-Headers': 'ETag, Link, Location, Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset'}
 async def route(r):
     q = r.request
     if q.method == 'OPTIONS': return await r.fulfill(status=204, headers=CORS)
     print('REQ', q.method, q.url, q.headers.get('authorization')) if DBG else None
-    code, out = handle_api(q.method, q.url.replace('https://api.github.com', ''), json.loads(q.post_data) if q.post_data else None, q.headers)
-    if isinstance(out, bytes): await r.fulfill(status=code, body=out, headers={**CORS, 'Content-Type': 'application/octet-stream'})
-    else: await r.fulfill(status=code, body=json.dumps(out), headers={**CORS, 'Content-Type': 'application/json'})
+    res = handle_api(q.method, q.url.replace('https://api.github.com', ''), json.loads(q.post_data) if q.post_data else None, q.headers)
+    code, out, extra = res if len(res) == 3 else (*res, {})
+    await r.fulfill(status=code, body=json.dumps(out), headers={**CORS, **extra, 'Content-Type': 'application/json'})
 PEN = """async ([pts])=>{const v=document.getElementById('view');
   const mk=(t,x,y)=>new PointerEvent(t,{pointerId:7,pointerType:'pen',clientX:x,clientY:y,pressure:0.6,buttons:1,bubbles:true,cancelable:true});
   v.dispatchEvent(mk('pointerdown',pts[0][0],pts[0][1])); for(const [x,y] of pts.slice(1)){v.dispatchEvent(mk('pointermove',x,y)); await new Promise(r=>setTimeout(r,4));}
@@ -165,6 +171,21 @@ async def main():
         await sync(Bd); await A.wait_for_timeout(2500); await Bd.wait_for_timeout(500); await sync(A); await sync(Bd)
         h0 = G.head; await A.wait_for_timeout(2500); await sync(A); await sync(Bd); await sync(A)
         print('settled: no ping-pong commits between the two devices', G.head == h0)
+        # a big first upload hits GitHub's write limit: the app waits and goes on, and the work still arrives
+        await A.evaluate("createProject(1080,1920,'Phim dài')"); await A.wait_for_timeout(600)
+        for k in range(24):
+            if k: await A.click('#addBtn'); await A.wait_for_timeout(80)
+            await draw(A, [(200 + k * 20, 400), (500, 600 + k * 10)])
+        await A.wait_for_timeout(2000)
+        G.limit = (12, 2.5); await A.evaluate("GH_PACE=0"); r = await A.evaluate("syncNow({manual:true})")
+        print('big upload finished despite the limit', r is not None and r['pushed'] >= 1, 'GitHub said slow down', G.limited > 0, G.limited)
+        long_id = await A.evaluate("curProjId"); G.limit = None
+        print('long film is in the repo', any(x['id'] == long_id for x in json.loads(G.files()['index.json'])['projects']))
+        # another device that already has its own work joins → it opens the newest work from the other device
+        C = await device('tablet2'); await draw(C, [(300, 600), (600, 900)]); await C.wait_for_timeout(2000)
+        await join(C, code); await C.wait_for_function("!syncBusy && syncLast > 0", timeout=30000); await C.wait_for_timeout(600)
+        print('joining device opens the newest work from the other device', await C.evaluate("curProjId") == long_id, await C.evaluate("S.frames.length") == 24)
+        print('its own work is kept too', 'Dự án 1' in await C.evaluate("projIndex().then(L=>L.map(x=>x.name))"))
         await A.screenshot(path='sync_badge.png')
         await A.click('#syncState'); await A.wait_for_timeout(200); await A.screenshot(path='sync_dialog.png')
         print('bad auth calls', G.auth_bad)
