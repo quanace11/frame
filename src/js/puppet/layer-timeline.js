@@ -26,6 +26,7 @@ function lgSync(force) {
   const seg = has && lgSegAt(sel, S.cur), es = $('#lgEase');
   es.innerHTML = Object.entries(EASE_LABEL).map(([k2, v]) => `<option value="${k2}">${v}</option>`).join('');
   es.disabled = !seg; $('#lgEaseRow').classList.toggle('off', !seg); if (seg) es.value = ppLayerEase(S.frames[seg[0]], sel);
+  $('#lgOnion').classList.toggle('on', !!(S.onion && S.onionLayer)); $('#lgOnion').disabled = !has;
   $('#lgCopy').disabled = !has; $('#lgPaste').disabled = !has || !LG.clip;
   $('#lgInfo').textContent = has ? `${lyrName(ppPart(sel))} · frame ${S.cur + 1}: ${k ? '🔑 keyframe' : '∿ tự chuyển'}` : 'Chạm 1 dòng layer để chọn · kéo ● để dời keyframe';
 }
@@ -155,6 +156,12 @@ function lgWire() {
   $('#lgJoin').addEventListener('click', () => lgSetKey(false));
   $('#lgAdd').addEventListener('click', lgAddFrame);
   $('#lgEase').addEventListener('change', e => lgSetEase(e.target.value));
+  $('#lgOnion').addEventListener('click', () => {
+    const on = !(S.onion && S.onionLayer); S.onionLayer = on; if (on) S.onion = true;
+    if (!lgSelRoot() || S.tool !== 'puppet') { const r = lyrOrder()[0]; if (r) lyrSelect(r.id); }
+    tintCache.clear(); updateToggles(); saveSettings(); requestRender(); lgSync(true);
+    toast(on ? '🧅 Onion chỉ hiện layer đang chọn ở frame trước/sau' : '🧅 Onion hiện cả frame như cũ', 2000);
+  });
   $('#lgCopy').addEventListener('click', lgCopy); $('#lgPaste').addEventListener('click', lgPaste);
   $('#lgDel').addEventListener('click', () => delFrame());
   $('#lgNames').addEventListener('click', e => { const r = e.target.closest('[data-lgr]'); if (r) lgPick(S.cur, r.dataset.lgr); });
