@@ -19,6 +19,7 @@ function openImport(bmp) {
     colA: null, slits: true, flat: flatBorder(srcImg), split: { sens: 55, flat: true, view: 'both', out: 'float', res: null }, ppClean: false,
     cari: { style: 'flat', head: 1.6, body: 0.75, bulge: 0.3, neck: 0, detail: 50, outline: 5 }, cariOut: 'float', cariC: null,
     ed: null, edV: 0, edUndo: [], edRedo: [], tool: null, bsz: 40, vz: 1, vx: 0, vy: 0 };   // hand fixes on the cut-out mask: ed[i] -100 (erase) .. +100 (keep)
+  const ppLike = () => st.mode === 'pp' || st.mode === 'hand';   // ✂ Tự cắt từng phần uses the same background removal as the automatic cut
   const html = `
 <div class="imp-tabs">
   <button class="chip" data-mode="ref">Ảnh mờ để đồ theo</button>
@@ -26,7 +27,8 @@ function openImport(bmp) {
   <button class="chip" data-mode="line">Chuyển thành nét vẽ</button>
   <button class="chip" data-mode="split" style="border-color:#34c759">🎨 Tách nét + màu</button>
   <button class="chip" data-mode="raw">Chèn nguyên ảnh</button>
-  <button class="chip" data-mode="pp" style="border-color:#ff3b9a">🧩 Nhân vật ghép (cắt mảnh)</button>
+  <button class="chip" data-mode="hand" style="border-color:#ff3b9a">✂ Tự cắt từng phần</button>
+  <button class="chip" data-mode="pp" style="border-color:#ff3b9a">🧩 Nhân vật ghép (cắt tự động)</button>
   <button class="chip" data-mode="cari" style="border-color:#ffb020">🤪 Biếm hoạ</button>
 </div>
 <label class="lbl imp-layer" id="impLayerRow"><input type="checkbox" id="impLayerChk"> 🗂 <b>Đưa vào layer riêng</b> (như Adobe Animate: kéo trước/sau nhân vật khác, phóng to bằng 8 chấm, dời qua từng frame)</label>
@@ -51,6 +53,7 @@ ${st.cutMethod === 'ai' ? `<div class="row"><span>Viền mềm ↔ sắc</span><
 <div class="row"><span>🎨 Làm sạch: nét rõ + màu phẳng</span><input type="checkbox" class="switch" id="iPPClean" ${st.ppClean ? 'checked' : ''}></div>
 ${st.ppClean ? `<div class="row"><span>Nhận nét (ít ↔ nhiều)</span><input type="range" id="iSSens" min="0" max="100" value="${st.split.sens}"></div>` : ''}
 <p class="imp-note">Dùng ảnh nhân vật <b>đứng thẳng, thấy rõ tay chân</b> (ảnh AI tạo rất hợp). Bước sau: kéo các khớp cho đúng → app cắt thành Đầu, Thân, Tay, Chân → bạn tự xoay từng mảnh quanh khớp, có Frame giữa và mẫu Đi/Chạy/Vẫy… Ảnh giữ nguyên màu, không bị méo.</p>`,
+    hand: () => ctrls.pp().replace(/<p class="imp-note">Dùng ảnh[\s\S]*<\/p>$/, '') + `<p class="imp-note"><b>Như Animate:</b> bấm <b>Dùng</b> → chọn bộ phận (Thân, Đầu, Tay trên, Cẳng tay…) rồi <b>khoanh quanh nó</b> trên ảnh. Khoanh bo tròn quá khớp một chút, các vùng được chồng nhau: khớp tự đặt giữa chỗ chồng (kéo chấm hồng để chỉnh), <b>◯ Khớp tròn</b> chia chỗ chồng tại khớp nên xoay không lộ khe. Chạm 1 vùng để chọn <b>Gắn vào</b> mảnh nào và nằm <b>Trước/Sau</b>. Mặt (mắt, miệng) khoanh riêng được. Không cần AI trả phí.</p>`,
     cari: () => {
       const c = st.cari, sl = (id, label, min, max, v) => `<div class="row"><span>${label}</span><input type="range" id="${id}" min="${min}" max="${max}" value="${v}"></div>`;
       return `
@@ -158,7 +161,7 @@ ${st.lineOut === 'vec'
     const my = ++seq;
     try {
       if (st.mode === 'ref' || st.mode === 'raw') { st.result = src; showCanvas(src); return; }
-      if (st.mode === 'pp' && st.ppClean) {
+      if (ppLike() && st.ppClean) {
         const a = edApply(st.cutMethod === 'none' ? null : st.cutMethod === 'ai' ? sharpenMask(await ensureAi(), st.edge) : await colorCut());
         if (my !== seq) return;
         setBusy('Đang tách nét và màu…'); await new Promise(r => setTimeout(r, 20));
@@ -166,8 +169,8 @@ ${st.lineOut === 'vec'
         if (my !== seq) return;
         r.col.getContext('2d').drawImage(r.line, 0, 0); st.result = r.col; showCanvas(r.col); return;
       }
-      if (st.mode === 'pp' && st.cutMethod === 'none') { st.result = st.ed ? withAlpha(edApply(null, true)) : src; showCanvas(st.result); return; }
-      if (st.mode === 'cut' || st.mode === 'pp') {
+      if (ppLike() && st.cutMethod === 'none') { st.result = st.ed ? withAlpha(edApply(null, true)) : src; showCanvas(st.result); return; }
+      if (st.mode === 'cut' || ppLike()) {
         let a;
         if (st.cutMethod === 'ai') a = sharpenMask(await ensureAi(), st.edge);
         else a = await colorCut();
@@ -240,14 +243,14 @@ ${st.lineOut === 'vec'
       }
     } catch (e) {
       console.error(e); setBusy(null);
-      if ((st.mode === 'cut' || st.mode === 'cari' || st.mode === 'split' || st.mode === 'pp') && st.cutMethod === 'ai') { st.cutMethod = 'color'; renderCtrl(); toast('AI không chạy được trên trình duyệt này — chuyển sang tách theo màu nền', 3500); recompute(); }
+      if ((st.mode === 'cut' || st.mode === 'cari' || st.mode === 'split' || ppLike()) && st.cutMethod === 'ai') { st.cutMethod = 'color'; renderCtrl(); toast('AI không chạy được trên trình duyệt này — chuyển sang tách theo màu nền', 3500); recompute(); }
       else if (st.onlyChar) { st.onlyChar = false; renderCtrl(); toast('AI không chạy được — lấy nét toàn ảnh', 3000); recompute(); }
       else toast('Lỗi xử lý ảnh: ' + e.message, 3000);
     }
   }
   let rT; const later = () => { clearTimeout(rT); rT = setTimeout(recompute, 150); };
   /* ----- hand fixes on the cut-out: 🧽 Xoá / 🖌 Lấy lại brush, undo/redo, pinch-zoom + pan on the preview ----- */
-  const ED_MODES = { cut: 1, pp: 1, split: 1, cari: 1 };
+  const ED_MODES = { cut: 1, pp: 1, hand: 1, split: 1, cari: 1 };
   const nPx = src.width * src.height;
   /** auto mask a (or null = keep the picture's own alpha) + hand fixes. Never changes a (it may be cached). */
   function edApply(a, base1) {
@@ -415,7 +418,8 @@ ${st.ed ? '<button class="chip" id="iEdClr" title="Bỏ hết chỗ đã sửa t
     buttons: [{ label: 'Huỷ', value: null }, { label: 'Dùng', primary: true, action: async () => {
       if (st.busy || !st.result) { toast('Đợi xử lý xong'); return false; }
       if (st.mode === 'ref') { await setRef(src); return; }
-      if (st.mode === 'pp' || (st.mode === 'cari' && st.cariOut === 'pp') || (st.mode === 'split' && st.split.out === 'pp')) { ppStartSetup(st.result); return; }
+      if (st.mode === 'hand') { hcBeginImage(st.result); return; }
+      if (ppLike() || (st.mode === 'cari' && st.cariOut === 'pp') || (st.mode === 'split' && st.split.out === 'pp')) { ppStartSetup(st.result); return; }
       const asLayer = S.impLayer && S.layer !== 'bg' && !(st.mode === 'line' && st.lineOut === 'vec');   // lớp Nền đang chọn = ảnh vào nền
       if (asLayer) {
         if (st.mode === 'split') { if (!st.split.res) { toast('Đợi xử lý xong'); return false; } await imgToLayer(st.split.res.line, st.split.res.col); return; }
@@ -438,11 +442,11 @@ ${st.ed ? '<button class="chip" id="iEdClr" title="Bỏ hết chỗ đã sửa t
       pv = ov.querySelector('#impCv'); busyEl = ov.querySelector('#impBusy'); ctrl = ov.querySelector('#impCtrl');
       prevEl = ov.querySelector('#impPrev'); curEl = ov.querySelector('#impCur'); toolsEl = ov.querySelector('#impTools'); wirePreview();
       busyEl.style.whiteSpace = 'pre-line';
-      const lc = ov.querySelector('#impLayerChk'), lrow = ov.querySelector('#impLayerRow'), lsync = () => { lrow.hidden = S.layer === 'bg' || st.mode === 'ref' || st.mode === 'pp' || (st.mode === 'cari' && st.cariOut === 'pp') || (st.mode === 'split' && st.split.out === 'pp') || (st.mode === 'line' && st.lineOut === 'vec'); };
+      const lc = ov.querySelector('#impLayerChk'), lrow = ov.querySelector('#impLayerRow'), lsync = () => { lrow.hidden = S.layer === 'bg' || st.mode === 'ref' || ppLike() || (st.mode === 'cari' && st.cariOut === 'pp') || (st.mode === 'split' && st.split.out === 'pp') || (st.mode === 'line' && st.lineOut === 'vec'); };
       lc.checked = !!S.impLayer; lc.addEventListener('change', () => { S.impLayer = lc.checked; saveSettings(); });
       ov.querySelector('#impCtrl').addEventListener('click', () => setTimeout(lsync, 0)); lsync();
       ov.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { setTimeout(lsync, 0); st.mode = b.dataset.mode; st.result = null; renderCtrl(); recompute(); }));   // switching while busy is fine: the older run sees a newer seq and stops
-      if (wizImport) { wizImport = false; st.mode = 'pp'; }
+      if (wizImport) { st.mode = wizImport === 'hand' ? 'hand' : 'pp'; wizImport = false; }
       renderCtrl(); recompute();
     } });
 }
