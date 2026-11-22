@@ -1227,6 +1227,58 @@ async function ppSlide(dir) {
   return r;
 }
 document.querySelectorAll('[data-slide]').forEach(b => b.addEventListener('click', () => ppSlide(+b.dataset.slide)));
+/* --- 🚶 walk left / right / there and back, one tap: walk (or run) cycle on the selected character + it moves across the
+ *  screen (〰 path offset f.lip.mv) + at the far end it stops 2 frames and turns around (↔ flip of the root part) and walks back.
+ *  dir = 1 right, -1 left, 0 = there and back (goes first to the side with more room). One undo step (snapshot). --- */
+const PP_WALK = { walk: { cyc: 8, sp: 0.06, dur: 100 }, run: { cyc: 6, sp: 0.12, dur: 70 } };
+async function ppWalk(dir) {
+  if (!S.pp || !S.pp.parts.length) { toast('Chưa có nhân vật ghép'); return; }
+  const charId = ppSelChar(); if (!charId) return;
+  if (playing) stopPlay(); if (stroke) strokeEnd(); commitFloating(); ppPathMode = false;
+  const i0 = S.cur, f0 = S.frames[i0]; await ensureLoaded(f0);
+  const box = ppCharBox(f0); if (!box) { toast('Không thấy nhân vật trên frame này'); return; }
+  if (!S.pp.parts.some(p => ppCharOf(p) === charId && /^(leg|shin)/.test(p.role))) toast('Nhân vật chưa có mảnh vai trò Đùi/Ống chân nên chỉ trượt ngang, chân không bước', 4000);
+  const kind = ($('#walkKind') && $('#walkKind').value) || 'walk', K = PP_WALK[kind], back = dir === 0;
+  const m = W * 0.03, roomR = W - m - box.x1, roomL = box.x0 - m;
+  const d = dir || (roomR >= roomL ? 1 : -1), bh = box.y1 - box.y0;
+  const D = Math.max(d > 0 ? roomR : roomL, W * 0.25), n = clamp(Math.round(D / (bh * K.sp)), 6, 160), hold = back ? 2 : 0, N = back ? 2 * n + hold : n;
+  const base = (f0.lip && f0.lip.mv && f0.lip.mv[charId]) || { x: 0, y: 0 };
+  const mine = S.pp.parts.filter(p => ppCharOf(p) === charId).map(p => p.id);
+  const tor = S.pp.parts.find(p => p.role === 'torso' && ppCharOf(p) === charId), hgt = tor ? Math.max(200, tor.c.height * 2.2) : bh;
+  const fl0 = !!(f0.pp && f0.pp[charId] && f0.pp[charId].fl), dir0 = ppDir;
+  const x = j => j < n ? d * D * j / (n - 1) : j < n + hold ? d * D : d * D * (1 - (j - n - hold + 1) / n);
+  histFlush(); const hb = histSnap();
+  // missing frames: copies of the last frame (other characters hold their last pose), then the walk poses go on them
+  const added = []; const last = S.frames[S.frames.length - 1]; await ensureLoaded(last);
+  while (i0 + N > S.frames.length + added.length) added.push(frameCopyOf(last));
+  if (added.length) { S.frames.push(...added); loaded.push(...added); }
+  ppDir = d * (fl0 ? -1 : 1);
+  try {
+    for (let j = 0; j < N; j++) {
+      const f = S.frames[i0 + j], turned = back && j >= n + 1, stand = back && j >= n && j < n + hold;
+      const P = stand ? ppClone(f0.pp) : ppPresetPose(kind, j % K.cyc, K.cyc, f0.pp, hgt);
+      f.pp = { ...(f.pp || {}) }; for (const id of mine) if (P[id]) f.pp[id] = { ...P[id] };
+      f.pp[charId] = { ...(f.pp[charId] || {}), fl: turned ? !fl0 : fl0 };
+      f.ppKey = true; if (f.ppK) f.ppK = { ...f.ppK, [charId]: true };
+      f.dur = stand ? 120 : K.dur;
+      ppMvEdit(f, mv => { mv[charId] = { x: Math.round((base.x + x(j)) * 10) / 10, y: base.y }; });
+      f.ver++; queueThumbFor(f);
+    }
+  } finally { ppDir = dir0; }
+  // frames after it keep the end position (otherwise the character would jump back)
+  const end = S.frames[i0 + N - 1].lip.mv[charId];
+  for (let i = i0 + N; i < S.frames.length; i++) ppMvEdit(S.frames[i], mv => { mv[charId] = { ...end }; });
+  ppRetween();
+  for (const f of added) await drawThumb(f);
+  buildStrip(); updateFrameUI(); render();
+  const ha = histSnap(), fr = [];
+  for (const [g, a] of ha.fm) { const bs = hb.fm.get(g); if (bs !== undefined && bs !== a) fr.push([g, bs, a]); }
+  pushEntry({ multi: [{ snap: { before: hb, after: ha, fr }, bytes: 2000 }] }); histRebase();
+  ppSyncBar(); evictSoon(); scheduleSave(); requestRender();
+  toast(`🚶 Đã tạo ${N} frame ${back ? 'đi rồi quay lại' : d > 0 ? 'đi sang phải' : 'đi sang trái'}${added.length ? ` (thêm ${added.length} frame)` : ''} — bấm ▶ Phát để xem, ↶ để làm lại`, 4500);
+  return { n, N, d, added: added.length };
+}
+document.querySelectorAll('[data-walk]').forEach(b => b.addEventListener('click', () => ppWalk(+b.dataset.walk)));
 
 $('#ppBlinkBtn').addEventListener('click', ppAutoBlink);
 $('#ppBake').addEventListener('click', ppBake);
