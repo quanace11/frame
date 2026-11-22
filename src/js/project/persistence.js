@@ -65,7 +65,7 @@ async function saveProject() {
       frames: S.frames.map(f => ({ id: f.id, dur: f.dur, bgId: f.bgId, png: ref('f:' + f.id, f.png), col: ref('c:' + f.id, f.colPng), vec: f.vec, pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || null, tr: f.tr || null, tre: f.tre || null, ghost: f.ghost || null, bgs: f.bgs || null, sl: f.sl || null, flt: f.flt || null })),
       audio: A ? { ...A, music: slim(A.music), musics: (A.musics || []).map((v, k) => ({ ...v, buf: aref('m:mu' + (v.id || k), v.buf) })), voice: slim(A.voice), voices: (A.voices || []).map((v, k) => ({ ...v, buf: aref('m:v' + (v.id || k), v.buf) })) } : null,
       bgVideo: S.bgVideo ? { ...S.bgVideo, buf: ref('m:video', S.bgVideo.buf), srcs: S.bgVideo.srcs ? S.bgVideo.srcs.map(v => ({ ...v, buf: ref('m:vs' + v.id, v.buf) })) : undefined } : null,
-      pp: S.pp ? { parts: S.pp.parts.map(p => ({ id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null, png: p.png, alts: (p.alts || []).map(a => ({ png: a.png, dx: a.dx || 0, dy: a.dy || 0 })) })) } : null,
+      pp: S.pp ? { parts: S.pp.parts.map(p => ({ ...ppPartMeta(p), png: p.png, alts: (p.alts || []).map(a => ({ png: a.png, dx: a.dx || 0, dy: a.dy || 0 })) })) } : null,
       rig: S.rig || null,
       ref: REF.c && REF.png ? { png: REF.png, cx: REF.cx, cy: REF.cy, scale: REF.scale, rot: REF.rot, opacity: REF.opacity, show: REF.show } : null
     };

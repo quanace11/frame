@@ -22,7 +22,7 @@ async function charLibSave() {
   if (!v) return;
   const ids = new Set(parts.map(q => q.id));
   for (const q of parts) { if (!q.png) await encodePart(q); for (const a of (q.alts || [])) if (!a.png) await encodeHolder(a); }
-  const rec = { w: W, h: H, parts: parts.map(q => ({ id: q.id, name: charBaseName(q.name), role: q.role, parent: ids.has(q.parent) ? q.parent : null, z: q.z, ox: q.ox, oy: q.oy, px: q.px, py: q.py, tip: q.tip || null, asset: q.asset || null, png: q.png, alts: (q.alts || []).map(a => ({ png: a.png, dx: a.dx || 0, dy: a.dy || 0 })) })) };
+  const rec = { w: W, h: H, parts: parts.map(q => ({ ...ppPartMeta(q), name: charBaseName(q.name), parent: ids.has(q.parent) ? q.parent : null, png: q.png, alts: (q.alts || []).map(a => ({ png: a.png, dx: a.dx || 0, dy: a.dy || 0 })) })) };
   const id = 'ch' + Date.now().toString(36), thumb = await toBlob(charThumb(parts));
   try {
     await idbPut('char:' + id, rec);

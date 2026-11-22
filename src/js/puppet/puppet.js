@@ -524,6 +524,9 @@ function ppLabSyncBar() {
   $('#ppLabSize').value = ppLabSize; $('#ppLabSplit').checked = st.split;
   $('#ppLabUndo').disabled = !(st.undo && st.undo.length); $('#ppLabRedo').disabled = !(st.redo && st.redo.length);
 }
+// what is saved of a cut-out piece: ONE place for IndexedDB (saveProject), ZIP export and 🧍 Kho nhân vật (all three read
+// it back with { ...q }). A new piece field only needs adding here.
+function ppPartMeta(p) { return { id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null }; }
 // a new character appears from the frame being edited on: frames before it keep showing only what they had
 function ppHideBefore(parts) { for (let i = 0; i < S.cur; i++) { const f = S.frames[i]; f.pp = f.pp || {}; for (const q of parts) f.pp[q.id] = { ...(f.pp[q.id] || {}), h: true }; f.ppKey = true; } }
 // a character was added (cut, 🧍 Kho nhân vật, ⚽ Cầu thủ mẫu): add its pieces on top of the others

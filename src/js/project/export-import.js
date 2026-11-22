@@ -73,7 +73,7 @@ async function exportZip() {
       for (const pt of S.pp.parts) {
         const name = `puppet/part_${pt.id}.png`; files.push({ name, data: new Uint8Array(pt.png) });
         const alts = (pt.alts || []).map((a, k) => { const an = `puppet/part_${pt.id}_v${k + 1}.png`; files.push({ name: an, data: new Uint8Array(a.png) }); return { file: an, dx: a.dx || 0, dy: a.dy || 0 }; });
-        ppMeta.parts.push({ id: pt.id, name: pt.name, role: pt.role, parent: pt.parent, z: pt.z, ox: pt.ox, oy: pt.oy, px: pt.px, py: pt.py, tip: pt.tip || null, asset: pt.asset || null, file: name, alts });
+        ppMeta.parts.push({ ...ppPartMeta(pt), file: name, alts });
       }
     }
     const timing = { app: 'frame-studio', version: 1, width: W, height: H, total_ms: total, frames: meta, backgrounds: bgOrder.map(id => bgFile.get(id)), puppet: ppMeta };
