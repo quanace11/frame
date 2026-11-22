@@ -12,11 +12,17 @@ function ppMats(pose) {
   const get = (p, guard = 0) => {
     if (M[p.id]) return M[p.id];
     const q = (pose && pose[p.id]) || {};
-    const L = mMul(mMul(mMul(mT(p.px + (q.dx || 0), p.py + (q.dy || 0)), mR((q.r || 0) * DEG)), mS((q.sx == null ? 1 : q.sx) * (q.fl ? -1 : 1), q.sy == null ? 1 : q.sy)), mT(-p.px, -p.py));
+    const ax = q.fl && p.hard && p.parent && ppFlipAxis(p);   // hand-cut pieces flip across their own bone (a raised arm turns its palm, it does not swing to the other side)
+    const L = ax ? mMul(mMul(mMul(mMul(mT(p.px + (q.dx || 0), p.py + (q.dy || 0)), mR((q.r || 0) * DEG)), mS(q.sx == null ? 1 : q.sx, q.sy == null ? 1 : q.sy)), ax), mT(-p.px, -p.py))
+      : mMul(mMul(mMul(mT(p.px + (q.dx || 0), p.py + (q.dy || 0)), mR((q.r || 0) * DEG)), mS((q.sx == null ? 1 : q.sx) * (q.fl ? -1 : 1), q.sy == null ? 1 : q.sy)), mT(-p.px, -p.py));
     const par = p.parent && guard < 20 && parts.find(x => x.id === p.parent);
     M[p.id] = par ? mMul(get(par, guard + 1), L) : L; return M[p.id];
   };
   parts.forEach(p => get(p)); return M;
+}
+function ppFlipAxis(p) {   // mirror across the line pivot → tip
+  const t = p.tip; if (!t) return null; const dx = t.x - p.px, dy = t.y - p.py, l = Math.hypot(dx, dy); if (l < 1) return null;
+  const ux = dx / l, uy = dy / l, a = ux * ux - uy * uy, b = 2 * ux * uy; return [a, b, b, -a, 0, 0];
 }
 function ppImg(p, q) {
   const v = q && q.v ? q.v : 0;
@@ -150,7 +156,7 @@ function drawPuppet(ctx, pose, lip) {
   for (const p of [...S.pp.parts].sort((a, b) => a.z - b.z)) {
     const q = pose && pose[p.id]; if ((q && q.h) || !p.c || (off && off.has(p.id)) || (ppOnlyRoot && (ppCharOf(p) || p.id) !== ppOnlyRoot)) continue;
     const im = ppImg(p, q);
-    if (S.ppSoft && p.role && (PP_SOFT1[p.role] || PP_SOFT2[p.role])) { const js = ppSoftJoints(p, byId); if (js.length) { ppDrawSoft(ctx, p, im, M, js); continue; } }
+    if (S.ppSoft && !p.hard && p.role && (PP_SOFT1[p.role] || PP_SOFT2[p.role])) { const js = ppSoftJoints(p, byId); if (js.length) { ppDrawSoft(ctx, p, im, M, js); continue; } }
     ctx.save(); ctx.transform(...M[p.id]); ctx.drawImage(im.c, im.x, im.y); ctx.restore();
   }
 }
@@ -527,12 +533,14 @@ function ppLabSyncBar() {
 }
 // what is saved of a cut-out piece: ONE place for IndexedDB (saveProject), ZIP export and 🧍 Kho nhân vật (all three read
 // it back with { ...q }). A new piece field only needs adding here.
-function ppPartMeta(p) { return { id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null, lname: p.lname || null, lh: p.lh || null, lk: p.lk || null }; }
+function ppPartMeta(p) { return { id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null, lname: p.lname || null, lh: p.lh || null, lk: p.lk || null, hard: p.hard || null }; }
 // a new character appears from the frame being edited on: frames before it keep showing only what they had
 function ppHideBefore(parts) { for (let i = 0; i < S.cur; i++) { const f = S.frames[i]; f.pp = f.pp || {}; for (const q of parts) f.pp[q.id] = { ...(f.pp[q.id] || {}), h: true }; f.ppKey = true; } }
 // a character was added (cut, 🧍 Kho nhân vật, ⚽ Cầu thủ mẫu): add its pieces on top of the others
 function ppPushChar(parts) {
   if (!S.pp) { S.pp = { parts: [] }; S.frames.forEach(f => { if (!f.pp) f.pp = {}; }); }
+  const top = S.pp.parts.reduce((m, q) => Math.max(m, q.z), -1) + 1, z0 = Math.min(...parts.map(q => q.z));   // the new character goes in front, its pieces keep their own order
+  for (const q of parts) q.z = top + q.z - z0;
   S.pp.parts.push(...parts); ppRenormZ(); ppHideBefore(parts);
 }
 // …then show it: puppet on, tab Tư thế, every thumbnail redrawn, saved (undo: automatic snapshot)
@@ -776,6 +784,14 @@ function ppStart(p, base) {
     action = { ...base, kind: 'pppaint', part: sel, im, inv, sc, last: pt, before }; requestRender(); return;
   }
   if (ppDrag === 'box') { ppBoxStart(p, base, f); return; }
+  if (ppDrag === 'bone') {   // 🦴 like Animate's bone tool: drag an arm/leg = it turns round its joint, drag the root = the whole character moves
+    const hit = ppHit(p, ppPoseFor(f), true);
+    if (!hit) { ppSel = null; ppSyncBar(); requestRender(); return; }
+    if (hit.id !== ppSel) { ppSel = hit.id; ppSyncBar(); }
+    const M = ppMats(ppPoseFor(f)), wp = mApply(M[hit.id], hit.px, hit.py), q = ppQ(f, hit.id);
+    action = { ...base, kind: hit.parent ? 'pprot' : 'ppmove', before: ppState(f), part: hit, last: p, a0: Math.atan2(p.y - wp.y, p.x - wp.x), r0: q.r || 0, wp };
+    requestRender(); return;
+  }
   const sel = ppPart(ppSel);
   if (sel) {
     const M = ppMats(ppPoseFor(f)), wp = mApply(M[sel.id], sel.px, sel.py);
@@ -995,12 +1011,24 @@ function renderPP(c, f, px) {
   }
   if (S.tool !== 'puppet' || !S.pp) return;
   if (ppDrag === 'box' && !ppPaint) { const sel0 = ppPart(ppSel); if (sel0) xbDraw(c, ppBoxOf(f, ppCharOf(sel0)), px); return; }
+  if (ppDrag === 'bone' && !ppPaint) { ppDrawBones(c, f, px); return; }
   const sel = ppPart(ppSel); if (!sel || !sel.c) return;
   const M = ppMats(ppPoseFor(f)), im = ppImg(sel, f.pp && f.pp[sel.id]); c.save(); c.transform(...M[sel.id]);
   c.lineWidth = 2 * px / Math.max(0.2, Math.hypot(M[sel.id][0], M[sel.id][1])); c.setLineDash([8 * px, 6 * px]); c.strokeStyle = ppPaint ? '#2f7bff' : '#ff3b9a';
   c.strokeRect(im.x, im.y, im.c.width, im.c.height); c.restore();
   const wp = mApply(M[sel.id], sel.px, sel.py);
   c.save(); c.beginPath(); c.arc(wp.x, wp.y, (ppDrag === 'pivot' ? 11 : 8) * px, 0, Math.PI * 2); c.fillStyle = '#ff3b9a'; c.fill(); c.lineWidth = 2 * px; c.strokeStyle = '#fff'; c.stroke(); c.restore();
+}
+function ppDrawBones(c, f, px) {   // 🦴 bones of the selected character (or every character): joint → child joint, the touched piece in pink
+  const sel = ppPart(ppSel), rid = sel && (ppCharOf(sel) || sel.id), M = ppMats(ppPoseFor(f)), byId = {}; S.pp.parts.forEach(p => byId[p.id] = p);
+  const parts = S.pp.parts.filter(p => p.c && (!rid || (ppCharOf(p) || p.id) === rid) && !(f.pp && f.pp[p.id] && f.pp[p.id].h));
+  c.save(); c.lineCap = 'round';
+  for (const p of parts) {
+    const a = mApply(M[p.id], p.px, p.py), kids = parts.filter(k => k.parent === p.id), ends = kids.length ? kids.map(k => mApply(M[k.id], k.px, k.py)) : p.tip ? [mApply(M[p.id], p.tip.x, p.tip.y)] : [];
+    for (const b of ends) { c.strokeStyle = p.id === ppSel ? '#ff3b9a' : 'rgba(255,255,255,.85)'; c.lineWidth = 7 * px; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); c.strokeStyle = p.id === ppSel ? '#fff' : '#2f7bff'; c.lineWidth = 3 * px; c.stroke(); }
+  }
+  for (const p of parts) { const a = mApply(M[p.id], p.px, p.py); c.beginPath(); c.arc(a.x, a.y, (p.parent ? 7 : 10) * px, 0, Math.PI * 2); c.fillStyle = p.id === ppSel ? '#ff3b9a' : p.parent ? '#2f7bff' : '#ffb21e'; c.fill(); c.lineWidth = 2 * px; c.strokeStyle = '#fff'; c.stroke(); }
+  c.restore();
 }
 $('#ppCutAuto').addEventListener('click', ppLabBegin);
 $('#ppLabCut').addEventListener('click', () => ppAutoCut(false));
