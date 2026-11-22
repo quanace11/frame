@@ -1,10 +1,10 @@
 import os, sys
-HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
+HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); DIST = os.environ.get('FS_DIST') or os.path.join(ROOT, 'dist'); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
 os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tests/out
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
-srv = subprocess.Popen(['python3','-m','http.server','8871'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+srv = subprocess.Popen(['python3','-m','http.server','9107'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1)
 # Import dialog hand fixes on the background cut: 🧽 Xoá / 🖌 Lấy lại brush with size − +, undo/redo (button + two-finger tap),
 # pinch / wheel zoom + pan of the preview. Works in 🎨 Tách nét + màu and Tách nhân vật.
@@ -19,7 +19,7 @@ async def main():
         b = await p.chromium.launch(executable_path=CHROME, args=['--no-sandbox'])
         pg = await b.new_page(viewport={'width':1280,'height':900}); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
         await pg.add_init_script("new MutationObserver(()=>document.querySelectorAll('.tabhide').forEach(e=>e.classList.remove('tabhide'))).observe(document,{subtree:true,attributes:true,childList:true,attributeFilter:['class']})")
-        await pg.goto('http://localhost:8871/index.html'); await pg.wait_for_timeout(800); await pg.click('text=Bắt đầu vẽ')
+        await pg.goto('http://localhost:9107/index.html'); await pg.wait_for_timeout(800); await pg.click('text=Bắt đầu vẽ')
         fails = []
         def check(name, ok, extra=''):
             print(name, ok, extra)

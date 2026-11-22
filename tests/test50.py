@@ -1,11 +1,11 @@
 import os, sys
-HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
+HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); DIST = os.environ.get('FS_DIST') or os.path.join(ROOT, 'dist'); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
 os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tests/out
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # 🪄 colour a frame from the previous one: areas that overlap a coloured area take its colour; chain to the last frame; one undo
-srv = subprocess.Popen(['python3','-m','http.server','8846'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+srv = subprocess.Popen(['python3','-m','http.server','9100'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1)
 DRAW = """(async ([i,dx])=>{ const f=S.frames[i]; await ensureLoaded(f); const x=f.canvas.getContext('2d'); x.clearRect(0,0,W,H); x.strokeStyle='#111'; x.lineWidth=8;
   x.beginPath(); x.arc(400+dx,600,150,0,7); x.stroke(); x.strokeRect(250+dx,900,300,400);
@@ -15,7 +15,7 @@ async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(executable_path=CHROME, args=['--no-sandbox'])
         pg = await b.new_page(viewport={'width':1180,'height':820}); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
-        await pg.goto('http://localhost:8846/index.html'); await pg.wait_for_timeout(1000)
+        await pg.goto('http://localhost:9100/index.html'); await pg.wait_for_timeout(1000)
         await pg.click('.dlg .btns >> text=Bắt đầu vẽ'); await pg.wait_for_timeout(200)
         await pg.evaluate("(async()=>{ await addFrame(); await addFrame(); await addFrame(); })(); 0"); await pg.wait_for_timeout(600)
         for i, dx in enumerate([0, 30, 60, 90]): await pg.evaluate(DRAW, [i, dx])

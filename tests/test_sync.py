@@ -1,5 +1,5 @@
 import os, sys
-HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
+HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); DIST = os.environ.get('FS_DIST') or os.path.join(ROOT, 'dist'); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
 os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tests/out
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 # ☁ Làm tiếp trên máy khác: sync through a private GitHub repo, the second device joins with a session code (mã phiên). GitHub is MOCKED (an in-memory git: blobs, trees, commits, refs,
@@ -7,7 +7,7 @@ CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 # pictures not re-uploaded, both-edited → both kept, delete travelling, token never leaving localStorage, public repo refused.
 import asyncio, subprocess, time, json, base64, hashlib, re
 from playwright.async_api import async_playwright
-srv = subprocess.Popen(['python3','-m','http.server','8857'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+srv = subprocess.Popen(['python3','-m','http.server','9103'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1)
 DBG = False
 TOK = 'github_pat_TEST_not_real_42'
@@ -89,7 +89,7 @@ async def main():
             ctx = await b.new_context(viewport={'width': 1180, 'height': 900}); await ctx.route('https://api.github.com/**', route)
             pg = await ctx.new_page(); pg.on('pageerror', lambda e: errs.append(name + ': ' + str(e)))
             await pg.add_init_script("localStorage.setItem('fs-help','1')")
-            await pg.goto('http://localhost:8857/index.html'); await pg.wait_for_timeout(900)
+            await pg.goto('http://localhost:9103/index.html'); await pg.wait_for_timeout(900)
             return pg
         async def draw(pg, pts):
             await pg.evaluate(PEN, [[await pg.evaluate(f"({D2S})([{x},{y}])") for x, y in pts]]); await pg.wait_for_timeout(200)

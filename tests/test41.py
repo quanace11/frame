@@ -1,11 +1,11 @@
 import os, sys
-HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
+HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); DIST = os.environ.get('FS_DIST') or os.path.join(ROOT, 'dist'); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
 os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tests/out
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # "Vừa khung" fits the frame into the area left free by floating panels, and refits when a panel opens/folds/closes
-srv = subprocess.Popen(['python3','-m','http.server','8839'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+srv = subprocess.Popen(['python3','-m','http.server','8839'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1)
 GEO = """((sel)=>{const m=viewMat(), st=document.getElementById('stage').getBoundingClientRect(); const bottom=st.top+(m[1]*W+m[3]*H+m[5])/DPR, top=st.top+m[5]/DPR; const el=document.querySelector(sel); const r=el&&!el.hidden?el.getBoundingClientRect():null; return {top:Math.round(top), bottom:Math.round(bottom), panelTop: r?Math.round(r.top):null, vs}})"""
 async def main():

@@ -1,4 +1,4 @@
-"""Run every regression test against the BUILT app at the repo root.
+"""Run every regression test against the BUILT app in dist/.
 Usage:  python3 tools/build.py && python3 tests/run_all.py [test5 test21 ...]
 Needs:  pip install playwright  (+ a Chrome/Chromium; set CHROME=/path if not /usr/bin/google-chrome)"""
 import os, re, subprocess, sys

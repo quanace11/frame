@@ -1,5 +1,5 @@
 import os, sys
-HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
+HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); DIST = os.environ.get('FS_DIST') or os.path.join(ROOT, 'dist'); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
 os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tests/out
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time, io, wave, struct, math, base64
@@ -7,7 +7,7 @@ from playwright.async_api import async_playwright
 # ✨ animated text (pop / typing / exit fade, set on the whole run of copies, still pictures at rest, GIF split),
 # 👻 afterimage (ghosts of the previous frames under the character, tint, scene stop, save/reload, undo),
 # 🥁 music beats (tempo + phase from a click track, ticks, 🎯 snap next frame to the beat, 🥁 fit frames to beats)
-srv = subprocess.Popen(['python3','-m','http.server','8897'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+srv = subprocess.Popen(['python3','-m','http.server','8897'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1)
 PIX = '''async ([t, pts]) => { const T = frameStartTimes(); let i = T.findIndex((v, k) => k < S.frames.length && t < T[k + 1]); if (i < 0) i = S.frames.length - 1;
   const f = S.frames[i]; await ghostLoad(f); await ensureLoaded(f); const base = makeCanvas(); drawFrameBase(base.getContext('2d'), f, bgOf(f));

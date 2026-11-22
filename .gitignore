@@ -2,5 +2,9 @@ tests/out/
 __pycache__/
 *.zip
 .DS_Store
-index.html
-sw.js
+# build output (python3 tools/build.py): never commit it
+dist/
+# old build output at the repo root (before dist/)
+/index.html
+/sw.js
+node_modules/

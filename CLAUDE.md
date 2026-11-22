@@ -4,33 +4,43 @@ Web app vẽ và làm hoạt hình (Shorts 9:16) chạy trên tablet. Là PWA, h
 Chủ dự án: Quan (frontend dev, nói tiếng Việt). **Toàn bộ chữ trên giao diện viết bằng tiếng Việt**, dễ hiểu cho người mới.
 
 ## Cấu trúc repo
-| Đường dẫn | Là gì |
-|---|---|
-| `src/index.html` | **Mã nguồn duy nhất của app.** Một file HTML gồm CSS + JS, không framework, không bundler. Chỉ sửa ở đây. |
-| `tools/build.py` | Build `src/index.html` thành `index.html` ở thư mục gốc: chèn version vào `__APP_VERSION__`, thêm thẻ manifest/icon, tạo `sw.js`, `manifest.webmanifest`, `icons/`. Cần Pillow. |
-| `index.html`, `sw.js` | **File được build ra, không commit** (đã gitignore). GitHub Action `.github/workflows/pages.yml` tự build và đăng lên Pages mỗi lần push lên `main`. Ở máy thì build để chạy test. |
-| `manifest.webmanifest`, `icons/` | Cũng do build tạo ra, ít khi đổi, vẫn commit. Không sửa tay. |
-| `ort.wasm.min.js`, `ort-wasm-simd-threaded.*` | onnxruntime-web 1.31.1 (WASM, numThreads=1) |
-| `u2netp-model.js` | Model tách nền u2netp, nhúng base64 (`window.U2NETP_B64`) |
-| `migan-1/2/3.js` | Model vá hình MI-GAN, base64 chia 3 phần, mỗi phần < 16 MB (`window.MIGAN_B64_1..3`) |
-| `tests/` | Test hồi quy bằng Playwright (python). `tests/assets/` chứa ảnh/âm thanh mẫu tự tạo. |
+```
+src/
+  index.html          khung trang: markup + danh sách <link css> / <script src="js/…"> theo THỨ TỰ chạy
+  css/fonts.css       font Bangers nhúng base64 (chạy offline)
+  css/app.css         toàn bộ giao diện
+  js/<nhóm>/<tính năng>.js   70 file, mỗi file = 1 tính năng (xem bảng "Bản đồ module" bên dưới)
+vendor/onnxruntime/   onnxruntime-web 1.31.1 (WASM, numThreads=1)
+models/               u2netp-model.js (tách nền, window.U2NETP_B64), migan-1/2/3.js (vá hình MI-GAN, mỗi phần < 16 MB)
+tools/build.py        build src/ → dist/ (1 file index.html + sw.js + manifest + icons, chép vendor/ + models/)
+tools/lint/           ESLint cho src/js (npm ci --prefix tools/lint && node tools/lint/lint.mjs)
+tests/                test hồi quy Playwright (python) + run_all.py; tests/assets/ = ảnh/âm thanh mẫu tự tạo
+.github/workflows/    pages.yml (đăng app khi push main), tests.yml (lint + toàn bộ test trên mỗi PR)
+dist/                 bản build, KHÔNG commit (gitignore)
+```
+- **Các file JS dùng chung 1 phạm vi script.** `tools/build.py` nối chúng (theo thứ tự trong `src/index.html`) thành **một** `<script>` trong `dist/index.html`, giống hệt bản 1 file trước đây: hàm/biến cấp cao nhất của file này dùng được ở file khác. Vì vậy không dùng `import/export`, và code chạy ngay khi nạp (không nằm trong hàm) chỉ được dùng thứ đã khai báo ở file đứng trước. Thêm file mới thì thêm 1 dòng `<script src="js/…">` vào `src/index.html`.
+- `src/index.html` **không mở trực tiếp được**: luôn build rồi mở `dist/`.
+- `vendor/` và `models/` được chép ra **gốc** của `dist/`, nên URL trên Pages giữ nguyên (`./ort.wasm.min.js`, `./u2netp-model.js`, `./migan-1.js`…) và app đã cài không phải tải lại model.
 
 ## Quy trình làm việc
 ```bash
-# 1. sửa src/index.html
-python3 tools/build.py                 # 2. build ra thư mục gốc
-python3 tests/run_all.py               # 3. chạy toàn bộ test (hoặc: run_all.py test5 test22)
-git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, merge vào main
+# 1. sửa src/js/… hoặc src/css/…
+python3 tools/build.py --check         # 2. build ra dist/ (+ kiểm tra cú pháp bằng node)
+node tools/lint/lint.mjs               # 3. lint (lần đầu: npm ci --prefix tools/lint)
+python3 tests/run_all.py               # 4. build + chạy toàn bộ test, 4 test song song (-j 1 nếu máy yếu; hoặc: run_all.py test5 test22)
+git checkout -b feat/<tên> && git commit && git push   # 5. làm trên nhánh, mở PR: Action "Tests" tự chạy lint + toàn bộ test
 ```
 - Cài đặt: `pip install playwright pillow` và có Chrome (đặt `CHROME=/đường/dẫn` nếu không phải `/usr/bin/google-chrome`).
-- Test chạy trên **bản đã build ở thư mục gốc**, nên phải build trước rồi mới test. Ảnh chụp màn hình lưu vào `tests/out/` (đã gitignore).
-- Kiểm tra cú pháp nhanh: tách `<script>` ra file rồi chạy `node --check`.
-- Mỗi lần push lên `main`, Action **Pages** build rồi đăng app (mất khoảng 1 phút). Sau đó app đã cài trên tablet tự hiện "Có bản cập nhật mới" (service worker: network-first cho index.html, cache-first cho model lớn).
-- Test mới đặt tên theo tính năng `tests/test_<tên>.py` (không đánh số, để 2 nhánh không trùng tên; `run_all.py` nhận cả 2 kiểu). Viết theo mẫu `tests/test21.py`: đầu file có header chuẩn (ROOT/ASSETS/OUT/CHROME), mở `http.server` ở một cổng riêng, dòng cuối in `ERR []`.
+- Test chạy trên **bản đã build trong `dist/`** (`run_all.py` tự build trước, `--no-build` để bỏ qua). Ảnh chụp màn hình và log của test lỗi (`tests/out/<tên>.log`) lưu vào `tests/out/` (đã gitignore).
+- **Mỗi PR phải xanh ở Action "Tests"** trước khi merge (lint + 4 nhóm test chạy song song). Đây là chốt chặn để sửa tính năng này không làm hỏng tính năng khác.
+- `tests/test_smoke_tour.py` = nghiệm thu nhanh: mở mọi công cụ, mọi tab, mọi mục Menu ở iPad ngang + dọc trên Chrome thật, không được có lỗi trang.
+- Mỗi lần push lên `main`, Action **Pages** build rồi đăng `dist/` (mất khoảng 1 phút). Sau đó app đã cài trên tablet tự hiện "Có bản cập nhật mới" (service worker: network-first cho index.html, cache-first cho model lớn).
+- Test mới đặt tên theo tính năng `tests/test_<tên>.py` (không đánh số, để 2 nhánh không trùng tên). Viết theo mẫu `tests/test21.py`: đầu file có header chuẩn (ROOT/DIST/ASSETS/OUT/CHROME), mở `http.server` ở **một cổng riêng chưa test nào dùng** (`cwd=DIST`, vì các test chạy song song), dòng cuối in `ERR []`.
 - Test nào chạm vào bảng có tab thì thêm init script xoá class `.tabhide` (xem test22).
 
 ## Ràng buộc quan trọng
-- **Giữ app trong một file** (`src/index.html`). Không thêm CDN, vì app phải chạy offline. Model và runtime để ở thư mục gốc.
+- **App phát hành là một file** (`dist/index.html`, do build nối `src/`). Không thêm CDN, không thêm thư viện/bundler: app phải chạy offline. Model để ở `models/`, runtime ở `vendor/`.
+- Lint phải sạch (`node tools/lint/lint.mjs`): không có tên chưa khai báo, không có biến thừa.
 - **Không vẽ hay nhúng nhân vật, logo hoặc tác phẩm có bản quyền**, kể cả người thật. Asset trong Kho hình đều vẽ bằng code (hàm `aEye`, `aMouth`, `aHand`...). Asset mới cũng phải là thiết kế gốc.
 - **Ưu tiên tablet:**
   - Pointer Events: bút có lực nhấn và chống chạm lòng bàn tay.
@@ -40,9 +50,33 @@ git checkout -b feat/<tên> && git commit && git push   # 4. làm trên nhánh, 
 - **Bộ nhớ:** frame được giải phóng theo LRU (`MAX_LOADED`) xuống PNG trong IndexedDB. Luôn `await ensureLoaded(f)` trước khi đọc `f.canvas`. Nền nạp lười (vd. nền của frame tách từ video) cũng được giải phóng theo LRU riêng (`loadedBg`, `MAX_BG`), nên cũng phải `await ensureLoaded(bgOf(f))` trước khi đọc `bg.canvas` của frame không phải frame đang xem.
 - **Undo:** mọi chỉnh sửa đi qua `pushEntry(...)`, với puppet là `ppEntry`/`ppEdit`. Thay đổi pixel phải ghi `bytes`.
   - Ngoài ra có **undo tự động** (`histSnap`/`histCheck`/`histApply`): mỗi `scheduleSave()` hẹn kiểm tra sau 400 ms; nếu trạng thái nhẹ (thứ tự/thời lượng frame, nền, mảnh puppet, tư thế, chữ/camera, âm thanh, rig, ảnh mờ, nền video) đổi mà không có `pushEntry` nào thì tự đẩy 1 bước `snap`. Vì vậy thay đổi mới chỉ cần gọi `scheduleSave()` là hoàn tác được. Pixel và nét vector **không** nằm trong snapshot: vẫn phải tự `pushEntry`. Đừng sửa canvas của mảnh tại chỗ (hãy tạo canvas mới) để snapshot giữ được bản cũ. Lịch sử tối đa `UNDO_MAX` = 400 bước. Sau một `pushEntry` riêng, thay đổi nhẹ chỉ được "che" 150 ms (`histCover`); `pushEntry` của bước pixel/nét ghi trước thay đổi nhẹ đang chờ thành bước riêng (`histLight`), nên thao tác nhanh ngay sau khi vẽ vẫn hoàn tác được (`tests/test_luong_chinh.py`).
-- **Lưu trữ:** IndexedDB key-value `frame-studio`, gồm `projects` và `project:<id>`. Khi thêm field mới cho mảnh puppet, nhớ thêm vào cả 3 chỗ serialize: `saveProject` (khoảng dòng 3309), xuất ZIP (`ppMeta.parts.push`) và nhập ZIP. Thêm cả vào `charLibSave` (Kho nhân vật).
+- **Lưu trữ:** IndexedDB key-value `frame-studio`, gồm `projects` và `project:<id>`. Khi thêm field mới cho mảnh puppet, nhớ thêm vào cả 3 chỗ serialize: `saveProject` (`src/js/project/persistence.js`), xuất ZIP (`ppMeta.parts.push`) và nhập ZIP (`src/js/project/export-import.js`). Thêm cả vào `charLibSave` (Kho nhân vật).
 
-## Bản đồ code (`src/index.html`, tìm theo tiêu đề `/* ===== ... */`)
+## Bản đồ module (`src/js/`, theo thứ tự nạp)
+| Thư mục | File |
+|---|---|
+| `core/` | `basics` (`$`, `S`, settings) · `objects` (frame, nền, nạp lười) · `view` (zoom/xoay khung) · `undo` (`pushEntry`, undo tự động) · `edits` (lưu, ảnh nhỏ) |
+| `render/` | `render` (canvas làm việc, vẽ màn hình, vùng an toàn Shorts) |
+| `draw/` | `strokes` (bút, cỡ, độ đậm) · `fill` (đổ màu, hút màu) · `auto-colour` (🪄 tô theo frame trước) · `reference` (ảnh mờ đồ theo) |
+| `select/` | `lasso` (chọn vùng, hình nổi) · `warp` (🫳 kéo uốn) · `place` (đặt trước/sau) · `tween` (🎞 chuyển động) · `clipboard` |
+| `timeline/` | `timeline` (dòng frame, kéo đổi chỗ) · `playback` · `delete-all` · `multi-select` · `animate-tools` (fps, thanh tua, ✨ vẽ giữa) · `scenes` (🎬 cảnh) · `flipper` (◀ n/N ▶) |
+| `audio/` | `waveform` · `audio-timeline` (🎚 dòng âm thanh) · `beats` (🥁 nhịp nhạc) |
+| `vector/` | `vector` (lớp Nét, Sửa nét) · `motion` (tạo chuyển động nét) · `trace` (ảnh → nét) · `snap` (🧲 hút nét) · `pixel-to-vec` |
+| `rig/` | `rig` (xương + biểu cảm cho nét vector) |
+| `puppet/` | `puppet` (nhân vật ghép, cắt tự động, uốn mềm, đường đi) · `char-lib` (🧍 kho nhân vật) · `kit` (⚽ cầu thủ mẫu) · `gestures` · `keyframes` · `ik` · `poses` |
+| `assets/` | `asset-lib` (Kho hình) · `anim-fx` (hiệu ứng động) |
+| `fx/` | `text-camera` (chữ, camera, SFX, nhép miệng, xuất video thường) · `ghost` (👻) · `look` (🌈 hiệu ứng) · `transitions` (🎞 chuyển cảnh) · `ball-gags` (⚽ bóng & combo) |
+| `export/` | `video-fast` (⚡ WebCodecs + mp4Mux) · `cover` (📸 ảnh bìa) |
+| `project/` | `projects` · `sync` (☁) · `persistence` (IndexedDB) · `zip` · `export-import` |
+| `image/` | `processing` (tách nền u2netp, tách nét + màu) · `caricature` (🤪) |
+| `ai/` | `gap-fill` (vá khe, MI-GAN) · `ai-char` (🤖) · `ai-draw` (🪄 AI vẽ đẹp) |
+| `import/` | `import-dialog` (Nhập ảnh, sửa tay vùng tách nền) |
+| `video/` | `video-track` (nền video, 🎞 ghép theo video) · `video-frames` (🎬 video → frame) |
+| `scenes/` | `scene-lib` (🏞 nền vẽ sẵn, nền bóng đá) |
+| `ui/` | `input` (cử chỉ, phím tắt) · `toolbar` · `pickers` (bảng màu/bút) · `modal` · `panel-tabs` · `wizard` · `menu` |
+| `app/` | `init` · `pwa` (cập nhật) |
+
+## Bản đồ code (chi tiết từng tính năng; tìm theo tiêu đề `/* ===== ... */` trong file tương ứng)
 - **Nền tảng và giao diện**
   - Basics / Settings (`S`, `SETTINGS_KEYS` lưu vào localStorage)
   - Objects (frames, nền, lazy load)

@@ -1,10 +1,10 @@
 import os, sys
-HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
+HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); DIST = os.environ.get('FS_DIST') or os.path.join(ROOT, 'dist'); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
 os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tests/out
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
-srv = subprocess.Popen(['python3','-m','http.server','8921'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+srv = subprocess.Popen(['python3','-m','http.server','8921'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1)
 # Offline font + PNG export: comic font is embedded (no request leaves localhost), PNG ZIP is split into parts, single PNG has a busy guard
 async def main():
@@ -55,7 +55,7 @@ async def main():
         n1 = await pg.evaluate("_got.length"); print('single png files', n1)
         if n1 != 1: errs.append('exportPngOne gave %d files' % n1)
         # the grey picture in the cut-region editor no longer uses ctx.filter
-        src = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
+        src = open(os.path.join(DIST, 'index.html'), encoding='utf-8').read()
         if "gx.filter = 'grayscale" in src: errs.append('ctx.filter still used for grey')
         print('ERR', errs)
         await b.close()

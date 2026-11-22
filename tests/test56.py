@@ -1,11 +1,11 @@
 import os, sys
-HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
+HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); DIST = os.environ.get('FS_DIST') or os.path.join(ROOT, 'dist'); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
 os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tests/out
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # bigger max zoom (4800%), stricter lasso, "Nhiều chấm": double-tap a point drops its whole line, ➖ Khoanh bớt unselects points
-srv = subprocess.Popen(['python3','-m','http.server','8856'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+srv = subprocess.Popen(['python3','-m','http.server','9102'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1)
 PEN = """async ([pts, gap])=>{const v=document.getElementById('view');
   const mk=(t,x,y)=>new PointerEvent(t,{pointerId:7,pointerType:'pen',clientX:x,clientY:y,pressure:0.6,buttons:1,bubbles:true,cancelable:true});
@@ -21,7 +21,7 @@ async def main():
             print(name, ok)
             if not ok: errs.append('FAIL ' + name)
         await pg.add_init_script("new MutationObserver(()=>document.querySelectorAll('.tabhide').forEach(e=>e.classList.remove('tabhide'))).observe(document,{subtree:true,attributes:true,childList:true,attributeFilter:['class']})")
-        await pg.goto('http://localhost:8856/index.html'); await pg.wait_for_timeout(800)
+        await pg.goto('http://localhost:9102/index.html'); await pg.wait_for_timeout(800)
         await pg.click('text=Bắt đầu vẽ')
         # zoom: wheel far in, it now stops at 4800% (was 1600%)
         box = await pg.locator('#view').bounding_box()

@@ -1,5 +1,5 @@
 import os, sys
-HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
+HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); DIST = os.environ.get('FS_DIST') or os.path.join(ROOT, 'dist'); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
 os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tests/out
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
@@ -7,7 +7,7 @@ from playwright.async_api import async_playwright
 # 🎞 Ghép theo video: the whole video stays a video on the 🎞 Video row of the 🎚 timeline. 3 s clip (1 s red, 1 s blue, 1 s green
 # + tone). Add (film stretched to the video), ✂ split at the red playhead, drag to reorder, trim an edge, 🔗 join, mute, the
 # sound mixed by scheduleAudio, ➕ frame at the playhead, undo / redo, save / reload, fast export, the "Thêm video" chooser.
-srv = subprocess.Popen(['python3','-m','http.server','8931'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+srv = subprocess.Popen(['python3','-m','http.server','8931'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1)
 CLIP = os.path.join(ASSETS, 'clip_rgb.webm')
 COL = '''async (t) => { const T = frameStartTimes(); let i = 0; while (i < S.frames.length - 1 && T[i + 1] <= t) i++;

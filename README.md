@@ -15,11 +15,12 @@ Mỗi lần có bản mới trên nhánh `main`, app sẽ hiện **"Có bản c�
 Bài vẽ lưu trên tablet nên không mất khi cập nhật. Nên thỉnh thoảng vào Menu → **Xuất ZIP** để sao lưu.
 
 ## Bật GitHub Pages (chỉ làm 1 lần)
-Repo phải để Public. Vào Settings → Pages → Source: **Deploy from a branch** → Branch: **main** / **(root)** → Save.
+Settings → Pages → Build and deployment → Source: **GitHub Actions**. Mỗi lần push lên `main`, Action **Pages** tự build và đăng.
 
 ## Phát triển
-- Mã nguồn nằm ở `src/index.html`.
-- Build: `python3 tools/build.py`.
-- Test: `python3 tests/run_all.py`.
+- Mã nguồn: `src/` (`index.html` + `css/` + `js/<nhóm>/<tính năng>.js`). Build nối lại thành 1 file chạy offline.
+- Build: `python3 tools/build.py` → `dist/` (mở `dist/index.html` qua một web server, vd. `python3 -m http.server -d dist`).
+- Lint: `npm ci --prefix tools/lint && node tools/lint/lint.mjs`.
+- Test: `pip install playwright pillow` rồi `python3 tests/run_all.py` (Chrome thật, 4 test song song). Mỗi PR tự chạy lint + test.
 
 Chi tiết cấu trúc, quy trình và quy ước code xem trong [CLAUDE.md](CLAUDE.md).
