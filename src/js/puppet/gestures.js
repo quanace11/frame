@@ -176,6 +176,54 @@ $('#fbPen').addEventListener('click', () => { setTool('brush'); setFocus(true); 
 $('#fbEraser').addEventListener('click', () => { setTool('eraser'); setFocus(true); });
 $('#fbPlay').addEventListener('click', startPlay);
 $('#fbPrev').addEventListener('click', () => selectFrame(S.cur - 1)); $('#fbNext').addEventListener('click', () => selectFrame(S.cur + 1));
+/* ===== resize the frame bar: drag the handle on top of it (or tap it) — frames, the scrub bar and the 🎚 audio rows get bigger.
+   Size is a scale S.tlScale (0.75–2.5, saved in settings), applied through the CSS variable --tls and ATL_LANE. ===== */
+const TLS_MIN = 0.75, TLS_MAX = 2.5;
+function tlScaleSet(v, done) {
+  S.tlScale = clamp(Math.round((+v || 1) * 100) / 100, TLS_MIN, TLS_MAX);
+  document.documentElement.style.setProperty('--tls', S.tlScale);
+  ATL_LANE = Math.round(36 * clamp(S.tlScale, 0.9, 2));
+  const lb = document.getElementById('tlGripLbl'); if (lb) lb.textContent = Math.round(S.tlScale * 100) + '%';
+  const add = strip.querySelector('.addfr'); if (add) add.style.width = Math.max(Math.round(96 * W / H * S.tlScale), 44) + 'px';
+  if (atlOpen()) atlDraw();
+  if (done) {
+    const th = thumbSize()[1];
+    if (S.frames.some(f => f.thumb && f.thumb.height !== th)) { S.frames.forEach(f => { f.thumb = null; }); buildStrip(); }
+    saveSettings();
+  }
+}
+// never let the frame bar eat more than ~60% of the screen (the drawing area must stay usable): shrink to the biggest size that fits
+function tlCap() {
+  const tl = $('#tl'), lim = window.innerHeight * 0.6;
+  for (let k = 0; k < 40 && S.tlScale > 1 && tl.getBoundingClientRect().height > lim; k++) tlScaleSet(Math.max(1, S.tlScale - 0.05));
+}
+(() => {
+  const g = $('#tlGrip'); let d = null;
+  g.addEventListener('pointerdown', e => {
+    if (e.button > 0) return; e.preventDefault();
+    try { g.setPointerCapture(e.pointerId); } catch (_) { }
+    const c = strip.querySelector('.fr canvas');
+    d = { id: e.pointerId, y0: e.clientY, s0: S.tlScale || 1, moved: false, base: c && c.clientHeight && !$('#tl').classList.contains('collapsed') ? c.clientHeight / (S.tlScale || 1) : 96 };
+    g.classList.add('on');
+  });
+  g.addEventListener('pointermove', e => {
+    if (!d || e.pointerId !== d.id) return;
+    const dy = e.clientY - d.y0; if (!d.moved && Math.abs(dy) < 6) return; d.moved = true;
+    const prev = S.tlScale; tlScaleSet(d.s0 - dy / d.base); if (S.tlScale > prev) tlCap();
+  });
+  const end = e => {
+    if (!d || e.pointerId !== d.id) return;
+    const tap = !d.moved; d = null; g.classList.remove('on');
+    if (tap) {   // 100% → 150% → 200% → 100% (when the screen has no room to grow, go back to 100%)
+      const s = S.tlScale || 1; tlScaleSet(s < 1.5 - 0.01 ? 1.5 : s < 2 - 0.01 ? 2 : 1); tlCap();
+      if (s > 1 && S.tlScale <= s + 0.01) tlScaleSet(1);
+    }
+    tlCap();
+    if (tap) toast('Cỡ thanh frame: ' + Math.round(S.tlScale * 100) + '% (kéo thanh này lên/xuống để chỉnh)');
+    tlScaleSet(S.tlScale, true);
+  };
+  g.addEventListener('pointerup', end); g.addEventListener('pointercancel', end);
+})();
 $('#tlCollapse').addEventListener('click', () => { const tl = $('#tl'); tl.classList.toggle('collapsed'); S.tlCollapsed = tl.classList.contains('collapsed'); $('#tlCollapse').textContent = S.tlCollapsed ? '▴ Hiện dòng frame' : '▾ Ẩn dòng frame'; saveSettings(); setTimeout(resizeView, 30); });
 /* collapsible regions (rail / top bar / timeline) → small floating button on the stage */
 function setUiHide(k, on, quiet) {

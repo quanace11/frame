@@ -76,7 +76,7 @@ async function saveProject() {
       const it = L.find(x => x.id === pid), rec = { id: pid, name: data.name, updated: Date.now(), frames: S.frames.length, thumb: th };
       if (it) Object.assign(it, rec); else L.push(rec); await idbPut('projects', L);
     } catch (e) { console.error(e); }
-    storageOk = true; saveFails = 0; saveWarned = false; setSaveState(); syncSoon();
+    storageOk = true; saveFails = 0; saveWarned = false; setSaveState(); syncSoon(SYNC_AFTER_SAVE);
   } catch (e) {
     // never give up for good: a full disk or a busy tab can recover, so retry with a growing delay
     console.error(e); storageOk = false; setSaveState();

@@ -10,6 +10,8 @@ const SYNC_TOK_LS = 'fs-sync-gh-token', SYNC_REPO_LS = 'fs-sync-gh-repo', SYNC_A
 const syncCfg = () => { const tok = lsGet(SYNC_TOK_LS).trim(), repo = lsGet(SYNC_REPO_LS).trim().replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/+$/, ''); return tok && /^[\w.-]+\/[\w.-]+$/.test(repo) ? { tok, repo } : null; };
 const syncAuto = () => lsGet(SYNC_AUTO_LS) !== 'off';
 let syncBusy = null, syncAgain = false, syncLast = 0, syncT = null, syncMsg = '';
+let syncHeadSeen = null, syncEtag = '';   // the remote commit this device last synced to (the live check compares with it)
+const SYNC_AFTER_SAVE = 5000, SYNC_POLL_MS = 8000;
 function setSyncState(t, title) {
   const el = document.getElementById('syncState'); if (!el) return; el.hidden = !syncCfg(); el.textContent = t; el.title = title || 'Đồng bộ giữa các máy (bấm để xem)';
   const m = document.getElementById('syMsg'); if (m && syncCfg() && title) m.textContent = (t.includes('⚠') ? '⚠ ' : t.includes('✓') ? '✓ ' : '☁ ') + title;   // the open ☁ dialog shows the progress too
@@ -101,7 +103,7 @@ function syncNow(opt = {}) {
   return syncBusy;
 }
 async function syncRun(opt) {
-  const cfg = syncCfg(); clearTimeout(syncT);
+  const cfg = syncCfg(); clearTimeout(syncT); syncT = null;
   if (stroke || playing || floating) { syncSoon(5000); return null; }
   if (saveT) { clearTimeout(saveT); saveT = null; await saveProject(); }
   for (let i = 0; saving && i < 100; i++) await new Promise(r => setTimeout(r, 100));
@@ -123,10 +125,12 @@ async function syncRun(opt) {
       if (got && got.id !== curProjId && (opt.join || !cur || got.updated > cur.updated) && !saveT && !stroke && !floating) { await openProject(got.id); out.reloaded = true; }
     }
     syncLast = Date.now(); syncMsg = '';
+    if (out.deferred) syncSoon(4000);   // the open project could not be replaced just now (a dialog was open…): try again soon
     const t = new Date(syncLast).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     setSyncState('☁ ✓', 'Đã đồng bộ lúc ' + t);
     if (opt.join) toast(out.pulled ? `☁ Đã mở bài từ máy kia (${out.pulled} dự án). Làm tiếp thôi!` : '☁ Đã kết nối. Bài trên máy này sẽ tự lưu lên mạng.', 3500);
     else if (out.reloaded) toast('☁ Đã lấy bản mới nhất từ máy khác', 2600);
+    else if (out.copyOpen) syncConflictDialog(out.copyOpen);
     else if (out.copies) toast(`☁ Hai máy cùng sửa 1 dự án: đã giữ cả 2 bản (bản kia tên "… (từ máy khác)")`, 4200);
     else if (!opt.quiet) toast(out.pushed || out.pulled || out.deleted ? `☁ Đồng bộ xong: gửi ${out.pushed}, nhận ${out.pulled} dự án` : '☁ Đã đồng bộ, không có gì mới');
     return out;
@@ -139,6 +143,32 @@ async function syncRun(opt) {
   }
 }
 let syncWarned = false;
+/* --- 👀 live check: while the app is on screen, ask GitHub every few seconds whether the other device saved something
+   (one small request; with the ETag GitHub answers "304 nothing new", which does not count against the hourly limit).
+   Something new → a normal sync pulls it, so a tablet left open gets the PC's work without F5. --- */
+async function syncPoll() {
+  const cfg = syncCfg();
+  if (!cfg || !syncAuto() || document.hidden || syncBusy || syncHeadSeen == null || navigator.onLine === false) return;
+  let sha = null;
+  try {
+    const r = await fetch(SYNC_API + '/repos/' + cfg.repo + '/git/ref/heads/main', { cache: 'no-store', headers: { Authorization: 'Bearer ' + cfg.tok, Accept: 'application/vnd.github+json', ...(syncEtag ? { 'If-None-Match': syncEtag } : {}) } });
+    if (r.status === 304 || !r.ok) return;
+    syncEtag = r.headers.get('etag') || ''; sha = ((await r.json()).object || {}).sha;
+  } catch (e) { return; }
+  if (sha && sha !== syncHeadSeen && !syncBusy) { syncEtag = '';   // compare afresh next time, even if this sync fails
+    setSyncState('☁ ↓', 'Máy khác vừa lưu — đang lấy bản mới…'); syncNow({ quiet: true, live: true }); }
+}
+setInterval(syncPoll, SYNC_POLL_MS);
+// leaving this window (e.g. picking up the tablet after working on the PC): send what is not sent yet right away
+window.addEventListener('blur', () => { if (syncCfg() && syncAuto() && (saveT || syncT)) syncNow({ quiet: true }); });
+// both devices changed the open project before they could sync: both versions are kept — say which is which, offer to switch
+function syncConflictDialog(c) {
+  modal({ title: '☁ Hai máy cùng sửa dự án này', html: `<p>Máy khác đã lưu dự án này trong lúc máy này cũng đang sửa, nên app <b>giữ cả 2 bản</b>, không mất gì:</p>
+    <ul style="margin:6px 0 10px 18px;padding:0;line-height:1.6"><li><b>Bản đang mở</b> (máy này): ${c.mine || '?'} frame</li><li><b>${escHtml(c.name)}</b> (máy kia): ${c.frames || '?'} frame</li></ul>
+    <p class="lbl">Mẹo: để không bị 2 bản, đợi biểu tượng ☁ ✓ trên máy kia rồi mới vẽ ở máy này (app tự lấy bản mới sau vài giây).</p>`,
+    buttons: [{ label: 'Ở lại bản này', value: false }, { label: 'Mở bản từ máy kia', value: true, primary: true }] })
+    .then(v => { if (v) openProject(c.id); });
+}
 async function syncOnce(cfg, out, opt) {
   // 1. where the remote is now
   let head = null;
@@ -186,7 +216,7 @@ async function syncOnce(cfg, out, opt) {
     if (name) rec.name = name;
     if (asId === curProjId) {   // the open project: only replace it when nothing was touched since this sync started
       const now = (await projIndex()).find(x => x.id === asId);
-      if (saveT || saving || stroke || floating || (now && Lm.get(asId) && now.updated !== Lm.get(asId).updated) || (!opt.manual && !opt.startup && document.querySelector('.ov'))) return false;
+      if (saveT || saving || stroke || floating || (now && Lm.get(asId) && now.updated !== Lm.get(asId).updated) || (!opt.manual && !opt.startup && document.querySelector('.ov'))) { out.deferred = true; return false; }
     }
     await syncWriteLocal(asId, rec, blobs, { ...rit, name: rec.name || rit.name, updated: name ? Date.now() : rit.updated });
     (out.pulledIds = out.pulledIds || []).push(asId);
@@ -226,7 +256,7 @@ async function syncOnce(cfg, out, opt) {
       else {   // changed on both sides (or first meeting): if the content is the same nothing to do, otherwise keep both
         const rec = await idbGet('project:' + id), mine = rec ? await gitSha(strU8(JSON.stringify((await syncEncode(rec, id)).json))) : '';
         if (mine && mine === paths.get(`p/${id}/rec.json`)) newState[id] = { l: L.updated, r: r.updated };
-        else { const nid = newId(); if (await pull(r, nid, (r.name || 'Dự án') + ' (từ máy khác)')) { out.copies++; const c = (await projIndex()).find(x => x.id === nid); newState[nid] = { l: c.updated, r: await push(c) }; } newState[id] = { l: L.updated, r: await push(L) }; }
+        else { const nid = newId(); if (await pull(r, nid, (r.name || 'Dự án') + ' (từ máy khác)')) { out.copies++; if (id === curProjId) out.copyOpen = { id: nid, name: (r.name || 'Dự án') + ' (từ máy khác)', frames: r.frames, mine: L.frames }; const c = (await projIndex()).find(x => x.id === nid); newState[nid] = { l: c.updated, r: await push(c) }; } newState[id] = { l: L.updated, r: await push(L) }; }
       }
     } else if (!L && rLive) {
       if (st.dels.includes(id)) {
@@ -235,7 +265,7 @@ async function syncOnce(cfg, out, opt) {
       } else if (await pull(r, id)) newState[id] = { l: r.updated, r: r.updated };
     }
   }
-  await flush();
+  await flush(); syncHeadSeen = head;
   st.items = newState; st.dels = st.dels.filter(id => { const x = rIdx.find(y => y.id === id); return x && !x.del; });
   await idbPut('sync-state', st);
   if (!curProjId) { const L2 = (await projIndex()).sort((a, b) => b.updated - a.updated); if (L2.length) await openProject(L2[0].id); else await createProject(1080, 1920); }

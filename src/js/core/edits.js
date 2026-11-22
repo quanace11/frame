@@ -6,7 +6,8 @@ function queueThumbFor(o) {
   clearTimeout(thumbT); thumbT = setTimeout(flushThumbs, 250);
 }
 async function flushThumbs() { const list = [...thumbQ]; thumbQ.clear(); for (const f of list) await drawThumb(f); }
-function thumbSize() { const th = 96; return [Math.round(th * W / H), th]; }
+// thumbnails are drawn at a higher resolution when the frame bar is made bigger (steps of 0.5 so dragging does not redraw every frame)
+function thumbSize() { const th = Math.round(96 * Math.min(2.5, Math.max(1, Math.ceil((S.tlScale || 1) * 2 - 1e-6) / 2))); return [Math.round(th * W / H), th]; }
 async function drawThumb(f) {
   if (!f.thumb) { const [tw, th] = thumbSize(); f.thumb = makeCanvas(tw, th); }
   const t = f.thumb, x = t.getContext('2d');

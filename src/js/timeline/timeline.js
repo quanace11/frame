@@ -24,7 +24,7 @@ function buildStrip() {
   });
   camBadges(); trBadges();
   const add = document.createElement('button'); add.className = 'addfr'; add.textContent = '+';
-  const [tw, th] = thumbSize(); add.style.width = Math.max(tw, 44) + 'px'; add.style.height = (th + 4) + 'px';
+  add.style.width = Math.max(Math.round(96 * W / H * (S.tlScale || 1)), 44) + 'px';
   add.title = 'Nhân bản frame hiện tại'; add.addEventListener('click', dupFrame);
   strip.append(add);
   waveKey = ''; updateFrameUI(); if (msel && (mselOn || msel.size)) mselSync();

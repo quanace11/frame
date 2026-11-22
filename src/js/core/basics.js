@@ -9,7 +9,7 @@ const S = {
   color: '#111111', size: 8, opacity: 1, pressure: true, brush: 'pen', eraserType: 'hard', recentColors: [], brushOp: {}, sizeScreen: true,
   onion: true, onionAlpha: 0.3, showBg: true, showChar: true, showCol: true, showVec: true, showPP: true, bendR: 160, mbendR: 0, vdm: 'point', snap: false, snapR: 24,
   fingerDraw: false, smooth: 0.3, defaultDur: 0.1, loop: true, fillTol: 120,
-  uiHide: { rail: false, top: false, tl: false }
+  uiHide: { rail: false, top: false, tl: false }, tlScale: 1
 };
 let uidN = 1;
 const newId = () => Date.now().toString(36) + (uidN++).toString(36);
@@ -30,7 +30,7 @@ let toastT;
 function toast(msg, ms = 1800) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
 
 /* ========= Settings ========= */
-const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','lineLayer','uiHide','panelHidden','brush','eraserType','recentColors','brushOp','sizeScreen','bigUi','fastVideo','selMode','warpSoft','atlOpen'];
+const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','lineLayer','uiHide','panelHidden','brush','eraserType','recentColors','brushOp','sizeScreen','bigUi','fastVideo','selMode','warpSoft','atlOpen','tlScale'];
 function loadSettings() { try { const o = JSON.parse(localStorage.getItem('fs-settings') || '{}'); for (const k of SETTINGS_KEYS) if (k in o) { if (k === 'panelHidden') Object.assign(panelHidden, o[k]); else S[k] = o[k]; } } catch (e) {}
   S.uiHide = Object.assign({ rail: false, top: false, tl: false }, S.uiHide); }
 function applyBigUi() { document.body.classList.toggle('bigui', !!S.bigUi); }

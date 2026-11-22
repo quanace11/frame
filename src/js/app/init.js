@@ -8,6 +8,7 @@ async function init() {
   syncSizeOp();
   setColor(S.color); renderRecentSw(); updateToggles(); setTool('brush'); setLayer(S.lineLayer === 'vec' ? 'vec' : 'char');
   if (S.atlOpen) atlShow(true);
+  tlScaleSet(S.tlScale || 1); setTimeout(tlCap, 300);
   if (S.tlCollapsed) { $('#tl').classList.add('collapsed'); $('#tlCollapse').textContent = '▴ Hiện dòng frame'; }
   setUiHide('rail', S.uiHide.rail, true);
   new ResizeObserver(() => resizeView()).observe(stage);

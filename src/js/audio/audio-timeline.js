@@ -4,7 +4,7 @@
    records one step per drag / button. Playback, lip sync and video export all read the same fields (scheduleAudio, clipStart…). ===== */
 var atlDrag = null, atlSel = null, atlLay = null, atlRaf = 0;
 const atl = { pps: 0, x0: 0, ph: null, snap: true, pinch: null, ptrs: new Map() };
-const ATL_RUL = 24, ATL_LANE = 36, ATL_PAD = 8;
+const ATL_RUL = 24, ATL_PAD = 8; let ATL_LANE = 36;   // ATL_LANE grows with the frame-bar size (tlScaleSet)
 const ATL_TRK = [['video', '🎞 Video'], ['music', '🎵 Nhạc'], ['voice', '🎤 Giọng'], ['sfx', '🔊 Tiếng động']];
 const ATL_VCOL = ['#ffb21e', '#5be37d', '#ff7ad9', '#7fd8ff'];
 const atlOpen = () => { const el = document.getElementById('atl'); return !!(el && !el.hidden); };
@@ -98,7 +98,7 @@ function atlDraw() {
         if (m > 0.02) { const v = Math.max(1, m * (hh - 14) / 2); x.fillRect(px, mid - v, 1, v * 2); }
       }
     }
-    x.fillStyle = '#fff'; x.font = 'bold 10px system-ui,sans-serif'; x.textBaseline = 'top';
+    x.fillStyle = '#fff'; x.font = 'bold ' + Math.round(10 * clamp(ATL_LANE / 36, 1, 1.5)) + 'px system-ui,sans-serif'; x.textBaseline = 'top';
     x.fillText((o.load ? '⏳ ' : '') + String(o.name).slice(0, 40), Math.max(a, 0) + 5, y + 3);
     x.restore();
     x.lineWidth = sel ? 2 : 1; x.strokeStyle = sel ? '#fff' : o.col; x.beginPath(); x.roundRect ? x.roundRect(a + 0.5, y + 0.5, Math.max(3, b - a) - 1, hh - 1, 6) : x.rect(a + 0.5, y + 0.5, b - a - 1, hh - 1); x.stroke();

@@ -125,7 +125,7 @@ body.bigui .tool{width:66px;min-height:62px;font-size:12px} body.bigui .tool svg
 #focusBar{position:absolute;right:10px;top:10px;display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:5px;box-shadow:0 6px 20px #0008;z-index:6}
 #focusBar button{border:0;background:var(--panel2);color:var(--text);border-radius:10px;min-width:44px;height:44px;font-size:16px;cursor:pointer;padding:0 10px}
 #focusBar button.on{background:var(--accent);color:var(--accent-ink)}
-#flipNav{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:flex;align-items:center;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:4px;box-shadow:0 6px 20px #0008;z-index:5;opacity:.9;touch-action:none;user-select:none;-webkit-user-select:none}
+#flipNav{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);display:flex;align-items:center;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:4px;box-shadow:0 6px 20px #0008;z-index:5;opacity:.9;touch-action:none;user-select:none;-webkit-user-select:none}
 #flipNav button{border:0;background:var(--panel2);color:var(--text);border-radius:10px;min-width:46px;height:44px;font-size:18px;cursor:pointer}
 #flipNav button:disabled{opacity:.35} #flipNav #fnAdd{background:var(--accent);color:var(--accent-ink);font-weight:700}
 #flipNav #fnLbl{min-width:54px;text-align:center;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -135,6 +135,13 @@ body:not([data-tool=brush]):not([data-tool=eraser]):not([data-tool=fill]):not([d
 @media (max-width:1400px){ #top .tlbl{display:none} #pressBtn{display:none} }   /* narrow bar: Lực nhấn is in the Bút ▾ menu */
 body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:not([data-tool=brush]):not([data-tool=eraser]) #symBtn{display:none}
 #tl.collapsed #strip{display:none}
+/* drag handle on top of the frame bar: drag up = bigger frames + audio rows (S.tlScale → --tls) */
+#tl{position:relative}
+/* sits on the border between the drawing area and the frame bar, takes no height (landscape tablets need every pixel for the canvas) */
+#tlGrip{position:absolute;left:50%;top:-14px;transform:translateX(-50%);z-index:4;width:220px;height:28px;border-radius:14px;background:var(--panel);border:1px solid var(--line);box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:8px;touch-action:none;cursor:ns-resize;user-select:none;-webkit-user-select:none;color:var(--muted);font-size:11px}
+#tlGrip i{display:block;width:72px;height:6px;border-radius:3px;background:var(--line)}
+#tlGrip:hover i,#tlGrip.on i{background:var(--accent)} #tlGrip.on{color:var(--accent)}
+#tlGrip span{min-width:38px;background:var(--panel);border-radius:8px;padding:0 4px;text-align:center;font-variant-numeric:tabular-nums}
 /* Collapsible regions: each one folds into a small floating button on the stage */
 #app.hide-rail #rail,#app.hide-top #top,#app.hide-tl #tl{display:none}
 .dockb{position:absolute;z-index:7;display:flex;align-items:center;gap:6px;min-height:46px;min-width:46px;padding:0 12px;border:1px solid var(--accent);
@@ -147,7 +154,7 @@ body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:
 #app.focus .dockb{display:none!important}
 .hidebtn{min-height:40px;min-width:44px}
 @media (orientation:landscape) and (max-height:820px){
-  #tl{padding:5px 8px;gap:4px} #strip{padding:2px} .fr canvas{height:62px;width:auto}
+  #tl{padding:5px 8px;gap:4px} #strip{padding:2px} #strip .fr canvas{height:calc(62px * var(--tls,1))}
   .tool{min-height:42px;padding:2px} .tool svg{width:20px;height:20px}
   #top{padding:4px 8px;gap:4px 8px} #top input[type=range]{width:88px} #top .grp{gap:4px} #ppbar,#fxbar,#rigbar,#motionbar{max-height:55%}
 }
@@ -223,14 +230,14 @@ body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:
 #tlBar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
 #durIn{width:70px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 8px;text-align:right}
 body:not([data-tool=fill]) #gapBtn,body:not([data-tool=fill]) #autoColBtn{display:none}
-#scrub{display:block;width:100%;height:18px;margin:-2px 0 -3px;flex:none;touch-action:none;cursor:ew-resize;border-radius:6px}
+#scrub{display:block;width:100%;height:calc(18px * min(var(--tls,1),1.6));margin:-2px 0 -3px;flex:none;touch-action:none;cursor:ew-resize;border-radius:6px}
 #expLbl{min-width:84px}
 #atl{display:flex;flex-direction:column;gap:4px;flex:none} #atl[hidden]{display:none}
 #atlBar{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px} #atlBar .chip:disabled{opacity:.4}
 #atlCv{display:block;width:100%;height:120px;touch-action:none;border-radius:8px;background:#15171d;cursor:pointer}
 #strip{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 6px;scroll-behavior:smooth;touch-action:pan-x}
 .fr{flex:none;position:relative;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;border:2px solid transparent;border-radius:8px;cursor:pointer;background:#fff;overflow:hidden}
-.fr canvas{display:block}
+.fr canvas{display:block;height:calc(96px * var(--tls,1));width:auto}
 .fr.on{border-color:var(--accent)}
 #mselBar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--accent);border-radius:12px;background:var(--panel2)} #mselBar[hidden]{display:none} #mselBar .tbtn{min-height:42px}
 .fr.msel{border-color:#4fc3f7;box-shadow:0 0 0 3px #4fc3f7aa} .fr.msel::after{content:'✓';position:absolute;right:3px;top:2px;background:#4fc3f7;color:#000;border-radius:50%;width:20px;height:20px;font-size:13px;line-height:20px;text-align:center;font-weight:700}
@@ -247,7 +254,7 @@ body:not([data-tool=fill]) #gapBtn,body:not([data-tool=fill]) #autoColBtn{displa
 .fr.hasw .dur,.fr.hasw .shared{bottom:21px}
 .fr .shared{position:absolute;left:3px;bottom:3px;width:8px;height:8px;border-radius:50%}
 .fr.scst{border-left:4px solid #ff3b9a} .fr .scb{position:absolute;left:22px;top:3px;max-width:calc(100% - 44px);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;background:#ff3b9a;color:#fff;font-size:10px;padding:1px 5px;border-radius:6px;pointer-events:none}
-.addfr{flex:none;border:2px dashed var(--line);border-radius:8px;background:transparent;color:var(--muted);font-size:26px;cursor:pointer}
+.addfr{flex:none;height:calc(100px * var(--tls,1));border:2px dashed var(--line);border-radius:8px;background:transparent;color:var(--muted);font-size:26px;cursor:pointer}
 .tbtn{border:1px solid var(--line);background:var(--panel2);border-radius:10px;padding:7px 11px;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:13px}
 .tbtn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .tbtn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
@@ -292,7 +299,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
   /* one scrolling row: the actions used all the time come first, right after ▶ Phát (CSS order only, the DOM is unchanged) */
   #playBtn,#loopBtn{order:-3} #dupBtn,#addBtn,#pasteBtn,#ibBtn,#moveL,#moveR{order:-2}
   #atlBar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none} #atlBar > *{flex:none} #atlBar::-webkit-scrollbar{display:none}
-  #strip{align-items:flex-start} #strip .addfr{height:66px!important}
+  #strip{align-items:flex-start} #strip .addfr{height:calc(66px * var(--tls,1))!important}
 }
 [data-gag].active{outline:3px solid var(--accent);background:var(--panel2)}
 /* 👆 touch screens (tablet, phone): fingers need ~40 px targets even without Menu → Nút to (which goes bigger still) */
