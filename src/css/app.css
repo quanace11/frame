@@ -92,7 +92,27 @@ body.bigui .tool{width:66px;min-height:62px;font-size:12px} body.bigui .tool svg
 /* Stage */
 #stage{grid-area:stage;position:relative;overflow:hidden;touch-action:none;background:#0f1013}
 #view{position:absolute;left:0;top:0;touch-action:none;display:block}
-#zoomLbl{position:absolute;right:10px;bottom:10px;font-size:11px;color:var(--muted);background:#0008;padding:3px 7px;border-radius:8px;pointer-events:none}
+#zoomBox{position:absolute;right:10px;bottom:10px;display:flex;align-items:center;gap:3px;background:#000a;border:1px solid var(--line);border-radius:12px;padding:3px}
+#zoomBox button{border:0;background:var(--panel2);color:var(--text);border-radius:9px;min-width:42px;height:42px;font-size:20px;cursor:pointer;padding:0 6px}
+#zoomBox #zoomLbl{font-size:12px;min-width:58px;color:var(--muted);font-variant-numeric:tabular-nums}
+#lyrPanel{position:absolute;right:10px;top:10px;width:250px;max-width:calc(100% - 20px);max-height:min(62%,520px);display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 26px #000a;z-index:6;overflow:hidden}
+#lyrPanel[hidden]{display:none}
+#lyrPanel .lyrHead{display:flex;align-items:center;gap:6px;padding:6px 6px 6px 10px;border-bottom:1px solid var(--line)}
+#lyrPanel .lyrHead .lbl{flex:1;font-size:11px}
+#lyrPanel button{border:0;background:var(--panel2);color:var(--text);border-radius:9px;min-width:40px;height:40px;font-size:16px;cursor:pointer}
+#lyrPanel button:disabled{opacity:.35}
+#lyrList{overflow-y:auto;flex:1;padding:4px}
+#lyrList .lyr{display:flex;align-items:center;gap:6px;padding:2px 4px 2px 6px;margin:2px 0;border-radius:10px;border:1px solid transparent;min-height:44px;cursor:pointer;user-select:none;-webkit-user-select:none;background:var(--panel2)}
+#lyrList .lyr.draw{background:transparent;opacity:.85}
+#lyrList .lyr.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--panel2))}
+#lyrList .lyr.off .lnm{opacity:.45;text-decoration:line-through}
+#lyrList .lyr.drag{position:relative;z-index:2;box-shadow:0 6px 18px #000a;opacity:.95}
+#lyrList .lyr.empty{font-size:12px;color:var(--muted);cursor:default;background:transparent;justify-content:center}
+#lyrList .lnm{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#lyrList .lgrip{font-size:20px;color:var(--muted);padding:0 6px;cursor:grab;touch-action:none;min-height:40px;display:flex;align-items:center}
+#lyrList .lyr button{min-width:38px;height:38px;background:transparent;font-size:15px}
+#lyrPanel .lyrFoot{display:flex;gap:4px;padding:6px;border-top:1px solid var(--line);flex-wrap:wrap}
+#lyrPanel .lyrFoot #lyrAdd{flex:1;font-size:13px}
 #refbar{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--accent);
   border-radius:14px;padding:8px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;box-shadow:0 8px 30px #0008;max-width:calc(100% - 20px)}
 #refbar[hidden]{display:none}
@@ -191,6 +211,7 @@ body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:
 #layerRef.on .name{background:#7d6bff;color:#fff}
 .dlg.wide{max-width:760px}
 .imp-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.imp-layer{display:flex;align-items:center;gap:6px;margin:-2px 0 10px;font-size:13px;color:var(--text)} .imp-layer[hidden]{display:none} .imp-layer input{width:22px;height:22px}
 .imp-tabs .chip{font-size:13px}
 .imp-wrap{display:flex;gap:14px;flex-wrap:wrap}
 .imp-left{flex:1 1 300px;display:flex;flex-direction:column;gap:8px;min-width:0}
@@ -312,3 +333,9 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
 #delAllBtn{margin-left:12px}   /* keep "Xoá hết" a little apart from "Xoá" so a finger does not hit the wrong one */
 /* the rail scrolls when the screen is short (iPad portrait): Menu stays pinned at its bottom instead of hiding below the fold */
 #rail > #menuBtn{position:sticky;bottom:-8px;z-index:1;background:var(--panel);box-shadow:0 -10px 12px -6px var(--panel)}
+/* 🗂 Layer panel + − 100% + on narrow / portrait screens: smaller, and under the tool panels at the bottom */
+@media (orientation:portrait),(max-width:900px){
+  #lyrPanel{width:215px;max-height:42%}
+  #lyrList .lyr{min-height:40px}
+  #lyrPanel .lyrHead .lbl{display:none}
+}

@@ -97,7 +97,7 @@ async function floatToPart() {
   if (!S.pp) { S.pp = { parts: [] }; S.frames.forEach(f => { if (!f.pp) f.pp = {}; }); }
   const nProp = S.pp.parts.filter(q => /^Hình \d+$/.test(q.name)).length + 1;
   const p = { id: newId(), name: 'Hình ' + nProp, role: '', parent: null, z: (S.pp.parts.length ? Math.max(...S.pp.parts.map(q => q.z)) : 0) + 1, ox: bx, oy: by, px: bx + bw / 2, py: by + bh / 2, c, alts: [] };
-  await encodePart(p); S.pp.parts.push(p); ppRenormZ(); ppSel = p.id;
+  await encodePart(p); S.pp.parts.push(p); ppRenormZ(); ppSel = p.id; ppDrag = 'box';
   entries.push({ snap: { before: s0, after: histSnap(), fr: [] }, bytes: 2000 });
   pushEntry(entries.length > 1 ? { multi: entries } : entries[0]);
   S.showPP = true; updateToggles(); markEdited(fl.o);

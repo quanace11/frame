@@ -15,6 +15,7 @@ async def main():
         pg.on('console', lambda m: errs.append(m.text) if m.type=='error' and 'fonts.g' not in m.location.get('url','') and '403' not in m.text else None)
         pg.on('pageerror', lambda e: errs.append('PAGEERR '+str(e)))
         await pg.goto('http://localhost:8765/index.html'); await pg.wait_for_timeout(800)
+        await pg.evaluate('S.impLayer = false')   # this test checks the old flow: picture as a floating selection (🗂 layer riêng tắt)
         await pg.click('text=Bắt đầu vẽ')
         # ref mode
         await pg.set_input_files('#imgFile',os.path.join(ASSETS,'cartoon.png')); await pg.wait_for_timeout(500)
