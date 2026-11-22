@@ -15,7 +15,7 @@ function lgSync(force) {
   if (btn) btn.classList.toggle('on', !!S.lgOpen);
   box.hidden = !S.lgOpen; if (!S.lgOpen) return;
   const rows = lgRows(), sel = lgSelRoot();
-  const sig = JSON.stringify([rows.map(r => [r.id, r.name, r.r && r.r.lh]), S.frames.length, S.cur, sel, S.frames.map(f => [f.ppKey, f.ppK, rows.map(r => r.pp && lgHiddenAt(f, r.id))])]);
+  const sig = JSON.stringify([rows.map(r => [r.id, r.name, r.r && r.r.lh]), S.frames.length, S.cur, sel, S.frames.map(f => [f.ppKey, f.ppK, f.ppE, f.ppEase, rows.map(r => r.pp && lgHiddenAt(f, r.id))])]);
   if (!force && sig === LG.sig) return; LG.sig = sig;
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   $('#lgNames').innerHTML = '<div class="lgnHd">frame</div>' + rows.map(r => `<div class="lgn${r.id === sel ? ' on' : ''}${r.r && r.r.lh ? ' off' : ''}" data-lgr="${r.id}">${r.pp ? (lyrParts(r.id).length > 1 ? '🧍 ' : '🖼 ') : ''}${esc(r.name)}</div>`).join('');
@@ -23,6 +23,10 @@ function lgSync(force) {
   const has = !!sel && S.pp; ['#lgSplit', '#lgJoin'].forEach(id => { $(id).disabled = !has; });
   const f = curFrame(), k = has && ppLayerKey(f, sel);
   $('#lgSplit').classList.toggle('on', !!k);
+  const seg = has && lgSegAt(sel, S.cur), es = $('#lgEase');
+  es.innerHTML = Object.entries(EASE_LABEL).map(([k2, v]) => `<option value="${k2}">${v}</option>`).join('');
+  es.disabled = !seg; $('#lgEaseRow').classList.toggle('off', !seg); if (seg) es.value = ppLayerEase(S.frames[seg[0]], sel);
+  $('#lgCopy').disabled = !has; $('#lgPaste').disabled = !has || !LG.clip;
   $('#lgInfo').textContent = has ? `${lyrName(ppPart(sel))} · frame ${S.cur + 1}: ${k ? '🔑 keyframe' : '∿ tự chuyển'}` : 'Chạm 1 dòng layer để chọn · kéo ● để dời keyframe';
 }
 function lgDraw(rows, sel) {
@@ -44,6 +48,8 @@ function lgDraw(rows, sel) {
       const x0 = a * cw + cw / 2, x1 = b * cw + cw / 2;
       x.fillStyle = 'rgba(140,110,255,.35)'; x.fillRect(x0, y + 7, x1 - x0, rh - 14);
       x.strokeStyle = '#b9a8ff'; x.lineWidth = 1.5; x.beginPath(); x.moveTo(x0 + 8, y + rh / 2); x.lineTo(x1 - 8, y + rh / 2); x.lineTo(x1 - 13, y + rh / 2 - 4); x.moveTo(x1 - 8, y + rh / 2); x.lineTo(x1 - 13, y + rh / 2 + 4); x.stroke();
+      const el = x1 - x0 > 76 && EASE_SHORT[ppLayerEase(S.frames[a], r.id)];
+      if (el) { x.font = '10px system-ui,sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; const tw = x.measureText(el).width + 10, mx = (x0 + x1) / 2; x.fillStyle = '#2a2350'; x.fillRect(mx - tw / 2, y + rh / 2 - 7, tw, 14); x.fillStyle = '#d9d0ff'; x.fillText(el, mx, y + rh / 2 + 1); }
     }
     for (let i = 0; i < n; i++) {
       const f = S.frames[i], cx = i * cw + cw / 2, cy = y + rh / 2;
@@ -82,6 +88,38 @@ function lgSetKey(on) {
   ppLayerSetKey(f, rid, on); pushEntry(ppEntry(f, before, ppState(f))); markEdited(f); ppRetween(); ppSyncBar(); updateFrameUI(); requestRender(); lgSync(true);
   toast(on ? '✂ Đã tách: frame này thành keyframe của layer — kéo nhân vật để đặt dáng mới' : '🔗 Đã nối: app tự chuyển động qua frame này từ keyframe trước tới keyframe sau', 3000);
 }
+// the tween span of layer rid that frame i is in (or starts at): [key before, next key], null if it holds still there
+const EASE_SHORT = { inout: 'mượt', linear: 'đều', out: 'chậm dần', in: 'nhanh dần', back: 'vượt đà', bounce: 'nảy', hold: 'giữ rồi nhảy' };
+function lgSegAt(rid, i) {
+  let a = -1; for (let k = i; k >= 0; k--) if (ppLayerKey(S.frames[k], rid)) { a = k; break; }
+  if (a < 0) return null; for (let k = a + 1; k < S.frames.length; k++) if (ppLayerKey(S.frames[k], rid)) return k - a > 1 ? [a, k] : null;
+  return null;
+}
+function lgSetEase(e) {
+  const rid = lgSelRoot(), seg = rid && lgSegAt(rid, S.cur); if (!seg) return;
+  const A = S.frames[seg[0]], before = ppState(A); ppLayerSetEase(A, rid, e);
+  pushEntry(ppEntry(A, before, ppState(A))); markEdited(A); ppRetween(); ppSyncBar(); updateFrameUI(); requestRender(); lgSync(true);
+  toast(`Đoạn frame ${seg[0] + 1} → ${seg[1] + 1}: ${EASE_LABEL[e]}`, 1800);
+}
+// ⧉ / 📋: copy the picked layer's pose on this frame, paste it on another frame (as a keyframe) — same layer by part,
+// another layer by body role (head, arms…) with the root taking the root's place
+function lgCopy() {
+  const rid = lgSelRoot(), f = curFrame(); if (!rid) return;
+  const parts = lyrParts(rid);
+  LG.clip = { rid, items: parts.map(p => ({ id: p.id, role: p.role || '', root: p.id === rid, q: f.pp && f.pp[p.id] ? ppClone(f.pp[p.id]) : null })) };   // q null = the part at rest
+  lgSync(true); toast(`⧉ Đã chép dáng của ${lyrName(ppPart(rid))} ở frame ${S.cur + 1} — tới frame khác rồi bấm 📋 Dán dáng`, 2600);
+}
+function lgPaste() {
+  const rid = lgSelRoot(), f = curFrame(), c = LG.clip; if (!rid || !c) return;
+  const parts = lyrParts(rid), same = c.rid === rid, before = ppState(f), pp = { ...(f.pp || {}) }; let n = 0;
+  for (const o of c.items) {
+    const t = same ? ppPart(o.id) : o.root ? ppPart(rid) : o.role && parts.find(p => p.role === o.role && p.id !== rid);
+    if (!t || !parts.includes(t)) continue; if (o.q) pp[t.id] = ppClone(o.q); else delete pp[t.id]; n++;
+  }
+  if (!n) { toast('Layer này không có mảnh hợp với dáng đã chép'); return; }
+  f.pp = pp; ppMarkKey(f, rid); pushEntry(ppEntry(f, before, ppState(f))); markEdited(f); ppRetween(); ppSyncBar(); updateFrameUI(); requestRender(); lgSync(true);
+  toast(`📋 Đã dán dáng vào frame ${S.cur + 1} (keyframe)`, 2000);
+}
 // drag ● → another frame: the layer's pose + keyframe move there (its tween gets shorter / longer), the old frame tweens
 const lgCanMove = (rid, i, j) => !!S.pp && i !== j && j >= 0 && j < S.frames.length && ppLayerKey(S.frames[i], rid) && !ppLayerKey(S.frames[j], rid);
 async function lgMoveKey(rid, i, j) {
@@ -116,6 +154,8 @@ function lgWire() {
   $('#lgSplit').addEventListener('click', () => lgSetKey(true));
   $('#lgJoin').addEventListener('click', () => lgSetKey(false));
   $('#lgAdd').addEventListener('click', lgAddFrame);
+  $('#lgEase').addEventListener('change', e => lgSetEase(e.target.value));
+  $('#lgCopy').addEventListener('click', lgCopy); $('#lgPaste').addEventListener('click', lgPaste);
   $('#lgDel').addEventListener('click', () => delFrame());
   $('#lgNames').addEventListener('click', e => { const r = e.target.closest('[data-lgr]'); if (r) lgPick(S.cur, r.dataset.lgr); });
   // cells: tap = go to that frame + pick that layer; drag a ● along its row = move that keyframe (retime the move);

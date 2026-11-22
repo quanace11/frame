@@ -96,7 +96,7 @@ const histTok = new WeakMap(); let histTokN = 0;
 const histId = o => { if (!histTok.has(o)) histTok.set(o, ++histTokN); return '#' + histTok.get(o); };
 const histBig = x => x && typeof x === 'object' && (x instanceof ArrayBuffer || ArrayBuffer.isView(x) || typeof x.getContext === 'function' || (typeof ImageBitmap !== 'undefined' && x instanceof ImageBitmap) || (typeof ImageData !== 'undefined' && x instanceof ImageData));
 const histJSON = v => JSON.stringify(v, (k, x) => histBig(x) ? histId(x) : x);
-const H_FKEYS = ['dur', 'bgId', 'pp', 'ppKey', 'ppK', 'ppEase', 'texts', 'cam', 'shake', 'flash', 'lip', 'scene', 'tr', 'tre', 'ghost', 'bgs', 'sl', 'flt'];
+const H_FKEYS = ['dur', 'bgId', 'pp', 'ppKey', 'ppK', 'ppE', 'ppEase', 'texts', 'cam', 'shake', 'flash', 'lip', 'scene', 'tr', 'tre', 'ghost', 'bgs', 'sl', 'flt'];
 const histFrameStr = f => JSON.stringify(H_FKEYS.map(k => f[k] === undefined ? null : f[k]));
 const histPartCopy = p => ({ ...p, alts: (p.alts || []).map(a => ({ ...a })) });
 const audioCopy = A => A ? { ...A, music: A.music ? { ...A.music } : A.music, musics: (A.musics || []).map(x => ({ ...x })), voice: A.voice ? { ...A.voice } : A.voice, voices: (A.voices || []).map(x => ({ ...x })), sfx: (A.sfx || []).map(x => ({ ...x })) } : null;
