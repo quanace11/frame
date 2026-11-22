@@ -158,7 +158,7 @@ function frameCopyOf(s0, run) {
   f.canvas.getContext('2d').drawImage(s0.canvas, 0, 0); copyCol(f, s0); f.ver = 1; f.pngVer = 0;
   f.vec = cloneVec(s0.vec); f.pp = ppClone(s0.pp); f.lip = lipCopy(s0); f.texts = jcopy(s0.texts || []);
   lookCopy(f, s0);
-  if (run) { f.ppKey = s0.ppKey; if (s0.ppK) f.ppK = { ...s0.ppK }; f.ppEase = s0.ppEase; f.cam = s0.cam ? { ...s0.cam } : null; f.shake = s0.shake || 0; f.flash = !!s0.flash; }
+  if (run) { f.ppKey = s0.ppKey; if (s0.ppK) f.ppK = { ...s0.ppK }; if (s0.ppE) f.ppE = { ...s0.ppE }; f.ppEase = s0.ppEase; f.cam = s0.cam ? { ...s0.cam } : null; f.shake = s0.shake || 0; f.flash = !!s0.flash; }
   return f;
 }
 // put new frames in at index `at` as ONE undo step (after the frame before them), with their thumbnails

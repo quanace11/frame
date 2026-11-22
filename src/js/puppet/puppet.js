@@ -977,7 +977,7 @@ function ppSyncBar() { lyrSync(); lgSync(); ppBlinkInfo(); { const a = $('#ppSof
     ['#ppVarAdd', '#ppVarDup', '#ppVarDel', '#ppPaintBtn', '#ppEraseBtn', '#ppDelChar', '#ppLibSave'].forEach(id => $(id).disabled = !sel);
     $('#ppPaintBtn').classList.toggle('on', ppPaint === 'brush'); $('#ppEraseBtn').classList.toggle('on', ppPaint === 'erase'); }
   { const f = curFrame(), k = ppIsKey(f); const kb = $('#ppKeyBtn'); kb.textContent = k ? '🔑 Keyframe' : '∿ Tự động (bấm để khoá)'; kb.classList.toggle('on', k);
-    $('#ppEase').innerHTML = Object.entries(EASE_LABEL).map(([k2, v]) => `<option value="${k2}" ${(f.ppEase || 'inout') === k2 ? 'selected' : ''}>${v}</option>`).join(''); $('#ppEase').disabled = !k;
+    $('#ppEase').innerHTML = Object.entries(EASE_LABEL).map(([k2, v]) => `<option value="${k2}" ${(lgSelRoot() ? ppLayerEase(f, lgSelRoot()) : f.ppEase || 'inout') === k2 ? 'selected' : ''}>${v}</option>`).join(''); $('#ppEase').disabled = !k;
     const ps = $('#ppPoseSel'), cur = ps.value; ps.innerHTML = ppPoseList().map(o => `<option value="${o.id}">${o.name.replace(/</g, '&lt;')}</option>`).join(''); if (cur) ps.value = cur; }
   $('#ppRecut').disabled = !(ppLastCut && ppLastCut.ids.some(id => ppPart(id)));
   $('#ppCutBtn').classList.toggle('on', ppCutMode); $('#ppPatchBtn').classList.toggle('on', ppPatchMode); { const b = $('#ppPathBtn'); if (b) b.classList.toggle('on', !ppPathMode); b && (b.textContent = ppPathMode ? '✕ Huỷ vẽ đường' : '✎ Vẽ đường đi'); }
@@ -1086,7 +1086,7 @@ $('#ppDelChar').addEventListener('click', async () => { const sel = ppPart(ppSel
   const ok = await modal({ title: `Xoá cả nhân vật (${list.length} mảnh)?`, html: '<p>Lỡ tay thì bấm ↶ Hoàn tác để lấy lại.</p>', buttons: [{ label: 'Huỷ', value: false }, { label: 'Xoá', value: true, cls: 'danger' }] }); if (!ok) return;
   const ids = new Set(list.map(p => p.id)); S.pp.parts = S.pp.parts.filter(p => !ids.has(p.id)); if (!S.pp.parts.length) S.pp = null; ppSel = null; S.frames.forEach(fr => { if (fr.pp) ids.forEach(id => delete fr.pp[id]); fr.ver++; queueThumbFor(fr); }); ppSyncBar(); scheduleSave(); requestRender(); });
 $('#ppKeyBtn').addEventListener('click', () => ppKeyEdit(f => { f.ppKey = !ppIsKey(f); }));
-$('#ppEase').addEventListener('change', e => ppKeyEdit(f => { f.ppEase = e.target.value; }));
+$('#ppEase').addEventListener('change', e => ppKeyEdit(f => { const rid = lyrRoots().length > 1 && lgSelRoot(); if (rid) ppLayerSetEase(f, rid, e.target.value); else { f.ppEase = e.target.value; delete f.ppE; } }));
 $('#ppPoseApply').addEventListener('click', () => ppApplyPose($('#ppPoseSel').value));
 $('#ppPoseSave').addEventListener('click', ppSavePose);
 $('#ppPoseDel').addEventListener('click', () => { const v = $('#ppPoseSel').value; if (!v.startsWith('u:')) { toast('Tư thế có sẵn (⭐) không xoá được'); return; } S.poses = (S.poses || []).filter(p => 'u:' + p.id !== v); ppSyncBar(); scheduleSave(); });
