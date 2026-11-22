@@ -1,5 +1,5 @@
 import os, sys
-HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
+HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); DIST = os.environ.get('FS_DIST') or os.path.join(ROOT, 'dist'); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
 os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tests/out
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
@@ -7,7 +7,8 @@ from playwright.async_api import async_playwright
 # 🎬 Video → frame: a 3 s clip (1 s red, 1 s blue, 1 s green + a 440 Hz tone) split into frames whose picture sits in each
 # frame's own Nền layer (lazy JPEG, freed again), trimmed range + fps, sound kept as a clip, one undo step, insert in the
 # middle, background eviction keeps edits, save / reload
-srv = subprocess.Popen(['python3','-m','http.server','8913'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+srv = subprocess.Popen(['python3','-m','http.server','8913'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 CLIP = os.path.join(ASSETS, 'clip_rgb.webm')
 PX = '''async ([i, px, py]) => { const f = S.frames[i]; await ensureLoaded(f); const bg = bgOf(f); if (bg) await ensureLoaded(bg);

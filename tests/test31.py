@@ -1,12 +1,13 @@
 import os, sys
-HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
+HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); DIST = os.environ.get('FS_DIST') or os.path.join(ROOT, 'dist'); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
 os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tests/out
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 # AI tạo nhân vật (Gemini) — the Google API is MOCKED here (no real key, no network): checks the request shape,
 # that the key stays in localStorage only (header, never URL / project), clear error messages, library + quick-make cut.
 import asyncio, subprocess, time, json, base64
 from playwright.async_api import async_playwright
-srv = subprocess.Popen(['python3','-m','http.server','8800'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+srv = subprocess.Popen(['python3','-m','http.server','8800'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 KEY = 'TEST-KEY-not-real-123'
 IMG = base64.b64encode(open(os.path.join(ASSETS, 'cartoon.png'), 'rb').read()).decode()

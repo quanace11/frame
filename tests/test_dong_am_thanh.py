@@ -1,5 +1,5 @@
 import os, sys
-HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
+HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); DIST = os.environ.get('FS_DIST') or os.path.join(ROOT, 'dist'); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
 os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tests/out
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
@@ -7,7 +7,8 @@ from playwright.async_api import async_playwright
 # 🎚 audio timeline (dòng âm thanh): clips with waveform, drag to move (snaps to frame starts), trim both edges,
 # ✂ split at the red playhead, 🔗 join back, 🗑 delete, ⧉ copy, undo/redo, the mixed sound follows (video export path),
 # save/reload keeps the timing and split pieces share one stored file.
-srv = subprocess.Popen(['python3','-m','http.server','8911'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+srv = subprocess.Popen(['python3','-m','http.server','8911'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 # RMS of the offline mix (same path as ⚡ video export) in windows [a, b] seconds
 MIX = '''async (wins) => { const T = frameStartTimes(), tot = T[T.length - 1], b = await vxMixAudio(tot, 22050), d = b.getChannelData(0), sr = b.sampleRate;

@@ -1,12 +1,13 @@
 import os, sys
-HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
+HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); DIST = os.environ.get('FS_DIST') or os.path.join(ROOT, 'dist'); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
 os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tests/out
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # Kéo đổi cỡ thanh frame (tablet, cảm ứng thật qua CDP): kéo tay kéo #tlGrip lên → frame + dòng 🎚 Âm thanh to ra,
 # ảnh frame vẽ lại nét hơn, không chiếm quá 60% màn hình, nhớ cỡ sau khi tải lại, chạm tay kéo = đổi nhanh, chạm frame/đoạn âm thanh vẫn chọn được.
-srv = subprocess.Popen(['python3','-m','http.server','8937'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+srv = subprocess.Popen(['python3','-m','http.server','8937'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 async def main():
     async with async_playwright() as p:
@@ -42,7 +43,8 @@ async def main():
         s1 = await pg.evaluate("S.tlScale"); h1 = (await box('.fr canvas'))[3]; tl1 = (await box('#tl'))[3]; lane1 = await pg.evaluate("ATL_LANE")
         st1 = (await box('#stage'))[3]
         print('after drag up', s1, h1, tl1, lane1, 'stage', st0, st1)
-        check('drag up makes it bigger', s1 > 1.5 and h1 > h0 * 1.4 and lane1 > lane0 and tl1 > tl0)
+        # the bar may stop a little short of 150% when it reaches the 60%-of-the-screen cap (bigger touch buttons = taller bar)
+        check('drag up makes it bigger', s1 > 1.35 and h1 > h0 * 1.3 and lane1 > lane0 and tl1 > tl0 and (s1 > 1.5 or tl1 > 820 * 0.6 - 30))
         check('drawing area gives room', st1 < st0)
         check('not more than 60% of the screen', tl1 <= 820 * 0.6 + 1)
         th = await pg.evaluate("[S.frames[0].thumb.height, thumbSize()[1]]")
@@ -70,7 +72,7 @@ async def main():
         await pg.wait_for_timeout(300)
         s4 = await pg.evaluate("S.tlScale"); h4 = (await box('.fr canvas'))[3]
         print('after reload', s4, h4)
-        check('size remembered', abs(s4 - 1.5) < 0.01 and h4 > h0 * 1.4)
+        check('size remembered', abs(s4 - min(1.5, s1)) < 0.06 and h4 > h0 * 1.3)
         # tap the handle: 1.8 → 2 → 1 → 1.5
         seq = []
         for _ in range(3):
@@ -83,7 +85,8 @@ async def main():
         hp = (await box('.fr canvas'))[3]
         await grip_drag(-60)
         hp2 = (await box('.fr canvas'))[3]; print('portrait', hp, hp2, await pg.evaluate("S.tlScale"))
-        check('portrait drag works', hp2 > hp * 1.4 and (await box('#tl'))[3] <= 1180 * 0.6 + 1)
+        tlp = (await box('#tl'))[3]
+        check('portrait drag works', hp2 > hp * 1.3 and tlp <= 1180 * 0.6 + 1 and (hp2 > hp * 1.4 or tlp > 1180 * 0.6 - 30))
         await pg.screenshot(path='tls_3_portrait.png')
         await b.close()
         print('ERR', errs)

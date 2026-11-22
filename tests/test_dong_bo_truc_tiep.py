@@ -1,5 +1,5 @@
 import os, sys
-HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
+HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); DIST = os.environ.get('FS_DIST') or os.path.join(ROOT, 'dist'); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
 os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tests/out
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 # ☁ live sync (PC ↔ tablet both open at the same time): a device left open on screen picks up the other device's work by
@@ -8,7 +8,7 @@ CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 # Reuses the mocked GitHub (in-memory git) from test_sync.py, on its own port.
 import re
 _src = open(os.path.join(HERE, 'test_sync.py'), encoding='utf-8').read()
-exec(_src[_src.index('import asyncio'):_src.index('async def main():')].replace("'8857'", "'8858'").replace('localhost:8857', 'localhost:8858'))
+exec(_src[_src.index('import asyncio'):_src.index('async def main():')].replace("'9103'", "'8858'"))
 ETAG = {'ok': 0, 'nm': 0}
 async def route_etag(r):   # like api.github.com: the ref has an ETag, If-None-Match with the same one → 304
     q = r.request

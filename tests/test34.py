@@ -1,11 +1,12 @@
 import os, sys
-HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
+HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); DIST = os.environ.get('FS_DIST') or os.path.join(ROOT, 'dist'); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
 os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tests/out
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # Fill that seals small gaps in the outline
-srv = subprocess.Popen(['python3','-m','http.server','8831'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+srv = subprocess.Popen(['python3','-m','http.server','8831'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 SETUP = '''(gap)=>{ const f=curFrame(), x=f.canvas.getContext('2d'); x.clearRect(0,0,W,H); if(f.col){f.col.getContext('2d').clearRect(0,0,W,H);}
   x.strokeStyle='#000'; x.lineWidth=8; x.beginPath(); x.arc(540,900,200, gap, Math.PI*2); x.stroke(); f.ver++; }'''

@@ -1,12 +1,13 @@
 import os, sys
-HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
+HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); DIST = os.environ.get('FS_DIST') or os.path.join(ROOT, 'dist'); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
 os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tests/out
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # 🎥 camera shots: drag a camera box (draw / move / corner zoom), ✂ cut vs 〰 smooth push (time-based, inside one long frame),
 # one-tap Cận cảnh / Đẩy vào, legacy keys unchanged, undo, save + reload, playback
-srv = subprocess.Popen(['python3','-m','http.server','8871'], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+srv = subprocess.Popen(['python3','-m','http.server','9106'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 DRAG='''async ([pts])=>{const v=document.getElementById('view');const r=v.getBoundingClientRect();
   const mk=(t,x,y)=>new PointerEvent(t,{pointerId:9,pointerType:'pen',clientX:r.left+x,clientY:r.top+y,pressure:0.5,buttons:1,bubbles:true,cancelable:true});
@@ -25,7 +26,7 @@ async def main():
             scr = [await pg.evaluate(DOC2SCR, d) for d in docs]; await pg.evaluate(DRAG, [scr]); await pg.wait_for_timeout(150)
         Z = lambda i, t=0: pg.evaluate(f"camAt({i},{t}).z")
         await pg.add_init_script("document.addEventListener('DOMContentLoaded',()=>document.querySelectorAll('.tabhide').forEach(e=>e.classList.remove('tabhide')))")
-        await pg.goto('http://localhost:8871/index.html'); await pg.wait_for_timeout(1000)
+        await pg.goto('http://localhost:9106/index.html'); await pg.wait_for_timeout(1000)
         await pg.click('.dlg .btns >> text=Bắt đầu vẽ'); await pg.wait_for_timeout(200)
         await pg.click('#addBtn'); await pg.click('#addBtn')
         await pg.evaluate("S.frames.forEach(f=>f.dur=500); S.frames[2].dur=3000; S.cur=1; updateFrameUI(); setTool('fx'); openTab('fx','cam')"); await pg.wait_for_timeout(200)
