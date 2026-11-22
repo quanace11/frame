@@ -113,6 +113,7 @@
       <span class="lbl">Cỡ</span><input type="range" id="selScale" min="10" max="300" step="1" value="100"><span class="val" id="selScaleVal">100%</span>
       <span class="lbl">Xoay</span><input type="range" id="selRot" min="-180" max="180" step="1" value="0"><span class="val" id="selRotVal">0°</span>
       <button class="chip small" id="selFlip">Lật ngang</button>
+      <button class="chip small" id="selCover" title="Phóng hình cho phủ kín khung 9:16 (phần tràn ra ngoài bị cắt), hợp với ảnh nền">⛶ Phủ kín khung</button>
       <button class="chip small" id="selTw" title="Làm hình di chuyển qua nhiều frame: kéo hình tới chỗ kết thúc, app tự vẽ các frame ở giữa (trượt, chạy, bay…)">🎞 Chuyển động</button>
       <button class="chip small" id="selCopy" title="Chép vùng chọn để dán sang frame khác (giữ đúng vị trí, cỡ, góc xoay)">📋 Chép</button>
       <button class="chip small" id="selStamp" title="In một bản tại chỗ, vẫn giữ vùng chọn để kéo tiếp">Nhân bản</button>
@@ -365,6 +366,9 @@
         <label class="lbl" id="lgEaseRow" title="Kiểu chuyển động của đoạn tự chuyển chứa frame này (của layer đang chọn), như Ease trong Animate">Đoạn này: <select id="lgEase"></select></label>
         <button class="tbtn" id="lgCopy" title="Chép dáng của layer đang chọn ở frame này">⧉ Chép dáng</button>
         <button class="tbtn" id="lgPaste" title="Dán dáng đã chép vào frame này (thành keyframe): vd. về lại dáng đầu để lặp động tác">📋 Dán dáng</button>
+        <button class="tbtn" id="lgSymSave" title="Lưu chuyển động của layer đang chọn (giữa 2 frame) thành symbol để dùng lại">⭐ Lưu symbol</button>
+        <button class="tbtn" id="lgSymPut" title="Thả 1 symbol đã lưu lên layer đang chọn, bắt đầu từ frame này">🎬 Thả symbol</button>
+        <button class="tbtn" id="lgOnion" title="Onion skin chỉ hiện layer đang chọn ở các frame bên cạnh (dễ canh 1 nhân vật giữa nhiều người)">🧅 Onion layer này</button>
         <button class="tbtn" id="lgAdd" title="Thêm 1 frame tự chuyển ngay sau frame này: chuyển động dài thêm (giống F5 trong Animate)">＋ Frame</button>
         <button class="tbtn" id="lgDel" title="Xoá frame đang xem: chuyển động ngắn lại">− Frame</button>
         <span class="lbl lgLegend">● keyframe · <i class="lgTw"></i> tự chuyển · ▭ ẩn</span></div>
@@ -434,6 +438,7 @@
 <script src="js/puppet/poses.js"></script>
 <script src="js/puppet/layers.js"></script>
 <script src="js/puppet/layer-timeline.js"></script>
+<script src="js/puppet/symbols.js"></script>
 <script src="js/project/projects.js"></script>
 <script src="js/project/sync.js"></script>
 <script src="js/fx/text-camera.js"></script>

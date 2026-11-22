@@ -6,8 +6,12 @@ function setupWorkCanvases() {
   tintCache.clear();
 }
 const tintCache = new Map();
-SETTINGS_KEYS.push('onionPrev', 'onionNext', 'onionTrue', 'onionCol', 'onionPal', 'onionKeys'); S.onionPrev = 1; S.onionNext = 1;
-S.onionTrue = false; S.onionCol = false; S.onionPal = 0; S.onionKeys = false;
+SETTINGS_KEYS.push('onionPrev', 'onionNext', 'onionTrue', 'onionCol', 'onionPal', 'onionKeys', 'onionLayer'); S.onionPrev = 1; S.onionNext = 1;
+S.onionTrue = false; S.onionCol = false; S.onionPal = 0; S.onionKeys = false; S.onionLayer = false;
+// 🧍 onion of one layer only (S.onionLayer, in Ghép with a layer picked): the faded frames show just that character,
+// so one person can be timed in a crowd. drawPuppet skips every other layer while ppOnlyRoot is set.
+var ppOnlyRoot = null;
+const onionOnly = () => S.onionLayer && S.tool === 'puppet' && S.pp ? lgSelRoot() : null;
 // colour pairs for onion skin: [before near, before far, after near, after far]
 const ONION_PALS = [['#ff3b5c', '#ff8a3b', '#2f7bff', '#26b8c9', 'Đỏ / Xanh dương'], ['#e0409a', '#b35ce0', '#1fae4b', '#8bc34a', 'Hồng / Xanh lá'], ['#7a5a3a', '#a08060', '#3a5a7a', '#6080a0', 'Nâu / Xám xanh']];
 // onion frames: [index, colour, alpha], farthest first so the nearest frame draws on top; alpha fades with distance.
@@ -47,7 +51,7 @@ function onionDialog() {
 <div class="set-row"><span>Số frame sau</span><span class="grp">${chips('onionNext')}</span></div>
 <div class="set-row"><span>Độ mờ</span><input type="range" id="onA" min="5" max="70" value="${Math.round(S.onionAlpha * 100)}"></div>
 <div class="set-row"><span>Màu onion</span><span class="grp">${ONION_PALS.map((p, i) => `<button class="chip small ${(S.onionPal | 0) === i ? 'on' : ''}" data-opal="${i}"><b style="color:${p[0]}">●</b><b style="color:${p[2]}">●</b> ${p[4]}</button>`).join('')}</span></div>
-<div class="set-row"><span>Kiểu hiện</span><span class="grp">${tg('onionTrue', '🎨 Màu thật (không nhuộm)')}${tg('onionCol', '🖌 Hiện cả lớp Màu')}${tg('onionKeys', '🔑 Bỏ qua frame giữ y hệt')}</span></div>`,
+<div class="set-row"><span>Kiểu hiện</span><span class="grp">${tg('onionTrue', '🎨 Màu thật (không nhuộm)')}${tg('onionCol', '🖌 Hiện cả lớp Màu')}${tg('onionKeys', '🔑 Bỏ qua frame giữ y hệt')}${tg('onionLayer', '🧍 Chỉ layer đang chọn (Ghép)')}</span></div>`,
     buttons: [{ label: 'Xong', value: null, primary: true }], onOpen: ov => {
       const redo = () => { tintCache.clear(); S.onion = true; updateToggles(); saveSettings(); requestRender(); };
       ov.querySelectorAll('[data-ok]').forEach(b => b.addEventListener('click', () => { S[b.dataset.ok] = +b.dataset.n; ov.querySelectorAll(`[data-ok=${b.dataset.ok}]`).forEach(x => x.classList.toggle('on', x === b)); redo(); }));
@@ -58,15 +62,18 @@ function onionDialog() {
 }
 function onionTint(f, col) {
   let e = tintCache.get(f.id);
-  const mode = (S.onionTrue ? 't' : '') + (S.onionCol ? 'c' + (f.colVer | 0) : '');
+  const only = onionOnly(), mode = (S.onionTrue ? 't' : '') + (S.onionCol ? 'c' + (f.colVer | 0) : '') + (only ? 'L' + only : '');
   if (e && e.ver === f.ver && e.col === col && e.mode === mode) return e.c;
   const c = e ? e.c : makeCanvas(Math.round(W / 2), Math.round(H / 2));
   const x = c.getContext('2d');
   x.globalCompositeOperation = 'source-over'; x.clearRect(0, 0, c.width, c.height);
+  if (only) { x.save(); x.scale(c.width / W, c.height / H); ppOnlyRoot = only; try { drawPuppet(x, f.pp, f.lip); } finally { ppOnlyRoot = null; } x.restore(); }
+  else {
   if (S.onionCol && f.col) drawCol(x, f, c.width, c.height);   // by default onion shows lines only, not the colour layer
   x.drawImage(f.canvas, 0, 0, c.width, c.height);
   if (S.pp && S.showPP) { x.save(); x.scale(c.width / W, c.height / H); drawPuppet(x, f.pp, f.lip); x.restore(); }
-  if (f.vec && f.vec.length) { x.save(); x.scale(c.width / W, c.height / H); drawVec(x, f.vec); x.restore(); }
+  }
+  if (!only && f.vec && f.vec.length) { x.save(); x.scale(c.width / W, c.height / H); drawVec(x, f.vec); x.restore(); }
   if (!S.onionTrue) { x.globalCompositeOperation = 'source-in'; x.fillStyle = col; x.fillRect(0, 0, c.width, c.height); }
   x.globalCompositeOperation = 'source-over';
   tintCache.set(f.id, { ver: f.ver, col, mode, c });

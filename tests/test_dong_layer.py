@@ -92,6 +92,15 @@ async def main():
         await pg.wait_for_timeout(300); await pg.click('#undoBtn'); await pg.wait_for_timeout(300)
         dx = await pg.evaluate(f'S.frames.map(f=>Math.round((f.pp[ "{red}" ]||{{}}).dx||0))')
         ok('undo paste', dx == [0,50,100,150,200], dx)
+        # 🧅 onion of the picked layer only: the faded frame shows red, not blue
+        await pg.mouse.click(bb['x'] + 32*2 + 16, bb['y'] + 18 + 34*1 + 17); await pg.wait_for_timeout(200)
+        await pg.click('#lgOnion'); await pg.wait_for_timeout(200)
+        cnt = await pg.evaluate(f'''(()=>{{const c=onionTint(S.frames[3],'#f00'),x=c.getContext('2d'),k=c.width/W;
+          const n=(id)=>{{const p=ppPart(id),q=S.frames[3].pp[id]||{{}};const x0=Math.round((p.ox+(q.dx||0))*k),y0=Math.round((p.oy+(q.dy||0))*k),w=Math.round(p.c.width*k),h=Math.round(p.c.height*k);
+            const d=x.getImageData(x0+2,y0+2,w-4,h-4).data;let m=0;for(let i=3;i<d.length;i+=4)if(d[i]>20)m++;return m}};return [n("{red}"),n("{blue}")]}})()''')
+        ok('🧅 onion shows only the picked layer', await pg.evaluate('S.onion && S.onionLayer') and cnt[0] > 1000 and cnt[1] == 0, cnt)
+        await pg.click('#lgOnion'); await pg.wait_for_timeout(100)
+        ok('🧅 off again', not await pg.evaluate('S.onionLayer'))
         # per-layer keys are saved
         await pg.evaluate('scheduleSave()'); await pg.wait_for_timeout(2500); await pg.reload(); await pg.wait_for_timeout(2500)
         ok('ppK + ppE kept after reload', await pg.evaluate(f'S.frames.length===5 && ppLayerKey(S.frames[4],"{red}") && !ppLayerKey(S.frames[4],"{blue}") && S.frames[0].ppE["{red}"]==="linear"'))

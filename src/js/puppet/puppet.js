@@ -148,7 +148,7 @@ function drawPuppet(ctx, pose, lip) {
   const M = ppMats(pose), byId = {}; S.pp.parts.forEach(p => byId[p.id] = p);
   const off = lyrOff('lh');
   for (const p of [...S.pp.parts].sort((a, b) => a.z - b.z)) {
-    const q = pose && pose[p.id]; if ((q && q.h) || !p.c || (off && off.has(p.id))) continue;
+    const q = pose && pose[p.id]; if ((q && q.h) || !p.c || (off && off.has(p.id)) || (ppOnlyRoot && (ppCharOf(p) || p.id) !== ppOnlyRoot)) continue;
     const im = ppImg(p, q);
     if (S.ppSoft && p.role && (PP_SOFT1[p.role] || PP_SOFT2[p.role])) { const js = ppSoftJoints(p, byId); if (js.length) { ppDrawSoft(ctx, p, im, M, js); continue; } }
     ctx.save(); ctx.transform(...M[p.id]); ctx.drawImage(im.c, im.x, im.y); ctx.restore();

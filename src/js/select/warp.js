@@ -198,7 +198,8 @@ function floatFromImage(bmp, colBmp) {
   const fc = makeCanvas(Math.round(bmp.width * k), Math.round(bmp.height * k));
   fc.getContext('2d').drawImage(bmp, 0, 0, fc.width, fc.height);
   const snap = makeCanvas(); snap.getContext('2d').drawImage(o.canvas, 0, 0);
-  const fit = Math.min(W * 0.9 / fc.width, H * 0.9 / fc.height, 1);
+  // a picture going into the Nền layer covers the whole frame (what sticks out is cut off when it is put down)
+  const fit = o.kind === 'bg' && !colBmp ? Math.max(W / fc.width, H / fc.height) : Math.min(W * 0.9 / fc.width, H * 0.9 / fc.height, 1);
   floating = { t: targetOf(o), o, c: fc, cx: W / 2, cy: H / 2, scale: fit, rot: 0, flip: 1, snap, dirty: null };
   if (colBmp && o.kind === 'char') {   // colour that goes into the Màu layer under the lines, moved together with them
     const cc = makeCanvas(fc.width, fc.height); cc.getContext('2d').drawImage(colBmp, 0, 0, cc.width, cc.height);
@@ -207,6 +208,23 @@ function floatFromImage(bmp, colBmp) {
     if (!S.showCol) { S.showCol = true; updateToggles(); }
   }
   setTool('lasso'); showSelbar(); requestRender();
+}
+// ⛶ Phủ kín khung: the floating picture fills the frame, centred, upright (the part outside the 9:16 frame is cut off)
+function floatCover() {
+  const fl = floating; if (!fl || !fl.c) return;
+  Object.assign(fl, { cx: W / 2, cy: H / 2, rot: 0, ay: 1, scale: Math.max(W / fl.c.width, H / fl.c.height) });
+  floatXbSync(); requestRender(); toast('⛶ Ảnh phủ kín khung — phần tràn ra ngoài sẽ bị cắt khi bấm Xong. Kéo để chọn phần muốn thấy', 3000);
+}
+// 🖼 Ảnh làm nền (Nền ▾): pick a picture, it goes into this frame's Nền layer covering the frame, ready to drag / resize
+function bgImagePick() {
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = async () => {
+    const file = inp.files && inp.files[0]; if (!file) return;
+    let bmp; try { bmp = await createImageBitmap(file); } catch (_) { toast('Không mở được ảnh này'); return; }
+    if (playing) stopPlay(); setLayer('bg'); floatFromImage(bmp);
+    toast('🖼 Ảnh đã phủ kín khung ở lớp Nền — phần tràn ra ngoài sẽ bị cắt. Kéo để chọn chỗ muốn thấy, 8 chấm để phóng to/thu nhỏ, rồi bấm Xong', 5000);
+  };
+  inp.click();
 }
 function drawFloating(c, img) {
   img = img || (floating && floating.c);

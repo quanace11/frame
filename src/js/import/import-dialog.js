@@ -416,7 +416,7 @@ ${st.ed ? '<button class="chip" id="iEdClr" title="Bỏ hết chỗ đã sửa t
       if (st.busy || !st.result) { toast('Đợi xử lý xong'); return false; }
       if (st.mode === 'ref') { await setRef(src); return; }
       if (st.mode === 'pp' || (st.mode === 'cari' && st.cariOut === 'pp') || (st.mode === 'split' && st.split.out === 'pp')) { ppStartSetup(st.result); return; }
-      const asLayer = S.impLayer && !(st.mode === 'line' && st.lineOut === 'vec');
+      const asLayer = S.impLayer && S.layer !== 'bg' && !(st.mode === 'line' && st.lineOut === 'vec');   // lớp Nền đang chọn = ảnh vào nền
       if (asLayer) {
         if (st.mode === 'split') { if (!st.split.res) { toast('Đợi xử lý xong'); return false; } await imgToLayer(st.split.res.line, st.split.res.col); return; }
         await imgToLayer(st.result); return;
@@ -438,7 +438,7 @@ ${st.ed ? '<button class="chip" id="iEdClr" title="Bỏ hết chỗ đã sửa t
       pv = ov.querySelector('#impCv'); busyEl = ov.querySelector('#impBusy'); ctrl = ov.querySelector('#impCtrl');
       prevEl = ov.querySelector('#impPrev'); curEl = ov.querySelector('#impCur'); toolsEl = ov.querySelector('#impTools'); wirePreview();
       busyEl.style.whiteSpace = 'pre-line';
-      const lc = ov.querySelector('#impLayerChk'), lrow = ov.querySelector('#impLayerRow'), lsync = () => { lrow.hidden = st.mode === 'ref' || st.mode === 'pp' || (st.mode === 'cari' && st.cariOut === 'pp') || (st.mode === 'split' && st.split.out === 'pp') || (st.mode === 'line' && st.lineOut === 'vec'); };
+      const lc = ov.querySelector('#impLayerChk'), lrow = ov.querySelector('#impLayerRow'), lsync = () => { lrow.hidden = S.layer === 'bg' || st.mode === 'ref' || st.mode === 'pp' || (st.mode === 'cari' && st.cariOut === 'pp') || (st.mode === 'split' && st.split.out === 'pp') || (st.mode === 'line' && st.lineOut === 'vec'); };
       lc.checked = !!S.impLayer; lc.addEventListener('change', () => { S.impLayer = lc.checked; saveSettings(); });
       ov.querySelector('#impCtrl').addEventListener('click', () => setTimeout(lsync, 0)); lsync();
       ov.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { setTimeout(lsync, 0); st.mode = b.dataset.mode; st.result = null; renderCtrl(); recompute(); }));   // switching while busy is fine: the older run sees a newer seq and stops
