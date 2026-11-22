@@ -1,0 +1,55 @@
+import os, sys
+HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); DIST = os.environ.get('FS_DIST') or os.path.join(ROOT, 'dist'); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
+os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tests/out
+CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
+import asyncio, subprocess, time
+from playwright.async_api import async_playwright
+srv = subprocess.Popen(['python3','-m','http.server','9123'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)
+time.sleep(1)
+# 🚶 Đi sang hai bên: one tap = walk cycle + moving across the screen; "Đi rồi quay lại" stops, turns around (flip) and walks back.
+# One undo step.
+async def main():
+    async with async_playwright() as p:
+        b = await p.chromium.launch(executable_path=CHROME, args=['--no-sandbox'])
+        pg = await b.new_page(viewport={'width':1280,'height':900}); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
+        await pg.add_init_script("new MutationObserver(()=>document.querySelectorAll('.tabhide').forEach(e=>e.classList.remove('tabhide'))).observe(document,{subtree:true,attributes:true,childList:true,attributeFilter:['class']})")
+        await pg.goto('http://localhost:9123/index.html'); await pg.wait_for_timeout(800); await pg.click('text=Bắt đầu vẽ')
+        await pg.set_input_files('#imgFile', os.path.join(ASSETS, 'drawn_char.png')); await pg.wait_for_timeout(400)
+        await pg.click('[data-mode=pp]'); await pg.wait_for_timeout(300)
+        await pg.wait_for_function("document.querySelector('#impBusy').hidden", timeout=180000); await pg.wait_for_timeout(500)
+        await pg.click('.dlg .btns >> text=Dùng'); await pg.wait_for_timeout(800)
+        await pg.click('#ppCutAuto'); await pg.click('#ppLabCut'); await pg.wait_for_function('S.pp && S.pp.parts.length', timeout=180000); await pg.wait_for_timeout(300)
+        # small character on the left side of the frame (like a drawn player standing near the left edge)
+        await pg.evaluate("(()=>{const id=ppSelChar(),q=ppQ(S.frames[0],id);q.sx=q.sy=0.45;q.dx=-W*0.25;q.dy=150;requestRender()})()")
+        await pg.evaluate("openTab('pp','frames')"); await pg.wait_for_timeout(200)
+        root = await pg.evaluate("ppSelChar()")
+        legs = await pg.evaluate("S.pp.parts.filter(p=>p.role==='legL'||p.role==='legR').map(p=>p.id)")
+        await pg.click('[data-walk="0"]')
+        await pg.wait_for_function('S.frames.length > 10', timeout=20000); await pg.wait_for_timeout(500)
+        N = await pg.evaluate("S.frames.length"); n = (N - 2) // 2
+        print('there + 2 turn frames + back', N == 2 * n + 2 and n >= 6, N)
+        xs = await pg.evaluate(f"S.frames.map(f=>f.lip.mv['{root}'].x)")
+        print('goes right first (more room on the right)', xs[n - 1] > 200)
+        print('moves steadily there', all(xs[k + 1] > xs[k] for k in range(n - 1)))
+        print('stops at the far end', xs[n] == xs[n + 1] == xs[n - 1])
+        print('comes back to where it stood', abs(xs[-1]) < 0.5 and all(xs[k + 1] < xs[k] for k in range(n + 1, N - 1)))
+        fl = await pg.evaluate(f"S.frames.map(f=>!!f.pp['{root}'].fl)")
+        print('turns around at the end and walks back turned', not any(fl[:n + 1]) and all(fl[n + 1:]))
+        rs = await pg.evaluate(f"S.frames.slice(0,8).map(f=>(f.pp['{legs[0]}']||{{}}).r||0)")
+        print('legs step (walk cycle)', max(rs) - min(rs) > 20, rs)
+        print('walk speed timing', await pg.evaluate("S.frames[1].dur===100 && S.frames[" + str(n) + "].dur===120"))
+        await pg.evaluate(f"S.cur={n//2}; updateFrameUI(); requestRender()"); await pg.wait_for_timeout(300); await pg.screenshot(path='di_qua_lai.png')
+        await pg.evaluate("undo()"); await pg.wait_for_timeout(600)
+        print('one undo removes it all', await pg.evaluate(f"S.frames.length===1 && !(S.frames[0].lip&&S.frames[0].lip.mv) && !S.frames[0].pp['{root}'].fl"))
+        await pg.evaluate("redo()"); await pg.wait_for_timeout(600)
+        print('redo', await pg.evaluate(f"S.frames.length==={N} && !!S.frames[{N-1}].pp['{root}'].fl"))
+        await pg.evaluate("undo()"); await pg.wait_for_timeout(600)
+        # one way to the left, running: no turn
+        await pg.select_option('#walkKind', 'run'); await pg.click('[data-walk="-1"]')
+        await pg.wait_for_function('S.frames.length > 5', timeout=20000); await pg.wait_for_timeout(400)
+        xs = await pg.evaluate(f"S.frames.map(f=>f.lip.mv['{root}'].x)")
+        fl = await pg.evaluate(f"S.frames.map(f=>!!f.pp['{root}'].fl)")
+        print('run to the left, no turn', xs[-1] < -200 and all(xs[k + 1] < xs[k] for k in range(len(xs) - 1)) and not any(fl) and await pg.evaluate("S.frames[1].dur===70"))
+        print('ERR', errs); await b.close()
+asyncio.run(main()); srv.kill()
