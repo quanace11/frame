@@ -88,7 +88,9 @@ async def main():
         # tap on canvas while popover open only closes it
         await pg.click('#curColor'); n0 = await pg.evaluate(COUNT)
         await pg.evaluate(PEN, [[[tl[0]+40,tl[1]+40],[tl[0]+120,tl[1]+40]],[0.5,0.5]]); await pg.wait_for_timeout(60)
-        print('canvas tap closes popover without drawing', await pg.evaluate("!document.querySelector('.pop')"), (await pg.evaluate(COUNT)) == n0)
+        closed, same = await pg.evaluate("!document.querySelector('.pop')"), (await pg.evaluate(COUNT)) == n0
+        print('canvas tap closes popover without drawing', closed, same)
+        if not (closed and same): errs.append('canvas tap did not just close the popover')
         # settings persist
         await pg.evaluate("saveSettings()")
         st = await pg.evaluate("JSON.parse(localStorage.getItem('fs-settings'))")

@@ -52,7 +52,9 @@ function openPop(anchor, html, cls = '') {
   const r = anchor.getBoundingClientRect(), pw = d.offsetWidth, ph = d.offsetHeight;
   d.style.left = clamp(r.left, 8, Math.max(8, innerWidth - pw - 8)) + 'px';
   d.style.top = (r.bottom + 6 + ph > innerHeight - 8 ? Math.max(8, innerHeight - ph - 8) : r.bottom + 6) + 'px';
-  setTimeout(() => { if (popEl === d) document.addEventListener('pointerdown', popOutside, true); });
+  // listen right away: the tap that opened the popover is already past its pointerdown (a timer here let a quick tap on the
+  // canvas just after opening draw a line instead of closing the popover)
+  document.addEventListener('pointerdown', popOutside, true);
   return d;
 }
 function colorPop() {
