@@ -783,6 +783,7 @@ function ppStart(p, base) {
     cx.save(); cx.globalCompositeOperation = ppPaint === 'erase' ? 'destination-out' : 'source-over'; cx.fillStyle = S.color; cx.beginPath(); cx.arc(pt.x, pt.y, bsz() / sc / 2, 0, Math.PI * 2); cx.fill(); cx.restore();
     action = { ...base, kind: 'pppaint', part: sel, im, inv, sc, last: pt, before }; requestRender(); return;
   }
+  if (ppDrag === 'all') { ppAllStart(p, base); return; }
   if (ppDrag === 'box') { ppBoxStart(p, base, f); return; }
   if (ppDrag === 'bone') {   // 🦴 like Animate's bone tool: drag an arm/leg = it turns round its joint, drag the root = the whole character moves
     const hit = ppHit(p, ppPoseFor(f), true);
@@ -813,6 +814,7 @@ function ppMove(p) {
     cx.beginPath(); cx.moveTo(a.last.x, a.last.y); cx.lineTo(pt.x, pt.y); cx.stroke(); cx.restore(); a.last = pt; a.im.holder.alpha = null; requestRender(); return;
   }
   if (a.kind === 'ppbox') { ppBoxMove(p, f); return; }
+  if (a.kind === 'ppall') { ppAllMove(p); return; }
   if (a.kind === 'ppik') { ppIKDrag(a.part, p, f); }
   else if (a.kind === 'pprot') { const q = ppQ(f, a.part.id), ang = Math.atan2(p.y - a.wp.y, p.x - a.wp.x); let dr = (ang - a.a0) / DEG; q.r = a.r0 + dr; }
   else if (a.kind === 'ppmove') {
@@ -837,8 +839,37 @@ function ppEnd() {
   }
   if (a.kind === 'pppatch') { const poly = lasso; lasso = null; if (poly && poly.length > 2) ppPatchLasso(poly); requestRender(); return; }
   if (a.kind === 'ppbox' && !a.moved) { ppSyncBar(); return; }
+  if (a.kind === 'ppall') { ppAllEnd(a); return; }
   if (a.kind === 'pprot' || a.kind === 'ppmove' || a.kind === 'ppik' || a.kind === 'ppbox') { ppMarkKey(f, a.kind === 'ppbox' ? a.root : a.part.id); pushEntry(ppEntry(f, a.before, ppState(f))); markEdited(f); ppRetween(); ppSyncBar(); updateFrameUI(); }
   if (a.kind === 'pppivot') { scheduleSave(); }
+}
+/* --- ✥ Dời tất cả (mọi frame): drag anywhere = every character (not locked 🔒 / hidden) moves by the same amount on EVERY frame,
+ *  so walks and 〰 paths keep their shape, only shifted. Stored in the path offset f.lip.mv (like 〰), one undo step (snapshot). --- */
+function ppAllRoots() { return ppRoots().filter(r => !r.lk && !r.lh); }
+function ppAllStart(p, base) {
+  const roots = ppAllRoots(); if (!roots.length) { toast('Không có nhân vật nào để dời (layer đang khoá 🔒 hoặc ẩn)'); return; }
+  histFlush();
+  action = { ...base, kind: 'ppall', hb: histSnap(), roots: roots.map(r => r.id), last: p, moved: false };
+}
+function ppAllShift(ids, dx, dy) {
+  for (const f of S.frames) {
+    const l = { ...(f.lip || {}) }, mv = { ...(l.mv || {}) };
+    for (const id of ids) { const m = mv[id] || { x: 0, y: 0 }; mv[id] = { x: Math.round((m.x + dx) * 10) / 10, y: Math.round((m.y + dy) * 10) / 10 }; }
+    l.mv = mv; f.lip = l; f.ver++;
+  }
+}
+function ppAllMove(p) {
+  const a = action, dx = p.x - a.last.x, dy = p.y - a.last.y; if (!dx && !dy) return;
+  ppAllShift(a.roots, dx, dy); a.last = p; a.moved = true; requestRender();
+}
+function ppAllEnd(a) {
+  if (!a.moved) return;
+  S.frames.forEach(f => queueThumbFor(f));
+  const ha = histSnap(), fr = [];
+  for (const [g, x] of ha.fm) { const bs = a.hb.fm.get(g); if (bs !== undefined && bs !== x) fr.push([g, bs, x]); }
+  if (fr.length) { pushEntry({ multi: [{ snap: { before: a.hb, after: ha, fr }, bytes: 2000 }] }); histRebase(); }
+  scheduleSave(); updateFrameUI();
+  toast(`Đã dời ${a.roots.length} nhân vật trên cả ${S.frames.length} frame`, 2000);
 }
 function ppEntry(f, before, after) { return { t: targetOf(f), ppose: true, before, after, bytes: 200 }; }
 function ppEdit(fn) { const f = curFrame(), sel = ppPart(ppSel); if (!sel) { toast('Chạm chọn một mảnh trước'); return; } const before = ppState(f); fn(ppQ(f, sel.id), sel, f); ppMarkKey(f, sel.id); pushEntry(ppEntry(f, before, ppState(f))); markEdited(f); ppRetween(); ppSyncBar(); updateFrameUI(); requestRender(); }

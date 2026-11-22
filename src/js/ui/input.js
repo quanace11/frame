@@ -193,6 +193,7 @@ function fingerActs(e) {
   if (S.tool === 'puppet' && S.pp && !rig && !motion) {
     if (ppPathMode) return true;
     if (ppCutMode || ppPatchMode || ppPaint) return false;
+    if (ppDrag === 'all') return true;   // ✥ Dời tất cả: 1 finger drags everything (2 fingers still pan/zoom)
     const sel = ppDrag === 'box' && ppPart(ppSel), b = sel && ppBoxOf(f, ppCharOf(sel) || sel.id);
     return !!(b && xbHit(b, p, true)) || !!ppHit(p, ppPoseFor(f));
   }
