@@ -821,11 +821,11 @@ function ppEnd() {
   }
   if (a.kind === 'pppatch') { const poly = lasso; lasso = null; if (poly && poly.length > 2) ppPatchLasso(poly); requestRender(); return; }
   if (a.kind === 'ppbox' && !a.moved) { ppSyncBar(); return; }
-  if (a.kind === 'pprot' || a.kind === 'ppmove' || a.kind === 'ppik' || a.kind === 'ppbox') { f.ppKey = true; pushEntry(ppEntry(f, a.before, ppState(f))); markEdited(f); ppRetween(); ppSyncBar(); updateFrameUI(); }
+  if (a.kind === 'pprot' || a.kind === 'ppmove' || a.kind === 'ppik' || a.kind === 'ppbox') { ppMarkKey(f, a.kind === 'ppbox' ? a.root : a.part.id); pushEntry(ppEntry(f, a.before, ppState(f))); markEdited(f); ppRetween(); ppSyncBar(); updateFrameUI(); }
   if (a.kind === 'pppivot') { scheduleSave(); }
 }
 function ppEntry(f, before, after) { return { t: targetOf(f), ppose: true, before, after, bytes: 200 }; }
-function ppEdit(fn) { const f = curFrame(), sel = ppPart(ppSel); if (!sel) { toast('Chạm chọn một mảnh trước'); return; } const before = ppState(f); fn(ppQ(f, sel.id), sel, f); f.ppKey = true; pushEntry(ppEntry(f, before, ppState(f))); markEdited(f); ppRetween(); ppSyncBar(); updateFrameUI(); requestRender(); }
+function ppEdit(fn) { const f = curFrame(), sel = ppPart(ppSel); if (!sel) { toast('Chạm chọn một mảnh trước'); return; } const before = ppState(f); fn(ppQ(f, sel.id), sel, f); ppMarkKey(f, sel.id); pushEntry(ppEntry(f, before, ppState(f))); markEdited(f); ppRetween(); ppSyncBar(); updateFrameUI(); requestRender(); }
 /* --- tween & presets --- */
 const lerp = (a, b, t) => a + (b - a) * t;
 function ppLerpPose(A, B, t) {
@@ -954,7 +954,7 @@ function updPanelPill() {
 }
 function hidePanel(t) { panelHidden[t] = true; saveSettings(); updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
 function showPanel() { panelHidden[S.tool] = false; saveSettings(); updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
-function ppSyncBar() { lyrSync(); ppBlinkInfo(); { const a = $('#ppSoftChk'), b = $('#ppSmoothChk'); if (a) a.checked = !!S.ppSoft; if (b) b.checked = !!S.ppSmooth; }
+function ppSyncBar() { lyrSync(); lgSync(); ppBlinkInfo(); { const a = $('#ppSoftChk'), b = $('#ppSmoothChk'); if (a) a.checked = !!S.ppSoft; if (b) b.checked = !!S.ppSmooth; }
   const bar = $('#ppbar'), show = S.tool === 'puppet' && (!panelHidden.puppet || !!ppSetup);
   bar.hidden = !show; updPanelPill(); if (!show) return;
   $('#ppSetupSec').hidden = !ppSetup; $('#ppPoseSec').hidden = !!ppSetup || !S.pp;
@@ -1045,7 +1045,7 @@ $('#ppSmoothChk').addEventListener('change', e => { S.ppSmooth = e.target.checke
 document.querySelectorAll('[data-ppd]').forEach(b => b.addEventListener('click', () => { ppDrag = b.dataset.ppd; ppCutMode = false; ppPaint = null; ppSyncBar(); requestRender(); }));
 let ppSlBefore = null;
 const ppSlStart = () => { if (!ppSlBefore) ppSlBefore = ppState(curFrame()); };
-const ppSlEnd = () => { if (!ppSlBefore) return; const f = curFrame(); f.ppKey = true; pushEntry(ppEntry(f, ppSlBefore, ppState(f))); ppSlBefore = null; markEdited(f); ppRetween(); updateFrameUI(); };
+const ppSlEnd = () => { if (!ppSlBefore) return; const f = curFrame(); ppMarkKey(f, ppSel); pushEntry(ppEntry(f, ppSlBefore, ppState(f))); ppSlBefore = null; markEdited(f); ppRetween(); updateFrameUI(); };
 $('#ppRot').addEventListener('input', e => { const p = ppPart(ppSel); if (!p) return; ppSlStart(); ppQ(curFrame(), p.id).r = +e.target.value; curFrame().ver++; requestRender(); });
 $('#ppRot').addEventListener('change', ppSlEnd);
 $('#ppScale').addEventListener('input', e => { const p = ppPart(ppSel); if (!p) return; ppSlStart(); const q = ppQ(curFrame(), p.id); q.sx = q.sy = e.target.value / 100; curFrame().ver++; requestRender(); });

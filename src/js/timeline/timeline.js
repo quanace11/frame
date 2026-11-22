@@ -123,7 +123,7 @@ function updateFrameUI() {
   if (!flipPeek) { $('#fnLbl').textContent = `${S.cur + 1}/${S.frames.length}`; $('#fnPrev').disabled = S.cur === 0; $('#fnNext').disabled = S.cur === S.frames.length - 1; }
   const shared = S.frames.filter(g => g.bgId === f.bgId).length;
   $('#bgInfo').textContent = shared > 1 ? `Nền dùng chung ${shared} frame` : 'Nền riêng';
-  updateWaves(); scrubDraw(); expSync();
+  updateWaves(); scrubDraw(); expSync(); lgSync();
   $('#moveL').disabled = S.cur === 0; $('#moveR').disabled = S.cur === S.frames.length - 1;
   const el = f.el; if (el) { const r = el.getBoundingClientRect(), sr = strip.getBoundingClientRect(); if (r.left < sr.left || r.right > sr.right) strip.scrollLeft += r.left - sr.left - sr.width / 2 + r.width / 2; }
 }
@@ -158,7 +158,7 @@ function frameCopyOf(s0, run) {
   f.canvas.getContext('2d').drawImage(s0.canvas, 0, 0); copyCol(f, s0); f.ver = 1; f.pngVer = 0;
   f.vec = cloneVec(s0.vec); f.pp = ppClone(s0.pp); f.lip = lipCopy(s0); f.texts = jcopy(s0.texts || []);
   lookCopy(f, s0);
-  if (run) { f.ppKey = s0.ppKey; f.ppEase = s0.ppEase; f.cam = s0.cam ? { ...s0.cam } : null; f.shake = s0.shake || 0; f.flash = !!s0.flash; }
+  if (run) { f.ppKey = s0.ppKey; if (s0.ppK) f.ppK = { ...s0.ppK }; f.ppEase = s0.ppEase; f.cam = s0.cam ? { ...s0.cam } : null; f.shake = s0.shake || 0; f.flash = !!s0.flash; }
   return f;
 }
 // put new frames in at index `at` as ONE undo step (after the frame before them), with their thumbnails

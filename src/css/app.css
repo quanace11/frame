@@ -339,3 +339,19 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
   #lyrList .lyr{min-height:40px}
   #lyrPanel .lyrHead .lbl{display:none}
 }
+
+/* 🗂 Dòng layer (timeline layer × frame) */
+#lg{border-top:1px solid var(--line);padding:4px 0 2px}
+#lg[hidden]{display:none}
+#lgBar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:0 2px 4px}
+#lgBar #lgInfo{flex:1;min-width:120px;font-size:12px}
+#lgBar .tbtn.on{border-color:var(--accent)}
+#lgBar .lgLegend{font-size:11px}
+#lgBar .lgTw{display:inline-block;width:18px;height:8px;background:rgba(140,110,255,.55);border-radius:2px;vertical-align:middle}
+#lgBody{display:flex;max-height:150px;overflow-y:auto;border:1px solid var(--line);border-radius:8px}
+#lgNames{flex:0 0 130px;border-right:1px solid var(--line)}
+#lgNames .lgn{height:34px;line-height:34px;padding:0 8px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+#lgNames .lgn.on{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--text)}
+#lgNames .lgn.off{opacity:.45;text-decoration:line-through}
+#lgScroll{flex:1;overflow-x:auto;overflow-y:hidden}
+#lgCv{display:block;cursor:pointer}
