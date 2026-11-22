@@ -6219,7 +6219,7 @@ async function projectsDialog() {
   const rows = list.map(p => `<div class="prow ${p.id === curProjId ? 'on' : ''}" data-id="${p.id}">
     <img src="${p.thumb || ''}" alt=""><div class="pinfo"><b>${(p.name || 'Dự án').replace(/</g, '&lt;')}</b><span>${p.frames || 1} frame · ${fmt(p.updated || Date.now())}</span></div>
     <div class="pbtns"><button class="chip small" data-pa="open">Mở</button><button class="chip small" data-pa="ren">Đổi tên</button><button class="chip small" data-pa="dup">Nhân bản</button><button class="chip small" data-pa="del" style="color:var(--danger)">Xoá</button></div></div>`).join('');
-  modal({ title: '📁 Dự án của bạn', html: `<div class="menu-grid" style="margin-top:0"><button class="btn primary" data-pn="916">＋ Dự án mới 9:16 (Shorts)</button><button class="btn" data-pn="169">＋ Dự án mới 16:9</button><button class="btn" data-pn="sync">☁ ${syncCfg() ? 'Đồng bộ ngay' : 'Đồng bộ tablet ↔ laptop'}</button></div><div class="plist">${rows || '<p class="lbl">Chưa có dự án</p>'}</div>`,
+  modal({ title: '📁 Dự án của bạn', html: `<div class="menu-grid" style="margin-top:0"><button class="btn primary" data-pn="916">＋ Dự án mới 9:16 (Shorts)</button><button class="btn" data-pn="169">＋ Dự án mới 16:9</button><button class="btn" data-pn="sync">☁ ${syncCfg() ? 'Đồng bộ ngay' : 'Làm tiếp trên máy khác'}</button></div><div class="plist">${rows || '<p class="lbl">Chưa có dự án</p>'}</div>`,
     buttons: [{ label: 'Đóng', value: null }], onOpen: (ov, close) => {
       ov.querySelector('.dlg').classList.add('wide');
       ov.querySelectorAll('[data-pn]').forEach(b => b.addEventListener('click', async () => { close(); if (b.dataset.pn === 'sync') { if (!syncCfg()) syncDialog(); else { await syncNow({ manual: true }); projectsDialog(); } return; } await createProject(b.dataset.pn === '916' ? 1080 : 1920, b.dataset.pn === '916' ? 1920 : 1080); toast('Đã tạo dự án mới — dự án cũ vẫn được giữ'); }));
@@ -6310,7 +6310,7 @@ async function syncWriteLocal(pid, rec, blobs, item) {
 }
 async function syncState() { try { const s = await idbGet('sync-state'); if (s && s.items) return s; } catch (e) {} return { repo: '', items: {}, dels: [] }; }
 async function syncNoteDeleted(id) { if (!syncCfg()) return; const s = await syncState(); if (s.items[id] && !s.dels.includes(id)) { s.dels.push(id); await idbPut('sync-state', s); } syncSoon(); }
-function syncSoon(ms = 20000) { clearTimeout(syncT); if (syncCfg() && syncAuto()) syncT = setTimeout(() => syncNow({ quiet: true }), ms); }
+function syncSoon(ms = 8000) { clearTimeout(syncT); if (syncCfg() && syncAuto()) syncT = setTimeout(() => syncNow({ quiet: true }), ms); }
 function syncNow(opt = {}) {
   if (!syncCfg()) return Promise.resolve(null);
   if (syncBusy) { syncAgain = true; return syncBusy; }
@@ -6322,17 +6322,24 @@ async function syncRun(opt) {
   if (stroke || playing || floating) { syncSoon(5000); return null; }
   if (saveT) { clearTimeout(saveT); saveT = null; await saveProject(); }
   for (let i = 0; saving && i < 100; i++) await new Promise(r => setTimeout(r, 100));
-  setSyncState('☁ …', 'Đang đồng bộ…');
+  setSyncState('☁ …', opt.startup ? 'Đang lấy bản mới nhất…' : 'Đang đồng bộ…');
+  // joining with a session code on a fresh device: the untouched blank project would only clutter the other device's list
+  if (opt.join) {
+    const L = await projIndex(), st = await syncState();
+    if (L.length === 1 && L[0].id === curProjId && !st.items[curProjId] && S.frames.length === 1 && vfBlank(S.frames[0]) && !hasAudio()) { const id = curProjId; await idbDel('project:' + id); try { await deleteProjectBlobs(id); } catch (e) {} await idbPut('projects', []); curProjId = null; }
+  }
   const out = { pushed: 0, pulled: 0, copies: 0, deleted: 0, reloaded: false };
   try {
     for (let attempt = 0; ; attempt++) {
       try { await syncOnce(cfg, out, opt); break; }
       catch (e) { if (e.status === 422 && /fast.?forward|reference/i.test(e.ghMsg || '') && attempt < 3) continue; throw e; }   // another device committed meanwhile → redo on top of it
     }
+    if (opt.join) { const L2 = (await projIndex()).sort((a, b) => b.updated - a.updated); if (L2.length && L2[0].id !== curProjId) { await openProject(L2[0].id); out.reloaded = true; } }
     syncLast = Date.now(); syncMsg = '';
     const t = new Date(syncLast).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     setSyncState('☁ ✓', 'Đã đồng bộ lúc ' + t);
-    if (out.reloaded) toast('☁ Đã cập nhật bài từ máy khác', 2600);
+    if (opt.join) toast(out.pulled ? `☁ Đã mở bài từ máy kia (${out.pulled} dự án). Làm tiếp thôi!` : '☁ Đã kết nối. Bài trên máy này sẽ tự lưu lên mạng.', 3500);
+    else if (out.reloaded) toast('☁ Đã lấy bản mới nhất từ máy khác', 2600);
     else if (out.copies) toast(`☁ Hai máy cùng sửa 1 dự án: đã giữ cả 2 bản (bản kia tên "… (từ máy khác)")`, 4200);
     else if (!opt.quiet) toast(out.pushed || out.pulled || out.deleted ? `☁ Đồng bộ xong: gửi ${out.pushed}, nhận ${out.pulled} dự án` : '☁ Đã đồng bộ, không có gì mới');
     return out;
@@ -6375,7 +6382,7 @@ async function syncOnce(cfg, out, opt) {
     if (name) rec.name = name;
     if (asId === curProjId) {   // the open project: only replace it when nothing was touched since this sync started
       const now = (await projIndex()).find(x => x.id === asId);
-      if (saveT || saving || stroke || floating || (now && Lm.get(asId) && now.updated !== Lm.get(asId).updated) || (!opt.manual && document.querySelector('.ov'))) return false;
+      if (saveT || saving || stroke || floating || (now && Lm.get(asId) && now.updated !== Lm.get(asId).updated) || (!opt.manual && !opt.startup && document.querySelector('.ov'))) return false;
     }
     await syncWriteLocal(asId, rec, blobs, { ...rit, name: rec.name || rit.name, updated: name ? Date.now() : rit.updated });
     if (asId === curProjId) { curProjId = null; await openProject(asId); out.reloaded = true; }
@@ -6436,41 +6443,129 @@ async function syncOnce(cfg, out, opt) {
   await idbPut('sync-state', st);
   if (!curProjId) { const L2 = (await projIndex()).sort((a, b) => b.updated - a.updated); if (L2.length) await openProject(L2[0].id); else await createProject(1080, 1920); }
 }
+/* --- 🔑 Mã phiên (session code): the repo + token packed into one string. Set up GitHub once on one device, then on any
+   other device just paste the code: the same work opens there. The code is the key, so it stays in localStorage only. --- */
+const SYNC_CODE_PRE = 'FS1-';
+function syncCodeMake(cfg) { const s = JSON.stringify({ r: cfg.repo, t: cfg.tok }); return SYNC_CODE_PRE + btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+function syncCodeParse(str) {
+  const s = String(str || '').replace(/\s+/g, '');
+  if (!s.toUpperCase().startsWith(SYNC_CODE_PRE)) return null;
+  try { let b = s.slice(SYNC_CODE_PRE.length).replace(/-/g, '+').replace(/_/g, '/'); while (b.length % 4) b += '='; const j = JSON.parse(decodeURIComponent(escape(atob(b)))); return j && typeof j.r === 'string' && typeof j.t === 'string' && j.t ? { repo: j.r, tok: j.t } : null; } catch (e) { return null; }
+}
+// check a repo + token, keep them on this device only when the repo is private and writable; returns '' or an error message
+async function syncConnect(repo, tok) {
+  const prev = [lsGet(SYNC_REPO_LS), lsGet(SYNC_TOK_LS)], undo = () => { lsSet(SYNC_REPO_LS, prev[0]); lsSet(SYNC_TOK_LS, prev[1]); };
+  lsSet(SYNC_REPO_LS, repo); lsSet(SYNC_TOK_LS, tok);
+  const cfg = syncCfg();
+  if (!cfg) { undo(); return !tok ? 'Chưa dán token.' : 'Tên repo phải có dạng tên-bạn/tên-repo.'; }
+  try {
+    const info = await gh(cfg, '');
+    if (!info.private) { undo(); return '⚠ Repo này đang Công khai (Public): ai cũng xem được bài của bạn. Vào Settings của repo đổi sang Private rồi thử lại.'; }
+    if (info.permissions && info.permissions.push === false) { undo(); return syncErr(403); }
+  } catch (e) { undo(); return '⚠ ' + e.message; }
+  lsSet(SYNC_AUTO_LS, ''); syncWarned = false; setSyncState('☁ …');
+  return '';
+}
+const syncWhen = t => t ? new Date(t).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '';
 async function syncDialog() {
   const c = syncCfg();
   const inp = 'min-height:44px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:16px';
-  return modal({ title: '☁ Đồng bộ giữa các máy', html: `
-<p style="margin-top:0">Làm trên tablet rồi mở laptop làm tiếp (và ngược lại). Bài được giữ trong <b>một repo GitHub riêng tư</b> của bạn, miễn phí, không cần server.</p>
-<details ${c ? '' : 'open'} style="margin-bottom:8px"><summary style="cursor:pointer;min-height:32px"><b>Cách cài (làm 1 lần)</b></summary>
+  const status = syncMsg ? '⚠ ' + escHtml(syncMsg) : syncBusy ? '☁ Đang đồng bộ…' : syncLast ? '✓ Đã lưu lên mạng lúc ' + syncWhen(syncLast) : '';
+  if (c) return modal({ title: '☁ Làm tiếp trên máy khác', html: `
+<p style="margin-top:0">✅ Máy này đã kết nối. Bài tự lưu lên mạng sau khi bạn sửa, và mỗi lần mở app hoặc <b>tải lại trang (F5)</b> sẽ lấy bản mới nhất.</p>
+<p style="margin:6px 0 4px"><b>Mã phiên của bạn</b>: trên máy kia, mở ☁ rồi dán mã này vào.</p>
+<div style="display:flex;gap:6px;align-items:center"><input id="syCode" type="password" readonly value="${escHtml(syncCodeMake(c))}" style="flex:1;min-width:0;${inp}"><button class="btn" id="syEye" style="min-width:44px" title="Hiện mã">👁</button><button class="btn primary" id="syCopy" style="min-width:44px">📋 Chép mã</button></div>
+<p class="lbl" style="font-size:13px">🔒 Mã phiên như chìa khoá: ai có mã là mở được bài của bạn. Chỉ gửi cho chính bạn (vd. tin nhắn cho mình), đừng đăng lên mạng.</p>
+<p class="lbl" style="font-size:13px">🛟 Không mất bài: bản nào cũng được giữ lại. Hai máy cùng sửa thì giữ cả 2 bản. Bấm <b>🕘 Bản cũ</b> để lấy lại bản trước đây.</p>
+<div class="lbl" id="syMsg" style="font-size:13px;min-height:20px">${status}</div>`,
+    buttons: [{ label: 'Ngắt kết nối', value: 'off', cls: 'danger', action: async () => { const ok = await modal({ title: 'Ngắt kết nối máy này?', html: '<p>Bài trên máy này vẫn còn, bài trên mạng vẫn còn. Muốn nối lại thì dán mã phiên.</p>', buttons: [{ label: 'Huỷ', value: false }, { label: 'Ngắt', value: true, cls: 'danger' }] }); if (!ok) return false; lsSet(SYNC_TOK_LS, ''); clearTimeout(syncT); setSyncState(''); toast('Đã ngắt kết nối máy này. Bài trên máy vẫn còn.'); } },
+      { label: '🕘 Bản cũ', value: 'hist' }, { label: 'Đóng', value: null },
+      { label: '☁ Đồng bộ ngay', value: 'now', primary: true }],
+    onOpen: ov => {
+      ov.querySelector('#syEye').addEventListener('click', () => { const i = ov.querySelector('#syCode'); i.type = i.type === 'password' ? 'text' : 'password'; });
+      ov.querySelector('#syCopy').addEventListener('click', async () => { const i = ov.querySelector('#syCode'); let ok = false; try { await navigator.clipboard.writeText(i.value); ok = true; } catch (e) { i.type = 'text'; i.select(); try { ok = document.execCommand('copy'); } catch (e2) {} } toast(ok ? '📋 Đã chép mã phiên. Dán vào ☁ trên máy kia.' : 'Chưa chép được: hãy chọn mã rồi chép tay', 3000); });
+    }
+  }).then(v => { if (v === 'now') syncNow({ manual: true }); else if (v === 'hist') syncHistoryDialog(); return v; });
+  return modal({ title: '☁ Làm tiếp trên máy khác', html: `
+<p style="margin-top:0">Làm trên tablet rồi mở laptop làm tiếp (và ngược lại) bằng một <b>mã phiên</b>. Không cần làm cùng lúc: mở app hoặc tải lại trang (F5) là có bản mới nhất.</p>
+<p style="margin:6px 0 4px"><b>Đã có mã phiên?</b> (lấy ở máy kia: ☁ → 📋 Chép mã)</p>
+<div style="display:flex;gap:6px;align-items:center"><input id="syCode" type="text" autocomplete="off" spellcheck="false" placeholder="FS1-…" style="flex:1;min-width:0;${inp}"><button class="btn primary" id="syJoin" style="min-width:44px">Mở bài</button></div>
+<details style="margin:10px 0 8px"><summary style="cursor:pointer;min-height:36px"><b>Chưa có mã? Tạo mã phiên</b> (làm 1 lần, trên 1 máy)</summary>
+<p style="margin:6px 0">Bài được giữ trong <b>một repo GitHub riêng tư</b> của bạn: miễn phí, giữ mọi bản cũ, không ai khác xem được.</p>
 <ol style="margin:6px 0;padding-left:20px;line-height:1.5">
 <li>Tạo repo mới, chọn <b>Private</b> (riêng tư), ví dụ tên <code>frame-data</code>: <a href="https://github.com/new" target="_blank" rel="noopener" style="color:var(--accent)">github.com/new</a></li>
-<li>Tạo token: <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener" style="color:var(--accent)">Fine-grained token</a> → Repository access: <b>Only select repositories</b> → chọn repo đó → Permissions: <b>Contents: Read and write</b> → Generate.</li>
-<li>Dán tên repo và token vào đây. Làm giống vậy trên máy còn lại (dùng cùng repo, token có thể dùng chung).</li>
-</ol></details>
+<li>Tạo token: <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener" style="color:var(--accent)">Fine-grained token</a> → Expiration: <b>No expiration</b> (hoặc 1 năm) → Repository access: <b>Only select repositories</b> → chọn repo đó → Permissions: <b>Contents: Read and write</b> → Generate.</li>
+<li>Dán tên repo và token vào đây rồi bấm <b>Tạo mã</b>. Máy kia chỉ cần dán mã phiên, không phải làm lại.</li>
+</ol>
 <div class="set-row"><span>Repo (tên-bạn/tên-repo)</span><input id="syRepo" type="text" autocomplete="off" spellcheck="false" placeholder="ten-ban/frame-data" value="${escHtml(lsGet(SYNC_REPO_LS))}" style="width:230px;${inp}"></div>
-<div style="display:flex;gap:6px;align-items:center"><input id="syTok" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…" value="${escHtml(lsGet(SYNC_TOK_LS))}" style="flex:1;${inp}"><button class="btn" id="syEye" style="min-width:44px">👁</button></div>
-<div class="set-row"><span>Tự đồng bộ (khi mở app, sau khi sửa, khi chuyển máy)</span><input type="checkbox" class="switch" id="syAuto" ${syncAuto() ? 'checked' : ''}></div>
-<p class="lbl" style="font-size:13px">🔒 Token chỉ lưu trên máy này. Không nằm trong dự án, file ZIP hay repo. Đừng gửi token cho ai. Lịch sử hoàn tác (↶) không đi theo sang máy kia.</p>
-<div class="lbl" id="syMsg" style="font-size:13px;min-height:20px">${syncMsg ? '⚠ ' + escHtml(syncMsg) : syncLast ? '✓ Đồng bộ lần cuối lúc ' + new Date(syncLast).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}</div>`,
-    buttons: [{ label: 'Đóng', value: null }, { label: 'Tắt đồng bộ', value: 'off', cls: 'danger', action: () => { lsSet(SYNC_TOK_LS, ''); clearTimeout(syncT); setSyncState(''); toast('Đã tắt đồng bộ và xoá token khỏi máy này. Bài trên máy vẫn còn.'); } },
-      { label: 'Lưu & đồng bộ', value: 'save', primary: true, action: async () => {
-        const ov = document.getElementById('syTok').closest('.ov'), m = ov.querySelector('#syMsg');
-        const repo = ov.querySelector('#syRepo').value.trim(), tok = ov.querySelector('#syTok').value.trim();
-        lsSet(SYNC_AUTO_LS, ov.querySelector('#syAuto').checked ? '' : 'off');
-        const prev = [lsGet(SYNC_REPO_LS), lsGet(SYNC_TOK_LS)];
-        lsSet(SYNC_REPO_LS, repo); lsSet(SYNC_TOK_LS, tok);
-        const cfg = syncCfg();
-        if (!cfg) { m.textContent = !tok ? 'Chưa dán token.' : 'Tên repo phải có dạng tên-bạn/tên-repo.'; lsSet(SYNC_REPO_LS, prev[0]); lsSet(SYNC_TOK_LS, prev[1]); return false; }
-        m.textContent = 'Đang kiểm tra repo…';
-        try {
-          const info = await gh(cfg, '');
-          if (!info.private) { m.textContent = '⚠ Repo này đang Công khai (Public): ai cũng xem được bài của bạn. Vào Settings của repo đổi sang Private rồi thử lại.'; lsSet(SYNC_TOK_LS, prev[1]); lsSet(SYNC_REPO_LS, prev[0]); return false; }
-          if (info.permissions && info.permissions.push === false) { m.textContent = syncErr(403); lsSet(SYNC_TOK_LS, prev[1]); lsSet(SYNC_REPO_LS, prev[0]); return false; }
-        } catch (e) { m.textContent = '⚠ ' + e.message; if (!e.offline) { lsSet(SYNC_TOK_LS, prev[1]); lsSet(SYNC_REPO_LS, prev[0]); } return false; }
-        setSyncState('☁ …'); setTimeout(() => syncNow({ manual: true }), 50);
-      } }],
-    onOpen: ov => { ov.querySelector('#syEye').addEventListener('click', () => { const i = ov.querySelector('#syTok'); i.type = i.type === 'password' ? 'text' : 'password'; }); }
+<div style="display:flex;gap:6px;align-items:center"><input id="syTok" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…" style="flex:1;min-width:0;${inp}"><button class="btn" id="syEye" style="min-width:44px">👁</button></div>
+<div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn primary" id="syMake">🔑 Tạo mã</button></div>
+</details>
+<p class="lbl" style="font-size:13px">🔒 Mã phiên và token chỉ lưu trên máy này, không nằm trong dự án, file ZIP hay repo. Lịch sử hoàn tác (↶) không đi theo sang máy kia.</p>
+<div class="lbl" id="syMsg" style="font-size:13px;min-height:20px">${status}</div>`,
+    buttons: [{ label: 'Đóng', value: null }],
+    onOpen: (ov, close) => {
+      const m = ov.querySelector('#syMsg');
+      ov.querySelector('#syEye').addEventListener('click', () => { const i = ov.querySelector('#syTok'); i.type = i.type === 'password' ? 'text' : 'password'; });
+      const go = async (repo, tok, made) => {
+        m.textContent = 'Đang kiểm tra…';
+        const er = await syncConnect(repo, tok); if (er) { m.textContent = er; return; }
+        close(made ? 'made' : 'join');
+        const r = await syncNow({ manual: true, join: !made });
+        if (made && syncCfg()) syncDialog();   // show the new code to copy
+        return r;
+      };
+      ov.querySelector('#syJoin').addEventListener('click', () => { const cfg = syncCodeParse(ov.querySelector('#syCode').value); if (!cfg) { m.textContent = 'Mã phiên không đúng. Mã bắt đầu bằng FS1-, hãy chép lại cả mã ở máy kia.'; return; } go(cfg.repo, cfg.tok, false); });
+      ov.querySelector('#syMake').addEventListener('click', () => go(ov.querySelector('#syRepo').value.trim(), ov.querySelector('#syTok').value.trim(), true));
+    }
   });
+}
+/* --- 🕘 Bản cũ: every sync is a git commit, so each saved version of a project stays in the repo's history.
+   Restoring never overwrites: it brings the old version in as a new project "… (bản dd/mm hh:mm)". --- */
+async function syncHistoryDialog() {
+  const cfg = syncCfg(); if (!cfg) return;
+  let idx = null, head;
+  try { head = (await gh(cfg, '/git/ref/heads/main')).object.sha; const t = await gh(cfg, '/git/trees/' + (await gh(cfg, '/git/commits/' + head)).tree.sha); const e = (t.tree || []).find(x => x.path === 'index.json'); idx = e ? JSON.parse(new TextDecoder().decode(await gh(cfg, '/git/blobs/' + e.sha, { raw: true }))) : null; }
+  catch (e) { toast('☁ ' + e.message, 3500); return; }
+  const list = (idx && idx.projects || []).slice().sort((a, b) => (a.del ? 1 : 0) - (b.del ? 1 : 0) || b.updated - a.updated);
+  const cur = list.find(x => x.id === curProjId);
+  const opts = list.map(x => `<option value="${escHtml(x.id)}" ${x === cur ? 'selected' : ''}>${escHtml((x.del ? '🗑 ' : '') + (x.name || 'Dự án'))}</option>`).join('');
+  return modal({ title: '🕘 Bản cũ trên mạng', html: list.length ? `
+<p style="margin-top:0">Chọn dự án rồi chọn lúc muốn lấy lại. Bản cũ được thêm thành <b>dự án mới</b>, bài hiện tại vẫn giữ nguyên.</p>
+<select id="shProj" style="width:100%;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:16px;padding:6px">${opts}</select>
+<div id="shList" class="plist" style="margin-top:8px"></div>` : '<p>Chưa có bản nào trên mạng.</p>',
+    buttons: [{ label: 'Đóng', value: null }],
+    onOpen: (ov, close) => {
+      const box = ov.querySelector('#shList'); if (!box) return;
+      const show = async () => {
+        const id = ov.querySelector('#shProj').value, it = list.find(x => x.id === id);
+        box.innerHTML = '<p class="lbl">Đang tải…</p>';
+        let cm = [];
+        try { cm = await gh(cfg, '/commits?path=' + encodeURIComponent(`p/${id}/rec.json`) + '&sha=main&per_page=40'); } catch (e) { box.innerHTML = '<p class="lbl">⚠ ' + escHtml(e.message) + '</p>'; return; }
+        if (!cm.length) { box.innerHTML = '<p class="lbl">Chưa có bản nào.</p>'; return; }
+        box.innerHTML = cm.map((x, k) => `<div class="prow" style="display:flex;gap:8px;align-items:center;justify-content:space-between;padding:6px 6px 6px 12px"><span>${k === 0 && !(it && it.del) ? '⭐ Mới nhất · ' : ''}${escHtml(syncWhen(Date.parse(x.commit && (x.commit.committer || x.commit.author || {}).date)))}</span><button class="btn small" data-sh="${escHtml(x.sha)}" style="min-height:42px">Lấy lại</button></div>`).join('');
+        box.querySelectorAll('[data-sh]').forEach(b => b.addEventListener('click', async () => {
+          const pr = progress('Đang lấy bản cũ…');
+          try { const nid = await syncRestore(cfg, b.dataset.sh, id, it ? it.name : 'Dự án'); pr.close(); if (nid) { close(null); await openProject(nid); toast('🕘 Đã lấy lại bản cũ thành dự án mới. Bài cũ vẫn còn trong 📁 Dự án.', 3500); syncSoon(3000); } else toast('Bản này không còn dữ liệu, chọn bản khác', 3000); }
+          catch (e) { pr.close(); console.error(e); toast('⚠ ' + e.message, 3500); }
+        }));
+      };
+      ov.querySelector('#shProj').addEventListener('change', show); show();
+    }
+  });
+}
+async function syncRestore(cfg, commit, pid, name) {
+  // the version is the commit itself, or (for the commit that deleted it) the one before
+  let c = await gh(cfg, '/git/commits/' + commit), t = await gh(cfg, '/git/trees/' + c.tree.sha + '?recursive=1');
+  let e = (t.tree || []).find(x => x.path === `p/${pid}/rec.json`);
+  if (!e && c.parents && c.parents.length) { c = await gh(cfg, '/git/commits/' + c.parents[0].sha); t = await gh(cfg, '/git/trees/' + c.tree.sha + '?recursive=1'); e = (t.tree || []).find(x => x.path === `p/${pid}/rec.json`); }
+  if (!e) return null;
+  const j = JSON.parse(new TextDecoder().decode(await gh(cfg, '/git/blobs/' + e.sha, { raw: true })));
+  const cache = new Map(), getBin = async sha => { if (!cache.has(sha)) cache.set(sha, await gh(cfg, '/git/blobs/' + sha, { raw: true })); return cache.get(sha); };
+  const nid = newId(), { rec, blobs } = await syncDecode(j, nid, getBin), when = Date.parse(c.committer && c.committer.date || c.author && c.author.date || '') || Date.now();
+  rec.name = (name || rec.name || 'Dự án').replace(/ \(bản [^)]*\)$/, '') + ' (bản ' + syncWhen(when) + ')';
+  await syncWriteLocal(nid, rec, blobs, { name: rec.name, updated: Date.now(), frames: (rec.frames || []).length, thumb: '' });
+  return nid;
 }
 /* ========= Text, camera & effects ========= */
 let fxSel = null, fxCamPick = false;
@@ -11394,7 +11489,7 @@ $('#menuBtn').addEventListener('click', () => {
 <div class="menu-grid">
   <button class="btn primary" data-m="wizard">🚀 Làm video nhanh (từng bước)</button>
   <button class="btn" data-m="projects">📁 Dự án của bạn</button>
-  <button class="btn" data-m="sync">☁ Đồng bộ tablet ↔ laptop</button>
+  <button class="btn" data-m="sync">☁ Làm tiếp trên máy khác</button>
   <button class="btn" data-m="update">🔄 Kiểm tra cập nhật</button>
   <button class="btn primary" data-m="video">🎬 Xuất video (MP4)</button>
   <button class="btn" data-m="gif">🖼 Xuất GIF / ảnh PNG</button>
@@ -11489,7 +11584,7 @@ async function init() {
   updateProjLabel();
   setSaveState();
   $('#syncState').addEventListener('click', syncDialog);
-  if (syncCfg()) { setSyncState('☁'); if (syncAuto()) syncSoon(1500); }
+  if (syncCfg()) { setSyncState('☁'); if (syncAuto()) setTimeout(() => syncNow({ quiet: true, startup: true }), 300); }   // open / F5 → fetch the newest version first
   let seen = false; try { seen = localStorage.getItem('fs-help') === '1'; localStorage.setItem('fs-help', '1'); } catch (e) {}
   if (!seen) modal({ title: 'Chào mừng đến Frame Studio 👋', html: '<p>Làm hoạt hình Shorts từ ảnh nhân vật (vd. ảnh AI tạo) — không cần biết vẽ.</p><p>Bấm <b>🚀 Làm video nhanh</b> để được hướng dẫn từng bước, hoặc tự vẽ tay như một app vẽ frame bình thường.</p>', buttons: [{ label: 'Bắt đầu vẽ', value: 'draw' }, { label: '🚀 Làm video nhanh', value: 'wiz', primary: true }] }).then(v => { if (v === 'wiz') wizard(); });
 }

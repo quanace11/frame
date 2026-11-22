@@ -2,7 +2,7 @@ import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); ASSETS = os.path.join(HERE, 'assets'); OUT = os.path.join(HERE, 'out')
 os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tests/out
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
-# ☁ Sync between devices through a private GitHub repo. GitHub is MOCKED (an in-memory git: blobs, trees, commits, refs,
+# ☁ Làm tiếp trên máy khác: sync through a private GitHub repo, the second device joins with a session code (mã phiên). GitHub is MOCKED (an in-memory git: blobs, trees, commits, refs,
 # fast-forward check), two browser contexts = tablet + laptop. Checks push/pull, the open project refreshing, unchanged
 # pictures not re-uploaded, both-edited → both kept, delete travelling, token never leaving localStorage, public repo refused.
 import asyncio, subprocess, time, json, base64, hashlib, re
@@ -15,23 +15,34 @@ class Git:
     def __init__(s): s.blobs = {}; s.trees = {}; s.commits = {}; s.head = None; s.private = True; s.uploads = 0; s.auth_bad = 0
     def gsha(s, b): return hashlib.sha1(b'blob %d\0' % len(b) + b).hexdigest()
     def put_tree(s, d): k = hashlib.sha1(json.dumps(sorted(d.items())).encode()).hexdigest(); s.trees[k] = dict(d); return k
-    def commit(s, tree, parents): k = hashlib.sha1((tree + ','.join(parents) + str(len(s.commits))).encode()).hexdigest(); s.commits[k] = {'tree': tree, 'parents': parents}; return k
+    def commit(s, tree, parents): k = hashlib.sha1((tree + ','.join(parents) + str(len(s.commits))).encode()).hexdigest(); s.commits[k] = {'tree': tree, 'parents': parents, 'date': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(time.time() + len(s.commits) * 60))}; return k
+    def log(s, path):   # commits that changed one file, newest first (like GET /commits?path=)
+        out, c = [], s.head
+        while c:
+            cm = s.commits[c]; par = cm['parents'][0] if cm['parents'] else None
+            a = s.trees[cm['tree']].get(path); b = s.trees[s.commits[par]['tree']].get(path) if par else None
+            if a != b: out.append({'sha': c, 'commit': {'committer': {'date': cm['date']}}})
+            c = par
+        return out
     def files(s):
         if not s.head: return {}
         t = s.trees[s.commits[s.head]['tree']]; return {p: s.blobs[h] for p, h in t.items()}
 G = Git()
 def handle_api(method, path, body, headers):
     if headers.get('authorization') != 'Bearer ' + TOK: G.auth_bad += 1; return 401, {'message': 'Bad credentials'}
-    m = re.match(r'/repos/me/frame-data(.*)$', path.split('?')[0])
+    m = re.match(r'/repos/me/frame-data([^?]*)', path)
     if not m: return 404, {'message': 'Not Found'}
-    p = m.group(1)
+    p = m.group(1); qs = path.split('?')[1] if '?' in path else ''
+    if p == '/commits' and method == 'GET':
+        from urllib.parse import parse_qs; return 200, G.log(parse_qs(qs)['path'][0])
     if p == '' and method == 'GET': return 200, {'private': G.private, 'permissions': {'push': True}}
     if p == '/git/ref/heads/main':
         return (200, {'object': {'sha': G.head}}) if G.head else (409, {'message': 'Git Repository is empty.'})
     if p == '/contents/index.json' and method == 'PUT':
         b = base64.b64decode(body['content']); h = G.gsha(b); G.blobs[h] = b
         G.head = G.commit(G.put_tree({'index.json': h}), []); return 201, {}
-    if p.startswith('/git/commits/') and method == 'GET': return 200, {'tree': {'sha': G.commits[p.split('/')[-1]]['tree']}}
+    if p.startswith('/git/commits/') and method == 'GET':
+        c = G.commits[p.split('/')[-1]]; return 200, {'tree': {'sha': c['tree']}, 'parents': [{'sha': x} for x in c['parents']], 'committer': {'date': c['date']}}
     if p.startswith('/git/trees/') and method == 'GET':
         return 200, {'tree': [{'path': k, 'type': 'blob', 'sha': v} for k, v in G.trees[p.split('/')[-1]].items()], 'truncated': False}
     if p == '/git/blobs' and method == 'POST':
@@ -76,10 +87,14 @@ async def main():
             return pg
         async def draw(pg, pts):
             await pg.evaluate(PEN, [[await pg.evaluate(f"({D2S})([{x},{y}])") for x, y in pts]]); await pg.wait_for_timeout(200)
-        async def setup(pg, repo='me/frame-data', tok=TOK):
+        async def setup(pg, repo='me/frame-data', tok=TOK):   # first device: make the session code
             await pg.click('#menuBtn'); await pg.click('[data-m=sync]'); await pg.wait_for_timeout(200)
-            await pg.fill('#syRepo', repo); await pg.fill('#syTok', tok)
-            await pg.click('.dlg .btns >> text=Lưu & đồng bộ'); await pg.wait_for_timeout(300)
+            await pg.click('.dlg summary'); await pg.fill('#syRepo', repo); await pg.fill('#syTok', tok)
+            await pg.click('#syMake'); await pg.wait_for_timeout(300)
+        async def close_dlg(pg): await pg.click('.dlg .btns >> text=Đóng'); await pg.wait_for_timeout(150)
+        async def join(pg, code):   # second device: paste the code
+            await pg.click('#menuBtn'); await pg.click('[data-m=sync]'); await pg.wait_for_timeout(200)
+            await pg.screenshot(path='sync_join.png'); await pg.fill('#syCode', code); await pg.click('#syJoin'); await pg.wait_for_timeout(300)
         async def sync(pg): return await pg.evaluate("syncNow({manual:true})")
         A = await device('tablet'); Bd = await device('laptop')
         print('sync off by default: no cloud badge', await A.is_hidden('#syncState'))
@@ -90,10 +105,13 @@ async def main():
         # a public repo is refused, the token is not kept
         G.private = False; await setup(A)
         print('public repo refused', 'Public' in await A.inner_text('#syMsg'), 'token not kept', await A.evaluate("localStorage.getItem('fs-sync-gh-token')") is None)
-        await A.click('.dlg .btns >> text=Tắt đồng bộ'); await A.wait_for_timeout(200); G.private = True
+        await close_dlg(A); G.private = True
         # wrong token → clear message
-        await setup(A, tok='nope'); await A.wait_for_timeout(300); print('bad token message', 'Token sai' in await A.inner_text('#syMsg'), await A.inner_text('#syMsg')); await A.click('.dlg .btns >> text=Tắt đồng bộ'); await A.wait_for_timeout(200)
-        await setup(A); await A.wait_for_function("!syncBusy && syncLast > 0", timeout=20000)
+        await setup(A, tok='nope'); await A.wait_for_timeout(300); print('bad token message', 'Token sai' in await A.inner_text('#syMsg'), await A.inner_text('#syMsg')); await close_dlg(A)
+        await setup(A); await A.wait_for_function("!syncBusy && syncLast > 0", timeout=20000); await A.wait_for_timeout(300)
+        code = await A.input_value('#syCode')
+        print('the new session code is shown', code.startswith('FS1-'), 'and decodes', await A.evaluate(f"JSON.stringify(syncCodeParse('{code}'))") == json.dumps({'repo': 'me/frame-data', 'tok': TOK}, separators=(',', ':')))
+        await close_dlg(A)
         idx = json.loads(G.files()['index.json'])
         print('empty repo initialised + tablet project pushed', [x['name'] for x in idx['projects']] == ['Phim của tôi'])
         print('badge shows synced', (await A.inner_text('#syncState')).strip() == '☁ ✓')
@@ -101,22 +119,21 @@ async def main():
         print('token never in the repo', TOK.encode() not in allbytes)
         print('token not in the project record', await A.evaluate(f"(async()=>!JSON.stringify(await idbGet('project:'+curProjId)).includes('{TOK}'))()"))
         up0 = G.uploads; await sync(A); print('nothing new → nothing uploaded, no new commit', G.uploads == up0)
-        # laptop joins: gets the tablet's project, keeps its own empty one too
-        await setup(Bd); await Bd.wait_for_function("!syncBusy && syncLast > 0", timeout=20000)
+        # laptop joins with the code: a wrong code is refused, the right one opens the tablet's project right away
+        await join(Bd, 'FS1-abc'); print('wrong code refused', 'không đúng' in await Bd.inner_text('#syMsg')); await close_dlg(Bd)
+        await join(Bd, code); await Bd.wait_for_function("!syncBusy && syncLast > 0", timeout=20000); await Bd.wait_for_timeout(500)
         names = await Bd.evaluate("projIndex().then(L=>L.map(x=>x.name).sort())")
-        print('laptop has both projects', names == ['Dự án 1', 'Phim của tôi'], names)
         pid = await A.evaluate("curProjId")
-        await Bd.evaluate(f"openProject('{pid}')"); await Bd.wait_for_timeout(800)
-        print('laptop opens it: 2 frames with the drawing', await Bd.evaluate("S.frames.length") == 2, await Bd.evaluate(INK, [0, 250, 550, 750, 850]) > 200)
+        print('laptop has the tablet project, its blank one dropped', names == ['Phim của tôi'], names, 'and it is open', await Bd.evaluate("curProjId") == pid)
+        print('laptop: 2 frames with the drawing', await Bd.evaluate("S.frames.length") == 2, await Bd.evaluate(INK, [0, 250, 550, 750, 850]) > 200)
         # laptop edits: one more stroke in frame 1 and a 3rd frame
         await Bd.evaluate("selectFrame(0)"); await Bd.wait_for_timeout(300)
         await draw(Bd, [(300, 300), (500, 350), (700, 400)]); await Bd.click('#addBtn'); await Bd.wait_for_timeout(2200)
         up1 = G.uploads; await sync(Bd)
         print('only changed pictures uploaded', G.uploads - up1 <= 5, G.uploads - up1)
-        # tablet comes back to the app → the open project refreshes
-        await A.evaluate("document.dispatchEvent(new Event('visibilitychange'))"); await A.wait_for_timeout(100)
-        await A.evaluate("syncLast=0"); await sync(A); await A.wait_for_timeout(600)
-        print('tablet got the laptop edit (3 frames)', await A.evaluate("S.frames.length") == 3, 'same project open', await A.evaluate("curProjId") == pid)
+        # tablet presses F5 → it opens with the newest version, no button needed
+        await A.reload(); await A.wait_for_timeout(500); await A.wait_for_function("!syncBusy && syncLast > 0", timeout=20000); await A.wait_for_timeout(800)
+        print('F5 on the tablet got the laptop edit (3 frames)', await A.evaluate("S.frames.length") == 3, 'same project open', await A.evaluate("curProjId") == pid)
         print('tablet frame 1 has the laptop stroke', await A.evaluate(INK, [0, 250, 250, 750, 450]) > 200)
         # both edit the same project before syncing → both versions kept
         await draw(A, [(300, 1400), (600, 1450)]); await A.wait_for_timeout(2000)
@@ -127,8 +144,17 @@ async def main():
         await sync(A)
         namesA = await A.evaluate("projIndex().then(L=>L.map(x=>x.name).sort())")
         print('tablet sees the same list', sorted(namesA) == sorted(names), namesA)
+        # 🕘 Bản cũ: the 2-frame version comes back as a new project, the current one untouched
+        await A.click('#syncState'); await A.wait_for_timeout(200); await A.click('.dlg .btns >> text=🕘 Bản cũ'); await A.wait_for_selector('[data-sh]', timeout=5000)
+        n_rows = await A.locator('[data-sh]').count(); print('history lists versions', n_rows >= 2, n_rows)
+        await A.screenshot(path='sync_history.png')
+        await A.locator('[data-sh]').last.click(); await A.wait_for_timeout(1500)
+        nm = await A.evaluate("S.projName"); print('old version restored as a new project', '(bản ' in nm and await A.evaluate("curProjId") != pid, nm, 'with 2 frames', await A.evaluate("S.frames.length") == 2)
+        print('the real project still has 3 frames', await A.evaluate(f"idbGet('project:{pid}').then(p=>p.frames.length)") == 3)
+        await A.evaluate(f"openProject('{pid}')"); await A.wait_for_timeout(600)
+        await sync(A); await sync(Bd)
         # delete on the laptop → gone on the tablet
-        other = await Bd.evaluate("projIndex().then(L=>L.find(x=>x.name==='Dự án 1').id)")
+        other = await Bd.evaluate("projIndex().then(L=>L.find(x=>x.name.includes('(bản ')).id)")
         await Bd.evaluate(f"(async()=>{{ await idbDel('project:{other}'); await deleteProjectBlobs('{other}'); const L=(await projIndex()).filter(x=>x.id!=='{other}'); await idbPut('projects',L); await syncNoteDeleted('{other}'); }})()")
         await sync(Bd); await sync(A)
         print('delete travels', await A.evaluate(f"projIndex().then(L=>!L.find(x=>x.id==='{other}'))"), 'files removed from repo', not any(k.startswith(f'p/{other}/') for k in G.files()))
