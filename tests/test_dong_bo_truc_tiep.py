@@ -56,12 +56,12 @@ async def main():
         if t is None: errs.append('PC did not pick up the tablet drawing')
         na, nb = await names(A), await names(B); print('no copies', na, nb)
         if na != ['Dự án 1'] or nb != ['Dự án 1']: errs.append('unexpected copies %s %s' % (na, nb))
-        # nothing changes for 20 s: the live checks get "304 nothing new" (free), no sync runs
+        # nothing changes for 20 s: the live checks get "304 nothing new" (free; at most one fresh 200 per device after its last sync), no sync runs
         await A.wait_for_timeout(6000); e0 = dict(ETAG); l0 = await A.evaluate('syncLast'); await A.wait_for_timeout(20000)
         d304, d200 = ETAG['nm'] - e0['nm'], ETAG['ok'] - e0['ok']; print('idle 20 s: 304 answers', d304, '200 answers', d200, 'no sync ran', await A.evaluate('syncLast') == l0)
-        if d304 < 3 or d200 > 0: errs.append('idle live check not using ETag: 304=%d 200=%d' % (d304, d200))
+        if d304 < 3 or d200 > 2: errs.append('idle live check not using ETag: 304=%d 200=%d' % (d304, d200))
         # 3. a dialog is open on the tablet: its open project is not swapped under it; closed → it comes soon
-        await A.evaluate("window._dlg = modal({title:'Thử', html:'<p>hộp thoại</p>', buttons:[{label:'Đóng', value:null}]})")
+        await A.evaluate("(window._dlg = modal({title:'Thử', html:'<p>hộp thoại</p>', buttons:[{label:'Đóng', value:null}]}), 0)")
         await B.click('#addBtn')
         await A.wait_for_timeout(16000); n_open = await A.evaluate('S.frames.length'); print('dialog open: still', n_open, 'frames')
         if n_open != 2: errs.append('project replaced while a dialog was open')
