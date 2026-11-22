@@ -33,6 +33,11 @@ const GESTURES = {
   shout: ['😡 Ngửa mặt hét giận', [{ a: { armL: 100, foreL: 96, armR: 80, foreR: 84 }, head: 5, dy: 0.012, n: 3 },
     { a: { armL: 120, foreL: 110, armR: 60, foreR: 70 }, sy: { head: 0.82 }, head: 0, dy: -0.012, sh: 0.01, mouth: 1, n: 2, shake: 16, sfx: 'roar' },
     { shiv: 2.5, hold: 10, shake: 9 }, { shiv: 1.5, hold: 3, shake: 4 }, { n: 4, back: 1 }]],
+  // knocked out: arms fly up, the whole body tips over backwards around the hips (fall = 0…1 → 0…88°) and drops so it lies on
+  // the ground where the feet were, small bounce, then lies still (no 'back': the following frames keep lying there)
+  faint: ['😵 Ngã ngất', [{ a: { armL: 215, foreL: 240, armR: -35, foreR: -60 }, head: -12, dy: -0.03, n: 2 },
+    { a: { armL: 150, foreL: 170, armR: 30, foreR: 10 }, head: 10, dy: 0, fall: 1, n: 3, shake: 14, sfx: 'bonk' },
+    { fall: 0.9, n: 1 }, { fall: 1, n: 1, hold: 12 }]],
   rage: ['🤬 Giơ nắm đấm gào', [{ a: { armL: 105, foreL: 80, armR: 75, foreR: 100 }, head: 5, dy: 0.012, n: 3 },
     { a: { armL: 140, foreL: 255, armR: 40, foreR: -75 }, sy: { head: 0.82 }, head: 0, dy: -0.015, sh: 0.01, mouth: 1, n: 2, shake: 16, sfx: 'roar' },
     { a: { foreL: 240, foreR: -60 }, shiv: 2.5, n: 1, shake: 10 }, { a: { foreL: 258, foreR: -78 }, shiv: 2.5, n: 1, shake: 10 },
@@ -54,7 +59,7 @@ async function ppGesture(id) {
   const mir = gestMirror, mapRole = r => mir ? r.replace(/L$/, '#').replace(/R$/, 'L').replace(/#$/, 'R') : r, mapAng = a => mir ? 180 - a : a, sg = mir ? -1 : 1;
   const start = ppCurAbs(f0, ch), tor = byRole('torso'), hgt = tor ? Math.max(200, tor.c.height * 2.2) : H * 0.6, dur = Math.round((+$('#ppPDur').value || 0.08) * 1000);
   const base = ppClone(f0.pp || {}), poses = [], isKey = [];
-  const z0 = { head: 0, torso: 0, dy: 0, sh: 0, mouth: 0, sy: {} };
+  const z0 = { head: 0, torso: 0, dy: 0, sh: 0, mouth: 0, fall: 0, sy: {} };
   let prev = { a: { ...start }, ...z0 };
   const startLegs = {}; for (const r of ['legL', 'legR', 'shinL', 'shinR']) if (start[r] != null) startLegs[r] = start[r];
   const mouth = byRole('mouth');
@@ -69,6 +74,10 @@ async function ppGesture(id) {
     let drop = 0; const len = p => { const t = ppTipOf(p); return Math.hypot(t.x - p.px, t.y - p.py); };
     for (const sd of ['L', 'R']) { let d = 0; for (const r of ['leg' + sd, 'shin' + sd]) { const p = byRole(r), v = st.sy && st.sy[r]; if (p && v != null) d += len(p) * (1 - v); } drop = Math.max(drop, d); }
     if (drop) add('torso', 'dy', drop);
+    if (st.fall) {   // tipping over: the torso turns around its pivot (the hips) and drops by the leg length, so the body lies on the floor
+      let leg = 0; for (const sd of ['L', 'R']) { let d = 0; for (const r of ['leg' + sd, 'shin' + sd]) { const p = byRole(r); if (p) d += len(p); } leg = Math.max(leg, d); }
+      add('torso', 'r', st.fall * 88 * sg); add('torso', 'dy', st.fall * (leg || hgt * 0.45) * 0.85);
+    }
     // legs given in the keyframe stay at their screen angle when the body leans (kneeling knees stay on the ground)
     const legs = shiv ? { ...startLegs } : {}; for (const r of ['legL', 'legR', 'shinL', 'shinR']) if (st.a[r] != null) legs[r] = st.a[r];   // trembling: feet stay put
     if ((st.torso || shiv) && Object.keys(legs).length) ppApplyAbs(tf, legs, ch);
@@ -76,11 +85,11 @@ async function ppGesture(id) {
   };
   const shakes = [], sfxAt = []; let tick = 0;
   for (const k of G[1]) {
-    const tgt = k.back ? { a: { ...start }, ...z0 } : { a: { ...prev.a }, head: k.head ?? prev.head, torso: k.torso ?? prev.torso, dy: k.dy ?? prev.dy, sh: k.sh ?? prev.sh, mouth: k.mouth ?? prev.mouth, sy: { ...prev.sy, ...(k.sy ? Object.fromEntries(Object.entries(k.sy).map(([r, v]) => [mapRole(r), v])) : {}) } };
+    const tgt = k.back ? { a: { ...start }, ...z0 } : { a: { ...prev.a }, head: k.head ?? prev.head, torso: k.torso ?? prev.torso, dy: k.dy ?? prev.dy, sh: k.sh ?? prev.sh, mouth: k.mouth ?? prev.mouth, fall: k.fall ?? prev.fall, sy: { ...prev.sy, ...(k.sy ? Object.fromEntries(Object.entries(k.sy).map(([r, v]) => [mapRole(r), v])) : {}) } };
     if (!k.back && k.a) for (const [r, v] of Object.entries(k.a)) tgt.a[mapRole(r)] = mapAng(v);
     const seg = poses.length, sv = () => k.shiv ? k.shiv * (tick++ % 2 ? 1 : -1) : 0;
     for (let i = 1; i <= (k.n || 0); i++) {
-      const t = i / k.n, e = t * t * (3 - 2 * t), st = { a: {}, head: lerp(prev.head, tgt.head, e), torso: lerp(prev.torso, tgt.torso, e), dy: lerp(prev.dy, tgt.dy, e), sh: lerp(prev.sh, tgt.sh, e), mouth: lerp(prev.mouth, tgt.mouth, e), sy: {} };
+      const t = i / k.n, e = t * t * (3 - 2 * t), st = { a: {}, head: lerp(prev.head, tgt.head, e), torso: lerp(prev.torso, tgt.torso, e), dy: lerp(prev.dy, tgt.dy, e), sh: lerp(prev.sh, tgt.sh, e), mouth: lerp(prev.mouth, tgt.mouth, e), fall: lerp(prev.fall, tgt.fall, e), sy: {} };
       for (const r of new Set([...Object.keys(prev.sy), ...Object.keys(tgt.sy)])) st.sy[r] = lerp(prev.sy[r] ?? 1, tgt.sy[r] ?? 1, e);
       for (const r of new Set([...Object.keys(prev.a), ...Object.keys(tgt.a)])) { const a0 = prev.a[r] ?? tgt.a[r], a1 = tgt.a[r] ?? a0; st.a[r] = angLerp(a0, a1, e); }
       poses.push(mk(st, sv())); isKey.push(i === k.n);
@@ -103,7 +112,7 @@ async function ppGesture(id) {
       S.audio = S.audio || {}; S.audio.sfx = S.audio.sfx || []; S.audio.sfx.push(...sfx);
       undoStack.pop(); undoBytes -= e.bytes; pushEntry({ multi: [e, { t: e.t, sfxadd: sfx, bytes: 200 }], t: e.t });
     }
-    extra = ' + tiếng hét, rung camera'; fxSyncBar(); scheduleSave();
+    extra = ' + âm thanh, rung camera'; fxSyncBar(); scheduleSave();
   }
   updateFrameUI(); toast(`Đã tạo "${G[0].replace(/^\S+\s/, '')}" — ${c} frame${extra}. Muốn chỉnh: sửa tư thế ở frame 🔑, frame giữa tự cập nhật. Bấm Phát để xem.`, 4500);
 }

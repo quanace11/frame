@@ -58,6 +58,27 @@ function aBump(x, o) { const t = o.t | 0, k = [0.2, 0.7, 1.1, 0.95, 1.02][t] ?? 
 function aSweatFly(x, o) { const t = o.t | 0, p = t / 5; [[-1, -0.9], [1, -0.9], [-1, -0.3], [1, -0.4]].forEach(([s, up], i) => { const q = (p + i * 0.17) % 1, dx = s * (40 + q * 110), dy = up * 120 * q + 160 * q * q; x.save(); x.translate(150 + dx, 140 + dy - 60); x.rotate(s * (0.4 + q)); aDrop(x, 0, 0, 16 - q * 5, '#7fd0ff'); x.restore(); }); }
 function aHitStars(x, o) { const t = o.t | 0; for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.3, p = ((t + i) % 6) / 6, rr = 30 + p * 100; if (p > 0.85) continue; aStar(x, 150 + Math.cos(a) * rr, 150 + Math.sin(a) * rr * 0.8, 36 * (1 - p * 0.5), i % 2 ? '#ffd21f' : '#fff'); } }
 function aSpeedRush(x, o) { const t = o.t | 0, r = aRnd(3 + t * 11); aInk(x, 6); x.beginPath(); for (let i = 0; i < 9; i++) { const y = 20 + i * 30 + r() * 10, a = r() * 120, l = 100 + r() * 160; x.moveTo(a, y); x.lineTo(a + l, y); } x.stroke(); }
+/* referee hand raising a card: black sleeve from the bottom edge, fist gripping the card's lower edge.
+   lift = 0 (hidden below) … 1 (in place); rot = small wobble */
+function aCardHand(x, card, skin, lift = 1, rot = 0) {
+  x.save(); x.translate(130, 300 + (1 - lift) * 330); x.rotate(rot); x.translate(-130, -300);
+  x.beginPath(); x.roundRect(92, 290, 76, 190, 14); aFS(x, '#24262b', 6);
+  x.fillStyle = '#ffffff'; x.fillRect(96, 318, 68, 7);
+  x.save(); x.translate(130, 132); x.rotate(-0.07);
+  x.beginPath(); x.roundRect(-62, -96, 124, 178, 10); aFS(x, card, 7);
+  x.fillStyle = 'rgba(255,255,255,.38)'; x.beginPath(); x.moveTo(-50, -84); x.lineTo(-14, -84); x.lineTo(-50, -20); x.closePath(); x.fill();
+  x.restore();
+  x.beginPath(); x.roundRect(78, 212, 104, 96, 32); aFS(x, skin, 6);
+  aInk(x, 4); x.beginPath(); for (const yy of [238, 262, 284]) { x.moveTo(150, yy); x.lineTo(180, yy); } x.stroke();
+  x.beginPath(); x.roundRect(98, 200, 58, 30, 14); aFS(x, skin, 5);
+  x.restore();
+}
+function aCardRaise(x, o, card) {
+  const t = o.t | 0, lift = [0, 0.45, 0.9, 1.06, 1][t] ?? 1, rot = t >= 4 ? (t % 2 ? 0.05 : -0.05) : 0;
+  if (t >= 3) { x.save(); x.globalAlpha = t === 3 ? 0.9 : 0.5; aBurst(x, 130, 140, 125, 80, 12, '#fff6a6', t * 0.2, 5); x.restore(); }
+  aCardHand(x, card, o.skin || '#ffd9b8', lift, rot);
+  if (t >= 4) { aInk(x, 6); x.beginPath(); const k = t % 2 ? 6 : 0; for (const [a, b, c, d] of [[40, 40, 18, 18], [220, 40, 242, 18], [32, 200, 8, 206], [228, 200, 252, 206]]) { x.moveTo(a + (a < 130 ? -k : k), b); x.lineTo(c + (a < 130 ? -k : k), d); } x.stroke(); }
+}
 const ANIM_CATS = {
   dizzy: { name: '💫 Choáng', anim: true, w: 300, h: 200, items: {
     stars: ['Sao quay vòng', aDizzyStars, AN(8, 'swirl')], birds: ['Chim bay vòng', aDizzyBirds, AN(8, 'tweet')], spin: ['Mắt xoáy', aSpinEyes, AN(6, 'swirl')],
@@ -68,6 +89,8 @@ const ANIM_CATS = {
     poof: ['Khói bụi', (x, o) => { x.save(); x.translate(50, 60); aPoof(x, o); x.restore(); }, AN(6, 'poof')], bump: ['U đầu', (x, o) => { x.save(); x.translate(60, 70); x.scale(1.4, 1.4); aBump(x, o); x.restore(); }, AN(5, 'bonk')],
     steam: ['Tức bốc khói', (x, o) => { x.save(); x.translate(50, 100); aSteam(x, o); x.restore(); }, AN(6, 'whoosh')], sweat: ['Mồ hôi văng', (x, o) => { x.save(); x.translate(5, 20); x.scale(1.3, 1.3); aSweatFly(x, o); x.restore(); }, AN(6, 'pop')],
     speed: ['Vệt lao nhanh', (x, o) => { x.save(); x.translate(20, 70); aSpeedRush(x, o); x.restore(); }, AN(4, 'whoosh')] } },
+  ref: { name: '🟨 Trọng tài', anim: true, skin: true, w: 260, h: 460, items: {
+    yellow: ['Giơ thẻ vàng', (x, o) => aCardRaise(x, o, '#ffd21f'), AN(10, 'whistle')], red: ['Giơ thẻ đỏ', (x, o) => aCardRaise(x, o, '#e8302f'), AN(10, 'whistle')] } },
   sound: { name: '💥 Chữ âm thanh', anim: true, w: 360, h: 260, items: Object.fromEntries(Object.entries(WORDS).map(([k, [label, sfx, fn]]) => [k, [label, (x, o) => aPopWord(x, o, 360, 260, fn), AN(6, sfx)]])) }
 };
 const ASSET_CATS = {
@@ -92,7 +115,8 @@ const ASSET_CATS = {
     sets: { emo: ['Bộ biểu cảm (vui, giận, buồn, sốc, cười, nhăn)', ['happy', 'angry', 'sad', 'shock', 'laugh', 'grimace']] } },
   hand: { name: '✋ Tay', w: 200, h: 200, rel: 0.9, at: 0.85, skin: true, items: {
     point: ['Chỉ trỏ', (x, o) => aHand(x, 'point', o.skin)], up: ['Chỉ lên', (x, o) => aHand(x, 'up', o.skin)], thumb: ['Like', (x, o) => aHand(x, 'thumb', o.skin)], fist: ['Nắm đấm', (x, o) => aHand(x, 'fist', o.skin)],
-    open: ['Xoè tay', (x, o) => aHand(x, 'open', o.skin)], wave: ['Vẫy', (x, o) => aHand(x, 'wave', o.skin)], peace: ['Chữ V', (x, o) => aHand(x, 'peace', o.skin)], ok: ['OK', (x, o) => aHand(x, 'ok', o.skin)] },
+    open: ['Xoè tay', (x, o) => aHand(x, 'open', o.skin)], wave: ['Vẫy', (x, o) => aHand(x, 'wave', o.skin)], peace: ['Chữ V', (x, o) => aHand(x, 'peace', o.skin)], ok: ['OK', (x, o) => aHand(x, 'ok', o.skin)],
+    cardY: ['Thẻ vàng', (x, o) => { x.save(); x.translate(44, 0); x.scale(0.43, 0.43); aCardHand(x, '#ffd21f', o.skin); x.restore(); }], cardR: ['Thẻ đỏ', (x, o) => { x.save(); x.translate(44, 0); x.scale(0.43, 0.43); aCardHand(x, '#e8302f', o.skin); x.restore(); }] },
     sets: { gest: ['Bộ cử chỉ tay (xoè, nắm, chỉ, like, V, OK)', ['open', 'fist', 'point', 'thumb', 'peace', 'ok']] } },
   fx: { name: '💦 Hiệu ứng', w: 200, h: 200, rel: 0.4, at: 0.1, items: {
     sweat: ['Mồ hôi', x => aSweat(x, 100, 104, 40)], vein: ['Gân giận', x => aVein(x, 100, 100, 52)], tears: ['Nước mắt', x => { for (const cx of [60, 140]) { x.beginPath(); x.moveTo(cx - 12, 30); x.bezierCurveTo(cx - 22, 90, cx - 6, 140, cx - 16, 190); x.lineTo(cx + 16, 190); x.bezierCurveTo(cx + 6, 140, cx + 22, 90, cx + 12, 30); x.closePath(); x.fillStyle = '#7cc8ff'; x.fill(); aInk(x, 4); x.stroke(); } }],

@@ -100,6 +100,30 @@ const SCENES = {
       x.fillStyle = 'rgba(255,255,255,.55)'; x.fillRect(fx, fy + fh * .4, fw, fh * .2); }
     scRect(x, '#1e3a8a', 0, h * .88, w, h * .12); x.fillStyle = '#ffffff'; for (let xx = 0; xx < w; xx += w * .2) x.fillRect(xx, h * .9, w * .1, h * .012);
     scRect(x, '#b0bec5', 0, h * .875, w, h * .008); }],
+  pitlane: ['🛣 Đường pit', (x, w, h) => {
+    // the strip between the pitch and the stands, seen from the pitch: crowd, boards, dugout on the right, running track, touchline
+    scRect(x, '#3a3f4a', 0, 0, w, h * .32); scCrowd(x, w, -h * .01, h * .29, 41, ['#e53935', '#1e88e5', '#fdd835', '#ffffff', '#43a047', '#fb8c00', '#212121'], 1.6);
+    scRect(x, 'rgba(0,0,0,.15)', 0, 0, w, h * .29); scRect(x, '#2b2f36', 0, h * .29, w, h * .014); scRect(x, '#9aa3ad', 0, h * .302, w, h * .004);
+    scBoards(x, w, h * .306, h * .042, [['#1e88e5', '#ffffff'], ['#fdd835', '#1b1b1b'], ['#43a047', '#ffffff'], ['#e53935', '#ffffff']]);
+    const ty = h * .348, gy = h * .8;
+    scRect(x, '#b4523c', 0, ty, w, gy - ty);
+    x.fillStyle = 'rgba(0,0,0,.18)'; x.fillRect(0, ty, w, h * .012);
+    x.strokeStyle = 'rgba(255,255,255,.75)'; for (let i = 1; i < 6; i++) { const yy = ty + (gy - ty) * Math.pow(i / 6, 1.35); x.lineWidth = Math.max(1, w * (.002 + .003 * i / 6)); x.beginPath(); x.moveTo(0, yy); x.lineTo(w, yy); x.stroke(); }
+    const r = scRand(77); x.fillStyle = 'rgba(255,255,255,.06)'; for (let i = 0; i < 260; i++) x.fillRect(r() * w, ty + r() * (gy - ty), w * .006, w * .003);
+    // dugout: curved clear roof over a row of seats
+    const dx0 = w * .6, dx1 = w * 1.02, dy0 = h * .26, dy1 = h * .46;
+    scRect(x, 'rgba(0,0,0,.22)', dx0 - w * .02, dy1 - h * .004, dx1 - dx0 + w * .04, h * .016);
+    scRect(x, '#2f3640', dx0, dy0 + h * .03, dx1 - dx0, dy1 - dy0 - h * .03);
+    for (let i = 0; i < 5; i++) { const sx = dx0 + w * .025 + i * w * .085; scRound(x, '#1565c0', sx, dy1 - h * .085, w * .07, h * .05, w * .012); scRound(x, '#1e88e5', sx, dy1 - h * .05, w * .07, h * .02, w * .006); }
+    x.fillStyle = 'rgba(200,230,255,.28)'; x.beginPath(); x.moveTo(dx0, dy1); x.lineTo(dx0, dy0 + h * .05); x.quadraticCurveTo(dx0 + w * .02, dy0, dx0 + w * .12, dy0); x.lineTo(dx1, dy0); x.lineTo(dx1, dy1); x.fill();
+    x.strokeStyle = '#cfd6de'; x.lineWidth = w * .008; x.beginPath(); x.moveTo(dx0, dy1); x.lineTo(dx0, dy0 + h * .05); x.quadraticCurveTo(dx0 + w * .02, dy0, dx0 + w * .12, dy0); x.lineTo(dx1, dy0); x.stroke();
+    x.strokeStyle = 'rgba(255,255,255,.55)'; x.lineWidth = w * .004; x.beginPath(); x.moveTo(dx0 + w * .03, dy0 + h * .06); x.quadraticCurveTo(dx0 + w * .04, dy0 + h * .02, dx0 + w * .12, dy0 + h * .015); x.stroke();
+    // cones + a water bottle crate on the track
+    for (const [cx, cy, s] of [[w * .12, h * .5, 1], [w * .3, h * .46, .8], [w * .86, h * .56, 1.1]]) { const cw = w * .035 * s, ch = h * .03 * s; x.fillStyle = '#ff7a1a'; x.beginPath(); x.moveTo(cx - cw / 2, cy); x.lineTo(cx, cy - ch); x.lineTo(cx + cw / 2, cy); x.fill(); scRect(x, '#ffffff', cx - cw * .28, cy - ch * .55, cw * .56, ch * .14); scRect(x, '#d35400', cx - cw * .7, cy, cw * 1.4, ch * .14); }
+    scRound(x, '#455a64', w * .44, h * .43, w * .1, h * .03, w * .006); for (let i = 0; i < 4; i++) scRound(x, '#81d4fa', w * .447 + i * w * .022, h * .418, w * .016, h * .02, w * .004);
+    scGrass(x, w, h, gy, '#4caf50', '#43a047', 4);
+    x.fillStyle = 'rgba(255,255,255,.95)'; x.fillRect(0, gy + h * .025, w, w * .012);
+    x.fillStyle = 'rgba(0,0,0,.2)'; x.fillRect(0, gy, w, h * .006); }],
   tunnel: ['🚪 Đường hầm', (x, w, h) => {
     const ox0 = w * .36, ox1 = w * .64, oy0 = h * .32, oy1 = h * .56;
     x.fillStyle = scGrad(x, 0, oy0, 0, oy1, ['#fffef2', '#e8ffe0', '#7ccf6a']); x.fillRect(ox0, oy0, ox1 - ox0, oy1 - oy0);
