@@ -112,7 +112,7 @@ body.bigui .tool{width:66px;min-height:62px;font-size:12px} body.bigui .tool svg
 #lyrList .lgrip{font-size:20px;color:var(--muted);padding:0 6px;cursor:grab;touch-action:none;min-height:40px;display:flex;align-items:center}
 #lyrList .lyr button{min-width:38px;height:38px;background:transparent;font-size:15px}
 #lyrPanel .lyrFoot{display:flex;gap:4px;padding:6px;border-top:1px solid var(--line);flex-wrap:wrap}
-#lyrPanel .lyrFoot #lyrAdd{flex:1;font-size:13px}
+#lyrPanel .lyrFoot #lyrAdd{flex:1;font-size:13px;white-space:nowrap}
 #refbar{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--accent);
   border-radius:14px;padding:8px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;box-shadow:0 8px 30px #0008;max-width:calc(100% - 20px)}
 #refbar[hidden]{display:none}
@@ -338,6 +338,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
   #lyrPanel{width:215px;max-height:42%}
   #lyrList .lyr{min-height:40px}
   #lyrPanel .lyrHead .lbl{display:none}
+  #zoomBox{top:10px;left:10px;right:auto;bottom:auto}   /* the bottom corner is under the Ghép / Chữ & FX panel here */
 }
 
 /* 🗂 Dòng layer (timeline layer × frame) */
@@ -355,3 +356,14 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
 #lgNames .lgn.off{opacity:.45;text-decoration:line-through}
 #lgScroll{flex:1;overflow-x:auto;overflow-y:hidden}
 #lgCv{display:block;cursor:pointer}
+/* wide landscape (iPad ngang, máy tính): Ghép panel docks on the right like Animate's Properties panel, 🗂 Layer on the left,
+   so the frame gets the middle column instead of being squeezed above a panel (fitView / freeBand reads them as side panels) */
+@media (min-width:1100px) and (orientation:landscape){
+  #ppbar{left:auto;right:10px;top:10px;bottom:10px;transform:none;width:340px;max-height:none}
+  #ppbar.mini{bottom:auto}
+  #ppbar select{max-width:100%}
+  #lyrPanel{right:auto;left:10px;top:10px;bottom:10px;width:262px;max-height:none}
+  #stage:has(#ppbar:not([hidden]):not(.mini)) #zoomBox{right:360px}
+}
+#lgNames .lgnHd{height:18px;line-height:18px;padding:0 8px;font-size:10px;color:var(--muted)}
+#lgCv{touch-action:none}

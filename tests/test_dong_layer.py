@@ -58,12 +58,23 @@ async def main():
         ok('undo brings the key back', dx[4] == 200 and await pg.evaluate(f'ppLayerKey(S.frames[4],"{red}")'), dx)
         # tap a cell: blue row, frame 1
         cv = await pg.query_selector('#lgCv'); bb = await cv.bounding_box()
-        await pg.mouse.click(bb['x'] + 32*1 + 16, bb['y'] + 34*0 + 17); await pg.wait_for_timeout(200)
+        await pg.mouse.click(bb['x'] + 32*1 + 16, bb['y'] + 18 + 34*0 + 17); await pg.wait_for_timeout(200)
         ok('cell tap = frame + layer', await pg.evaluate(f'S.cur===1 && ppSel==="{blue}"'), await pg.evaluate('[S.cur, ppSel]'))
         # − Frame removes the frame being viewed
         await pg.click('#lgDel'); await pg.wait_for_timeout(300)
         ok('− Frame', await pg.evaluate('S.frames.length') == 4)
         await pg.click('#undoBtn'); await pg.wait_for_timeout(300)
+        # drag red's ● from frame 5 to frame 3 on the cells: its move gets shorter, frames after hold the pose
+        await pg.click('#lgBtn') if not await pg.evaluate('S.lgOpen') else None
+        cv = await pg.query_selector('#lgCv'); bb = await cv.bounding_box(); y = bb['y'] + 18 + 34*1 + 17
+        await pg.mouse.move(bb['x'] + 32*4 + 16, y); await pg.mouse.down()
+        for k in range(1, 9): await pg.mouse.move(bb['x'] + 32*4 + 16 - k*8, y); await pg.wait_for_timeout(20)
+        await pg.mouse.up(); await pg.wait_for_timeout(300)
+        dx = await pg.evaluate(f'S.frames.map(f=>Math.round((f.pp[ "{red}" ]||{{}}).dx||0))')
+        ok('drag ● = move the keyframe', await pg.evaluate(f'ppLayerKey(S.frames[2],"{red}") && !ppLayerKey(S.frames[4],"{red}") && S.cur===2') and dx[2] == 200 and dx[4] == 200 and 60 < dx[1] < 140, dx)
+        ok('blue still untouched', await pg.evaluate(f'S.frames.every(f=>!((f.pp["{blue}"]||{{}}).dx))'))
+        await pg.wait_for_timeout(300); await pg.click('#undoBtn'); await pg.wait_for_timeout(300)
+        ok('undo puts the key back', await pg.evaluate(f'ppLayerKey(S.frames[4],"{red}") && !ppLayerKey(S.frames[2],"{red}")'))
         # per-layer keys are saved
         await pg.evaluate('scheduleSave()'); await pg.wait_for_timeout(2500); await pg.reload(); await pg.wait_for_timeout(2500)
         ok('ppK kept after reload', await pg.evaluate(f'S.frames.length===5 && ppLayerKey(S.frames[4],"{red}") && !ppLayerKey(S.frames[4],"{blue}")'))

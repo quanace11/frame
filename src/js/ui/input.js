@@ -174,15 +174,22 @@ let penSeen = false, fingerHinted = false;
 // without "Ngón tay cũng vẽ" one finger pans the view; but these are touch-first actions (the buttons even say "chạm lên khung"),
 // so one finger does them: picking a spot for 🔍 Cận cảnh / combos, drawing ⚽ / 〰 paths, dragging texts, the camera box, puppet parts and joints
 function fingerActs(e) {
-  const f = curFrame(); if (!f || !f.canvas || floating) return false;
+  const f = curFrame(); if (!f || !f.canvas) return false;
   const p = toDoc(e, view.getBoundingClientRect());
+  // the 8 handles + rotate knob of a ⬚ box stick out past the picture: a finger on them works the box instead of panning
+  if (floating) { const k = floating.c && xbHit(floatXbox(), p, true); return !!k && k !== 'in'; }
   if (ppSetup) { if (ppSetup.stage === 'paint') return false; const tol = 24 * DPR / vs; return RJ.some(j => Math.hypot(ppSetup.J[j].x - p.x, ppSetup.J[j].y - p.y) <= tol); }
   if (S.tool === 'fx') {
     if (ballMode || gagMode || camPresetMode || fxCamPick || fxHit(f, p)) return true;
     if (TABS.fx === 'cam' && !panelHidden.fx) { const b = camBox(camEditBox(S.cur)), tol = 30 * DPR / vs; return [[-1, -1], [1, -1], [-1, 1], [1, 1]].some(([sx, sy]) => Math.hypot(p.x - (b.cx + sx * b.hw), p.y - (b.cy + sy * b.hh)) <= tol) || (b.z > 1.001 && Math.abs(p.x - b.cx) < b.hw && Math.abs(p.y - b.cy) < b.hh); }
     return false;
   }
-  if (S.tool === 'puppet' && S.pp && !rig && !motion) return ppPathMode || (!ppCutMode && !ppPatchMode && !ppPaint && !!ppHit(p, ppPoseFor(f)));
+  if (S.tool === 'puppet' && S.pp && !rig && !motion) {
+    if (ppPathMode) return true;
+    if (ppCutMode || ppPatchMode || ppPaint) return false;
+    const sel = ppDrag === 'box' && ppPart(ppSel), b = sel && ppBoxOf(f, ppCharOf(sel) || sel.id);
+    return !!(b && xbHit(b, p, true)) || !!ppHit(p, ppPoseFor(f));
+  }
   return false;
 }
 function gestureEnd() {

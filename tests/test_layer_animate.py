@@ -28,6 +28,8 @@ async def main():
         # 3 pictures -> 3 layers, the newest on top
         for col in ['#ff0000','#00ff00','#0000ff']:
             await pg.evaluate(f'(async()=>{{const c=({MKIMG})([300,400,"{col}"]); await imgToLayer(c)}})()'); await pg.wait_for_timeout(150)
+        # new layers stand side by side; stack them in the middle here to check who is in front
+        await pg.evaluate('lyrRoots().forEach(r=>{const d=(W-r.c.width)/2-r.ox; r.ox+=d; r.px+=d}); S.frames.forEach(f=>f.ver++); requestRender()'); await pg.wait_for_timeout(150)
         names = await pg.evaluate('lyrOrder().map(lyrName)')
         ok('3 layers, newest in front', names == ['Ảnh 3','Ảnh 2','Ảnh 1'], names)
         ok('panel open with rows', await pg.evaluate("!$('#lyrPanel').hidden && document.querySelectorAll('#lyrList .lyr.pp').length===3"))
