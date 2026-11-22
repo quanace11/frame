@@ -117,7 +117,9 @@ async function imgToLayer(img, col, name) {
   const c = makeCanvas(tw, th), cx = c.getContext('2d'); cx.imageSmoothingQuality = 'high'; cx.drawImage(c0, bx0, by0, cw, ch, 0, 0, tw, th); c0.width = 0;
   const n = (S.pp ? S.pp.parts.filter(q => /^Ảnh \d+$/.test(q.lname || '')).length : 0) + 1;
   name = name || 'Ảnh ' + n;
-  const ox = Math.round((W - tw) / 2), oy = Math.round((H - th) / 2);
+  // the 2nd / 3rd … layer goes beside the ones already there (left, right…) instead of exactly on top of them
+  const cxs = lyrRoots().map(r => r.ox + (r.c ? r.c.width : 0) / 2), slot = [0.5, 0.27, 0.73, 0.38, 0.62].map(t => t * W).find(x => cxs.every(c => Math.abs(c - x) > W * 0.1));
+  const ox = Math.round((slot ?? W / 2) - tw / 2), oy = Math.round((H - th) / 2);
   const p = { id: newId(), name, lname: name, role: '', parent: null, z: 0, ox, oy, px: ox + tw / 2, py: oy + th / 2, c, alts: [] };
   p.z = S.pp && S.pp.parts.length ? Math.max(...S.pp.parts.map(q => q.z)) + 1 : 0;
   await encodePart(p); ppPushChar([p]);
