@@ -55,7 +55,7 @@ bad = [n for n, ok in res if not ok]
 print(f'\n{len(names) - len(bad)}/{len(names)} passed in {time.time() - t0:.0f}s')
 print('All passed' if not bad else f'Failed: {bad}  (logs: tests/out/<name>.log)')
 for n in bad:   # the end of each failed test's output, so the CI log alone shows what broke (artifacts are not always reachable)
-    try: tail = open(os.path.join(HERE, 'out', n + '.log'), encoding='utf-8').read().splitlines()[-30:]
+    try: tail = open(os.path.join(HERE, 'out', n + '.log'), encoding='utf-8').read().splitlines()[-60:]
     except OSError: tail = []
     print(f'\n--- {n} (last {len(tail)} lines) ---'); print('\n'.join(tail))
 sys.exit(1 if bad else 0)
