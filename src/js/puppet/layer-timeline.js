@@ -50,7 +50,7 @@ async function lgAddSecond() {
   toast(`＋ Thêm ${n} frame (1 giây). Tới frame cuối, chỉnh dáng = keyframe mới, app tự chuyển ở giữa`, 3000);
 }
 function lgSelRoot() { const s = ppPart(ppSel); return s ? (ppCharOf(s) || s.id) : null; }
-function lgHiddenAt(f, rid) { const q = f.pp && f.pp[rid]; return !!(q && q.h); }
+function lgHiddenAt(f, rid) { const q = f.pp && f.pp[rid]; return !!(q && q.h) || ppOffAt(f, rid); }
 function lgSync(force) {
   const box = $('#lg'), btn = $('#lgBtn'); if (!box) return;
   if (btn) btn.classList.toggle('on', !!S.lgOpen);
@@ -69,6 +69,7 @@ function lgSync(force) {
   es.disabled = !seg; $('#lgEaseRow').classList.toggle('off', !seg); if (seg) es.value = ppLayerEase(S.frames[seg[0]], sel);
   $('#lgOnion').classList.toggle('on', !!(S.onion && S.onionLayer)); $('#lgOnion').disabled = !has;
   $('#lgSymSave').disabled = !has; $('#lgSymPut').disabled = !has;
+  { const off = has && ppOffAt(f, sel), b = $('#lgOff'); b.disabled = !has; b.textContent = off ? '👁 Hiện ở frame này' : '🙈 Ẩn ở frame này'; b.classList.toggle('on', !!off); }
   $('#lgCopy').disabled = !has; $('#lgPaste').disabled = !has || !LG.clip;
   $('#lgInfo').textContent = has ? `${lyrName(ppPart(sel))} · frame ${S.cur + 1}: ${k ? '🔑 keyframe' : '∿ tự chuyển'}` : 'Chạm 1 dòng layer để chọn · kéo ● để dời keyframe';
 }
@@ -220,6 +221,7 @@ function lgWire() {
     tintCache.clear(); updateToggles(); saveSettings(); requestRender(); lgSync(true);
     toast(on ? '🧅 Onion chỉ hiện layer đang chọn ở frame trước/sau' : '🧅 Onion hiện cả frame như cũ', 2000);
   });
+  $('#lgOff').addEventListener('click', () => ppOffToggle(lgSelRoot()));
   $('#lgCopy').addEventListener('click', lgCopy); $('#lgPaste').addEventListener('click', lgPaste);
   $('#lgDel').addEventListener('click', () => delFrame());
   $('#lgNames').addEventListener('click', e => { const r = e.target.closest('[data-lgr]'); if (r) lgPick(S.cur, r.dataset.lgr); });
