@@ -92,7 +92,7 @@ async function motionCommit() {
     for (let k = 1; k < m.n; k++) {
       const f = newFrameObj(f0.bgId); f.dur = durMs;
       f.canvas.getContext('2d').drawImage(f0.canvas, 0, 0); copyCol(f, f0); f.ver = 1; f.pngVer = 0;
-      f.vec = cloneVec(motionVec(f0.vec, k, m)); f.pp = ppClone(f0.pp); f.lip = lipCopy(f0); added.push(f);
+      f.vec = cloneVec(motionVec(f0.vec, k, m)); f.pp = ppClone(f0.pp); f.lip = lipCopy(f0); lookCopy(f, f0); added.push(f);
     }
     const oldDur = f0.dur; f0.dur = durMs;
     S.frames.splice(i0 + 1, 0, ...added); loaded.push(...added);

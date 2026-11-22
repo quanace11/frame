@@ -68,7 +68,7 @@ async function twMake() {
       if (!fr) {
         while (S.frames.length + added.length < i0 + k + 1) {   // build the missing frames once, in order
           const nf = newFrameObj(base.bgId); nf.dur = base.dur; nf.canvas.getContext('2d').drawImage(rest, 0, 0); if (restCol) { colOf(nf, true).getContext('2d').drawImage(restCol, 0, 0); nf.colVer = 1; }
-          nf.ver = 1; nf.pngVer = 0; nf.vec = cloneVec(base.vec); nf.pp = ppClone(base.pp); nf.lip = lipCopy(base); nf.texts = JSON.parse(JSON.stringify(base.texts || [])); added.push(nf);
+          nf.ver = 1; nf.pngVer = 0; nf.vec = cloneVec(base.vec); nf.pp = ppClone(base.pp); nf.lip = lipCopy(base); nf.texts = JSON.parse(JSON.stringify(base.texts || [])); lookCopy(nf, base); added.push(nf);
         }
         fr = added[i0 + k - S.frames.length]; put(fr, pose); continue;
       }

@@ -146,6 +146,8 @@ async function addFrame() {
 // f.lip = mouth/eye pictures + 〰 Đường đi offsets (lip.mv): a copied frame must keep them, else the character jumps back to where it started
 function lipCopy(f) { return f && f.lip ? JSON.parse(JSON.stringify(f.lip)) : null; }
 const jcopy = o => o == null ? o : JSON.parse(JSON.stringify(o));
+// the 🌈 look of a frame (👻 ghost, 🏃 scrolling bg, 💨 speed lines, film colour) goes on in frames made from it
+function lookCopy(f, src) { for (const k of ['ghost', 'bgs', 'sl', 'flt']) if (src && src[k] != null) f[k] = jcopy(src[k]); }
 // ONE place that copies a frame (Nhân bản frame, Lặp đoạn, Chọn nhiều → Nhân bản, 📺 Phát lại): picture, colour, vector
 // lines, pose, mouth/eyes + 〰 path (lip), texts and the 🌈 look (👻 ghost, 🏃 scrolling bg, 💨 speed lines, film colour).
 // run = copying a whole run of frames: also its keyframes, camera keys, shake and flash (one copied frame alone must
@@ -155,7 +157,7 @@ function frameCopyOf(s0, run) {
   const f = newFrameObj(s0.bgId); f.dur = s0.dur;
   f.canvas.getContext('2d').drawImage(s0.canvas, 0, 0); copyCol(f, s0); f.ver = 1; f.pngVer = 0;
   f.vec = cloneVec(s0.vec); f.pp = ppClone(s0.pp); f.lip = lipCopy(s0); f.texts = jcopy(s0.texts || []);
-  for (const k of ['ghost', 'bgs', 'sl', 'flt']) if (s0[k] != null) f[k] = jcopy(s0[k]);
+  lookCopy(f, s0);
   if (run) { f.ppKey = s0.ppKey; f.ppEase = s0.ppEase; f.cam = s0.cam ? { ...s0.cam } : null; f.shake = s0.shake || 0; f.flash = !!s0.flash; }
   return f;
 }

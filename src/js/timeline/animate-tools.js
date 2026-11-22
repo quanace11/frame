@@ -160,7 +160,7 @@ async function inbetween(n, ease, pix) {
     f.pp = ppClone(A.pp); if (S.pp) { f.ppKey = false; }
     f.lip = lipCopy(A);
     if (A.lip && A.lip.mv && B.lip && B.lip.mv) for (const id in f.lip.mv) { const q = B.lip.mv[id]; if (q) { const p = f.lip.mv[id]; p.x += (q.x - p.x) * t; p.y += (q.y - p.y) * t; } }   // 〰 Đường đi: in-between frames move along too
-    f.texts = JSON.parse(JSON.stringify(A.texts || []));
+    f.texts = JSON.parse(JSON.stringify(A.texts || [])); lookCopy(f, A);
     added.push(f); loaded.push(f);
   }
   if (S.pp && ppIsKey(A)) A.ppEase = ease;

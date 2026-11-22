@@ -139,7 +139,7 @@ async function aiFxDialog() {
       const mode = st.resMode, replace = q('#axRep').checked; close(null);
       if (mode === 'ib') {   // a new frame between A and B, then the in-between picture floats on it
         const A = S.frames[st.ia]; await ensureLoaded(A);
-        const f = newFrameObj(A.bgId); f.dur = A.dur; f.pp = ppClone(A.pp); if (S.pp) f.ppKey = false; f.lip = lipCopy(A); f.texts = JSON.parse(JSON.stringify(A.texts || []));
+        const f = newFrameObj(A.bgId); f.dur = A.dur; f.pp = ppClone(A.pp); if (S.pp) f.ppKey = false; f.lip = lipCopy(A); f.texts = JSON.parse(JSON.stringify(A.texts || [])); lookCopy(f, A);
         loaded.push(f); S.frames.splice(st.ia + 1, 0, f);
         pushEntry({ t: targetOf(A), add: { frames: [f], index: st.ia + 1, dur0: A.dur, dur1: A.dur }, bytes: 0 });
         tintCache.clear(); if (S.pp) ppRetween(); await drawThumb(f); buildStrip(); await selectFrame(st.ia + 1); scheduleSave(); updUndoBtns();

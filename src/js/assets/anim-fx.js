@@ -162,7 +162,7 @@ async function assetStampAnim(fl, keep) {
   const base = S.frames[i0], pix = [], added = [];
   for (let j = 1; j < total; j++) {
     let fr = S.frames[i0 + j];
-    if (!fr) { fr = newFrameObj(base.bgId); fr.dur = base.dur; fr.canvas.getContext('2d').drawImage(keep, 0, 0); copyCol(fr, base); fr.ver = 1; fr.pngVer = 0; fr.vec = cloneVec(base.vec); fr.pp = ppClone(base.pp); fr.lip = lipCopy(base); fr.texts = JSON.parse(JSON.stringify(base.texts || [])); S.frames.push(fr); loaded.push(fr); added.push(fr); }
+    if (!fr) { fr = newFrameObj(base.bgId); fr.dur = base.dur; fr.canvas.getContext('2d').drawImage(keep, 0, 0); copyCol(fr, base); fr.ver = 1; fr.pngVer = 0; fr.vec = cloneVec(base.vec); fr.pp = ppClone(base.pp); fr.lip = lipCopy(base); fr.texts = JSON.parse(JSON.stringify(base.texts || [])); lookCopy(fr, base); S.frames.push(fr); loaded.push(fr); added.push(fr); }
     else await ensureLoaded(fr);
     const lx = fr.canvas.getContext('2d'), c = assetRender(A.cat, A.key, A.k, { ...A.opt, t: j % n }), save = floating;
     floating = { ...fl, c }; const rect = rectFromBox(floatBox(), 2); const before = added.includes(fr) ? null : lx.getImageData(...rect); drawFloating(lx); floating = save;

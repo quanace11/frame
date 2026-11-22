@@ -292,7 +292,7 @@ async function rigCommit() {
   await ensureLoaded(f0);
   R.simplify = true;
   const added = [], entries = [];
-  const mk = kk => { const f = newFrameObj(f0.bgId); f.dur = durMs; f.canvas.getContext('2d').drawImage(f0.canvas, 0, 0); copyCol(f, f0); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(rigFrameVec(kk).vec); f.pp = ppClone(f0.pp); f.lip = lipCopy(f0); return f; };
+  const mk = kk => { const f = newFrameObj(f0.bgId); f.dur = durMs; f.canvas.getContext('2d').drawImage(f0.canvas, 0, 0); copyCol(f, f0); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(rigFrameVec(kk).vec); f.pp = ppClone(f0.pp); f.lip = lipCopy(f0); lookCopy(f, f0); return f; };
   if (R.keep) { for (let kk = 0; kk < R.n; kk++) added.push(mk(kk)); }
   else {
     const before = cloneVec(f0.vec); f0.vec = cloneVec(rigFrameVec(0).vec);
