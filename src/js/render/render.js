@@ -179,13 +179,7 @@ function render() {
     c.setLineDash([]); c.lineDashOffset = 0;
   }
   if (floating && floating.c && floating.tw) renderTween(c, px);
-  if (floating && floating.c) {
-    c.save(); c.translate(floating.cx, floating.cy); c.rotate(floating.rot); c.scale(floating.scale * floating.flip, floating.scale);
-    const k = 1 / floating.scale;
-    c.lineWidth = 2 * px * k; c.setLineDash([8 * px * k, 6 * px * k]); c.strokeStyle = '#ffb21e';
-    c.strokeRect(-floating.c.width / 2, -floating.c.height / 2, floating.c.width, floating.c.height);
-    c.restore(); c.setLineDash([]);
-  }
+  if (floating && floating.c) xbDraw(c, floatXbox(), px, '#ffb21e');
 }
 
 /* ========= Shorts safe zone (only on screen, never exported) ========= */

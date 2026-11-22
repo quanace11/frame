@@ -18,6 +18,7 @@ async def main():
         pg = await b.new_page(viewport={'width':1180,'height':900}, accept_downloads=True)
         errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
         await pg.goto('http://localhost:8777/index.html'); await pg.wait_for_timeout(800)
+        await pg.evaluate('S.impLayer = false')   # this test checks the old flow: picture as a floating selection (🗂 layer riêng tắt)
         await pg.click('text=Bắt đầu vẽ')
         d2s = lambda x,y: pg.evaluate('([x,y])=>[(x*vs+vtx)/DPR,(y*vs+vty)/DPR]',[x,y])
         # line A horizontal at y=800 on char layer

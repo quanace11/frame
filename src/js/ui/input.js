@@ -45,7 +45,7 @@ function startAction(e, isTouch) {
   if (rig) { rigPointer(p, base); return; }
   if (motion) { if (motion.type === 'swing') { motion.pivot = { x: p.x, y: p.y }; motion.pv = motionVec(f.vec, motion.k, motion); requestRender(); } return; }
   if (refEdit) { action = { ...base, kind: 'refmove', last: p }; return; }
-  if (floating) { action = { ...base, kind: 'move', last: p }; $('#selbar').classList.add('peek'); return; }
+  if (floating) { if (floating.c && floatXbStart(p, base)) return; action = { ...base, kind: 'move', last: p }; $('#selbar').classList.add('peek'); return; }
   if (S.tool === 'vedit') { vecStart(p, base); return; }
   if (S.layer === 'vec' && (S.tool === 'brush' || S.tool === 'eraser')) {
     if (!S.showVec) { toast('Lớp Nét đang ẩn — bấm 👁 để hiện'); return; }
@@ -105,6 +105,7 @@ function moveAction(e) {
     const p = toDoc(e, action.rect); rigMoveJoint(action.j, p.x - action.last.x, p.y - action.last.y); action.last = p; if (rig) rig.pose = null; requestRender();
   } else if (action.kind === 'refmove') {
     const p = toDoc(e, action.rect); REF.cx += p.x - action.last.x; REF.cy += p.y - action.last.y; action.last = p; requestRender();
+  } else if (action.kind === 'flxb') { floatXbMove(toDoc(e, action.rect));
   } else if (action.kind === 'move' && floating) {
     const p = toDoc(e, action.rect); floating.cx += p.x - action.last.x; floating.cy += p.y - action.last.y; action.last = p; requestRender();
   }

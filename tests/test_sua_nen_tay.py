@@ -21,6 +21,7 @@ async def main():
         pg = await b.new_page(viewport={'width':1280,'height':900}); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
         await pg.add_init_script("new MutationObserver(()=>document.querySelectorAll('.tabhide').forEach(e=>e.classList.remove('tabhide'))).observe(document,{subtree:true,attributes:true,childList:true,attributeFilter:['class']})")
         await pg.goto('http://localhost:9107/index.html'); await pg.wait_for_timeout(800); await pg.click('text=Bắt đầu vẽ')
+        await pg.evaluate('S.impLayer = false')   # this test checks the old flow: picture as a floating selection (🗂 layer riêng tắt)
         fails = []
         def check(name, ok, extra=''):
             print(name, ok, extra)

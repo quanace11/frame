@@ -3,10 +3,10 @@ let selClip = null;
 const cloneCv = c => { if (!c) return null; const k = makeCanvas(c.width, c.height); k.getContext('2d').drawImage(c, 0, 0); return k; };
 function copyFloating() {
   if (!floating || !floating.c) return;
-  const f = floating; selClip = { c: cloneCv(f.c), cc: cloneCv(f.cc), cx: f.cx, cy: f.cy, scale: f.scale, rot: f.rot, flip: f.flip };
+  const f = floating; selClip = { c: cloneCv(f.c), cc: cloneCv(f.cc), cx: f.cx, cy: f.cy, scale: f.scale, ay: f.ay || 1, rot: f.rot, flip: f.flip };
   $('#pasteBtn').hidden = false; toast('Đã chép — sang frame khác bấm 📋 Dán (ở thanh frame)', 2500);
 }
-function drawClip(ctx, img) { const q = selClip; ctx.save(); ctx.translate(q.cx, q.cy); ctx.rotate(q.rot); ctx.scale(q.scale * q.flip, q.scale); ctx.drawImage(img, -img.width / 2, -img.height / 2); ctx.restore(); }
+function drawClip(ctx, img) { const q = selClip; ctx.save(); ctx.translate(q.cx, q.cy); ctx.rotate(q.rot); ctx.scale(q.scale * q.flip, q.scale * (q.ay || 1)); ctx.drawImage(img, -img.width / 2, -img.height / 2); ctx.restore(); }
 function pasteHere() {
   if (!selClip) return;
   if (S.layer !== 'char') setLayer('char');
@@ -15,7 +15,7 @@ function pasteHere() {
   const o = activeObj(); if (!o || !o.canvas) return;
   const snap = makeCanvas(); snap.getContext('2d').drawImage(o.canvas, 0, 0);
   const q = selClip;
-  floating = { t: targetOf(o), o, c: cloneCv(q.c), cx: q.cx, cy: q.cy, scale: q.scale, rot: q.rot, flip: q.flip, snap, dirty: null };
+  floating = { t: targetOf(o), o, c: cloneCv(q.c), cx: q.cx, cy: q.cy, scale: q.scale, ay: q.ay || 1, rot: q.rot, flip: q.flip, snap, dirty: null };
   if (q.cc) { const cv = colOf(o, true); Object.assign(floating, { cc: cloneCv(q.cc), csnap: cloneCv(cv) }); }
   showSelbar(); requestRender();
 }

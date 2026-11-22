@@ -1,5 +1,5 @@
 /* ========= Cut-out puppet (image pieces with pivots) ========= */
-let ppSetup = null, ppSel = null, ppDrag = 'rotate', ppCutMode = false, ppKeep = false, ppDir = 1;
+let ppSetup = null, ppSel = null, ppDrag = 'box', ppCutMode = false, ppKeep = false, ppDir = 1;
 const PP_ROLES = { '': '— vai trò —', head: 'Đầu', torso: 'Thân', armL: 'Tay trái (trên)', foreL: 'Cẳng tay trái', armR: 'Tay phải (trên)', foreR: 'Cẳng tay phải', legL: 'Chân trái (đùi)', shinL: 'Ống chân trái', legR: 'Chân phải (đùi)', shinR: 'Ống chân phải', mouth: 'Miệng', eyes: 'Mắt', other: 'Khác' };
 const mMul = (A, B) => [A[0] * B[0] + A[2] * B[1], A[1] * B[0] + A[3] * B[1], A[0] * B[2] + A[2] * B[3], A[1] * B[2] + A[3] * B[3], A[0] * B[4] + A[2] * B[5] + A[4], A[1] * B[4] + A[3] * B[5] + A[5]];
 const mT = (x, y) => [1, 0, 0, 1, x, y], mR = a => [Math.cos(a), Math.sin(a), -Math.sin(a), Math.cos(a), 0, 0], mS = (x, y) => [x, 0, 0, y, 0, 0];
@@ -146,17 +146,18 @@ function drawPuppet(ctx, pose, lip) {
   if (lip && lip.m) for (const id in lip.m) if (id !== lip.pid) lipOpen(id, lip.m[id]);
   if (lip && lip.mv) pose = ppApplyMv(pose, lip.mv);
   const M = ppMats(pose), byId = {}; S.pp.parts.forEach(p => byId[p.id] = p);
+  const off = lyrOff('lh');
   for (const p of [...S.pp.parts].sort((a, b) => a.z - b.z)) {
-    const q = pose && pose[p.id]; if ((q && q.h) || !p.c) continue;
+    const q = pose && pose[p.id]; if ((q && q.h) || !p.c || (off && off.has(p.id))) continue;
     const im = ppImg(p, q);
     if (S.ppSoft && p.role && (PP_SOFT1[p.role] || PP_SOFT2[p.role])) { const js = ppSoftJoints(p, byId); if (js.length) { ppDrawSoft(ctx, p, im, M, js); continue; } }
     ctx.save(); ctx.transform(...M[p.id]); ctx.drawImage(im.c, im.x, im.y); ctx.restore();
   }
 }
-function ppHit(pt, pose) {
-  if (!S.pp) return null; const M = ppMats(pose);
+function ppHit(pt, pose, skipLocked) {
+  if (!S.pp) return null; const M = ppMats(pose), off = lyrOff('lh', skipLocked ? 'lk' : null);
   for (const p of [...S.pp.parts].sort((a, b) => b.z - a.z)) {
-    const q = pose && pose[p.id]; if ((q && q.h) || !p.c) continue;
+    const q = pose && pose[p.id]; if ((q && q.h) || !p.c || (off && off.has(p.id))) continue;
     const im = ppImg(p, q), l = mApply(mInv(M[p.id]), pt.x, pt.y), x = Math.floor(l.x - im.x), y = Math.floor(l.y - im.y);
     if (x < 0 || y < 0 || x >= im.c.width || y >= im.c.height) continue;
     if (ppAlphaH(im.holder)[y * im.c.width + x] > 30) return p;
@@ -526,7 +527,7 @@ function ppLabSyncBar() {
 }
 // what is saved of a cut-out piece: ONE place for IndexedDB (saveProject), ZIP export and 🧍 Kho nhân vật (all three read
 // it back with { ...q }). A new piece field only needs adding here.
-function ppPartMeta(p) { return { id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null }; }
+function ppPartMeta(p) { return { id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null, lname: p.lname || null, lh: p.lh || null, lk: p.lk || null }; }
 // a new character appears from the frame being edited on: frames before it keep showing only what they had
 function ppHideBefore(parts) { for (let i = 0; i < S.cur; i++) { const f = S.frames[i]; f.pp = f.pp || {}; for (const q of parts) f.pp[q.id] = { ...(f.pp[q.id] || {}), h: true }; f.ppKey = true; } }
 // a character was added (cut, 🧍 Kho nhân vật, ⚽ Cầu thủ mẫu): add its pieces on top of the others
@@ -774,12 +775,13 @@ function ppStart(p, base) {
     cx.save(); cx.globalCompositeOperation = ppPaint === 'erase' ? 'destination-out' : 'source-over'; cx.fillStyle = S.color; cx.beginPath(); cx.arc(pt.x, pt.y, bsz() / sc / 2, 0, Math.PI * 2); cx.fill(); cx.restore();
     action = { ...base, kind: 'pppaint', part: sel, im, inv, sc, last: pt, before }; requestRender(); return;
   }
+  if (ppDrag === 'box') { ppBoxStart(p, base, f); return; }
   const sel = ppPart(ppSel);
   if (sel) {
     const M = ppMats(ppPoseFor(f)), wp = mApply(M[sel.id], sel.px, sel.py);
     if (ppDrag === 'pivot' || Math.hypot(wp.x - p.x, wp.y - p.y) < 16 * DPR / vs && ppDrag === 'pivot') { action = { ...base, kind: 'pppivot', last: p }; return; }
   }
-  const hit = ppHit(p, ppPoseFor(f));
+  const hit = ppHit(p, ppPoseFor(f), true);
   if (!hit) { if (ppDrag !== 'pivot') { ppSel = null; ppSyncBar(); requestRender(); } return; }
   if (hit.id !== ppSel) { ppSel = hit.id; ppSyncBar(); }
   const M = ppMats(ppPoseFor(f)), wp = mApply(M[hit.id], hit.px, hit.py), q = ppQ(f, hit.id);
@@ -794,6 +796,7 @@ function ppMove(p) {
     cx.save(); cx.globalCompositeOperation = ppPaint === 'erase' ? 'destination-out' : 'source-over'; cx.strokeStyle = S.color; cx.lineWidth = bsz() / a.sc; cx.lineCap = cx.lineJoin = 'round';
     cx.beginPath(); cx.moveTo(a.last.x, a.last.y); cx.lineTo(pt.x, pt.y); cx.stroke(); cx.restore(); a.last = pt; a.im.holder.alpha = null; requestRender(); return;
   }
+  if (a.kind === 'ppbox') { ppBoxMove(p, f); return; }
   if (a.kind === 'ppik') { ppIKDrag(a.part, p, f); }
   else if (a.kind === 'pprot') { const q = ppQ(f, a.part.id), ang = Math.atan2(p.y - a.wp.y, p.x - a.wp.x); let dr = (ang - a.a0) / DEG; q.r = a.r0 + dr; }
   else if (a.kind === 'ppmove') {
@@ -817,7 +820,8 @@ function ppEnd() {
     encodeHolder(a.im.holder); S.frames.forEach(fr => { fr.ver++; queueThumbFor(fr); }); scheduleSave(); ppSyncBar(); return;
   }
   if (a.kind === 'pppatch') { const poly = lasso; lasso = null; if (poly && poly.length > 2) ppPatchLasso(poly); requestRender(); return; }
-  if (a.kind === 'pprot' || a.kind === 'ppmove' || a.kind === 'ppik') { f.ppKey = true; pushEntry(ppEntry(f, a.before, ppState(f))); markEdited(f); ppRetween(); ppSyncBar(); updateFrameUI(); }
+  if (a.kind === 'ppbox' && !a.moved) { ppSyncBar(); return; }
+  if (a.kind === 'pprot' || a.kind === 'ppmove' || a.kind === 'ppik' || a.kind === 'ppbox') { f.ppKey = true; pushEntry(ppEntry(f, a.before, ppState(f))); markEdited(f); ppRetween(); ppSyncBar(); updateFrameUI(); }
   if (a.kind === 'pppivot') { scheduleSave(); }
 }
 function ppEntry(f, before, after) { return { t: targetOf(f), ppose: true, before, after, bytes: 200 }; }
@@ -950,7 +954,7 @@ function updPanelPill() {
 }
 function hidePanel(t) { panelHidden[t] = true; saveSettings(); updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
 function showPanel() { panelHidden[S.tool] = false; saveSettings(); updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
-function ppSyncBar() { ppBlinkInfo(); { const a = $('#ppSoftChk'), b = $('#ppSmoothChk'); if (a) a.checked = !!S.ppSoft; if (b) b.checked = !!S.ppSmooth; }
+function ppSyncBar() { lyrSync(); ppBlinkInfo(); { const a = $('#ppSoftChk'), b = $('#ppSmoothChk'); if (a) a.checked = !!S.ppSoft; if (b) b.checked = !!S.ppSmooth; }
   const bar = $('#ppbar'), show = S.tool === 'puppet' && (!panelHidden.puppet || !!ppSetup);
   bar.hidden = !show; updPanelPill(); if (!show) return;
   $('#ppSetupSec').hidden = !ppSetup; $('#ppPoseSec').hidden = !!ppSetup || !S.pp;
@@ -990,6 +994,7 @@ function renderPP(c, f, px) {
     c.restore(); return;
   }
   if (S.tool !== 'puppet' || !S.pp) return;
+  if (ppDrag === 'box' && !ppPaint) { const sel0 = ppPart(ppSel); if (sel0) xbDraw(c, ppBoxOf(f, ppCharOf(sel0)), px); return; }
   const sel = ppPart(ppSel); if (!sel || !sel.c) return;
   const M = ppMats(ppPoseFor(f)), im = ppImg(sel, f.pp && f.pp[sel.id]); c.save(); c.transform(...M[sel.id]);
   c.lineWidth = 2 * px / Math.max(0.2, Math.hypot(M[sel.id][0], M[sel.id][1])); c.setLineDash([8 * px, 6 * px]); c.strokeStyle = ppPaint ? '#2f7bff' : '#ff3b9a';

@@ -27,6 +27,10 @@
       <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.5"/><path d="M12 8v7M12 10l-5 3M12 10l5-2M12 15l-3 6M12 15l3 6"/><circle cx="12" cy="10" r="1" fill="currentColor"/></svg>Ghép</button>
     <button class="tool" data-tool="fx" title="Chữ, camera, âm thanh, xuất video (T)">
       <svg viewBox="0 0 24 24"><path d="M4 6V4h12v2M10 4v13M7 17h6"/><path d="M17 11l1.2 2.6 2.8.4-2 2 .5 2.8-2.5-1.4-2.5 1.4.5-2.8-2-2 2.8-.4z" fill="currentColor"/></svg>Chữ & FX</button>
+    <button class="tool" id="camToolBtn" title="🎥 Camera của phim: zoom vào mặt, đẩy vào, lia máy (kéo khung camera trên hình, kéo góc để phóng to/thu nhỏ)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="10" rx="2"/><path d="M16 11l5-3v8l-5-3z"/></svg>Camera</button>
+    <button class="tool" id="lyrBtn" title="🗂 Layer như Adobe Animate: mỗi nhân vật / ảnh là 1 layer, kéo ≡ để đổi ai đứng trước, ẩn, khoá">
+      <svg viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>Layer</button>
     <button class="tool" data-tool="pick" title="Hút màu (I)">
       <svg viewBox="0 0 24 24"><path d="M14 4.5l5.5 5.5"/><path d="M17 7.5 7 17.5l-3 1 1-3 10-10"/><path d="M15.5 3.5a2 2 0 0 1 3 0l2 2a2 2 0 0 1 0 3l-1.5 1.5-5-5z"/></svg>Hút màu</button>
     <button class="tool" id="importBtn" title="Nhập ảnh: ảnh mờ để đồ, tách nhân vật, chuyển thành nét">
@@ -98,6 +102,7 @@
 
   <main id="stage">
     <canvas id="view"></canvas>
+    <div id="zoomBox"><button id="zoomOut" title="Thu nhỏ khung nhìn" aria-label="Thu nhỏ">−</button><button id="zoomLbl" title="Chạm để vừa khung"></button><button id="zoomIn" title="Phóng to khung nhìn" aria-label="Phóng to">+</button></div>
     <div id="lassobar" hidden>
       <button class="chip small" data-selm="pic" title="Nét vẽ + màu + nét vector trong vòng khoanh, không lấy nền">👤 Cả hình</button><button class="chip small" data-selm="part" title="Chỉ lấy mảng nằm gọn trong vòng (tóc, mặt…). Mảng lòi ra ngoài nhiều như TV, áo, nền thì để lại">🧩 Từng mảng</button><button class="chip small" data-selm="warp" title="Khoanh 1 chỗ rồi kéo để uốn nét + màu (vd. kéo lông mày xuống cho mặt tức giận), như Nhiều chấm: trong vòng = chấm vàng đi theo, ngoài = chấm xanh đứng yên">🫳 Kéo uốn</button><button class="chip small" data-selm="layer" title="Chỉ lấy 1 lớp: Nhân vật, Màu, Nét hoặc Nền">📄 1 lớp</button><button class="chip small" data-selm="all" title="Mọi thứ trong vòng, kể cả hình ở lớp Nền">🔲 Cả nền</button>
       <span id="lassoLayers" hidden><span class="lbl">Lớp</span><button class="chip small" data-sell="char">Nhân vật</button><button class="chip small" data-sell="col">Màu</button><button class="chip small" data-sell="vec">Nét</button><button class="chip small" data-sell="bg">Nền</button></span>
@@ -211,7 +216,7 @@
         <div class="mrow" data-tab="parts"><span class="lbl"><b>Hình của mảnh</b> (đổi theo frame):</span><span id="ppVars" class="mrow"></span>
           <button class="chip small" id="ppSwapBtn" title="Thay hình của mảnh đang chọn bằng ảnh khác (vd. đầu biếm hoạ), giữ khớp và tư thế">🔄 Đổi hình mảnh</button><button class="chip small" id="ppVarAdd" title="Nhập hình khác cho mảnh này, vd. miệng há, mắt nhắm, tay nắm">＋ Nhập hình</button><button class="chip small" id="ppVarDup" title="Nhân bản hình đang dùng để sửa thành hình mới">⧉ Nhân bản</button><button class="chip small" id="ppVarDel">🗑</button>
           <button class="chip small" id="ppPaintBtn" title="Vẽ trực tiếp lên hình mảnh bằng màu và cỡ bút đang chọn">✎ Vẽ lên mảnh</button><button class="chip small" id="ppEraseBtn">⌫ Tẩy mảnh</button></div>
-        <div class="mrow" data-tab="pose"><span class="lbl">Kéo để</span><button class="chip small" data-ppd="rotate">Xoay quanh khớp</button><button class="chip small" data-ppd="ik" title="Kéo bàn tay/bàn chân: cả cánh tay tự gập theo (cần chia 2 đoạn để gập khuỷu)">Kéo tay chân (IK)</button><button class="chip small" data-ppd="move">Dời</button><button class="chip small" data-ppd="pivot">Dời điểm xoay</button>
+        <div class="mrow" data-tab="pose"><span class="lbl">Kéo để</span><button class="chip small" data-ppd="box" title="Chạm nhân vật/hình = chọn cả nhóm (đầu, tay, chân đi cùng nhau). Kéo trong khung để dời, kéo 8 chấm vuông để phóng to/thu nhỏ/kéo dãn, nút tròn để xoay. Chạm 2 lần vào 1 mảnh để sửa riêng mảnh đó">⬚ Cả nhóm</button><button class="chip small" data-ppd="rotate">Xoay quanh khớp</button><button class="chip small" data-ppd="ik" title="Kéo bàn tay/bàn chân: cả cánh tay tự gập theo (cần chia 2 đoạn để gập khuỷu)">Kéo tay chân (IK)</button><button class="chip small" data-ppd="move">Dời</button><button class="chip small" data-ppd="pivot">Dời điểm xoay</button>
           <span class="lbl">Xoay</span><input type="range" id="ppRot" min="-180" max="180" step="1"><span class="lbl">Cỡ</span><input type="range" id="ppScale" min="30" max="250" step="1"></div>
         <div class="mrow" data-tab="pose"><label class="lbl" title="Khuỷu tay, đầu gối, vai, hông uốn cong mềm như da thịt thay vì gập cứng 2 mảnh"><input type="checkbox" id="ppSoftChk"> 〰 Uốn mềm khớp</label><label class="lbl" title="Khi phát và xuất video, nhân vật chuyển động liên tục giữa các frame (như tween của Animate), không bị giật"><input type="checkbox" id="ppSmoothChk"> 🌊 Phát mượt giữa các frame</label></div>
         <div class="mrow" data-tab="pose"><button class="chip small" id="ppFlip">Lật</button><button class="chip small" id="ppHide">Ẩn</button><button class="chip small" id="ppReset">Về gốc mảnh</button><button class="chip small" id="ppResetAll">Về gốc tất cả</button>
@@ -308,7 +313,11 @@
     </div>
     <div id="flipNav" title="Lật frame ngay trên khung vẽ"><button id="fnPrev" title="Frame trước (giữ để lật xem nhanh rồi thả ra quay lại)">◀</button><span id="fnLbl">1/1</span><button id="fnNext" title="Frame sau (giữ để lật xem nhanh)">▶</button><button id="fnAdd" title="Frame trống mới ngay sau, bật Onion để đồ theo frame này (giữ lâu: nhân bản frame này để sửa tiếp)">＋</button></div>
     <div id="playHint" hidden>Đang phát — chạm vào khung để dừng</div>
-    <span id="zoomLbl"></span>
+    <div id="lyrPanel" hidden>
+      <div class="lyrHead"><b>🗂 Layer</b><span class="lbl">trên = đứng trước</span><button id="lyrClose" title="Đóng">✕</button></div>
+      <div id="lyrList"></div>
+      <div class="lyrFoot"><button id="lyrAdd" title="Nhập ảnh thành layer mới">＋ Ảnh</button><button id="lyrUp" title="Đưa layer đang chọn lên trước">▲</button><button id="lyrDown" title="Đưa layer đang chọn ra sau">▼</button><button id="lyrRen" title="Đổi tên layer">✎</button><button id="lyrDel" title="Xoá layer đang chọn">🗑</button></div>
+    </div>
   </main>
 
   <footer id="tl">
@@ -387,6 +396,7 @@
 <script src="js/select/lasso.js"></script>
 <script src="js/select/warp.js"></script>
 <script src="js/select/place.js"></script>
+<script src="js/select/xbox.js"></script>
 <script src="js/select/tween.js"></script>
 <script src="js/select/clipboard.js"></script>
 <script src="js/core/undo.js"></script>
@@ -409,6 +419,7 @@
 <script src="js/puppet/keyframes.js"></script>
 <script src="js/puppet/ik.js"></script>
 <script src="js/puppet/poses.js"></script>
+<script src="js/puppet/layers.js"></script>
 <script src="js/project/projects.js"></script>
 <script src="js/project/sync.js"></script>
 <script src="js/fx/text-camera.js"></script>

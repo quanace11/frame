@@ -23,7 +23,7 @@ function setLayer(l) {
   if ((l === 'vec' || l === 'char') && S.lineLayer !== l) { S.lineLayer = l; saveSettings(); }   // remembered: drawing on Nét keeps lines editable next time too
   $('#layerBg').classList.toggle('on', l === 'bg'); $('#layerCol').classList.toggle('on', l === 'col'); $('#layerChar').classList.toggle('on', l === 'char'); $('#layerVec').classList.toggle('on', l === 'vec');
   if (l !== 'vec' && S.tool === 'vedit') setTool('brush');
-  syncLassoBar();
+  syncLassoBar(); lyrSync();
 }
 function setColor(c) {
   c = (normHex(c) || '#111111'); S.color = c; $('#curColor').style.background = c;
@@ -36,6 +36,7 @@ function updateToggles() {
   $('#loopBtn').classList.toggle('on', S.loop);
   $('#layerBg').classList.toggle('hidden', !S.showBg); $('#layerChar').classList.toggle('hidden', !S.showChar); $('#layerCol').classList.toggle('hidden', !S.showCol); $('[data-eye=col]').textContent = S.showCol ? '👁' : '🚫'; $('#layerVec').classList.toggle('hidden', !S.showVec);
   $('[data-eye=bg]').textContent = S.showBg ? '👁' : '🚫'; $('[data-eye=char]').textContent = S.showChar ? '👁' : '🚫'; $('[data-eye=vec]').textContent = S.showVec ? '👁' : '🚫'; $('[data-eye=pp]').textContent = S.showPP ? '👁' : '🚫'; $('#layerPP').classList.toggle('hidden', !S.showPP);
+  lyrSync();
 }
 document.querySelectorAll('.tool[data-tool]').forEach(b => b.addEventListener('click', () => { const t = b.dataset.tool; if (t === S.tool && t in panelHidden) { panelHidden[t] ? showPanel() : hidePanel(t); return; } setTool(t); }));
 document.querySelectorAll('[data-layer]').forEach(b => b.addEventListener('click', () => setLayer(b.dataset.layer)));
@@ -54,6 +55,16 @@ let onionHint = false;
 $('#onionBtn').addEventListener('click', () => { if (onionLPFired) { onionLPFired = false; return; } S.onion = !S.onion; updateToggles(); saveSettings(); requestRender(); if (S.onion && !onionHint) { onionHint = true; toast('Giữ nút Onion để chọn số frame trước/sau', 2200); } });
 $('#loopBtn').addEventListener('click', () => { S.loop = !S.loop; updateToggles(); saveSettings(); });
 $('#fitBtn').addEventListener('click', () => fitView(true));
+// − 100% + on the canvas: zoom the view about the middle of the stage (2 fingers still work)
+function zoomStep(k) {
+  const r = view.getBoundingClientRect(), mx = r.width / 2 * DPR, my = r.height / 2 * DPR, d = scrToDoc(mx, my);
+  vs = clamp(vs * k, fitS * 0.25, fitS * ZOOM_MAX); setViewAnchor(d.x, d.y, mx, my); requestRender();
+}
+$('#zoomIn').addEventListener('click', () => zoomStep(1.25));
+$('#zoomOut').addEventListener('click', () => zoomStep(0.8));
+$('#zoomLbl').addEventListener('click', () => fitView(true));
+// 🎥 Camera straight from the tool rail (it used to hide in Chữ & FX → Camera)
+$('#camToolBtn').addEventListener('click', () => { setTool('fx'); openTab('fx', 'cam'); if (panelHidden.fx) showPanel(); fxSyncBar(); requestRender(); toast('Kéo khung camera để chọn chỗ quay, kéo chấm góc để phóng to/thu nhỏ, rồi chọn kiểu đổi cảnh', 3500); });
 $('#rotBtn').addEventListener('click', rotateView90);
 $('#undoBtn').addEventListener('click', undo);
 $('#dropBtn').addEventListener('click', () => setTool(S.tool === 'pick' ? (pickBack && pickBack !== 'pick' ? pickBack : 'fill') : 'pick'));

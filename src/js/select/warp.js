@@ -211,11 +211,11 @@ function floatFromImage(bmp, colBmp) {
 function drawFloating(c, img) {
   img = img || (floating && floating.c);
   if (!floating || !img) return;
-  c.save(); c.translate(floating.cx, floating.cy); c.rotate(floating.rot); c.scale(floating.scale * floating.flip, floating.scale);
+  c.save(); c.translate(floating.cx, floating.cy); c.rotate(floating.rot); c.scale(floating.scale * floating.flip, floating.scale * (floating.ay || 1));
   c.drawImage(img, -img.width / 2, -img.height / 2); c.restore();
 }
 function floatBox() {
-  const f = floating, w = f.c.width / 2 * f.scale, h = f.c.height / 2 * f.scale, cs = Math.cos(f.rot), sn = Math.sin(f.rot);
+  const f = floating, w = f.c.width / 2 * f.scale, h = f.c.height / 2 * f.scale * (f.ay || 1), cs = Math.cos(f.rot), sn = Math.sin(f.rot);
   const box = [Infinity, Infinity, -Infinity, -Infinity];
   for (const [x, y] of [[-w, -h], [w, -h], [w, h], [-w, h]]) {
     const X = f.cx + x * cs - y * sn, Y = f.cy + x * sn + y * cs;

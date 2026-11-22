@@ -29,6 +29,7 @@ function openImport(bmp) {
   <button class="chip" data-mode="pp" style="border-color:#ff3b9a">🧩 Nhân vật ghép (cắt mảnh)</button>
   <button class="chip" data-mode="cari" style="border-color:#ffb020">🤪 Biếm hoạ</button>
 </div>
+<label class="lbl imp-layer" id="impLayerRow"><input type="checkbox" id="impLayerChk"> 🗂 <b>Đưa vào layer riêng</b> (như Adobe Animate: kéo trước/sau nhân vật khác, phóng to bằng 8 chấm, dời qua từng frame)</label>
 <div class="imp-wrap">
   <div class="imp-left">
     <div class="imp-prev" id="impPrev"><canvas id="impCv"></canvas><div class="imp-cur" id="impCur" hidden></div><div class="imp-busy" id="impBusy" hidden></div></div>
@@ -415,6 +416,11 @@ ${st.ed ? '<button class="chip" id="iEdClr" title="Bỏ hết chỗ đã sửa t
       if (st.busy || !st.result) { toast('Đợi xử lý xong'); return false; }
       if (st.mode === 'ref') { await setRef(src); return; }
       if (st.mode === 'pp' || (st.mode === 'cari' && st.cariOut === 'pp') || (st.mode === 'split' && st.split.out === 'pp')) { ppStartSetup(st.result); return; }
+      const asLayer = S.impLayer && !(st.mode === 'line' && st.lineOut === 'vec');
+      if (asLayer) {
+        if (st.mode === 'split') { if (!st.split.res) { toast('Đợi xử lý xong'); return false; } await imgToLayer(st.split.res.line, st.split.res.col); return; }
+        await imgToLayer(st.result); return;
+      }
       if (st.mode === 'split') {
         if (!st.split.res) { toast('Đợi xử lý xong'); return false; }
         floatFromImage(st.split.res.line, st.split.res.col);
@@ -432,7 +438,10 @@ ${st.ed ? '<button class="chip" id="iEdClr" title="Bỏ hết chỗ đã sửa t
       pv = ov.querySelector('#impCv'); busyEl = ov.querySelector('#impBusy'); ctrl = ov.querySelector('#impCtrl');
       prevEl = ov.querySelector('#impPrev'); curEl = ov.querySelector('#impCur'); toolsEl = ov.querySelector('#impTools'); wirePreview();
       busyEl.style.whiteSpace = 'pre-line';
-      ov.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { st.mode = b.dataset.mode; st.result = null; renderCtrl(); recompute(); }));   // switching while busy is fine: the older run sees a newer seq and stops
+      const lc = ov.querySelector('#impLayerChk'), lrow = ov.querySelector('#impLayerRow'), lsync = () => { lrow.hidden = st.mode === 'ref' || st.mode === 'pp' || (st.mode === 'cari' && st.cariOut === 'pp') || (st.mode === 'split' && st.split.out === 'pp') || (st.mode === 'line' && st.lineOut === 'vec'); };
+      lc.checked = !!S.impLayer; lc.addEventListener('change', () => { S.impLayer = lc.checked; saveSettings(); });
+      ov.querySelector('#impCtrl').addEventListener('click', () => setTimeout(lsync, 0)); lsync();
+      ov.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { setTimeout(lsync, 0); st.mode = b.dataset.mode; st.result = null; renderCtrl(); recompute(); }));   // switching while busy is fine: the older run sees a newer seq and stops
       if (wizImport) { wizImport = false; st.mode = 'pp'; }
       renderCtrl(); recompute();
     } });
