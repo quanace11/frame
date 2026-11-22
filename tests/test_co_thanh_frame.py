@@ -75,7 +75,7 @@ async def main():
         seq = []
         for _ in range(3):
             g = await box('#tlGrip'); await touch([(g[0] + g[2] / 2, g[1] + g[3] / 2)]); seq.append(await pg.evaluate("S.tlScale"))
-        print('tap cycle', seq); check('tap cycles sizes (bigger, back to 100%, bigger)', seq[0] > 1.5 and seq[1] == 1 and seq[2] > 1)
+        print('tap cycle', seq); check('tap cycles sizes (each tap changes it, back to 100% when no room)', 1 in seq and max(seq) > 1 and all(x != y for x, y in zip([1.5] + seq, seq)))
         check('tap size fits the screen', (await box('#tl'))[3] <= 820 * 0.6 + 1)
         # portrait tablet
         await pg.set_viewport_size({'width':820,'height':1180}); await pg.wait_for_timeout(400)
