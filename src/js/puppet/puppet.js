@@ -832,7 +832,8 @@ function ppLerpPose(A, B, t) {
 let ppInsertAuto = false;
 async function ppInsertFrames(poses, durMs) {
   const f0 = curFrame(), i0 = S.cur; await ensureLoaded(f0);
-  const added = poses.map(pose => { const f = newFrameObj(f0.bgId); f.dur = durMs || f0.dur; f.canvas.getContext('2d').drawImage(f0.canvas, 0, 0); copyCol(f, f0); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(f0.vec); f.pp = pose; f.ppKey = !ppInsertAuto; return f; });
+  // frameCopyOf keeps the mouth/eyes and the 〰 path position (f.lip): without it the character jumped back to where it was before the path
+  const added = poses.map(pose => { const f = frameCopyOf(f0); f.dur = durMs || f0.dur; f.pp = pose; f.ppKey = !ppInsertAuto; return f; });
   S.frames.splice(i0 + 1, 0, ...added); loaded.push(...added);
   pushEntry({ t: targetOf(f0), add: { frames: added, index: i0 + 1, dur0: f0.dur, dur1: f0.dur }, bytes: 0 });
   for (const f of added) await drawThumb(f);

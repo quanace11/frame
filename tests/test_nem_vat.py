@@ -49,6 +49,6 @@ async def main():
         await pg.evaluate("S.cur=8; updateFrameUI(); requestRender()"); await pg.wait_for_timeout(300); await pg.screenshot(path='nem_vat.png')
         await pg.evaluate("undo()"); await pg.wait_for_timeout(600)
         print('undo', await pg.evaluate("S.frames.length") == 1 and await pg.evaluate("S.audio.sfx.length") == 0 and abs(await pg.evaluate("ppCurAbs(S.frames[0], ppSelChar()).armR") - a0['armR']) < 1)
-        print('objects draw', await pg.evaluate("(()=>{const c=makeCanvas(200,200),x=c.getContext('2d');for(const k of Object.keys(THROW_OBJS))throwObjDraw(x,k,100,100,40,0.5);aCrack(x,100,100,90,5,1);return true})()"))
+        print('objects draw', await pg.evaluate("(()=>{const c=makeCanvas(200,200),x=c.getContext('2d');for(const k of [...document.querySelectorAll('[data-tobj]')].map(b=>b.dataset.tobj))throwObjDraw(x,k,100,100,40,0.5);aCrack(x,100,100,90,5,1);return true})()"))
         print('ERR', errs); await b.close()
 asyncio.run(main()); srv.kill()

@@ -70,7 +70,8 @@ async function gagApply(i0, plan) {
   // missing frames are copies of the last frame (drawn before anything is stamped)
   if (i0 + plan.n > S.frames.length) {
     const last = plan.copyOf || S.frames[S.frames.length - 1]; await ensureLoaded(last);
-    while (i0 + plan.n > S.frames.length + added.length) { const f = newFrameObj(last.bgId); f.dur = last.dur; f.canvas.getContext('2d').drawImage(last.canvas, 0, 0); copyCol(f, last); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(last.vec); f.pp = ppClone(last.pp); f.texts = JSON.parse(JSON.stringify(last.texts || [])); if (plan.copyOf) { f.ppKey = last.ppKey; f.ppEase = last.ppEase; f.lip = last.lip ? JSON.parse(JSON.stringify(last.lip)) : null; } added.push(f); }
+    // frameCopyOf keeps mouth/eyes + 〰 path position (lip) and the 🌈 look; plan.copyOf (a pose to go on from) keeps its keys too
+    while (i0 + plan.n > S.frames.length + added.length) { const f = frameCopyOf(last); if (plan.copyOf) { f.ppKey = last.ppKey; f.ppEase = last.ppEase; } added.push(f); }
     S.frames.push(...added); loaded.push(...added);
   }
   const camBefore = S.frames.map((f, i) => camAt(i)), multi = [];

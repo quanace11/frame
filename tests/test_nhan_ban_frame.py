@@ -5,6 +5,8 @@ CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 # Every way of copying frames goes through frameCopyOf (timeline.js): Nhân bản frame, Lặp đoạn, Chọn nhiều → Nhân bản,
 # 📺 Phát lại. Before, they were 4 copies of the same code and Chọn nhiều/Lặp đoạn lost the 🌈 look (scrolling bg,
 # speed lines, film colour, ghost) that Phát lại kept.
+# Cử chỉ / tư thế mẫu / ⭐ chuyển động (ppInsertFrames) and ⚡ combos (gagApply) also lost f.lip: a character moved
+# with 〰 Đường đi jumped back to where it started.
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 srv = subprocess.Popen(['python3','-m','http.server','9121'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -51,6 +53,14 @@ async def main():
         await pg.evaluate("(async()=>{msel.clear(); S.lookOpt.rs=2; await selectFrame(1); await replayMake();})()"); await pg.wait_for_timeout(600)
         r = await pg.evaluate("[S.frames.length, S.frames[2].flt, S.frames[2].bgs && S.frames[2].bgs.d, S.frames[2].dur===S.frames[0].dur*2, S.frames[2].texts.some(t=>t.str.includes('PHÁT LẠI'))]")
         check('replay: slowed copies with the look + label', r == [4, 'replay', 'l', True, True], str(r))
+        # 5. 👋 gesture + 💫 combo on a character moved along a path: new frames keep its place (lip.mv) and the text
+        r = await pg.evaluate("""(async()=>{ await selectFrame(S.frames.length-1); await kitAdd(); const root=S.pp.parts.find(q=>!q.parent).id; const f=curFrame(); f.lip={mv:{[root]:{x:300,y:-40}}};
+          const n0=S.frames.length; await ppGesture('hello'); const g=S.frames.slice(n0-1);
+          await selectFrame(S.frames.length-1); const n1=S.frames.length; await gagRun('dizzy', {x:W/2, y:H/3}); const d=S.frames.slice(n1);
+          const ok=fs=>fs.length>1 && fs.every(f=>f.lip&&f.lip.mv&&f.lip.mv[root]&&f.lip.mv[root].x===300);
+          return [g.length, ok(g), g.every(f=>(f.texts||[]).length===(S.frames[n0-1].texts||[]).length), d.length, ok(d)]; })()""")
+        check('gesture frames keep the path position + texts', r[1] and r[2], str(r))
+        check('combo frames keep the path position', r[4], str(r))
         check('no page errors', not pe, str(pe[:2]))
         await b.close()
     print('ERR', errs)
