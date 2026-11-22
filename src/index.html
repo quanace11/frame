@@ -378,7 +378,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
     <div id="bgHold" hidden>
       <button class="chip small" id="newBgBtn" title="Cho frame này một nền trống riêng (cảnh mới)">Nền mới</button>
       <button class="chip small" id="bgVidBtn" title="Dùng một đoạn video làm nền phía sau nhân vật">🎞 Nền video</button>
-      <button class="chip small" id="vidFramesBtn" title="Tách một đoạn video thành từng frame (hình ở lớp Nền) để vẽ đè lên, đồ theo chuyển động thật">🎬 Video → frame</button>
+      <button class="chip small" id="vidFramesBtn" title="Thêm video: ghép theo video (cắt, nối, đổi chỗ như phần mềm dựng phim) hoặc tách thành từng frame để vẽ đè lên">🎬 Thêm video</button>
       <button class="chip small" id="splitBgBtn" title="Tách nền thành bản sao riêng để sửa mà không ảnh hưởng frame khác">Tách nền</button>
       <span id="bgInfo"></span>
     </div>
@@ -644,13 +644,15 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
       <button class="tbtn primary" data-ms="done">✓ Xong</button></div>
     <canvas id="scrub" title="Kéo ngón tay dọc thanh này để tua qua các frame (xem nhanh chuyển động)"></canvas>
     <div id="atl" hidden>
-      <div id="atlBar"><b class="lbl" style="color:var(--ink)">🎚 Âm thanh</b>
-        <button class="chip small" id="atlAddMusic" title="Thêm nhạc nền (thay nhạc cũ)">＋ Nhạc</button><button class="chip small" id="atlAddVoice" title="Thêm 1 câu thoại, bắt đầu ở frame đang xem">＋ Giọng</button>
+      <div id="atlBar"><b class="lbl" style="color:var(--ink)">🎚 Video &amp; âm thanh</b>
+        <button class="chip small" id="atlAddVideo" title="Thêm 1 video vào cuối dòng Video: cắt, nối, đổi chỗ như phần mềm dựng phim, vẽ và nhân vật nằm trên">＋ Video</button><button class="chip small" id="atlAddMusic" title="Thêm nhạc nền (thay nhạc cũ)">＋ Nhạc</button><button class="chip small" id="atlAddVoice" title="Thêm 1 câu thoại, bắt đầu ở frame đang xem">＋ Giọng</button>
         <button class="chip small" id="atlSplit" title="Cắt đoạn đang chọn làm 2 tại vạch đỏ (đầu đọc). Chưa chọn đoạn nào thì cắt mọi đoạn nằm dưới vạch đỏ">✂ Cắt</button>
         <button class="chip small" id="atlJoin" title="Nối đoạn đang chọn với đoạn ngay sau nó: 2 mảnh cắt ra từ cùng 1 file thì gộp lại thành 1, còn không thì kéo đoạn sau sát vào">🔗 Nối</button>
         <button class="chip small" id="atlDup" title="Nhân bản đoạn đang chọn, đặt ngay sau nó">⧉ Nhân bản</button>
         <button class="chip small" id="atlHere" title="Dời đoạn đang chọn để bắt đầu ở vạch đỏ">📍 Về vạch đỏ</button>
         <button class="chip small" id="atlDel" style="color:var(--danger)" title="Xoá đoạn đang chọn">🗑 Xoá</button>
+        <button class="chip small" id="atlVFit" hidden title="Đoạn video này: lấp đầy khung (cắt bớt 2 bên) hay vừa khung (thấy cả hình, có viền đen)">🔳 Lấp đầy</button><button class="chip small" id="atlVMute" hidden title="Bật / tắt tiếng của đoạn video này">🔊 Có tiếng</button>
+        <button class="chip small" id="atlFrHere" title="Tách frame đang xem tại vạch đỏ: từ chỗ này là frame mới, vẽ ở đó chỉ hiện từ chỗ này trở đi">➕ Frame ở vạch đỏ</button>
         <span class="lbl">Âm lượng</span><input type="range" id="atlVol" min="0" max="150" style="width:90px"><span class="val" id="atlVolVal"></span>
         <button class="chip small on" id="atlSnap" title="Khi kéo, mép đoạn tự hút vào đầu frame, vạch đỏ, nhịp nhạc và mép đoạn khác">🧲 Hút</button>
         <button class="chip small" id="atlZo" aria-label="Thu nhỏ" title="Thu nhỏ (hoặc chụm 2 ngón)">−</button><button class="chip small" id="atlZi" aria-label="Phóng to" title="Phóng to (hoặc mở 2 ngón)">＋</button><button class="chip small" id="atlFit" title="Xem vừa cả phim">⤢ Vừa</button>
@@ -665,7 +667,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
 <input type="file" id="musicFile" accept="audio/*,video/mp4" hidden>
 <input type="file" id="voiceFile" accept="audio/*,video/mp4" hidden>
 <input type="file" id="bgVidFile" accept="video/*" hidden>
-<input type="file" id="vidFramesFile" accept="video/*" hidden>
+<input type="file" id="vidFramesFile" accept="video/*" hidden><input type="file" id="vtFile" accept="video/*" hidden>
 <input type="file" id="zipFile" accept=".zip,application/zip" hidden>
 <div id="toast"></div>
 
@@ -910,6 +912,7 @@ function render() {
   c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
   { const deg = Math.round(((vr / DEG) % 360 + 360) % 360); $('#zoomLbl').textContent = Math.round(vs / fitS * 100) + '%' + (deg ? ` · ${deg}°` : ''); }
   if (playing) {
+    if (vtOn()) vtPlayTick((pNow() - playT0) / 1000, playSpeed);
     if (playCanvas) { c.save(); c.beginPath(); c.rect(0, 0, W, H); c.clip(); const now = pNow(), tf = (now - playFT0) / 1000; drawFrameFx(c, playIdx, playCanvas, (now - playT0) / 1000, tf, null, ppSmoothOn() ? ppLiveOver(playIdx, tf, S.loop) : null); c.restore(); }
     if (S.safe) drawSafeZone(c, 1 / vs * DPR);
     requestRender(); return;
@@ -2399,7 +2402,7 @@ function histSnap() {
     pp: S.pp ? { parts: S.pp.parts.slice(), meta: S.pp.parts.map(histPartCopy) } : null,
     rig: S.rig ? JSON.stringify(S.rig) : null,
     audio: audioCopy(A),
-    bgVideo: S.bgVideo ? { ...S.bgVideo } : null, ref: { ...REF }, poses: (S.poses || []).slice()
+    bgVideo: vidCopy(S.bgVideo), ref: { ...REF }, poses: (S.poses || []).slice()
   };
   g.sig = histJSON([g.frames.map(f => f.id), g.bgs.map(b => b.id), g.pp && g.pp.meta, g.rig, g.audio, g.bgVideo, g.ref, g.poses]);
   g.fm = new Map(g.frames.map(f => [f, histFrameStr(f)]));
@@ -2442,7 +2445,7 @@ function histFlush() { if (!histT) return; clearTimeout(histT); histT = null; if
 async function histApply(sn, key) {
   const G = sn[key], beforeKey = key === 'before';
   if (playing) stopPlay(); commitFloating(); motionClose(); rigClose();
-  const vidChanged = (S.bgVideo && S.bgVideo.buf) !== (G.bgVideo && G.bgVideo.buf);
+  const vidChanged = !!(S.bgVideo && S.bgVideo.track) || !!(G.bgVideo && G.bgVideo.track) || (S.bgVideo && S.bgVideo.buf) !== (G.bgVideo && G.bgVideo.buf);
   S.frames = G.frames.slice(); S.bgs = G.bgs.slice();
   for (let i = loaded.length - 1; i >= 0; i--) if (!S.frames.includes(loaded[i])) loaded.splice(i, 1);
   for (const f of S.frames) if (f.canvas && !loaded.includes(f)) loaded.push(f);
@@ -2458,7 +2461,7 @@ async function histApply(sn, key) {
   if (ppWas !== histJSON(S.pp && S.pp.parts.map(histPartCopy))) S.frames.forEach(f => { f.ver++; queueThumbFor(f); });
   S.rig = G.rig ? JSON.parse(G.rig) : null;
   S.audio = audioCopy(G.audio); atlSel = null;
-  S.bgVideo = G.bgVideo ? { ...G.bgVideo } : null; if (vidChanged) bgVideoSetup();
+  S.bgVideo = vidCopy(G.bgVideo); if (vidChanged) bgVideoSetup();
   Object.assign(REF, G.ref); updateRefUI();
   S.poses = G.poses.slice();
   S.cur = clamp(S.frames.includes(G.frames[G.cur]) ? S.frames.indexOf(G.frames[G.cur]) : G.cur, 0, S.frames.length - 1);
@@ -2811,7 +2814,7 @@ function updateWaves() {
 var atlDrag = null, atlSel = null, atlLay = null, atlRaf = 0;
 const atl = { pps: 0, x0: 0, ph: null, snap: true, pinch: null, ptrs: new Map() };
 const ATL_RUL = 24, ATL_LANE = 36, ATL_PAD = 8;
-const ATL_TRK = [['music', '🎵 Nhạc'], ['voice', '🎤 Giọng'], ['sfx', '🔊 Tiếng động']];
+const ATL_TRK = [['video', '🎞 Video'], ['music', '🎵 Nhạc'], ['voice', '🎤 Giọng'], ['sfx', '🔊 Tiếng động']];
 const ATL_VCOL = ['#ffb21e', '#5be37d', '#ff7ad9', '#7fd8ff'];
 const atlOpen = () => { const el = document.getElementById('atl'); return !!(el && !el.hidden); };
 const atlX = t => ATL_PAD + (t - atl.x0) * atl.pps;
@@ -2822,6 +2825,7 @@ function atlClips() {
   voiceClips().forEach(c => { if (!vb.has(c.buf)) vb.set(c.buf, ATL_VCOL[vb.size % ATL_VCOL.length]); out.push({ c, kind: 'voice', name: c.name || 'Giọng', col: vb.get(c.buf) }); });
   (A.sfx || []).forEach(x => out.push({ c: x, kind: 'sfx', name: (SFX[x.kind] || {}).label || x.kind, col: '#b48cff' }));
   const clips = [];
+  for (const v of vtList()) { const src = vtSrc(v.c.s) || {}; clips.push({ c: v.c, kind: 'video', name: (v.c.vol ?? 1) > 0.001 ? src.name || 'Video' : '🔇 ' + (src.name || 'Video'), col: '#ff8a3d', st: v.st, len: v.len, off: v.c.off || 0, sd: src.dur || null, src }); }
   for (const o of out) {
     if (!o.c.id) o.c.id = newId();
     o.st = clipStart(o.c, o.kind, T); if (o.st == null) continue;
@@ -2880,12 +2884,21 @@ function atlDraw() {
   // film end
   x.fillStyle = 'rgba(255,255,255,.35)'; for (let y = ATL_RUL; y < h; y += 6) x.fillRect(X(tot), y, 1, 3);
   // clips
+  const vdrag = atlDrag && atlDrag.moved && atlDrag.mode === 'm' && atlDrag.o.kind === 'video' ? atlDrag : null;
   for (const o of L.clips) {
-    const a = X(o.st), b = X(o.st + o.len); if (b < -2 || a > w + 2) continue;
+    const st = vdrag && vdrag.o.c === o.c ? vdrag.vx : o.st, a = X(st), b = X(st + o.len); if (b < -2 || a > w + 2) continue;
     const y = o.y + 3, hh = ATL_LANE - 6, sel = o.c.id === atlSel;
     x.save(); x.beginPath(); x.roundRect ? x.roundRect(a, y, Math.max(3, b - a), hh, 6) : x.rect(a, y, Math.max(3, b - a), hh); x.clip();
     x.fillStyle = o.col + '40'; x.fillRect(a, y, b - a, hh);
-    const pk = o.kind === 'sfx' ? sfxPeaks(o.c.kind) : audioPeaks(o.c.buf);
+    if (o.kind === 'video') {   // little pictures of the piece, as in a video editor
+      const th = vtThumbs(o.src), tw = th.pics.find(Boolean) ? th.pics.find(Boolean).width / 2 : hh * 1.6;
+      for (let px = a; px < b; px += tw) {
+        if (px + tw < 0 || px > w) continue; const st = o.off + atlT(px) - atlT(a), pic = th.pics[Math.min(th.pics.length - 1, Math.floor(st / th.step))] || th.pics[Math.floor(st / th.step)];
+        if (pic) x.drawImage(pic, px, y, tw, hh); else { x.fillStyle = '#00000030'; x.fillRect(px, y, tw - 1, hh); }
+      }
+      x.fillStyle = 'rgba(0,0,0,.45)'; x.fillRect(a, y, b - a, 15);
+    }
+    const pk = o.kind === 'video' ? null : o.kind === 'sfx' ? sfxPeaks(o.c.kind) : audioPeaks(o.c.buf);
     if (pk) {
       x.fillStyle = o.col + 'cc'; const pa = Math.max(0, Math.floor(a)), pb = Math.min(w, Math.ceil(b)), mid = y + hh / 2 + 4;
       for (let px = pa; px < pb; px++) {
@@ -2913,9 +2926,12 @@ function atlSync() {
   for (const id of ['atlJoin', 'atlDup', 'atlHere', 'atlDel', 'atlVol']) document.getElementById(id).disabled = !o;
   document.getElementById('atlSplit').disabled = !(atlLay && atlLay.clips.some(c => c.st + 0.02 < ph && c.st + c.len - 0.02 > ph));
   document.getElementById('atlSnap').classList.toggle('on', atl.snap);
-  const v = o ? o.c.vol ?? (o.kind === 'music' ? 0.6 : o.kind === 'sfx' ? 0.9 : 1) : 1;
+  const v = o ? o.c.vol ?? (o.kind === 'music' ? 0.6 : o.kind === 'sfx' ? 0.9 : 1) : 1, isV = !!(o && o.kind === 'video');
+  for (const id of ['atlVFit', 'atlVMute']) document.getElementById(id).hidden = !isV;
+  if (isV) { document.getElementById('atlVFit').textContent = o.c.fit === 'contain' ? '⬛ Vừa khung' : '🔳 Lấp đầy'; document.getElementById('atlVMute').textContent = (o.c.vol ?? 1) > 0.001 ? '🔊 Có tiếng' : '🔇 Tắt tiếng'; }
+  document.getElementById('atlFrHere').disabled = !vtOn();
   document.getElementById('atlVol').value = Math.round(v * 100); document.getElementById('atlVolVal').textContent = o ? Math.round(v * 100) + '%' : '';
-  document.getElementById('atlInfo').textContent = o ? `${String(o.name).slice(0, 24)} · ${o.st.toFixed(2)}s → ${(o.st + o.len).toFixed(2)}s (${o.len.toFixed(2)}s)` : atlLay && atlLay.clips.length ? 'Chạm 1 đoạn để chọn · kéo giữa = dời · kéo mép = cắt bớt · chạm chỗ trống = đặt vạch đỏ' : 'Chưa có âm thanh: ＋ Nhạc, ＋ Giọng, hoặc gắn tiếng động ở tab Âm thanh';
+  document.getElementById('atlInfo').textContent = o ? `${String(o.name).slice(0, 24)} · ${o.st.toFixed(2)}s → ${(o.st + o.len).toFixed(2)}s (${o.len.toFixed(2)}s)` : atlLay && atlLay.clips.length ? 'Chạm 1 đoạn để chọn · kéo giữa = dời (video: đổi chỗ) · kéo mép = cắt bớt · chạm chỗ trống = đặt vạch đỏ' : 'Chưa có gì: ＋ Video để cắt ghép video, ＋ Nhạc, ＋ Giọng, hoặc gắn tiếng động ở tab Âm thanh';
 }
 function atlShow(on) {
   const el = document.getElementById('atl'); el.hidden = !on; S.atlOpen = !!on; saveSettings();
@@ -2946,6 +2962,7 @@ function atlHit(px, py) {
 function atlDragMove(dx) {
   const g = atlDrag, o = g.o, c = o.c, T = atlLay.T, dt = dx / atl.pps;
   if (g.mode === 'pan') { atl.x0 = Math.max(-0.2, g.xs0 - dt); return; }
+  if (o.kind === 'video') { vtDragMove(g, c, dt); return; }
   if (g.mode === 'm') {
     let t = Math.max(0, g.st0 + dt); const s1 = atlSnapT(t, c), s2 = atlSnapT(t + g.len0, c);
     if (s1.d <= s2.d && s1.d < Infinity) t = s1.t; else if (s2.d < Infinity) t = s2.t - g.len0;
@@ -2961,7 +2978,24 @@ function atlDragMove(dx) {
     const len = Math.round((ne - g.st0) * 1000) / 1000; if (len >= maxLen - 1e-3) delete c.len; else c.len = len;
   }
 }
-function atlChanged(msg) { waveKey = ''; updateWaves(); fxSyncBar(); scheduleSave(); atlDraw(); if (msg) toast(msg, 2200); }
+// 🎞 video row: the pieces always follow each other (no gaps), so dragging the middle changes the order and an edge trims
+function vtDragMove(g, c, dt) {
+  const arr = S.bgVideo.clips;
+  if (g.mode === 'm') {
+    g.vx = Math.max(0, g.st0 + dt); const mid = g.vx + g.len0 / 2;
+    let st = 0, idx = 0; for (const p of arr) { if (p === c) continue; const l = vtLen(p); if (st + l / 2 < mid) idx++; st += l; }
+    const k = arr.indexOf(c); if (k !== idx) { arr.splice(k, 1); arr.splice(idx, 0, c); g.reord = true; }
+  } else if (g.mode === 'l') {
+    const off = clamp(g.off0 + dt, 0, g.off0 + g.len0 - 0.1);
+    c.off = Math.round(off * 1000) / 1000; c.len = Math.round((g.len0 - (off - g.off0)) * 1000) / 1000;
+  } else {
+    const s = atlSnapT(g.st0 + g.len0 + dt, c); let ne = s.d < Infinity ? s.t : g.st0 + g.len0 + dt;
+    const maxLen = g.sd != null ? g.sd - g.off0 : Infinity; ne = clamp(ne, g.st0 + 0.1, g.st0 + maxLen);
+    c.len = Math.round((ne - g.st0) * 1000) / 1000;
+  }
+  vtFitFrames();
+}
+function atlChanged(msg) { if (vtOn()) vtAfterEdit(); waveKey = ''; updateWaves(); fxSyncBar(); scheduleSave(); atlDraw(); if (msg) toast(msg, 2200); }
 { const cv = document.getElementById('atlCv');
   const loc = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
   cv.addEventListener('pointerdown', e => {
@@ -2994,7 +3028,7 @@ function atlChanged(msg) { waveKey = ''; updateWaves(); fxSyncBar(); scheduleSav
     const g = atlDrag; atlDrag = null; if (!g) return;
     if (g.mode === 'pan' && !g.moved) {   // tap on an empty spot / the ruler: put the playhead there and show that frame
       const T = frameStartTimes(), t = clamp(atlT(g.px), 0, Math.max(0, T[T.length - 1] - 1e-3)); let i = 0; while (i < S.frames.length - 1 && T[i + 1] <= t) i++;
-      atl.ph = t; atlSel = null; if (i !== S.cur) selectFrame(i).then(atlDraw); else atlDraw(); return;
+      atl.ph = t; atlSel = null; if (i !== S.cur) selectFrame(i).then(() => { bgVideoSync(true); atlDraw(); }); else { bgVideoSync(true); atlDraw(); } return;
     }
     if (g.mode !== 'pan' && g.moved) atlChanged(); else atlDraw();
   };
@@ -3007,6 +3041,7 @@ function atlChanged(msg) { waveKey = ''; updateWaves(); fxSyncBar(); scheduleSav
 // the arrays a clip lives in
 function atlList(kind, create) { S.audio = S.audio || {}; const A = S.audio; if (kind === 'sfx') return A.sfx = A.sfx || []; if (kind === 'voice') return A.voices = A.voices || []; return A.musics = A.musics || []; }
 function atlRemove(o) {
+  if (o.kind === 'video') { const arr = S.bgVideo.clips; arr.splice(arr.indexOf(o.c), 1); return; }
   const A = S.audio; if (!A) return;
   if (o.kind === 'voice') { voiceDel(voiceClips().indexOf(o.c)); return; }
   if (o.kind === 'music') { if (A.music === o.c) A.music = (A.musics || []).shift() || null; else A.musics = (A.musics || []).filter(x => x !== o.c); return; }
@@ -3020,6 +3055,7 @@ function atlSplit() {
   const T = frameStartTimes(); let last = null;
   for (const o of list) {
     const k = ph - o.st, b = { ...o.c, id: newId() };
+    if (o.kind === 'video') { b.off = Math.round((o.off + k) * 1000) / 1000; b.len = Math.round((o.len - k) * 1000) / 1000; o.c.len = Math.round(k * 1000) / 1000; const arr = S.bgVideo.clips; arr.splice(arr.indexOf(o.c) + 1, 0, b); last = b; continue; }
     b.off = Math.round((o.off + k) * 1000) / 1000; if (o.c.len != null) b.len = Math.round((o.len - k) * 1000) / 1000; else delete b.len;
     o.c.len = Math.round(k * 1000) / 1000; clipSetStart(b, o.kind, ph, T);
     atlList(o.kind).push(b); last = b;
@@ -3029,6 +3065,13 @@ function atlSplit() {
 // 🔗 join with the next clip on the same track: two pieces of the same file that touch → one clip again; otherwise pull the next one up to touch
 function atlJoin() {
   const o = atlSel && atlFind(atlSel); if (!o) return; const end = o.st + o.len;
+  if (o.kind === 'video') {
+    const arr = S.bgVideo.clips, nc = arr[arr.indexOf(o.c) + 1];
+    if (!nc) { toast('Không có đoạn video nào phía sau để nối', 2000); return; }
+    if (nc.s === o.c.s && Math.abs((nc.off || 0) - (o.off + o.len)) < 0.05 && (nc.fit || '') === (o.c.fit || '')) { o.c.len = Math.round((o.len + vtLen(nc)) * 1000) / 1000; arr.splice(arr.indexOf(nc), 1); atlChanged('🔗 Đã gộp 2 mảnh video thành 1'); }
+    else toast('Các đoạn video luôn nối liền nhau rồi. 🔗 chỉ gộp được 2 mảnh cắt ra từ cùng 1 video, nằm liền nhau', 3200);
+    return;
+  }
   const nx = atlLay.clips.filter(p => p !== o && p.kind === o.kind && p.st >= end - 0.05).sort((a, b) => a.st - b.st)[0];
   if (!nx) { toast('Không có đoạn nào phía sau trên dòng này để nối', 2000); return; }
   const same = o.kind === 'sfx' ? o.c.kind === nx.c.kind : o.c.buf === nx.c.buf;
@@ -3041,13 +3084,14 @@ function atlJoin() {
 }
 function atlDup() {
   const o = atlSel && atlFind(atlSel); if (!o) return; const b = { ...o.c, id: newId() };
+  if (o.kind === 'video') { const arr = S.bgVideo.clips; arr.splice(arr.indexOf(o.c) + 1, 0, b); atlSel = b.id; atlChanged('⧉ Đã nhân bản đoạn video, đặt ngay sau'); return; }
   clipSetStart(b, o.kind, o.st + o.len); atlList(o.kind).push(b); atlSel = b.id; atlChanged('⧉ Đã nhân bản, đặt ngay sau');
 }
 $('#atlBtn').addEventListener('click', () => atlShow(!atlOpen()));
 $('#atlSplit').addEventListener('click', atlSplit);
 $('#atlJoin').addEventListener('click', atlJoin);
 $('#atlDup').addEventListener('click', atlDup);
-$('#atlHere').addEventListener('click', () => { const o = atlSel && atlFind(atlSel); if (!o) return; clipSetStart(o.c, o.kind, atlPh()); atlChanged(); });
+$('#atlHere').addEventListener('click', () => { const o = atlSel && atlFind(atlSel); if (!o) return; if (o.kind === 'video') { toast('Đoạn video nối liền nhau: kéo đoạn để đổi chỗ', 2200); return; } clipSetStart(o.c, o.kind, atlPh()); atlChanged(); });
 $('#atlDel').addEventListener('click', () => { const o = atlSel && atlFind(atlSel); if (!o) return; atlRemove(o); atlSel = null; atlChanged('🗑 Đã xoá đoạn (↶ để lấy lại)'); });
 $('#atlVol').addEventListener('input', e => { const o = atlSel && atlFind(atlSel); if (!o) return; o.c.vol = e.target.value / 100; $('#atlVolVal').textContent = e.target.value + '%'; });
 $('#atlVol').addEventListener('change', () => { if (atlSel) { scheduleSave(); fxSyncBar(); } });
@@ -3056,6 +3100,10 @@ $('#atlZi').addEventListener('click', () => { const tm = atlPh(); atl.pps = clam
 $('#atlZo').addEventListener('click', () => { const tm = atlPh(); atl.pps = clamp(atl.pps / 1.6, 4, 800); atl.x0 = Math.max(-0.2, tm - ($('#atlCv').clientWidth / 2) / atl.pps); atlDraw(); });
 $('#atlFit').addEventListener('click', () => { atlFit(); atlDraw(); });
 $('#atlAddMusic').addEventListener('click', () => $('#musicFile').click());
+$('#atlAddVideo').addEventListener('click', () => $('#vtFile').click());
+$('#atlFrHere').addEventListener('click', vtFrameAtPh);
+$('#atlVFit').addEventListener('click', () => { const o = atlSel && atlFind(atlSel); if (!o || o.kind !== 'video') return; o.c.fit = o.c.fit === 'contain' ? 'cover' : 'contain'; atlChanged(o.c.fit === 'contain' ? 'Vừa khung: thấy cả hình (viền đen)' : 'Lấp đầy khung (cắt bớt 2 bên)'); });
+$('#atlVMute').addEventListener('click', () => { const o = atlSel && atlFind(atlSel); if (!o || o.kind !== 'video') return; o.c.vol = (o.c.vol ?? 1) > 0.001 ? 0 : 1; atlChanged(o.c.vol ? '🔊 Bật tiếng đoạn video' : '🔇 Tắt tiếng đoạn video'); });
 $('#atlAddVoice').addEventListener('click', () => $('#voiceFile').click());
 $('#fxAtl').addEventListener('click', () => atlShow(true));
 
@@ -3156,7 +3204,7 @@ const voiceClips = () => { const A = S.audio || {}; return [A.voice, ...(A.voice
 const voiceStart = c => clipFrame(c, 'voice');
 // music clips: S.audio.music is the first one (older projects: the only one, starting at 0 s), S.audio.musics the pieces made by ✂ Cắt / ⧉
 const musicClips = () => { const A = S.audio || {}; return [A.music, ...(A.musics || [])].filter(Boolean); };
-const hasAudio = () => !!(S.audio && (musicClips().length || voiceClips().length || (S.audio.sfx || []).length));
+const hasAudio = () => !!(S.audio && (musicClips().length || voiceClips().length || (S.audio.sfx || []).length)) || vtHasAudio();
 /* --- where a sound clip sits in time (🎚 audio timeline). Each clip is pinned to a frame (voice/sfx: frameId, music: fa; music without
    fa starts at 0 s like before) + dt seconds after that frame starts, so it follows the frame when earlier frames get longer/shorter.
    off = seconds skipped at the start of the file (trim), len = seconds played (missing = to the end of the file). --- */
@@ -3208,7 +3256,8 @@ async function startPlay() {
   playT0 = pNow() - frameStartTimes()[playIdx] * 1000; playAudioFrom(playIdx);
   if (playRange) toast(`Phát đoạn frame ${playRange[0] + 1}–${playRange[1] + 1}` + (S.loop ? ' (lặp)' : ''), 1600);
   if (playSpeed !== 1) toast(`Phát chậm ${playSpeed === 0.5 ? '½' : '¼'}× (tắt tiếng) — bấm 1× để về tốc độ thật`, 2200);
-  if (S.bgVideo && bgVid.ready) { const v = bgVid.el; try { v.currentTime = bgVideoTimeAt(playIdx); v.playbackRate = playSpeed; } catch (e) {} v.muted = !S.bgVideo.audio || playSpeed !== 1; v.volume = S.bgVideo.vol ?? 0.7; v.play().catch(() => {}); }
+  if (vtOn()) vtPlayTick(frameStartTimes()[playIdx], playSpeed);
+  else if (S.bgVideo && bgVid.ready) { const v = bgVid.el; try { v.currentTime = bgVideoTimeAt(playIdx); v.playbackRate = playSpeed; } catch (e) {} v.muted = !S.bgVideo.audio || playSpeed !== 1; v.volume = S.bgVideo.vol ?? 0.7; v.play().catch(() => {}); }
   $('#playBtn span').textContent = 'Dừng'; $('#playHint').hidden = false; $('#app').classList.add('playing');
   step();
 }
@@ -3220,12 +3269,12 @@ function step() {
   playTimer = setTimeout(() => {
     playIdx++;
     const a = playRange ? playRange[0] : 0, last = playRange ? Math.min(playRange[1], S.frames.length - 1) : S.frames.length - 1;
-    if (playIdx > last) { if (S.loop) { playIdx = a; playT0 = pNow() - frameStartTimes()[a] * 1000; playAudioFrom(a); if (S.bgVideo && bgVid.ready) { try { bgVid.el.currentTime = bgVideoTimeAt(a); } catch (e) {} } } else { stopPlay(); return; } }
+    if (playIdx > last) { if (S.loop) { playIdx = a; playT0 = pNow() - frameStartTimes()[a] * 1000; playAudioFrom(a); if (S.bgVideo && bgVid.ready && !vtOn()) { try { bgVid.el.currentTime = bgVideoTimeAt(a); } catch (e) {} } } else { stopPlay(); return; } }
     step();
   }, f.dur / playSpeed);
 }
 function stopPlay() {
-  playing = false; trSrc = null; playRange = null; clearTimeout(playTimer); playCanvas = null; if (bgVid.el) { try { bgVid.el.playbackRate = 1; } catch (e) {} bgVid.el.pause(); bgVid.el.muted = true; setTimeout(() => bgVideoSync(true), 0); } playStopAudio(); playStopAudio = () => {}; if (playAC) { try { playAC.close(); } catch (e) {} playAC = null; }
+  playing = false; trSrc = null; playRange = null; clearTimeout(playTimer); playCanvas = null; if (vtOn()) { vtPauseAll(); setTimeout(() => bgVideoSync(true), 0); } else if (bgVid.el) { try { bgVid.el.playbackRate = 1; } catch (e) {} bgVid.el.pause(); bgVid.el.muted = true; setTimeout(() => bgVideoSync(true), 0); } playStopAudio(); playStopAudio = () => {}; if (playAC) { try { playAC.close(); } catch (e) {} playAC = null; }
   clearTimeout(playFreeT); playFreeT = setTimeout(() => { if (!playing) freePlayCache(); }, 45000);
   $('#playBtn span').textContent = 'Phát'; $('#playHint').hidden = true; $('#app').classList.remove('playing');
   S.frames.forEach(g => g.el && g.el.classList.remove('playing'));
@@ -6875,6 +6924,7 @@ async function sfxBuffer(kind) {
 async function sfxPreview(kind) { try { const ac = new (window.AudioContext || window.webkitAudioContext)(); const b = await sfxBuffer(kind); const s = ac.createBufferSource(); s.buffer = b; s.connect(ac.destination); s.start(); setTimeout(() => ac.close(), (SFX[kind].dur + 0.3) * 1000); } catch (e) {} }
 /* --- audio playback / mixing --- */
 const decCache = new WeakMap();
+const vtNoSound = new WeakSet();
 async function decodeAB(ac, ab) { if (decCache.has(ab)) return decCache.get(ab); const b = await ac.decodeAudioData(ab.slice(0)); decCache.set(ab, b); return b; }
 function frameStartTimes() { const t = [0]; S.frames.forEach((f, i) => t.push(t[i] + f.dur / 1000)); return t; }
 async function scheduleAudio(ac, dest, offsetSec, totalSec, lead = 0.05) {
@@ -6890,6 +6940,14 @@ async function scheduleAudio(ac, dest, offsetSec, totalSec, lead = 0.05) {
     for (const c of musicClips()) clip(await decodeAB(ac, c.buf), c, 'music', c.vol ?? 0.6);
     for (const c of voiceClips()) clip(await decodeAB(ac, c.buf), c, 'voice', c.vol ?? 1);
     for (const x of (A.sfx || [])) { if (!SFX[x.kind] || clipStart(x, 'sfx', T) == null) continue; clip(await sfxBuffer(x.kind), x, 'sfx', x.vol ?? 0.9); }
+    // 🎞 the sound of each piece on the video row (a file without sound is skipped)
+    for (const o of vtList()) {
+      const vol = o.c.vol ?? 1, src = vtSrc(o.c.s); if (vol <= 0.001 || !src || !src.buf || vtNoSound.has(src.buf)) continue;
+      if (o.st + o.len <= offsetSec + 0.005 || o.st > totalSec) continue;
+      let b; try { b = await decodeAB(ac, src.buf); } catch (e) { vtNoSound.add(src.buf); continue; }
+      const off = Math.min(o.c.off || 0, b.duration), skip = Math.max(0, offsetSec - o.st), len = Math.min(o.len, b.duration - off) - skip;
+      if (len > 0.005) play(b, now + Math.max(0, o.st - offsetSec), off + skip, vol, len);
+    }
     // transition sounds (📺 click, whoosh…) start with the transition itself, which can begin inside an earlier frame
     for (const x of trList(T)) { const kk = TR_KINDS[x.k].sfx; if (!x.snd || !kk || !SFX[kk]) continue; const st = Math.max(0, x.k === 'tvoff' ? x.t0 + x.d * 0.05 : x.t0); if (st < offsetSec - 0.01 || st > totalSec) continue; play(await sfxBuffer(kk), now + st - offsetSec, 0, 0.8); }
   } catch (e) { console.error(e); }
@@ -7341,7 +7399,8 @@ function gifEncoder(w, h) {
 async function renderFinalFrame(ctx, i, base, tIn = 0, withTr = false) {
   const f = S.frames[i]; await ghostLoad(f); await ensureLoaded(f); const bg = bgOf(f); if (bg) await ensureLoaded(bg);
   const bx = base.getContext('2d'); drawFrameBase(bx, f, bg);
-  if (S.bgVideo && bgVid.ready) { const v = bgVid.el; try { v.currentTime = bgVideoTimeAt(i); await new Promise(r => { v.onseeked = r; setTimeout(r, 600); }); } catch (e) {} }
+  if (vtOn()) await vtSeekAt(frameStartTimes()[i] + tIn);
+  else if (S.bgVideo && bgVid.ready) { const v = bgVid.el; try { v.currentTime = bgVideoTimeAt(i); await new Promise(r => { v.onseeked = r; setTimeout(r, 600); }); } catch (e) {} }
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.restore();
   trSkip = !withTr; try { drawFrameFx(ctx, i, base, frameStartTimes()[i] + tIn, tIn); } finally { trSkip = false; }
 }
@@ -7499,7 +7558,7 @@ async function exportVideoFast(msg, isCancelled) {
       if (isCancelled()) throw new Error('cancel'); if (err) throw err;
       const t = n / VX_FPS; let i = T.findIndex((v, k) => k < S.frames.length && t < T[k + 1]); if (i < 0) i = S.frames.length - 1;
       if (i !== bi) { const f = S.frames[i]; await ghostLoad(f); await ensureLoaded(f); const bg = bgOf(f); if (bg) await ensureLoaded(bg); drawFrameBase(bx, f, bg, live); bi = i; evictSoon(); }
-      await ts.prep(t, T);
+      await ts.prep(t, T); if (vtOn()) await vtSeekAt(t);
       drawFrameFx(ox, i, base, t, t - T[i], null, live ? ppLiveOver(i, t - T[i], false) : null);
       const vf = new VideoFrame(out, { timestamp: Math.round(t * 1e6), duration: Math.round(1e6 / VX_FPS) });
       enc.encode(vf, { keyFrame: n % (VX_FPS * 2) === 0 }); vf.close();
@@ -7507,7 +7566,7 @@ async function exportVideoFast(msg, isCancelled) {
       if (n % 5 === 0) { msg(`⚡ Xuất nhanh: ${t.toFixed(1)} / ${total.toFixed(1)} giây`); await new Promise(r => setTimeout(r, 0)); }
     }
     await enc.flush(); if (err) throw err;
-  } finally { try { enc.close(); } catch (e) {} ts.done(); out.width = base.width = 0; }
+  } finally { try { enc.close(); } catch (e) {} ts.done(); out.width = base.width = 0; if (vtOn()) bgVideoSync(true); }
   if (!vDesc || !vSamples.length) return null;
   let audio = null;
   if (hasAudio()) {
@@ -7614,7 +7673,7 @@ async function exportVideo() {
     await modal({ title: 'Video đã xong 🎉', html: `<p>${total.toFixed(1)} giây · ${(blob.size / 1048576).toFixed(1)} MB · ${ext.toUpperCase()}${fast ? ' · ⚡ xuất nhanh' : ''}</p>${ext === 'webm' ? '<p class="lbl" style="font-size:12px">Trình duyệt này chỉ quay được WebM. YouTube/TikTok đều nhận WebM; nếu cần MP4 hãy gửi file cho Claude chuyển.</p>' : ''}`,
       buttons: [{ label: 'Đóng', value: null }, { label: 'Lưu video', primary: true, action: async () => { await deliverFile(blob, `${(S.projName || 'video').replace(/[^\p{L}\p{N} _-]/gu, '').trim() || 'video'}-${stamp()}.${ext}`); } }] });
   };
-  if (!S.bgVideo && S.fastVideo !== false) {
+  if ((!S.bgVideo || vtOn()) && S.fastVideo !== false) {
     try {
       const fb = await exportVideoFast(msg, () => cancelled);
       if (fb) { ov.remove(); await doneDlg(fb, 'mp4', frameStartTimes()[S.frames.length], true); return; }
@@ -7633,14 +7692,14 @@ async function exportVideo() {
     const ac = new (window.AudioContext || window.webkitAudioContext)(), dest = ac.createMediaStreamDestination();
     const T = frameStartTimes(), total = T[T.length - 1];
     let vid = null;
-    if (S.bgVideo) {
+    if (S.bgVideo && !vtOn()) {
       vid = document.createElement('video'); vid.playsInline = true; vid.setAttribute('playsinline', ''); vid.loop = true; vid.muted = !S.bgVideo.audio; vid.src = bgVid.url || URL.createObjectURL(new Blob([S.bgVideo.buf], { type: S.bgVideo.type || 'video/mp4' }));
       vid.style.cssText = 'position:fixed;width:2px;height:2px;opacity:0;pointer-events:none'; document.body.append(vid);
       await new Promise(r => { if (vid.readyState >= 2) r(); else { vid.onloadeddata = r; vid.onerror = r; } });
       try { vid.currentTime = (S.bgVideo.offset || 0) % (vid.duration || 1); } catch (e) {}
       await new Promise(r => { vid.onseeked = r; setTimeout(r, 800); });
     }
-    const hasAudio = !!(S.audio && (musicClips().length || voiceClips().length || (S.audio.sfx || []).length)) || !!(vid && S.bgVideo.audio);
+    const hasAudio = !!(S.audio && (musicClips().length || voiceClips().length || (S.audio.sfx || []).length)) || !!(vid && S.bgVideo.audio) || vtHasAudio();
     if (vid && S.bgVideo.audio) { try { const src = ac.createMediaElementSource(vid), g = ac.createGain(); g.gain.value = S.bgVideo.vol ?? 0.7; src.connect(g).connect(dest); } catch (e) { console.error(e); } }
     if (hasAudio) dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
     const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8e6 }), chunks = [];
@@ -7650,6 +7709,7 @@ async function exportVideo() {
     let bmp = await createImageBitmap(blobs[0]), bmpI = 0, nextP = blobs[1] ? createImageBitmap(blobs[1]) : null;
     drawFrameFx(ox, 0, bmp, 0, 0, vid, live ? ppLiveOver(0, 0, false) : null);
     if (vid) { try { await vid.play(); } catch (e) {} }
+    if (vtOn()) { await vtSeekAt(0); vtPlayTick(0); }
     rec.start(250); let stopAudio = () => {}; if (hasAudio) stopAudio = await scheduleAudio(ac, dest, 0, total);
     const t0 = performance.now();
     await new Promise(resolve => {
@@ -7659,13 +7719,13 @@ async function exportVideo() {
         if (t >= total + 0.15) { resolve(); return; }
         let i = T.findIndex((v, k) => k < S.frames.length && t < T[k + 1]); if (i < 0) i = S.frames.length - 1;
         if (i !== bmpI) { bmp.close && bmp.close(); bmp = nextP && i === bmpI + 1 ? await nextP : await createImageBitmap(blobs[i]); bmpI = i; nextP = blobs[i + 1] ? createImageBitmap(blobs[i + 1]) : null; }
-        await rts.prep(t, T); drawFrameFx(ox, i, bmp, t, t - T[i], vid, live ? ppLiveOver(i, t - T[i], false) : null);
+        await rts.prep(t, T); if (vtOn()) vtPlayTick(t); drawFrameFx(ox, i, bmp, t, t - T[i], vid, live ? ppLiveOver(i, t - T[i], false) : null);
         msg(`Đang quay ${t.toFixed(1)} / ${total.toFixed(1)} giây`);
         requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
     });
-    rts.done(); rec.stop(); stopAudio(); if (vid) { vid.pause(); vid.remove(); } await done; ac.close(); stream.getTracks().forEach(t => t.stop()); out.width = 0;
+    rts.done(); rec.stop(); stopAudio(); if (vid) { vid.pause(); vid.remove(); } if (vtOn()) { vtPauseAll(); bgVideoSync(true); } await done; ac.close(); stream.getTracks().forEach(t => t.stop()); out.width = 0;
     ov.remove();
     if (cancelled) { toast('Đã huỷ xuất video'); return; }
     const blob = new Blob(chunks, { type: mime.split(';')[0] });
@@ -8985,7 +9045,7 @@ function bgMenuPop() {
     <div class="bgm-row" data-k="newBgBtn"><span>Cho frame này nền trống riêng, dùng khi sang cảnh mới</span></div>
     <div class="bgm-row" data-k="splitBgBtn"><span>Sửa nền ở frame này mà không đổi các frame khác</span></div>
     <div class="bgm-row" data-k="bgVidBtn"><span>Dùng một đoạn video làm nền phía sau nhân vật</span></div>
-    <div class="bgm-row" data-k="vidFramesBtn"><span>Tách video thành từng frame để vẽ đè lên (đồ theo chuyển động thật), giữ cả tiếng</span></div>
+    <div class="bgm-row" data-k="vidFramesBtn"><span>Ghép theo video (cắt, nối như dựng phim, vẽ đè lên) hoặc tách thành từng frame để đồ theo</span></div>
     <div class="bgm-row"><button class="chip small on bgm-scene">🏞 Nền vẽ sẵn</button><span>Phòng, lớp học, phố, công viên, biển… chạm là có cảnh</span></div>`, 'bgm');
   const hold = $('#bgHold'), info = $('#bgInfo');
   d.querySelector('.bgm-info').textContent = info.textContent;
@@ -9061,7 +9121,7 @@ async function resolveProjectRefs(p, pid) {
   for (const b of p.bgs || []) b.png = await resolveRef(b.png);
   for (const f of p.frames || []) { f.png = await resolveRef(f.png); f.col = await resolveRef(f.col); }
   if (p.audio) { for (const k of ['music', 'voice']) if (p.audio[k]) p.audio[k].buf = await resolveRef(p.audio[k].buf); for (const v of [...(p.audio.voices || []), ...(p.audio.musics || [])]) v.buf = await resolveRef(v.buf); }
-  if (p.bgVideo) p.bgVideo.buf = await resolveRef(p.bgVideo.buf);
+  if (p.bgVideo) { p.bgVideo.buf = await resolveRef(p.bgVideo.buf); for (const v of p.bgVideo.srcs || []) v.buf = await resolveRef(v.buf); }
   return p;
 }
 async function copyProjectBlobs(fromId, toId, rec) {
@@ -9091,7 +9151,7 @@ async function saveProject() {
       name: S.projName || 'Dự án', poses: S.poses || [],
       frames: S.frames.map(f => ({ id: f.id, dur: f.dur, bgId: f.bgId, png: ref('f:' + f.id, f.png), col: ref('c:' + f.id, f.colPng), vec: f.vec, pp: f.pp || {}, ppKey: f.ppKey, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || null, tr: f.tr || null, tre: f.tre || null, ghost: f.ghost || null, bgs: f.bgs || null, sl: f.sl || null, flt: f.flt || null })),
       audio: A ? { ...A, music: slim(A.music), musics: (A.musics || []).map((v, k) => ({ ...v, buf: aref('m:mu' + (v.id || k), v.buf) })), voice: slim(A.voice), voices: (A.voices || []).map((v, k) => ({ ...v, buf: aref('m:v' + (v.id || k), v.buf) })) } : null,
-      bgVideo: S.bgVideo ? { ...S.bgVideo, buf: ref('m:video', S.bgVideo.buf) } : null,
+      bgVideo: S.bgVideo ? { ...S.bgVideo, buf: ref('m:video', S.bgVideo.buf), srcs: S.bgVideo.srcs ? S.bgVideo.srcs.map(v => ({ ...v, buf: ref('m:vs' + v.id, v.buf) })) : undefined } : null,
       pp: S.pp ? { parts: S.pp.parts.map(p => ({ id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null, png: p.png, alts: (p.alts || []).map(a => ({ png: a.png, dx: a.dx || 0, dy: a.dy || 0 })) })) } : null,
       rig: S.rig || null,
       ref: REF.c && REF.png ? { png: REF.png, cx: REF.cx, cy: REF.cy, scale: REF.scale, rot: REF.rot, opacity: REF.opacity, show: REF.show } : null
@@ -10582,12 +10642,156 @@ $('#zipFile').addEventListener('change', async e => {
 
 
 /* ========= Video background ========= */
-const bgVid = { el: null, url: null, ready: false };
+const bgVid = { el: null, url: null, ready: false, fit: '' };
+/* ===== 🎞 Video track (ghép theo video): the whole video stays a video. S.bgVideo.track = 1 → S.bgVideo.srcs = the files
+   [{id, name, type, buf, dur, w, h}], S.bgVideo.clips = pieces played one after another from 0 s (like the main track of a
+   video editor): {id, s: src id, off: seconds skipped in the file, len: seconds played, vol (tiếng, 0 = tắt), fit: 'cover'|'contain'}.
+   Edited on the 🎞 Video row of the 🎚 timeline (kéo giữa = đổi chỗ, kéo mép = cắt bớt, ✂ cắt, 🔗 nối, ⧉, 🗑). One hidden <video>
+   per file (vt.els), always muted: the sound of each piece is scheduled by scheduleAudio like a music clip, so it stays in sync
+   and ⚡ fast export can mix it offline. Frames are drawn on top; the last frame is stretched to the end of the video
+   (vtFitFrames). Edits only change S.bgVideo + frame durations → automatic undo (vidCopy in the snapshot). ===== */
+const vt = { els: new Map(), playClip: null, pre: null, th: new Map() };
+const vtOn = () => !!(S.bgVideo && S.bgVideo.track && S.bgVideo.clips);
+const vtSrc = id => S.bgVideo && (S.bgVideo.srcs || []).find(s => s.id === id);
+function vidCopy(V) { return V ? { ...V, srcs: V.srcs ? V.srcs.map(s => ({ ...s })) : V.srcs, clips: V.clips ? V.clips.map(c => ({ ...c })) : V.clips } : null; }
+function vtLen(c) { const s = vtSrc(c.s), sd = s && s.dur ? s.dur : Infinity; return Math.max(0.05, Math.min(c.len ?? sd, sd - (c.off || 0))); }
+function vtList() { if (!vtOn()) return []; let st = 0; return S.bgVideo.clips.map((c, k) => { const o = { c, k, st, len: vtLen(c) }; st += o.len; return o; }); }
+function vtEnd() { const L = vtList(); return L.length ? L[L.length - 1].st + L[L.length - 1].len : 0; }
+function vtAt(t) { for (const o of vtList()) if (t >= o.st - 1e-6 && t < o.st + o.len - 1e-6) return { ...o, src: (o.c.off || 0) + Math.max(0, t - o.st) }; return null; }
+const vtHasAudio = () => vtOn() && S.bgVideo.clips.some(c => (c.vol ?? 1) > 0.001);
+function vtMakeEl(src) {
+  const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto';
+  v.style.cssText = 'position:fixed;width:2px;height:2px;opacity:0;pointer-events:none;left:0;top:0';
+  const e = { el: v, url: URL.createObjectURL(new Blob([src.buf], { type: src.type || 'video/mp4' })), ready: false, buf: src.buf };
+  v.addEventListener('loadeddata', () => { e.ready = true; bgVid.ready = true; if (!src.dur && isFinite(v.duration)) src.dur = v.duration; bgVideoSync(true); });
+  v.addEventListener('seeked', () => requestRender());
+  v.addEventListener('error', () => toast('Không mở được video "' + String(src.name).slice(0, 30) + '" (thử MP4)', 3500));
+  v.addEventListener('loadedmetadata', () => { if (v.readyState < 2) v.play().then(() => v.pause()).catch(() => {}); }, { once: true });
+  v.src = e.url; document.body.append(v); return e;
+}
+function vtSetupEls() {
+  const want = new Map((vtOn() ? S.bgVideo.srcs : []).filter(s => s.buf).map(s => [s.id, s]));
+  for (const [id, e] of vt.els) if (!want.has(id) || want.get(id).buf !== e.buf) { e.el.pause(); e.el.remove(); URL.revokeObjectURL(e.url); vt.els.delete(id); }
+  for (const [id, s] of want) if (!vt.els.has(id)) vt.els.set(id, vtMakeEl(s));
+  bgVid.ready = [...vt.els.values()].some(e => e.ready);
+}
+// choose the <video> for the piece at timeline time t (null = no video there)
+function vtUse(at) {
+  const e = at && vt.els.get(at.c.s);
+  if (!e || !e.ready) { bgVid.el = null; return null; }
+  bgVid.el = e.el; bgVid.fit = at.c.fit || ''; return e;
+}
+function vtShowAt(t, force) {
+  const e = vtUse(vtAt(t)); if (!e) { requestRender(); return; }
+  const at = vtAt(t); if (force || Math.abs(e.el.currentTime - at.src) > 0.03) { try { e.el.currentTime = at.src; } catch (err) {} }
+  requestRender();
+}
+// while playing (and real-time export): keep the right file playing at the right place
+function vtPlayTick(t, rate = 1) {
+  const prev = bgVid.el, at = vtAt(t), e = vtUse(at);
+  if (prev && prev !== bgVid.el) prev.pause();
+  if (!e) { vt.playClip = null; return; }
+  const v = e.el, drift = Math.abs(v.currentTime - at.src);
+  if (drift > (vt.playClip === at.c.id ? 0.35 : 0.08)) { try { v.currentTime = at.src; } catch (err) {} }
+  vt.playClip = at.c.id;
+  if (v.playbackRate !== rate) v.playbackRate = rate;
+  if (v.paused) v.play().catch(() => {});
+  // the next piece comes from another file: have it waiting at its first picture
+  const L = vtList(), nx = L[at.k + 1];
+  if (nx && nx.c.s !== at.c.s && nx.st - t < 1.2 && vt.pre !== nx.c.id) { const ne = vt.els.get(nx.c.s); if (ne && ne.ready) { try { ne.el.currentTime = nx.c.off || 0; } catch (err) {} } vt.pre = nx.c.id; }
+}
+function vtPauseAll() { for (const e of vt.els.values()) { try { e.el.pause(); e.el.playbackRate = 1; } catch (err) {} } vt.playClip = null; vt.pre = null; }
+// exact picture for export: seek and wait
+async function vtSeekAt(t) {
+  const at = vtAt(t), e = vtUse(at); if (!e) return null;
+  if (!e.el.paused) e.el.pause();
+  if (Math.abs(e.el.currentTime - at.src) > 0.004) await vfSeek(e.el, at.src);
+  return e.el;
+}
+// the film is at least as long as the video: the last frame is stretched (or shortened) to end with the video
+function vtFitFrames() {
+  if (!vtOn() || !S.frames.length) return;
+  const T = frameStartTimes(), n = S.frames.length, end = vtEnd(), last = S.frames[n - 1];
+  if (end > T[n - 1] + 0.05) { const d = Math.round((end - T[n - 1]) * 1000); if (Math.abs(d - last.dur) > 1) { last.dur = d; updateFrameUI(); } }
+}
+// little pictures along the clip on the timeline: one file → one hidden <video> that seeks through it once
+function vtThumbs(src) {
+  let e = vt.th.get(src.id); if (e && e.buf === src.buf) return e;
+  e = { buf: src.buf, step: 1, pics: [] }; vt.th.set(src.id, e);
+  (async () => {
+    let v, url;
+    try {
+      url = URL.createObjectURL(new Blob([src.buf], { type: src.type || 'video/mp4' })); v = await vfOpenVideo(url);
+      const dur = v.duration || src.dur || 1; e.step = Math.max(0.5, dur / 80);
+      const th = ATL_LANE - 8, tw = Math.max(16, Math.round(th * (v.videoWidth || 16) / (v.videoHeight || 9)));
+      for (let t = 0, k = 0; t < dur; t += e.step, k++) {
+        if (vt.th.get(src.id) !== e) break;
+        await vfSeek(v, Math.min(dur - 0.02, t + 0.01));
+        const c = makeCanvas(tw * 2, th * 2); c.getContext('2d').drawImage(v, 0, 0, c.width, c.height); e.pics[k] = c;
+        if (k % 4 === 0) atlDraw();
+      }
+      atlDraw();
+    } catch (err) { console.error(err); }
+    if (v) { v.removeAttribute('src'); v.load(); v.remove(); } if (url) URL.revokeObjectURL(url);
+  })();
+  return e;
+}
+// 🎞 add a video file as one piece at the end of the video row
+async function vtAddFile(file) {
+  if (playing) stopPlay(); if (stroke) strokeEnd(); commitFloating(); histFlush();
+  if (file.size > 300e6) { toast('Video quá lớn (tối đa 300 MB) — hãy cắt ngắn hoặc giảm chất lượng', 4000); return; }
+  const pm = progress('Đang nạp video…'); let buf, v, url;
+  try {
+    buf = await file.arrayBuffer(); url = URL.createObjectURL(new Blob([buf], { type: file.type || 'video/mp4' }));
+    v = await vfOpenVideo(url);
+  } catch (e) { pm.close(); if (url) URL.revokeObjectURL(url); toast('Không mở được video này (thử file MP4)', 4000); return; }
+  const dur = v.duration || 0, vw = v.videoWidth, vh = v.videoHeight; v.remove(); URL.revokeObjectURL(url); pm.close();
+  if (!(dur > 0)) { toast('Video không có độ dài — thử file khác', 4000); return; }
+  vtToTrack();
+  const V = S.bgVideo, src = { id: newId(), name: file.name.slice(0, 60), type: file.type || 'video/mp4', buf, dur, w: vw, h: vh };
+  V.srcs.push(src);
+  const c = { id: newId(), s: src.id, off: 0, len: Math.round(dur * 1000) / 1000, fit: (vw > vh) === (W > H) ? 'cover' : 'contain' };
+  V.clips.push(c); if (!V.name) V.name = src.name;
+  vtAfterEdit(); markAllFrames(); atlSel = c.id; if (!atlOpen()) atlShow(true); else atlDraw();
+  toast('🎞 Đã thêm video vào dòng Video. Kéo giữa = đổi chỗ, kéo mép = cắt bớt, ✂ Cắt tại vạch đỏ. Vẽ, nhân vật, chữ nằm trên video', 6000);
+}
+// an older single background video (loops under the frames) → the video row
+function vtToTrack() {
+  if (vtOn()) return;
+  const O = S.bgVideo;
+  S.bgVideo = { track: 1, name: O ? O.name : '', srcs: [], clips: [] };
+  if (O && O.buf) {
+    const d = bgVid.el && isFinite(bgVid.el.duration) ? bgVid.el.duration : null, src = { id: newId(), name: O.name, type: O.type, buf: O.buf, dur: d };
+    S.bgVideo.srcs.push(src);
+    S.bgVideo.clips.push({ id: newId(), s: src.id, off: O.offset || 0, len: d ? Math.max(0.1, d - (O.offset || 0)) : 10, vol: O.audio ? (O.vol ?? 0.7) : 0, fit: 'cover' });
+  }
+}
+// after a change on the video row: drop files nothing uses, stretch the film, update the players + save (= one undo step)
+function vtAfterEdit() {
+  const V = S.bgVideo; if (!V || !V.track) return;
+  if (!V.clips.length) { S.bgVideo = null; bgVideoSetup(); markAllFrames(); scheduleSave(); return; }
+  const used = new Set(V.clips.map(c => c.s)); V.srcs = V.srcs.filter(s => used.has(s.id));
+  vtFitFrames(); bgVideoSetup(); bgVideoSync(true); scheduleSave();
+}
+// ✂ cut the frame being shown at the red playhead: the part after it becomes a new empty frame (to draw something else there)
+async function vtFrameAtPh() {
+  const T = frameStartTimes(), i = S.cur, ph = atlPh(T), a = T[i], b = T[i + 1];
+  if (ph < a + 0.04 || ph > b - 0.04) { toast('Đặt vạch đỏ vào giữa frame đang xem (chạm chỗ trống trên dòng thời gian) rồi bấm lại', 3000); return; }
+  if (stroke) strokeEnd(); commitFloating(); histFlush();
+  const f = S.frames[i], g = newFrameObj(f.bgId);
+  g.dur = Math.round((b - ph) * 1000); f.dur = Math.round((ph - a) * 1000);
+  g.pp = ppClone(f.pp); g.lip = lipCopy(f); g.ppKey = false;
+  S.frames.splice(i + 1, 0, g); loaded.push(g); evictSoon();
+  buildStrip(); await selectFrame(i + 1); atl.ph = ph; ppRetween && ppRetween(); scheduleSave(); atlDraw();
+  toast(`➕ Frame ${i + 2} bắt đầu ở ${ph.toFixed(2)}s — vẽ ở đây chỉ hiện từ chỗ này`, 3000);
+}
 function bgVideoSetup() {
-  if (bgVid.el) { bgVid.el.pause(); bgVid.el.remove(); }
+  if (bgVid.el && ![...vt.els.values()].some(e => e.el === bgVid.el)) { bgVid.el.pause(); bgVid.el.remove(); }
   if (bgVid.url) URL.revokeObjectURL(bgVid.url);
-  bgVid.el = null; bgVid.url = null; bgVid.ready = false;
-  if (!S.bgVideo) { requestRender(); updateBgVideoBtn(); return; }
+  bgVid.el = null; bgVid.url = null; bgVid.ready = false; bgVid.fit = '';
+  vtSetupEls();
+  if (vtOn()) { requestRender(); updateBgVideoBtn(); return; }
+  if (!S.bgVideo || !S.bgVideo.buf) { requestRender(); updateBgVideoBtn(); return; }
   const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto'; v.loop = true;
   v.style.cssText = 'position:fixed;width:2px;height:2px;opacity:0;pointer-events:none;left:0;top:0';
   bgVid.url = URL.createObjectURL(new Blob([S.bgVideo.buf], { type: S.bgVideo.type || 'video/mp4' })); v.src = bgVid.url;
@@ -10599,23 +10803,28 @@ function bgVideoSetup() {
 function bgVideoTimeAt(i) { const T = frameStartTimes(), d = bgVid.el && bgVid.el.duration || 1; return ((T[i] || 0) + (S.bgVideo.offset || 0)) % d; }
 function bgVideoSync(force) {
   if (!S.bgVideo || !bgVid.ready || playing) return;
+  if (vtOn()) { vtShowAt(atlPh(), force); return; }
   const t = bgVideoTimeAt(S.cur); if (force || Math.abs(bgVid.el.currentTime - t) > 0.03) { try { bgVid.el.currentTime = t; } catch (e) {} }
 }
-function drawVideoCover(ctx, v) {
+// cover = fill the frame (crop), contain = whole picture with black bars (video row pieces can choose)
+function drawVideoCover(ctx, v, fit) {
   if (!v || !v.videoWidth) return;
-  const k = Math.max(W / v.videoWidth, H / v.videoHeight), w = v.videoWidth * k, h = v.videoHeight * k;
+  const cont = (fit || (vtOn() ? bgVid.fit : '')) === 'contain';
+  const k = (cont ? Math.min : Math.max)(W / v.videoWidth, H / v.videoHeight), w = v.videoWidth * k, h = v.videoHeight * k;
+  if (cont) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); }
   ctx.drawImage(v, (W - w) / 2, (H - h) / 2, w, h);
 }
 function updateBgVideoBtn() { const b = document.getElementById('bgVidBtn'); if (b) { b.classList.toggle('on', !!S.bgVideo); b.textContent = S.bgVideo ? '🎞 Nền video ✓' : '🎞 Nền video'; } const m = document.getElementById('bgMenuBtn'); if (m) m.textContent = S.bgVideo ? '🖼 Nền: video ▾' : '🖼 Nền ▾'; }
 async function bgVideoDialog() {
-  if (!S.bgVideo) { $('#bgVidFile').click(); return; }
+  if (vtOn()) { atlShow(true); toast('Video nằm ở dòng 🎞 Video trên dòng thời gian: cắt, nối, đổi chỗ ở đó', 3000); return; }
+  if (!S.bgVideo) { $('#vtFile').click(); return; }
   const V = S.bgVideo, dur = bgVid.el && bgVid.el.duration ? bgVid.el.duration.toFixed(1) + 's' : '';
   await modal({ title: '🎞 Nền video', html: `<p>${V.name.replace(/</g, '&lt;')} ${dur}</p>
     <div class="set-row"><span>Bắt đầu video từ giây</span><input type="number" id="bvOff" min="0" step="0.1" value="${V.offset || 0}"></div>
     <div class="set-row"><span>Dùng tiếng của video khi phát/xuất</span><input type="checkbox" class="switch" id="bvAud" ${V.audio ? 'checked' : ''}></div>
     <div class="set-row"><span>Âm lượng tiếng video</span><input type="range" id="bvVol" min="0" max="100" value="${Math.round((V.vol ?? 0.7) * 100)}"></div>
-    <p class="lbl" style="font-size:12px">Video nằm dưới lớp Nền. Phần nào của lớp Nền còn trống (trong suốt) thì thấy video. Video tự lặp nếu ngắn hơn hoạt hình.</p>`,
-    buttons: [{ label: 'Xoá nền video', value: 'del', cls: 'danger' }, { label: 'Đổi video', value: 'change' }, { label: 'Xong', value: 'ok', primary: true }],
+    <p class="lbl" style="font-size:12px">Video nằm dưới lớp Nền. Phần nào của lớp Nền còn trống (trong suốt) thì thấy video. Video tự lặp nếu ngắn hơn hoạt hình. Bấm <b>✂ Cắt ghép như video</b> để đưa video lên dòng 🎞 Video: cắt, nối nhiều đoạn, đổi chỗ.</p>`,
+    buttons: [{ label: 'Xoá nền video', value: 'del', cls: 'danger' }, { label: 'Đổi video', value: 'change' }, { label: '✂ Cắt ghép như video', value: 'track' }, { label: 'Xong', value: 'ok', primary: true }],
     onOpen: ov => {
       ov.querySelector('#bvOff').addEventListener('change', e => { V.offset = Math.max(0, +e.target.value || 0); bgVideoSync(true); scheduleSave(); });
       ov.querySelector('#bvAud').addEventListener('change', e => { V.audio = e.target.checked; scheduleSave(); });
@@ -10623,6 +10832,7 @@ async function bgVideoDialog() {
     } }).then(v => {
       if (v === 'del') { S.bgVideo = null; bgVideoSetup(); markAllFrames(); scheduleSave(); }
       else if (v === 'change') $('#bgVidFile').click();
+      else if (v === 'track') { vtToTrack(); bgVideoSetup(); vtAfterEdit(); atlShow(true); }
     });
 }
 function markAllFrames() { S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); requestRender(); }
@@ -10632,7 +10842,16 @@ function markAllFrames() { S.frames.forEach(f => { f.ver++; queueThumbFor(f); })
    One undo step (automatic undo: frame list, backgrounds and sounds are in the snapshot). ===== */
 const VF = { fps: 12, fit: '', fade: 0, audio: true, max: 300 };
 $('#vidFramesBtn').addEventListener('click', () => $('#vidFramesFile').click());
-$('#vidFramesFile').addEventListener('change', e => { const file = e.target.files[0]; e.target.value = ''; if (file) vidFramesDialog(file); });
+$('#vidFramesFile').addEventListener('change', e => { const file = e.target.files[0]; e.target.value = ''; if (file) vidAddChoose(file); });
+$('#vtFile').addEventListener('change', e => { const file = e.target.files[0]; e.target.value = ''; if (file) vtAddFile(file); });
+// 🎬 Thêm video: keep it a video (fast: cut / join like a video editor, draw on top) or split it into frames (rotoscope)
+async function vidAddChoose(file) {
+  const m = await modal({ title: '🎬 Thêm video', html: `<p class="lbl" style="margin-top:0">${file.name.replace(/</g, '&lt;').slice(0, 60)}</p>
+    <div class="set-row"><span><b>🎞 Ghép theo video</b> (nhanh)<br><span class="lbl" style="font-size:12px">Giữ nguyên cả video trên dòng 🎞 Video: cắt, cắt bớt, nối, đổi chỗ như phần mềm dựng phim. Vẽ, nhân vật, chữ, nhạc nằm trên video.</span></span></div>
+    <div class="set-row"><span><b>🖼 Ghép theo frame</b><br><span class="lbl" style="font-size:12px">Mỗi khung của video thành 1 frame để vẽ đè lên từng khung (đồ theo chuyển động thật). Chậm hơn, nhiều frame.</span></span></div>`,
+    buttons: [{ label: 'Huỷ', value: null }, { label: '🖼 Theo frame', value: 'fr' }, { label: '🎞 Theo video', value: 'vt', primary: true }] });
+  if (m === 'vt') vtAddFile(file); else if (m === 'fr') vidFramesDialog(file);
+}
 function vfOpenVideo(url) {
   return new Promise((res, rej) => {
     const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto';
@@ -11403,7 +11622,7 @@ $('#menuBtn').addEventListener('click', () => {
   <button class="btn primary" data-m="export">⬇ Xuất ZIP (gửi Claude)</button>
   <button class="btn" data-m="open">📂 Mở dự án từ ZIP</button>
   <button class="btn" data-m="scene">🏞 Nền vẽ sẵn (phòng, lớp học, phố, biển…)</button>
-  <button class="btn" data-m="vidframes">🎬 Thêm video thành frame (vẽ đè lên)</button>
+  <button class="btn" data-m="vidframes">🎬 Thêm video (ghép theo video / theo frame)</button>
   <button class="btn" data-m="img">🖼 Nhập ảnh (đồ theo / tách nhân vật / lấy nét)</button>
   <button class="btn" data-m="aichar">🤖 AI tạo nhân vật từ ảnh</button>
   <button class="btn" data-m="aifx">🪄 AI vẽ đẹp (làm sạch nét, tô màu, frame giữa)</button>
