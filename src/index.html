@@ -135,7 +135,7 @@ body.bigui .tool{width:66px;min-height:62px;font-size:12px} body.bigui .tool svg
 #focusBar{position:absolute;right:10px;top:10px;display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:5px;box-shadow:0 6px 20px #0008;z-index:6}
 #focusBar button{border:0;background:var(--panel2);color:var(--text);border-radius:10px;min-width:44px;height:44px;font-size:16px;cursor:pointer;padding:0 10px}
 #focusBar button.on{background:var(--accent);color:var(--accent-ink)}
-#flipNav{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:flex;align-items:center;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:4px;box-shadow:0 6px 20px #0008;z-index:5;opacity:.9;touch-action:none;user-select:none;-webkit-user-select:none}
+#flipNav{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);display:flex;align-items:center;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:4px;box-shadow:0 6px 20px #0008;z-index:5;opacity:.9;touch-action:none;user-select:none;-webkit-user-select:none}
 #flipNav button{border:0;background:var(--panel2);color:var(--text);border-radius:10px;min-width:46px;height:44px;font-size:18px;cursor:pointer}
 #flipNav button:disabled{opacity:.35} #flipNav #fnAdd{background:var(--accent);color:var(--accent-ink);font-weight:700}
 #flipNav #fnLbl{min-width:54px;text-align:center;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -145,6 +145,13 @@ body:not([data-tool=brush]):not([data-tool=eraser]):not([data-tool=fill]):not([d
 @media (max-width:1400px){ #top .tlbl{display:none} #pressBtn{display:none} }   /* narrow bar: Lực nhấn is in the Bút ▾ menu */
 body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:not([data-tool=brush]):not([data-tool=eraser]) #symBtn{display:none}
 #tl.collapsed #strip{display:none}
+/* drag handle on top of the frame bar: drag up = bigger frames + audio rows (S.tlScale → --tls) */
+#tl{position:relative}
+/* sits on the border between the drawing area and the frame bar, takes no height (landscape tablets need every pixel for the canvas) */
+#tlGrip{position:absolute;left:50%;top:-14px;transform:translateX(-50%);z-index:4;width:220px;height:28px;border-radius:14px;background:var(--panel);border:1px solid var(--line);box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:8px;touch-action:none;cursor:ns-resize;user-select:none;-webkit-user-select:none;color:var(--muted);font-size:11px}
+#tlGrip i{display:block;width:72px;height:6px;border-radius:3px;background:var(--line)}
+#tlGrip:hover i,#tlGrip.on i{background:var(--accent)} #tlGrip.on{color:var(--accent)}
+#tlGrip span{min-width:38px;background:var(--panel);border-radius:8px;padding:0 4px;text-align:center;font-variant-numeric:tabular-nums}
 /* Collapsible regions: each one folds into a small floating button on the stage */
 #app.hide-rail #rail,#app.hide-top #top,#app.hide-tl #tl{display:none}
 .dockb{position:absolute;z-index:7;display:flex;align-items:center;gap:6px;min-height:46px;min-width:46px;padding:0 12px;border:1px solid var(--accent);
@@ -157,7 +164,7 @@ body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:
 #app.focus .dockb{display:none!important}
 .hidebtn{min-height:40px;min-width:44px}
 @media (orientation:landscape) and (max-height:820px){
-  #tl{padding:5px 8px;gap:4px} #strip{padding:2px} .fr canvas{height:62px;width:auto}
+  #tl{padding:5px 8px;gap:4px} #strip{padding:2px} #strip .fr canvas{height:calc(62px * var(--tls,1))}
   .tool{min-height:42px;padding:2px} .tool svg{width:20px;height:20px}
   #top{padding:4px 8px;gap:4px 8px} #top input[type=range]{width:88px} #top .grp{gap:4px} #ppbar,#fxbar,#rigbar,#motionbar{max-height:55%}
 }
@@ -233,14 +240,14 @@ body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:
 #tlBar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
 #durIn{width:70px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 8px;text-align:right}
 body:not([data-tool=fill]) #gapBtn,body:not([data-tool=fill]) #autoColBtn{display:none}
-#scrub{display:block;width:100%;height:18px;margin:-2px 0 -3px;flex:none;touch-action:none;cursor:ew-resize;border-radius:6px}
+#scrub{display:block;width:100%;height:calc(18px * min(var(--tls,1),1.6));margin:-2px 0 -3px;flex:none;touch-action:none;cursor:ew-resize;border-radius:6px}
 #expLbl{min-width:84px}
 #atl{display:flex;flex-direction:column;gap:4px;flex:none} #atl[hidden]{display:none}
 #atlBar{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px} #atlBar .chip:disabled{opacity:.4}
 #atlCv{display:block;width:100%;height:120px;touch-action:none;border-radius:8px;background:#15171d;cursor:pointer}
 #strip{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 6px;scroll-behavior:smooth;touch-action:pan-x}
 .fr{flex:none;position:relative;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;border:2px solid transparent;border-radius:8px;cursor:pointer;background:#fff;overflow:hidden}
-.fr canvas{display:block}
+.fr canvas{display:block;height:calc(96px * var(--tls,1));width:auto}
 .fr.on{border-color:var(--accent)}
 #mselBar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--accent);border-radius:12px;background:var(--panel2)} #mselBar[hidden]{display:none} #mselBar .tbtn{min-height:42px}
 .fr.msel{border-color:#4fc3f7;box-shadow:0 0 0 3px #4fc3f7aa} .fr.msel::after{content:'✓';position:absolute;right:3px;top:2px;background:#4fc3f7;color:#000;border-radius:50%;width:20px;height:20px;font-size:13px;line-height:20px;text-align:center;font-weight:700}
@@ -257,7 +264,7 @@ body:not([data-tool=fill]) #gapBtn,body:not([data-tool=fill]) #autoColBtn{displa
 .fr.hasw .dur,.fr.hasw .shared{bottom:21px}
 .fr .shared{position:absolute;left:3px;bottom:3px;width:8px;height:8px;border-radius:50%}
 .fr.scst{border-left:4px solid #ff3b9a} .fr .scb{position:absolute;left:22px;top:3px;max-width:calc(100% - 44px);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;background:#ff3b9a;color:#fff;font-size:10px;padding:1px 5px;border-radius:6px;pointer-events:none}
-.addfr{flex:none;border:2px dashed var(--line);border-radius:8px;background:transparent;color:var(--muted);font-size:26px;cursor:pointer}
+.addfr{flex:none;height:calc(100px * var(--tls,1));border:2px dashed var(--line);border-radius:8px;background:transparent;color:var(--muted);font-size:26px;cursor:pointer}
 .tbtn{border:1px solid var(--line);background:var(--panel2);border-radius:10px;padding:7px 11px;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:13px}
 .tbtn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .tbtn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
@@ -300,7 +307,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
   #tlBar{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;padding-bottom:1px;-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent)} #tlBar::-webkit-scrollbar{display:none}
   #tlBar > *{flex:none}
   #atlBar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none} #atlBar > *{flex:none} #atlBar::-webkit-scrollbar{display:none}
-  #strip{align-items:flex-start} #strip .addfr{height:66px!important}
+  #strip{align-items:flex-start} #strip .addfr{height:calc(66px * var(--tls,1))!important}
 }
 [data-gag].active{outline:3px solid var(--accent);background:var(--panel2)}
 </style>
@@ -607,6 +614,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
   </main>
 
   <footer id="tl">
+    <div id="tlGrip" title="Kéo lên để thanh frame và dòng âm thanh to ra, kéo xuống để nhỏ lại (chạm: đổi nhanh 100% → 150% → 200%)"><i></i><span id="tlGripLbl"></span><i></i></div>
     <div id="tlBar">
       <button class="tbtn primary" id="playBtn"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></svg><span>Phát</span></button>
       <button class="tbtn on" id="loopBtn" title="Lặp lại">Lặp</button>
@@ -681,7 +689,7 @@ const S = {
   color: '#111111', size: 8, opacity: 1, pressure: true, brush: 'pen', eraserType: 'hard', recentColors: [], brushOp: {}, sizeScreen: true,
   onion: true, onionAlpha: 0.3, showBg: true, showChar: true, showCol: true, showVec: true, showPP: true, bendR: 160, mbendR: 0, vdm: 'point', snap: false, snapR: 24,
   fingerDraw: false, smooth: 0.3, defaultDur: 0.1, loop: true, fillTol: 120,
-  uiHide: { rail: false, top: false, tl: false }
+  uiHide: { rail: false, top: false, tl: false }, tlScale: 1
 };
 let uidN = 1;
 const newId = () => Date.now().toString(36) + (uidN++).toString(36);
@@ -702,7 +710,7 @@ let toastT;
 function toast(msg, ms = 1800) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
 
 /* ========= Settings ========= */
-const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','lineLayer','uiHide','panelHidden','brush','eraserType','recentColors','brushOp','sizeScreen','bigUi','fastVideo','selMode','warpSoft','atlOpen'];
+const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','lineLayer','uiHide','panelHidden','brush','eraserType','recentColors','brushOp','sizeScreen','bigUi','fastVideo','selMode','warpSoft','atlOpen','tlScale'];
 function loadSettings() { try { const o = JSON.parse(localStorage.getItem('fs-settings') || '{}'); for (const k of SETTINGS_KEYS) if (k in o) { if (k === 'panelHidden') Object.assign(panelHidden, o[k]); else S[k] = o[k]; } } catch (e) {}
   S.uiHide = Object.assign({ rail: false, top: false, tl: false }, S.uiHide); }
 function applyBigUi() { document.body.classList.toggle('bigui', !!S.bigUi); }
@@ -2473,7 +2481,8 @@ function queueThumbFor(o) {
   clearTimeout(thumbT); thumbT = setTimeout(flushThumbs, 250);
 }
 async function flushThumbs() { const list = [...thumbQ]; thumbQ.clear(); for (const f of list) await drawThumb(f); }
-function thumbSize() { const th = 96; return [Math.round(th * W / H), th]; }
+// thumbnails are drawn at a higher resolution when the frame bar is made bigger (steps of 0.5 so dragging does not redraw every frame)
+function thumbSize() { const th = Math.round(96 * Math.min(2.5, Math.max(1, Math.ceil((S.tlScale || 1) * 2 - 1e-6) / 2))); return [Math.round(th * W / H), th]; }
 async function drawThumb(f) {
   if (!f.thumb) { const [tw, th] = thumbSize(); f.thumb = makeCanvas(tw, th); }
   const t = f.thumb, x = t.getContext('2d');
@@ -2513,7 +2522,7 @@ function buildStrip() {
   });
   camBadges(); trBadges();
   const add = document.createElement('button'); add.className = 'addfr'; add.textContent = '+';
-  const [tw, th] = thumbSize(); add.style.width = Math.max(tw, 44) + 'px'; add.style.height = (th + 4) + 'px';
+  add.style.width = Math.max(Math.round(96 * W / H * (S.tlScale || 1)), 44) + 'px';
   add.title = 'Nhân bản frame hiện tại'; add.addEventListener('click', dupFrame);
   strip.append(add);
   waveKey = ''; updateFrameUI(); if (msel && (mselOn || msel.size)) mselSync();
@@ -2810,7 +2819,7 @@ function updateWaves() {
    records one step per drag / button. Playback, lip sync and video export all read the same fields (scheduleAudio, clipStart…). ===== */
 var atlDrag = null, atlSel = null, atlLay = null, atlRaf = 0;
 const atl = { pps: 0, x0: 0, ph: null, snap: true, pinch: null, ptrs: new Map() };
-const ATL_RUL = 24, ATL_LANE = 36, ATL_PAD = 8;
+const ATL_RUL = 24, ATL_PAD = 8; let ATL_LANE = 36;   // ATL_LANE grows with the frame-bar size (tlScaleSet)
 const ATL_TRK = [['music', '🎵 Nhạc'], ['voice', '🎤 Giọng'], ['sfx', '🔊 Tiếng động']];
 const ATL_VCOL = ['#ffb21e', '#5be37d', '#ff7ad9', '#7fd8ff'];
 const atlOpen = () => { const el = document.getElementById('atl'); return !!(el && !el.hidden); };
@@ -2894,7 +2903,7 @@ function atlDraw() {
         if (m > 0.02) { const v = Math.max(1, m * (hh - 14) / 2); x.fillRect(px, mid - v, 1, v * 2); }
       }
     }
-    x.fillStyle = '#fff'; x.font = 'bold 10px system-ui,sans-serif'; x.textBaseline = 'top';
+    x.fillStyle = '#fff'; x.font = 'bold ' + Math.round(10 * clamp(ATL_LANE / 36, 1, 1.5)) + 'px system-ui,sans-serif'; x.textBaseline = 'top';
     x.fillText((o.load ? '⏳ ' : '') + String(o.name).slice(0, 40), Math.max(a, 0) + 5, y + 3);
     x.restore();
     x.lineWidth = sel ? 2 : 1; x.strokeStyle = sel ? '#fff' : o.col; x.beginPath(); x.roundRect ? x.roundRect(a + 0.5, y + 0.5, Math.max(3, b - a) - 1, hh - 1, 6) : x.rect(a + 0.5, y + 0.5, b - a - 1, hh - 1); x.stroke();
@@ -6052,6 +6061,54 @@ $('#fbPen').addEventListener('click', () => { setTool('brush'); setFocus(true); 
 $('#fbEraser').addEventListener('click', () => { setTool('eraser'); setFocus(true); });
 $('#fbPlay').addEventListener('click', startPlay);
 $('#fbPrev').addEventListener('click', () => selectFrame(S.cur - 1)); $('#fbNext').addEventListener('click', () => selectFrame(S.cur + 1));
+/* ===== resize the frame bar: drag the handle on top of it (or tap it) — frames, the scrub bar and the 🎚 audio rows get bigger.
+   Size is a scale S.tlScale (0.75–2.5, saved in settings), applied through the CSS variable --tls and ATL_LANE. ===== */
+const TLS_MIN = 0.75, TLS_MAX = 2.5;
+function tlScaleSet(v, done) {
+  S.tlScale = clamp(Math.round((+v || 1) * 100) / 100, TLS_MIN, TLS_MAX);
+  document.documentElement.style.setProperty('--tls', S.tlScale);
+  ATL_LANE = Math.round(36 * clamp(S.tlScale, 0.9, 2));
+  const lb = document.getElementById('tlGripLbl'); if (lb) lb.textContent = Math.round(S.tlScale * 100) + '%';
+  const add = strip.querySelector('.addfr'); if (add) add.style.width = Math.max(Math.round(96 * W / H * S.tlScale), 44) + 'px';
+  if (atlOpen()) atlDraw();
+  if (done) {
+    const th = thumbSize()[1];
+    if (S.frames.some(f => f.thumb && f.thumb.height !== th)) { S.frames.forEach(f => { f.thumb = null; }); buildStrip(); }
+    saveSettings();
+  }
+}
+// never let the frame bar eat more than ~60% of the screen (the drawing area must stay usable): shrink to the biggest size that fits
+function tlCap() {
+  const tl = $('#tl'), lim = window.innerHeight * 0.6;
+  for (let k = 0; k < 40 && S.tlScale > 1 && tl.getBoundingClientRect().height > lim; k++) tlScaleSet(Math.max(1, S.tlScale - 0.05));
+}
+(() => {
+  const g = $('#tlGrip'); let d = null;
+  g.addEventListener('pointerdown', e => {
+    if (e.button > 0) return; e.preventDefault();
+    try { g.setPointerCapture(e.pointerId); } catch (_) { }
+    const c = strip.querySelector('.fr canvas');
+    d = { id: e.pointerId, y0: e.clientY, s0: S.tlScale || 1, moved: false, base: c && c.clientHeight && !$('#tl').classList.contains('collapsed') ? c.clientHeight / (S.tlScale || 1) : 96 };
+    g.classList.add('on');
+  });
+  g.addEventListener('pointermove', e => {
+    if (!d || e.pointerId !== d.id) return;
+    const dy = e.clientY - d.y0; if (!d.moved && Math.abs(dy) < 6) return; d.moved = true;
+    const prev = S.tlScale; tlScaleSet(d.s0 - dy / d.base); if (S.tlScale > prev) tlCap();
+  });
+  const end = e => {
+    if (!d || e.pointerId !== d.id) return;
+    const tap = !d.moved; d = null; g.classList.remove('on');
+    if (tap) {   // 100% → 150% → 200% → 100% (when the screen has no room to grow, go back to 100%)
+      const s = S.tlScale || 1; tlScaleSet(s < 1.5 - 0.01 ? 1.5 : s < 2 - 0.01 ? 2 : 1); tlCap();
+      if (s > 1 && S.tlScale <= s + 0.01) tlScaleSet(1);
+    }
+    tlCap();
+    if (tap) toast('Cỡ thanh frame: ' + Math.round(S.tlScale * 100) + '% (kéo thanh này lên/xuống để chỉnh)');
+    tlScaleSet(S.tlScale, true);
+  };
+  g.addEventListener('pointerup', end); g.addEventListener('pointercancel', end);
+})();
 $('#tlCollapse').addEventListener('click', () => { const tl = $('#tl'); tl.classList.toggle('collapsed'); S.tlCollapsed = tl.classList.contains('collapsed'); $('#tlCollapse').textContent = S.tlCollapsed ? '▴ Hiện dòng frame' : '▾ Ẩn dòng frame'; saveSettings(); setTimeout(resizeView, 30); });
 /* collapsible regions (rail / top bar / timeline) → small floating button on the stage */
 function setUiHide(k, on, quiet) {
@@ -11604,6 +11661,7 @@ async function init() {
   syncSizeOp();
   setColor(S.color); renderRecentSw(); updateToggles(); setTool('brush'); setLayer(S.lineLayer === 'vec' ? 'vec' : 'char');
   if (S.atlOpen) atlShow(true);
+  tlScaleSet(S.tlScale || 1); setTimeout(tlCap, 300);
   if (S.tlCollapsed) { $('#tl').classList.add('collapsed'); $('#tlCollapse').textContent = '▴ Hiện dòng frame'; }
   setUiHide('rail', S.uiHide.rail, true);
   new ResizeObserver(() => resizeView()).observe(stage);
