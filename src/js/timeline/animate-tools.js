@@ -141,7 +141,6 @@ function ibVec(va, vb, t, P) {
   if (t < 0.5) for (const sa of P.onlyA) out.push(copy(sa)); else for (const sb of P.onlyB) out.push(copy(sb));
   return out;
 }
-const ibShared = (a, b) => ibPairs(a.vec, b.vec).pairs.length;
 // pix: ✏️ pen lines on the Nhân vật layer move too: both key frames are traced into strokes (in memory), paired like vector
 // strokes, and every in-between is drawn back as pixels, so the frames stay normal pen drawings
 async function inbetween(n, ease, pix) {

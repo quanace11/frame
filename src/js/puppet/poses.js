@@ -25,7 +25,7 @@ function ppApplyAbs(f, abs, charId, reset) {
 }
 function ppPoseList() { return [...Object.entries(BUILTIN_POSES).map(([k, v]) => ({ id: 'b:' + k, name: '⭐ ' + v.name })), ...(S.poses || []).map(p => ({ id: 'u:' + p.id, name: p.name }))]; }
 function ppApplyPose(id) {
-  if (!S.pp) return; const f = curFrame(), charId = ppSelChar(); if (!charId) return;
+  if (!S.pp) return; const charId = ppSelChar(); if (!charId) return;
   ppKeyEdit(fr => {
     fr.ppKey = true;
     if (id.startsWith('b:')) { const b = BUILTIN_POSES[id.slice(2)]; ppApplyAbs(fr, b.abs, charId, b.reset); }

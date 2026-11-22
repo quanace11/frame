@@ -178,7 +178,6 @@ function aCan(x, cx, cy, s, rot) {
   x.beginPath(); x.rect(-20, -8, 40, 14); x.fillStyle = '#fff'; x.fill();
   x.beginPath(); x.ellipse(0, -34, 20, 5, 0, 0, Math.PI * 2); aFS(x, '#c9ced4', 3); x.restore();
 }
-const THROW_OBJS = { remote: '📱 Điều khiển', can: '🥫 Lon', boot: '👟 Giày', ball: '⚽ Bóng' };
 function throwObjDraw(x, obj, cx, cy, r, rot) {   // r ≈ half the object's length
   if (obj === 'ball') aBall(x, cx, cy, r * 0.7, rot); else if (obj === 'boot') aBoot2(x, cx, cy, r / 46, rot);
   else if (obj === 'can') aCan(x, cx, cy, r / 34, rot); else aRemote(x, cx, cy, r / 46, rot);

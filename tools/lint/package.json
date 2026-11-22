@@ -1,0 +1,8 @@
+{
+  "name": "frame-studio-lint",
+  "private": true,
+  "description": "ESLint for src/js (the files are one script scope, so they are linted joined together)",
+  "type": "module",
+  "scripts": { "lint": "node lint.mjs" },
+  "devDependencies": { "eslint": "9.39.1", "globals": "16.5.0" }
+}

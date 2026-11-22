@@ -449,13 +449,13 @@ async function fxLipSync() {
       pm.close(); for (const f of S.frames.slice(-n)) await drawThumb(f); ppRetween(); buildStrip(); evictSoon(); T = frameStartTimes();
     }
   }
-  const byMouth = new Map(); let used = 0;
+  const byMouth = new Map();
   for (const d of dec) {
     if (!d.mouth) continue; const st = clipStart(d.c, 'voice', T), off = clipOff(d.c), len = clipLen(d.c, 'voice', d.dur), { data, sr } = d;
     const rms = (a, b) => { let s = 0, c = 0; for (let i = Math.max(0, Math.floor(a * sr)); i < Math.min(data.length, Math.floor(b * sr)); i += 4) { s += data[i] * data[i]; c++; } return c ? Math.sqrt(s / c) : 0; };
     const lv = S.frames.map((f, i) => { const a = T[i] - st, b = T[i + 1] - st; return b <= 0 || a >= len ? null : rms(off + Math.max(0, a), off + Math.min(len, b)); });
     const mx = Math.max(0.0001, ...lv.filter(v => v != null)), arr = byMouth.get(d.mouth.id) || new Array(S.frames.length).fill(null);
-    lv.forEach((v, i) => { if (v == null) return; const n2 = v / mx, q = n2 < 0.12 ? 0 : n2 < 0.45 ? 0.5 : 1; arr[i] = Math.max(arr[i] ?? 0, q); used++; });
+    lv.forEach((v, i) => { if (v == null) return; const n2 = v / mx, q = n2 < 0.12 ? 0 : n2 < 0.45 ? 0.5 : 1; arr[i] = Math.max(arr[i] ?? 0, q); });
     byMouth.set(d.mouth.id, arr);
   }
   S.frames.forEach((f, i) => {

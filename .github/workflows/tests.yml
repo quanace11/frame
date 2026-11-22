@@ -1,0 +1,46 @@
+# Runs the whole regression suite (Playwright + real Chrome) on every pull request and on main,
+# so a fix for one feature cannot quietly break another one before it is merged.
+name: Tests
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pip install pillow
+      - run: python3 tools/build.py --check
+      - run: npm ci --prefix tools/lint && node tools/lint/lint.mjs
+  e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install playwright pillow
+      - run: python3 tests/run_all.py -j 2 --shard ${{ matrix.shard }}/4
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-out-${{ matrix.shard }}
+          path: tests/out
+          retention-days: 7

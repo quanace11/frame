@@ -487,8 +487,8 @@ function ppLabBucket(st, p) {
   const d = st.src.getContext('2d').getImageData(0, 0, W, H).data, s = Y * W + X, T = 48, seen = new Uint8Array(W * H);
   const r0 = d[s * 4], g0 = d[s * 4 + 1], b0 = d[s * 4 + 2], seedInk = ppInk(d, s);
   const ok = i => st.bin[i] && (seedInk ? ppInk(d, i) : !ppInk(d, i)) && Math.abs(d[i * 4] - r0) + Math.abs(d[i * 4 + 1] - g0) + Math.abs(d[i * 4 + 2] - b0) < T * 2;
-  let stack = [s], x0 = X, y0 = Y, x1 = X, y1 = Y, cnt = 0; seen[s] = 1; const got = [];
-  while (stack.length) { const i = stack.pop(); got.push(i); cnt++; const x = i % W, y = (i / W) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+  let stack = [s], x0 = X, y0 = Y, x1 = X, y1 = Y; seen[s] = 1; const got = [];
+  while (stack.length) { const i = stack.pop(); got.push(i); const x = i % W, y = (i / W) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
     for (const k of [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, y > 0 ? i - W : -1, y < H - 1 ? i + W : -1]) if (k >= 0 && !seen[k] && ok(k)) { seen[k] = 1; stack.push(k); } }
   // grow a few pixels into the dark outline so the line goes with the patch
   let front = got;

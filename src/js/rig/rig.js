@@ -255,7 +255,7 @@ function syncRigUI() {
   $('#rgGo').disabled = R.body === 'none' && R.face === 'none';
 }
 function rigSetPreset(kind, key) {
-  rig[kind] = key; const d = kind === 'body' ? BODY[key] : FACE[key];
+  rig[kind] = key;
   const lead = rig.body !== 'none' ? BODY[rig.body] : FACE[rig.face];
   if (lead && lead.n) { rig.n = lead.n; rig.dur = lead.dur; }
   if (kind === 'face' && key !== 'none' && !S.rig.face.eyes.length && !S.rig.face.mouth.length) toast('Chưa gán mắt/miệng — chạm chọn nét rồi bấm Mắt/Miệng, hoặc Tự đoán', 3500);
