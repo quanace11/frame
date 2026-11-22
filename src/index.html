@@ -345,6 +345,7 @@
       <button class="tbtn" id="delBtn" style="color:var(--danger)">Xoá</button>
       <button class="tbtn" id="delAllBtn" style="color:var(--danger)" title="Xoá toàn bộ frame">Xoá hết</button>
       <span id="totalLbl"></span>
+      <button class="chip small" id="lgBtn" title="Dòng layer như timeline Adobe Animate: mỗi nhân vật/ảnh 1 dòng, ● = keyframe, dải tím = app tự chuyển động. Tách/nối keyframe, thêm/bớt frame">🗂 Dòng layer</button>
       <button class="chip small" id="atlBtn" title="Dòng âm thanh như làm video: kéo nhạc, giọng, tiếng động theo thời gian, cắt, cắt bớt 2 đầu, nối">🎚 Âm thanh</button>
       <button class="chip small" id="tlCollapse" title="Ẩn/hiện dòng hình frame">▾ Ẩn dòng frame</button>
       <button class="chip small hidebtn" id="tlHide" title="Thu cả thanh frame thành 1 nút nhỏ để vùng vẽ rộng hơn">⌄ Thu nhỏ</button>
@@ -357,6 +358,15 @@
       <button class="tbtn" data-ms="rev" title="Đảo ngược thứ tự các frame đã chọn: chuyển động chạy ngược lại">⇄ Đảo ngược</button>
       <button class="tbtn" data-ms="del" style="color:var(--danger)">🗑 Xoá</button>
       <button class="tbtn primary" data-ms="done">✓ Xong</button></div>
+    <div id="lg" hidden>
+      <div id="lgBar"><b class="lbl" style="color:var(--ink)">🗂 Dòng layer</b><span class="lbl" id="lgInfo"></span>
+        <button class="tbtn" id="lgSplit" title="Tách: frame này thành keyframe của layer đang chọn (chia đoạn tự chuyển làm 2, đặt dáng mới ở giữa)">✂ Tách keyframe</button>
+        <button class="tbtn" id="lgJoin" title="Nối: bỏ keyframe ở frame này, 2 đoạn tự chuyển 2 bên nối thành 1">🔗 Nối keyframe</button>
+        <button class="tbtn" id="lgAdd" title="Thêm 1 frame tự chuyển ngay sau frame này: chuyển động dài thêm (giống F5 trong Animate)">＋ Frame</button>
+        <button class="tbtn" id="lgDel" title="Xoá frame đang xem: chuyển động ngắn lại">− Frame</button>
+        <span class="lbl lgLegend">● keyframe · <i class="lgTw"></i> tự chuyển · ▭ ẩn</span></div>
+      <div id="lgBody"><div id="lgNames"></div><div id="lgScroll"><canvas id="lgCv"></canvas></div></div>
+    </div>
     <canvas id="scrub" title="Kéo ngón tay dọc thanh này để tua qua các frame (xem nhanh chuyển động)"></canvas>
     <div id="atl" hidden>
       <div id="atlBar"><b class="lbl" style="color:var(--ink)">🎚 Video &amp; âm thanh</b>
@@ -420,6 +430,7 @@
 <script src="js/puppet/ik.js"></script>
 <script src="js/puppet/poses.js"></script>
 <script src="js/puppet/layers.js"></script>
+<script src="js/puppet/layer-timeline.js"></script>
 <script src="js/project/projects.js"></script>
 <script src="js/project/sync.js"></script>
 <script src="js/fx/text-camera.js"></script>

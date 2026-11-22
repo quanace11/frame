@@ -19,7 +19,9 @@ function xbHit(b, p, touch) {
   if (!b) return null;
   const tol = (touch ? 30 : 20) * xbPx(), kn = xbKnob(b);
   if (Math.hypot(kn.x - p.x, kn.y - p.y) <= tol) return 'rot';
-  let best = null, bd = tol;
+  // small box on screen: the handles must not cover its middle, so dragging the middle still moves it
+  const bw = Math.hypot(b.M[0], b.M[1]) * Math.abs(b.x1 - b.x0), bh = Math.hypot(b.M[2], b.M[3]) * Math.abs(b.y1 - b.y0);
+  let best = null, bd = Math.max(6 * xbPx(), Math.min(tol, 0.3 * Math.min(bw, bh)));
   for (const k of ['tl', 'tr', 'br', 'bl', 't', 'r', 'b', 'l']) {
     const q = xbDoc(b, k), d = Math.hypot(q.x - p.x, q.y - p.y) * (k.length === 1 ? 1.15 : 1);   // corners win when both are close (small box)
     if (d <= bd) { bd = d; best = k; }
