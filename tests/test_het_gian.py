@@ -5,6 +5,7 @@ CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 srv = subprocess.Popen(['python3','-m','http.server','8883'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 # Gestures 😡 Ngửa mặt hét giận / 🤬 Giơ nắm đấm gào: head squashed toward the neck (thrown back, works from behind too),
 # shoulders up, body trembles with feet planted, camera shake + "roar" SFX, all ONE undo step.

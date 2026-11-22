@@ -5,6 +5,7 @@ CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time, base64
 from playwright.async_api import async_playwright
 srv = subprocess.Popen(['python3','-m','http.server','8799'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 # Caricature import: photo -> cut out person -> big head / small body / cartoon colours -> floating selection or puppet
 async def main():

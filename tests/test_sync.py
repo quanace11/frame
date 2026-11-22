@@ -8,6 +8,7 @@ CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time, json, base64, hashlib, re
 from playwright.async_api import async_playwright
 srv = subprocess.Popen(['python3','-m','http.server','9103'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 DBG = False
 TOK = 'github_pat_TEST_not_real_42'

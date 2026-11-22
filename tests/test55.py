@@ -5,6 +5,7 @@ CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 srv = subprocess.Popen(['python3','-m','http.server','8857'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 # front / behind for imported pictures (Trên cùng / Sau nét vẽ / Vào nền / Thành mảnh ghép) + drag frames to reorder
 PX = "([cv,x,y])=>{const f=curFrame(); const c= cv==='char'?f.canvas: cv==='col'?f.col: bgOf(f).canvas; if(!c) return [-1,-1,-1,-1]; return [...c.getContext('2d').getImageData(x,y,1,1).data]}"

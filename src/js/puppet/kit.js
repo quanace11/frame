@@ -102,11 +102,9 @@ async function kitAdd(o = kitOpt) {
   const others = S.pp ? S.pp.parts.filter(q => !q.parent).length : 0, suf = others ? ` (NV${others + 1})` : '';
   const zb = S.pp && S.pp.parts.length ? Math.max(...S.pp.parts.map(q => q.z)) + 1 : 0;
   parts.forEach(q => { q.z = zb + q.z * 0.01; q.name += suf; });
-  if (!S.pp) { S.pp = { parts: [] }; S.frames.forEach(f => { if (!f.pp) f.pp = {}; }); }
-  S.pp.parts.push(...parts); ppRenormZ();
-  for (let i = 0; i < S.cur; i++) { const f = S.frames[i]; f.pp = f.pp || {}; for (const q of parts) f.pp[q.id] = { ...(f.pp[q.id] || {}), h: true }; f.ppKey = true; }
+  ppPushChar(parts);
   ppSel = parts.find(q => q.role === 'head').id;
-  S.showPP = true; updateToggles(); openTab('pp', 'pose'); ppSyncBar(); S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); scheduleSave(); requestRender();
+  ppShowAdded();
   toast('Đã thêm cầu thủ — đang chọn Đầu: bấm 🔄 Đổi hình mảnh (tab Mảnh & hình) để thay bằng đầu biếm hoạ của bạn', 5000);
   return parts;
 }

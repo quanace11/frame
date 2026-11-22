@@ -5,6 +5,7 @@ CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 srv = subprocess.Popen(['python3','-m','http.server','8894'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 # 🫳 Kéo uốn (Chọn vùng): loop an eyebrow of a picture (pixel lines + colour + a vector line), drag it down:
 # inside the loop moves fully, the band around stretches, far away stays; one undo step; drag from inside again keeps bending

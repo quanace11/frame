@@ -7,6 +7,7 @@ from playwright.async_api import async_playwright
 # 🌈 tab Hiệu ứng: 🏃 scrolling background (mirrored tiles, time-based shift), 💨 speed lines / 💥 focus lines,
 # 🎨 film colour (blend modes), 📺 slow-motion replay (copies, slower, label, glitch, one undo), save/reload, undo
 srv = subprocess.Popen(['python3','-m','http.server','8899'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 BASE = '''async ([i, pts]) => { const f = S.frames[i]; await ensureLoaded(f); const bg = bgOf(f); if (bg) await ensureLoaded(bg);
   const c = makeCanvas(), x = c.getContext('2d', { willReadFrequently: true }); drawFrameBase(x, f, bg);

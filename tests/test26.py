@@ -5,6 +5,7 @@ CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 srv = subprocess.Popen(['python3','-m','http.server','8798'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 # Colour layer: fill goes under the lines (own layer), erasing a line keeps the colour where it was; eyedropper returns to fill
 COL = "([x,y])=>{const c=curFrame().col; if(!c) return null; const d=c.getContext('2d').getImageData(x,y,1,1).data; return [d[0],d[1],d[2],d[3]]}"

@@ -106,22 +106,15 @@ async function replayMake() {
   try {
     for (let i = a; i <= b; i++) {
       const s0 = S.frames[i]; await ensureLoaded(s0);
-      const f = newFrameObj(s0.bgId); f.dur = clamp(Math.round(s0.dur * slow), 20, 30000);
-      f.canvas.getContext('2d').drawImage(s0.canvas, 0, 0); copyCol(f, s0); f.ver = 1; f.pngVer = 0;
-      f.vec = cloneVec(s0.vec); f.pp = ppClone(s0.pp); f.ppKey = s0.ppKey; f.ppEase = s0.ppEase; f.lip = s0.lip ? JSON.parse(JSON.stringify(s0.lip)) : null;
-      f.texts = JSON.parse(JSON.stringify(s0.texts || [])); f.cam = s0.cam ? { ...s0.cam } : null; f.shake = s0.shake || 0; f.flash = !!s0.flash;
-      for (const k of ['ghost', 'bgs', 'sl']) if (s0[k]) f[k] = JSON.parse(JSON.stringify(s0[k]));
+      const f = frameCopyOf(s0, true); f.dur = clamp(Math.round(s0.dur * slow), 20, 30000);
       f.flt = 'replay';
       f.texts.push({ id: lid, str: '● PHÁT LẠI', x: W * 0.5, y: H * 0.15, size: Math.round(W * 0.07), color: '#ffffff', style: 'caption', rot: 0, an: 'pop', lp: 'pulse' });
       if (i === a) { f.tr = { k: 'glitch', d: TR_KINDS.glitch.d, snd: true }; if (!f.cam) { const c0 = camAt(a); f.cam = { z: c0.z, x: c0.x, y: c0.y, tr: 'cut' }; } }   // start from the camera the action started with
       added.push(f); loaded.push(f); await evictSoon();
     }
-    const at = b + 1, f0 = S.frames[b];
-    S.frames.splice(at, 0, ...added);
-    pushEntry({ t: targetOf(f0), add: { frames: added, index: at, dur0: f0.dur, dur1: f0.dur }, bytes: 0 });
-    for (const f of added) await drawThumb(f);
+    await insertFrames(b + 1, added);
   } finally { if (pm) pm.close(); }
-  msel.clear(); tintCache.clear(); ppRetween(); buildStrip(); await selectFrame(b + 1); scheduleSave(); evictSoon(); updUndoBtns(); if (typeof mselSync === 'function') mselSync(); fxSyncBar();
+  msel.clear(); tintCache.clear(); ppRetween(); buildStrip(); await selectFrame(b + 1); scheduleSave(); evictSoon(); updUndoBtns(); mselSync(); fxSyncBar();
   toast(`📺 Đã thêm phát lại chậm ${slow}× (${added.length} frame, sau frame ${b + 1}) — bấm ▶ Xem thử, ↶ để bỏ`, 4000);
 }
 /* --- final frame composition (used by playback & video export) --- */

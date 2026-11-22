@@ -6,6 +6,7 @@ import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # on-canvas flipper: ◀ n/N ▶ ＋ — tap to move, hold to peek and come back, ＋ = new frame with onion, hold ＋ = duplicate
 srv = subprocess.Popen(['python3','-m','http.server','9101'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 async def hold(pg, sel, ms):
     box = await pg.evaluate(f"(()=>{{const r=document.querySelector('{sel}').getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]}})()")

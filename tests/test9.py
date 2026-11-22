@@ -5,6 +5,7 @@ CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time, base64
 from playwright.async_api import async_playwright
 srv = subprocess.Popen(['python3','-m','http.server','8774'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 POSE='''(mode)=>{ const f=curFrame(); const R=r=>S.pp.parts.find(x=>x.role===r).id;
   f.pp={[R('armR')]:{r:75},[R('armL')]:{r:55},[R('legL')]:{r:25},[R('legR')]:{r:-25},[R('head')]:{r:-18}};

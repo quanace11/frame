@@ -7,6 +7,7 @@ from playwright.async_api import async_playwright
 # 🎥 camera shots: drag a camera box (draw / move / corner zoom), ✂ cut vs 〰 smooth push (time-based, inside one long frame),
 # one-tap Cận cảnh / Đẩy vào, legacy keys unchanged, undo, save + reload, playback
 srv = subprocess.Popen(['python3','-m','http.server','9106'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 DRAG='''async ([pts])=>{const v=document.getElementById('view');const r=v.getBoundingClientRect();
   const mk=(t,x,y)=>new PointerEvent(t,{pointerId:9,pointerType:'pen',clientX:r.left+x,clientY:r.top+y,pressure:0.5,buttons:1,bubbles:true,cancelable:true});

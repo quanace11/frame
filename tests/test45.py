@@ -6,6 +6,7 @@ import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # ☑ multi-select frames: long-press / button, range, timing, duplicate, reverse, delete with undo/redo (pixels survive)
 srv = subprocess.Popen(['python3','-m','http.server','8845'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 ORDER = "S.frames.map(f=>f.tag||'?').join('')"
 async def main():

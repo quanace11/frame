@@ -524,6 +524,15 @@ function ppLabSyncBar() {
   $('#ppLabSize').value = ppLabSize; $('#ppLabSplit').checked = st.split;
   $('#ppLabUndo').disabled = !(st.undo && st.undo.length); $('#ppLabRedo').disabled = !(st.redo && st.redo.length);
 }
+// a new character appears from the frame being edited on: frames before it keep showing only what they had
+function ppHideBefore(parts) { for (let i = 0; i < S.cur; i++) { const f = S.frames[i]; f.pp = f.pp || {}; for (const q of parts) f.pp[q.id] = { ...(f.pp[q.id] || {}), h: true }; f.ppKey = true; } }
+// a character was added (cut, 🧍 Kho nhân vật, ⚽ Cầu thủ mẫu): add its pieces on top of the others
+function ppPushChar(parts) {
+  if (!S.pp) { S.pp = { parts: [] }; S.frames.forEach(f => { if (!f.pp) f.pp = {}; }); }
+  S.pp.parts.push(...parts); ppRenormZ(); ppHideBefore(parts);
+}
+// …then show it: puppet on, tab Tư thế, every thumbnail redrawn, saved (undo: automatic snapshot)
+function ppShowAdded() { S.showPP = true; updateToggles(); openTab('pp', 'pose'); ppSyncBar(); S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); scheduleSave(); requestRender(); }
 async function ppAutoCut(whole) {
   const st = ppSetup; if (!st) return;
   let addMode = false;
@@ -687,12 +696,12 @@ async function ppAutoCut(whole) {
     parts.forEach(q => { q.z += zb; q.name += ` (NV${nv})`; }); S.pp.parts.push(...parts);
   } else { S.pp = { parts }; S.frames.forEach(f => { f.pp = {}; f.ppKey = undefined; }); }
   // a new character appears from the frame being edited on: frames before it keep showing only what they had
-  if (!recut) for (let i = 0; i < S.cur; i++) { const f = S.frames[i]; f.pp = f.pp || {}; for (const q of parts) f.pp[q.id] = { ...(f.pp[q.id] || {}), h: true }; f.ppKey = true; }
+  if (!recut) ppHideBefore(parts);
   // remember how this character was cut, so "Sửa lại vùng cắt" can reopen it (this session only)
   const roleId = {}; parts.forEach(q => { if (q.role) roleId[q.role] = q.id; });
   ppLastCut = whole ? null : { src: st.src, J: st.J, split: st.split, auto: st.auto, autoJ: st.autoJ, hand: st.hand || null, ids: parts.map(q => q.id), roleId };
   ppSetup = null; ppSel = parts[0] ? parts[0].id : null; pm.close();
-  S.showPP = true; updateToggles(); openTab('pp', 'pose'); ppSyncBar(); S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); scheduleSave(); requestRender();
+  ppShowAdded();
   toast(whole ? 'Đã tạo 1 mảnh — dùng ✂ Khoanh cắt để tách tay, chân…' : `Đã cắt ${parts.length} mảnh — chạm mảnh rồi kéo để xoay quanh khớp. Cho nhân vật di chuyển: tab 🎞 Tạo frame → ✎ Vẽ đường đi / 🛷 Trượt gối`, 6000);
 }
 /* --- lasso cut a new part out of the selected part --- */

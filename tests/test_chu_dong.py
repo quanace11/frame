@@ -8,6 +8,7 @@ from playwright.async_api import async_playwright
 # 👻 afterimage (ghosts of the previous frames under the character, tint, scene stop, save/reload, undo),
 # 🥁 music beats (tempo + phase from a click track, ticks, 🎯 snap next frame to the beat, 🥁 fit frames to beats)
 srv = subprocess.Popen(['python3','-m','http.server','8897'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 PIX = '''async ([t, pts]) => { const T = frameStartTimes(); let i = T.findIndex((v, k) => k < S.frames.length && t < T[k + 1]); if (i < 0) i = S.frames.length - 1;
   const f = S.frames[i]; await ghostLoad(f); await ensureLoaded(f); const base = makeCanvas(); drawFrameBase(base.getContext('2d'), f, bgOf(f));

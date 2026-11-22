@@ -6,6 +6,7 @@ import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # Quick subtitles: paste lines → caption texts timed to the voice (voice.wav = 4 bursts) or spread evenly
 srv = subprocess.Popen(['python3','-m','http.server','8837'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 SUBS = "S.frames.map(f=>{const t=(f.texts||[]).find(x=>x.sub); return t? t.str : '-'})"
 async def main():

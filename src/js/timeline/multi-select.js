@@ -60,15 +60,10 @@ async function mselDuplicate() {
   try {
     for (const i of idx) {
       const s0 = S.frames[i]; await ensureLoaded(s0);
-      const f = newFrameObj(s0.bgId); f.dur = s0.dur;
-      f.canvas.getContext('2d').drawImage(s0.canvas, 0, 0); copyCol(f, s0); f.ver = 1; f.pngVer = 0;
-      f.vec = cloneVec(s0.vec); f.pp = ppClone(s0.pp); f.ppKey = s0.ppKey; f.ppEase = s0.ppEase; f.lip = s0.lip ? JSON.parse(JSON.stringify(s0.lip)) : null;
-      f.texts = JSON.parse(JSON.stringify(s0.texts || [])); f.cam = s0.cam ? { ...s0.cam } : null; f.shake = s0.shake || 0; f.flash = !!s0.flash;
+      const f = frameCopyOf(s0, true);
       added.push(f); loaded.push(f); await evictSoon();
     }
-    const f0 = S.frames[at - 1]; S.frames.splice(at, 0, ...added);
-    pushEntry({ t: targetOf(f0), add: { frames: added, index: at, dur0: f0.dur, dur1: f0.dur }, bytes: 0 });
-    for (const f of added) await drawThumb(f);
+    await insertFrames(at, added);
   } finally { if (pm) pm.close(); }
   msel.clear(); added.forEach(f => msel.add(f.id));
   tintCache.clear(); ppRetween(); buildStrip(); await selectFrame(at); scheduleSave(); evictSoon(); updUndoBtns(); mselSync();

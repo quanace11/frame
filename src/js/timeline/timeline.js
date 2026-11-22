@@ -145,11 +145,30 @@ async function addFrame() {
 }
 // f.lip = mouth/eye pictures + 〰 Đường đi offsets (lip.mv): a copied frame must keep them, else the character jumps back to where it started
 function lipCopy(f) { return f && f.lip ? JSON.parse(JSON.stringify(f.lip)) : null; }
+const jcopy = o => o == null ? o : JSON.parse(JSON.stringify(o));
+// ONE place that copies a frame (Nhân bản frame, Lặp đoạn, Chọn nhiều → Nhân bản, 📺 Phát lại): picture, colour, vector
+// lines, pose, mouth/eyes + 〰 path (lip), texts and the 🌈 look (👻 ghost, 🏃 scrolling bg, 💨 speed lines, film colour).
+// run = copying a whole run of frames: also its keyframes, camera keys, shake and flash (one copied frame alone must
+// not restart a camera move). Never copies scene starts / transitions: those belong to the joins between frames.
+// s0 must be loaded (await ensureLoaded(s0)).
+function frameCopyOf(s0, run) {
+  const f = newFrameObj(s0.bgId); f.dur = s0.dur;
+  f.canvas.getContext('2d').drawImage(s0.canvas, 0, 0); copyCol(f, s0); f.ver = 1; f.pngVer = 0;
+  f.vec = cloneVec(s0.vec); f.pp = ppClone(s0.pp); f.lip = lipCopy(s0); f.texts = jcopy(s0.texts || []);
+  for (const k of ['ghost', 'bgs', 'sl', 'flt']) if (s0[k] != null) f[k] = jcopy(s0[k]);
+  if (run) { f.ppKey = s0.ppKey; f.ppEase = s0.ppEase; f.cam = s0.cam ? { ...s0.cam } : null; f.shake = s0.shake || 0; f.flash = !!s0.flash; }
+  return f;
+}
+// put new frames in at index `at` as ONE undo step (after the frame before them), with their thumbnails
+async function insertFrames(at, added) {
+  const f0 = S.frames[at - 1]; S.frames.splice(at, 0, ...added);
+  pushEntry({ t: targetOf(f0), add: { frames: added, index: at, dur0: f0.dur, dur1: f0.dur }, bytes: 0 });
+  for (const f of added) await drawThumb(f);
+}
 async function dupFrame() {
   if (playing) stopPlay(); commitFloating();
   const src = curFrame(); await ensureLoaded(src);
-  const f = newFrameObj(src.bgId); f.dur = src.dur;
-  f.canvas.getContext('2d').drawImage(src.canvas, 0, 0); copyCol(f, src); f.ver = 1; f.pngVer = 0; f.vec = cloneVec(src.vec); f.pp = ppClone(src.pp); f.lip = lipCopy(src); f.texts = JSON.parse(JSON.stringify(src.texts || []));
+  const f = frameCopyOf(src);
   S.frames.splice(S.cur + 1, 0, f); loaded.push(f);
   await drawThumb(f); buildStrip(); await selectFrame(S.cur + 1); scheduleSave(); evictSoon();
 }
@@ -164,16 +183,11 @@ async function repeatRange(a, b, times, mode) {
   try {
     for (let k = 0; k < seq.length; k++) {
       const s0 = seq[k]; await ensureLoaded(s0);
-      const f = newFrameObj(s0.bgId); f.dur = s0.dur;
-      f.canvas.getContext('2d').drawImage(s0.canvas, 0, 0); copyCol(f, s0); f.ver = 1; f.pngVer = 0;
-      f.vec = cloneVec(s0.vec); f.pp = ppClone(s0.pp); f.ppKey = s0.ppKey; f.ppEase = s0.ppEase; f.lip = s0.lip ? JSON.parse(JSON.stringify(s0.lip)) : null;
-      f.texts = JSON.parse(JSON.stringify(s0.texts || [])); f.cam = s0.cam ? { ...s0.cam } : null; f.shake = s0.shake || 0; f.flash = !!s0.flash;
+      const f = frameCopyOf(s0, true);
       added.push(f); loaded.push(f);
       if (k % 10 === 9) { pm.set(`Đang lặp đoạn ${k + 1}/${seq.length}…`); await new Promise(r => setTimeout(r, 0)); await evictSoon(); }
     }
-    const f0 = S.frames[b]; S.frames.splice(b + 1, 0, ...added);
-    pushEntry({ t: targetOf(f0), add: { frames: added, index: b + 1, dur0: f0.dur, dur1: f0.dur }, bytes: 0 });
-    for (const f of added) await drawThumb(f);
+    await insertFrames(b + 1, added);
   } finally { pm.close(); }
   tintCache.clear(); ppRetween(); buildStrip(); await selectFrame(b + 1); scheduleSave(); evictSoon(); updUndoBtns();
   return added.length;

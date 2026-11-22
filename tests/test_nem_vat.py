@@ -5,6 +5,7 @@ CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 srv = subprocess.Popen(['python3','-m','http.server','8884'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 # 🎯 Ném vật: the selected cut-out winds up and throws, a code-drawn object flies in an arc to the tapped spot,
 # smashes it (cracks stay), shake + flash + sound; ONE undo step.

@@ -5,6 +5,7 @@ CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 srv = subprocess.Popen(['python3','-m','http.server','9107'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 # Import dialog hand fixes on the background cut: 🧽 Xoá / 🖌 Lấy lại brush with size − +, undo/redo (button + two-finger tap),
 # pinch / wheel zoom + pan of the preview. Works in 🎨 Tách nét + màu and Tách nhân vật.

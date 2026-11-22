@@ -8,6 +8,7 @@ from playwright.async_api import async_playwright
 # frame's own Nền layer (lazy JPEG, freed again), trimmed range + fps, sound kept as a clip, one undo step, insert in the
 # middle, background eviction keeps edits, save / reload
 srv = subprocess.Popen(['python3','-m','http.server','8913'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 CLIP = os.path.join(ASSETS, 'clip_rgb.webm')
 PX = '''async ([i, px, py]) => { const f = S.frames[i]; await ensureLoaded(f); const bg = bgOf(f); if (bg) await ensureLoaded(bg);

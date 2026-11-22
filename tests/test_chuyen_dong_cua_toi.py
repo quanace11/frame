@@ -5,6 +5,7 @@ CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 srv = subprocess.Popen(['python3','-m','http.server','8875'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 # ⭐ My motions (motion presets): save a run of frames, rebuild it from another starting pose / mirrored, kept across reloads.
 ANG = "(i)=>{const a=ppCurAbs(S.frames[i],ppSelChar());return a}"

@@ -7,6 +7,7 @@ from playwright.async_api import async_playwright
 # ↶ undo covers everything: frame add/duplicate/move, timing, backgrounds, sounds, music, puppet parts (role, name, order,
 # delete), poses, tracing image, text kept on next frames… each one step, in order, mixed with pixel steps; deep history.
 srv = subprocess.Popen(['python3','-m','http.server','8850'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 async def main():
     async with async_playwright() as p:

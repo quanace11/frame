@@ -6,6 +6,7 @@ import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # "Vừa khung" fits the frame into the area left free by floating panels, and refits when a panel opens/folds/closes
 srv = subprocess.Popen(['python3','-m','http.server','8839'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 GEO = """((sel)=>{const m=viewMat(), st=document.getElementById('stage').getBoundingClientRect(); const bottom=st.top+(m[1]*W+m[3]*H+m[5])/DPR, top=st.top+m[5]/DPR; const el=document.querySelector(sel); const r=el&&!el.hidden?el.getBoundingClientRect():null; return {top:Math.round(top), bottom:Math.round(bottom), panelTop: r?Math.round(r.top):null, vs}})"""
 async def main():

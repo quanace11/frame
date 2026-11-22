@@ -6,6 +6,7 @@ import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # Adjustable onion skin (frames before/after) + copy a lasso selection and paste it onto other frames
 srv = subprocess.Popen(['python3','-m','http.server','8833'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 A = "(([i,x,y])=>S.frames[i].canvas.getContext('2d').getImageData(x,y,1,1).data[3])"
 async def main():

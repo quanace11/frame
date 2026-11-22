@@ -6,6 +6,7 @@ import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # ⚽ ball path (draw a curve → ball flies along it over N frames, adds frames, sounds, one undo) + ⚡ one-tap gag combos
 srv = subprocess.Popen(['python3','-m','http.server','8846'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 DRAG='''async ([pts])=>{const v=document.getElementById('view');const r=v.getBoundingClientRect();
   const mk=(t,x,y)=>new PointerEvent(t,{pointerId:9,pointerType:'pen',clientX:r.left+x,clientY:r.top+y,pressure:0.5,buttons:1,bubbles:true,cancelable:true});

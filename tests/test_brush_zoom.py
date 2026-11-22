@@ -6,6 +6,7 @@ import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # Giữ cỡ bút khi phóng to (S.sizeScreen) + Độ đậm on the Nét (vector) layer
 srv = subprocess.Popen(['python3','-m','http.server','9105'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 # draw a horizontal line through the doc point (dx,dy), in screen space
 PEN='''async ([dx,dy,len])=>{const v=document.getElementById('view');const r=v.getBoundingClientRect();

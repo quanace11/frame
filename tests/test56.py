@@ -6,6 +6,7 @@ import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # bigger max zoom (4800%), stricter lasso, "Nhiều chấm": double-tap a point drops its whole line, ➖ Khoanh bớt unselects points
 srv = subprocess.Popen(['python3','-m','http.server','9102'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 PEN = """async ([pts, gap])=>{const v=document.getElementById('view');
   const mk=(t,x,y)=>new PointerEvent(t,{pointerId:7,pointerType:'pen',clientX:x,clientY:y,pressure:0.6,buttons:1,bubbles:true,cancelable:true});

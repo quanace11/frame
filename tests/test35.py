@@ -6,6 +6,7 @@ import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # Quick shapes (line / rect / ellipse, hold-to-snap), symmetry drawing, draw-inside (lock alpha)
 srv = subprocess.Popen(['python3','-m','http.server','8832'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 A = "(([x,y])=>curFrame().canvas.getContext('2d').getImageData(x,y,1,1).data[3])"
 CLR = "(()=>{curFrame().canvas.getContext('2d').clearRect(0,0,W,H); S.size=10; S.smooth=0.3})()"

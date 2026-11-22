@@ -8,6 +8,7 @@ from playwright.async_api import async_playwright
 # + tone). Add (film stretched to the video), ✂ split at the red playhead, drag to reorder, trim an edge, 🔗 join, mute, the
 # sound mixed by scheduleAudio, ➕ frame at the playhead, undo / redo, save / reload, fast export, the "Thêm video" chooser.
 srv = subprocess.Popen(['python3','-m','http.server','8931'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 CLIP = os.path.join(ASSETS, 'clip_rgb.webm')
 COL = '''async (t) => { const T = frameStartTimes(); let i = 0; while (i < S.frames.length - 1 && T[i + 1] <= t) i++;

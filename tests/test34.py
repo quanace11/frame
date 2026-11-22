@@ -6,6 +6,7 @@ import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # Fill that seals small gaps in the outline
 srv = subprocess.Popen(['python3','-m','http.server','8831'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 SETUP = '''(gap)=>{ const f=curFrame(), x=f.canvas.getContext('2d'); x.clearRect(0,0,W,H); if(f.col){f.col.getContext('2d').clearRect(0,0,W,H);}
   x.strokeStyle='#000'; x.lineWidth=8; x.beginPath(); x.arc(540,900,200, gap, Math.PI*2); x.stroke(); f.ver++; }'''

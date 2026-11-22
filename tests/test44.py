@@ -6,6 +6,7 @@ import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # 🏞 scene library: menu → pick a scene → background filled (shared bg / only this frame), undo, 16:9 project
 srv = subprocess.Popen(['python3','-m','http.server','8842'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 BGPIX = "(i=>{const b=bgOf(S.frames[i]); const d=b.canvas.getContext('2d').getImageData(0,0,W,H).data; let n=0; for(let k=3;k<d.length;k+=4*97) if(d[k]>200) n++; return n/(d.length/4/97); })"
 async def main():

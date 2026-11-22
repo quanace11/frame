@@ -6,6 +6,7 @@ import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # 🪄 colour a frame from the previous one: areas that overlap a coloured area take its colour; chain to the last frame; one undo
 srv = subprocess.Popen(['python3','-m','http.server','9100'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 DRAW = """(async ([i,dx])=>{ const f=S.frames[i]; await ensureLoaded(f); const x=f.canvas.getContext('2d'); x.clearRect(0,0,W,H); x.strokeStyle='#111'; x.lineWidth=8;
   x.beginPath(); x.arc(400+dx,600,150,0,7); x.stroke(); x.strokeRect(250+dx,900,300,400);

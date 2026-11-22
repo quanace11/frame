@@ -5,6 +5,7 @@ CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time, math
 from playwright.async_api import async_playwright
 srv = subprocess.Popen(['python3','-m','http.server','8877'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 # Core flows re-tested on a touch tablet (bugs found and fixed):
 #  1. undo: a quick action right after a stroke (Nhân bản frame < 0.4 s later) was swallowed (not undoable, undo removed the stroke)

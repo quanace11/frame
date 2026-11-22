@@ -5,6 +5,7 @@ CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time, math
 from playwright.async_api import async_playwright
 srv = subprocess.Popen(['python3','-m','http.server','8793'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 TOUCH='''async ([a0,b0,a1,b1])=>{const v=document.getElementById('view');const r=v.getBoundingClientRect();
  const mk=(t,id,x,y)=>new PointerEvent(t,{pointerId:id,pointerType:'touch',clientX:r.left+x,clientY:r.top+y,bubbles:true,cancelable:true});

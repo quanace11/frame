@@ -7,6 +7,7 @@ from playwright.async_api import async_playwright
 # Undo for deleting frames: Xoá (one frame, keeps its own background) and Xoá hết (everything) come back with ↶ / ↷.
 # Also: landscape tablet layout gives the canvas more height and keeps the Menu button on screen.
 srv = subprocess.Popen(['python3','-m','http.server','8847'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 PIX = "(([i,x,y])=>{const f=S.frames[i]; return ensureLoaded(f).then(()=>f.canvas.getContext('2d').getImageData(x,y,1,1).data[3])})"
 async def main():

@@ -5,6 +5,7 @@ CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 srv = subprocess.Popen(['python3','-m','http.server','8881'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 # A split picture (lines in Nhân vật, colour in Màu, some lines as vector strokes) moves as ONE piece:
 #  - Chọn vùng on lớp Nét no longer jumps to Sửa nét; the lasso lifts pixel lines + colour + vector lines

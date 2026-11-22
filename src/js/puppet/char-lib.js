@@ -49,13 +49,10 @@ async function charLibAdd(id) {
       for (const a of (q.alts || [])) { try { alts.push({ c: await dec(a.png), png: a.png, dx: a.dx || 0, dy: a.dy || 0 }); } catch (e) {} }
       parts.push({ ...q, id: idMap[q.id], parent: q.parent ? idMap[q.parent] || null : null, name: q.name + suf, z: zb + q.z * 0.01, ox: q.ox + sx, oy: q.oy + sy, px: q.px + sx, py: q.py + sy, tip: q.tip ? { x: q.tip.x + sx, y: q.tip.y + sy } : null, asset: q.asset ? JSON.parse(JSON.stringify(q.asset)) : null, c, png: q.png, alts });
     }
-    if (!S.pp) { S.pp = { parts: [] }; S.frames.forEach(f => { if (!f.pp) f.pp = {}; }); }
-    S.pp.parts.push(...parts); ppRenormZ();
-    // like a freshly cut character: it appears from the frame being edited on
-    for (let i = 0; i < S.cur; i++) { const f = S.frames[i]; f.pp = f.pp || {}; for (const q of parts) f.pp[q.id] = { ...(f.pp[q.id] || {}), h: true }; f.ppKey = true; }
+    ppPushChar(parts);   // like a freshly cut character: it appears from the frame being edited on
     ppSel = (parts.find(q => !q.parent) || parts[0]).id;
   } finally { pm.close(); }
-  S.showPP = true; updateToggles(); openTab('pp', 'pose'); ppSyncBar(); S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); scheduleSave(); requestRender();
+  ppShowAdded();
   toast('Đã thêm nhân vật — kéo để dời, chạm mảnh để tạo dáng. Lỡ tay thì ↶ Hoàn tác', 4000);
   return true;
 }

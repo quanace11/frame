@@ -6,6 +6,7 @@ import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # Repeat a range of frames (loop / there-and-back), one undo step
 srv = subprocess.Popen(['python3','-m','http.server','8836'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 ORDER = "(async()=>{const r=[]; for(const f of S.frames){ await ensureLoaded(f); const d=f.canvas.getContext('2d').getImageData(0,0,W,H).data; let x=-1; for(let i=0;i<W;i++){ if(d[(500*W+i)*4+3]>0){x=i;break;} } r.push(x<0?-1:Math.round((x-100)/150)); } return r; })()"
 async def main():

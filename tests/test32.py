@@ -6,6 +6,7 @@ import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # Autosave: only changed PNGs are written (blob keys), save keeps retrying after an error, playback cache is bounded + freed
 srv = subprocess.Popen(['python3','-m','http.server','8829'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 PEN='''async ([pts])=>{const v=document.getElementById('view');const r=v.getBoundingClientRect();
   const mk=(t,x,y)=>new PointerEvent(t,{pointerId:7,pointerType:'pen',clientX:r.left+x,clientY:r.top+y,pressure:0.6,buttons:1,bubbles:true,cancelable:true});

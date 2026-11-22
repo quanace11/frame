@@ -8,6 +8,7 @@ from playwright.async_api import async_playwright
 # dip to black, crossfade (two pictures), 📺 TV off at film end, the other kinds draw, strip marks, undo, sound,
 # GIF split into sub-frames, playback, save + reload
 srv = subprocess.Popen(['python3','-m','http.server','8896'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 # picture of the finished film at time t (like the video export), pixel [r,g,b] at doc points
 PIX = '''async ([t, pts]) => { const T = frameStartTimes(); let i = T.findIndex((v, k) => k < S.frames.length && t < T[k + 1]); if (i < 0) i = S.frames.length - 1;

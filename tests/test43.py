@@ -6,6 +6,7 @@ import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # compact top bar: background options sit in a "Nền ▾" menu, buttons still work, top-bar chips are tall enough to tap
 srv = subprocess.Popen(['python3','-m','http.server','8840'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 async def main():
     async with async_playwright() as p:

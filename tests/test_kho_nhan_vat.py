@@ -5,6 +5,7 @@ CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 srv = subprocess.Popen(['python3','-m','http.server','8876'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 # 🧍 Character library: save a cut-out character, add it to another project (twice), undo, keep after reload, delete.
 SIG = "S.pp?S.pp.parts.map(p=>[p.role,p.c.width,p.c.height,(p.alts||[]).length]).sort((a,b)=>(a[0]+a[1]).localeCompare(b[0]+b[1])):[]"

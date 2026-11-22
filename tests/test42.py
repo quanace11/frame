@@ -6,6 +6,7 @@ import asyncio, subprocess, time
 from playwright.async_api import async_playwright
 # 👁 auto blink: eyes close every few seconds on existing frames, undo/redo, survives retween, save/reload, lip sync clear keeps it
 srv = subprocess.Popen(['python3','-m','http.server','8841'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 CNT = "S.frames.filter(f=>f.lip&&f.lip.eb&&Object.values(f.lip.eb).some(a=>a>=1)).length"
 async def main():

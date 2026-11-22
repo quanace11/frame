@@ -5,6 +5,7 @@ CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time, base64
 from playwright.async_api import async_playwright
 srv = subprocess.Popen(['python3','-m','http.server','8866'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+import atexit; atexit.register(srv.kill)   # never leave the server behind when the test crashes (a later run would test a stale build)
 time.sleep(1)
 # Soft joints (elbow/knee/shoulder/hip bend in a curve, like bones + mesh warp) and smooth playback (puppet pose
 # interpolated between frames while playing / exporting). Drawn character on white -> auto cut -> bend + walk.
