@@ -362,7 +362,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
   #ppbar{left:auto;right:10px;top:10px;bottom:10px;transform:none;width:340px;max-height:none}
   #ppbar.mini{bottom:auto}
   #ppbar select{max-width:100%}
-  #lyrPanel{right:auto;left:10px;top:10px;bottom:10px;width:230px;max-height:none}
+  #lyrPanel{right:auto;left:10px;top:10px;bottom:10px;width:262px;max-height:none}
   #stage:has(#ppbar:not([hidden]):not(.mini)) #zoomBox{right:360px}
 }
 #lgNames .lgnHd{height:18px;line-height:18px;padding:0 8px;font-size:10px;color:var(--muted)}
