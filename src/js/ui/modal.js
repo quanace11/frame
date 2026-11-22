@@ -6,7 +6,10 @@ function modal({ title, html = '', buttons = [{ label: 'OK', value: true, primar
     ov.querySelector('h3').textContent = title; ov.querySelector('.body').innerHTML = html;
     const bx = ov.querySelector('.btns');
     let done = false;
-    const close = v => { if (done) return; done = true; ov.remove(); res(v); };
+    // Esc (keyboard / laptop) closes the dialog on top, like tapping outside it
+    const onKey = e => { if (e.key === 'Escape' && dismissable && [...document.querySelectorAll('.ov')].pop() === ov) { e.preventDefault(); e.stopPropagation(); close(null); } };
+    const close = v => { if (done) return; done = true; document.removeEventListener('keydown', onKey, true); ov.remove(); res(v); };
+    document.addEventListener('keydown', onKey, true);
     buttons.forEach(b => {
       const el = document.createElement('button');
       el.className = 'btn' + (b.primary ? ' primary' : '') + (b.cls ? ' ' + b.cls : ''); el.textContent = b.label;

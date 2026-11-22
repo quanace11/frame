@@ -289,7 +289,19 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
   #rail .tool{width:52px} #rail .rail-sep{grid-column:1/-1}
   #tlBar{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;padding-bottom:1px;-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent)} #tlBar::-webkit-scrollbar{display:none}
   #tlBar > *{flex:none}
+  /* one scrolling row: the actions used all the time come first, right after ▶ Phát (CSS order only, the DOM is unchanged) */
+  #playBtn,#loopBtn{order:-3} #dupBtn,#addBtn,#pasteBtn,#ibBtn,#moveL,#moveR{order:-2}
   #atlBar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none} #atlBar > *{flex:none} #atlBar::-webkit-scrollbar{display:none}
   #strip{align-items:flex-start} #strip .addfr{height:66px!important}
 }
 [data-gag].active{outline:3px solid var(--accent);background:var(--panel2)}
+/* 👆 touch screens (tablet, phone): fingers need ~40 px targets even without Menu → Nút to (which goes bigger still) */
+@media (pointer:coarse){
+  .chip,.chip.small,#top .chip.small{min-height:40px}
+  .chip.small{min-width:40px}
+  .sw{width:34px;height:34px}
+  .layer .eye{min-width:40px}
+}
+#delAllBtn{margin-left:12px}   /* keep "Xoá hết" a little apart from "Xoá" so a finger does not hit the wrong one */
+/* the rail scrolls when the screen is short (iPad portrait): Menu stays pinned at its bottom instead of hiding below the fold */
+#rail > #menuBtn{position:sticky;bottom:-8px;z-index:1;background:var(--panel);box-shadow:0 -10px 12px -6px var(--panel)}
