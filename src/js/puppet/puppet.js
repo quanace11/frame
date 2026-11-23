@@ -153,12 +153,15 @@ function drawPuppet(ctx, pose, lip) {
   if (lip && lip.mv) pose = ppApplyMv(pose, lip.mv);
   const M = ppMats(pose), byId = {}; S.pp.parts.forEach(p => byId[p.id] = p);
   const off = lyrOff('lh');
-  for (const p of [...S.pp.parts].sort((a, b) => a.z - b.z)) {
+  const order = [...S.pp.parts].sort((a, b) => a.z - b.z), foc = ppPaintFocus && order.find(p => p.id === ppPaintFocus);
+  if (foc) { order.splice(order.indexOf(foc), 1); order.push(foc); }   // ✎ Vẽ lại mảnh: the part being redrawn on top, the others faded
+  for (const p of order) {
     const q = pose && pose[p.id]; if ((q && q.h) || !p.c || (off && off.has(p.id)) || (ppOnlyRoot && (ppCharOf(p) || p.id) !== ppOnlyRoot)) continue;
-    const im = ppImg(p, q);
+    const im = ppImg(p, q); if (foc) ctx.globalAlpha = p === foc ? 1 : 0.35;
     if (S.ppSoft && !p.hard && p.role && (PP_SOFT1[p.role] || PP_SOFT2[p.role])) { const js = ppSoftJoints(p, byId); if (js.length) { ppDrawSoft(ctx, p, im, M, js); continue; } }
     ctx.save(); ctx.transform(...M[p.id]); ctx.drawImage(im.c, im.x, im.y); ctx.restore();
   }
+  if (foc) ctx.globalAlpha = 1;
 }
 function ppHit(pt, pose, skipLocked) {
   if (!S.pp) return null; const M = ppMats(pose), off = lyrOff('lh', skipLocked ? 'lk' : null);
@@ -773,16 +776,7 @@ function ppStart(p, base) {
   const f = curFrame();
   if (ppPathMode) { lasso = [p]; lassoOpen = true; action = { ...base, kind: 'pppath' }; return; }
   if (ppCutMode || ppPatchMode) { lasso = [p]; action = { ...base, kind: ppPatchMode ? 'pppatch' : 'ppcut' }; return; }
-  if (ppPaint) {
-    const sel = ppPart(ppSel); if (!sel) { toast('Chọn mảnh cần vẽ trước'); return; }
-    const q = f.pp && f.pp[sel.id], im0 = ppImg(sel, q), h = im0.holder;
-    if (!h.padded) { const PAD = 60, nc = makeCanvas(h.c.width + PAD * 2, h.c.height + PAD * 2); nc.getContext('2d').drawImage(h.c, PAD, PAD); h.c = nc; h.padded = true; h.alpha = null; if (h === sel) { sel.ox -= PAD; sel.oy -= PAD; } else { h.dx = (h.dx || 0) - PAD; h.dy = (h.dy || 0) - PAD; } }
-    const im = ppImg(sel, q), M = ppMats(ppPoseFor(f))[sel.id], inv = mInv(M), l = mApply(inv, p.x, p.y), sc = Math.hypot(M[0], M[1]) || 1;
-    const cx = im.c.getContext('2d'), before = cx.getImageData(0, 0, im.c.width, im.c.height);
-    const pt = { x: l.x - im.x, y: l.y - im.y };
-    cx.save(); cx.globalCompositeOperation = ppPaint === 'erase' ? 'destination-out' : 'source-over'; cx.fillStyle = S.color; cx.beginPath(); cx.arc(pt.x, pt.y, bsz() / sc / 2, 0, Math.PI * 2); cx.fill(); cx.restore();
-    action = { ...base, kind: 'pppaint', part: sel, im, inv, sc, last: pt, before }; requestRender(); return;
-  }
+  if (ppPaint) { ppPaintStart(p, base, f); return; }
   if (ppDrag === 'box') { ppBoxStart(p, base, f); return; }
   if (ppDrag === 'bone') {   // 🦴 like Animate's bone tool: drag an arm/leg = it turns round its joint, drag the root = the whole character moves
     const hit = ppHit(p, ppPoseFor(f), true);
@@ -807,11 +801,7 @@ function ppStart(p, base) {
 function ppMove(p) {
   const a = action, f = curFrame();
   if (a.kind === 'ppcut' || a.kind === 'pppatch' || a.kind === 'pppath') { const l = lasso[lasso.length - 1]; if (Math.hypot(p.x - l.x, p.y - l.y) > 3 / vs) { lasso.push(p); requestRender(); } return; }
-  if (a.kind === 'pppaint') {
-    const l = mApply(a.inv, p.x, p.y), pt = { x: l.x - a.im.x, y: l.y - a.im.y }, cx = a.im.c.getContext('2d');
-    cx.save(); cx.globalCompositeOperation = ppPaint === 'erase' ? 'destination-out' : 'source-over'; cx.strokeStyle = S.color; cx.lineWidth = bsz() / a.sc; cx.lineCap = cx.lineJoin = 'round';
-    cx.beginPath(); cx.moveTo(a.last.x, a.last.y); cx.lineTo(pt.x, pt.y); cx.stroke(); cx.restore(); a.last = pt; a.im.holder.alpha = null; requestRender(); return;
-  }
+  if (a.kind === 'pppaint') { ppPaintMove(a, p); return; }
   if (a.kind === 'ppbox') { ppBoxMove(p, f); return; }
   if (a.kind === 'ppik') { ppIKDrag(a.part, p, f); }
   else if (a.kind === 'pprot') { const q = ppQ(f, a.part.id), ang = Math.atan2(p.y - a.wp.y, p.x - a.wp.x); let dr = (ang - a.a0) / DEG; q.r = a.r0 + dr; }
@@ -830,11 +820,7 @@ function ppEnd() {
   const a = action, f = curFrame();
   if (a.kind === 'ppcut') { const poly = lasso; lasso = null; if (poly && poly.length > 2) ppCutLasso(poly); requestRender(); return; }
   if (a.kind === 'pppath') { const poly = lasso; lasso = null; lassoOpen = false; ppPathMode = false; ppSyncBar(); if (poly && poly.length > 2) ppApplyPath(poly); requestRender(); return; }
-  if (a.kind === 'pppaint') {
-    const c = a.im.c, after = c.getContext('2d').getImageData(0, 0, c.width, c.height);
-    pushEntry({ partpix: true, pid: a.part.id, vi: a.im.vi, before: a.before, after, bytes: a.before.data.length * 2 });
-    encodeHolder(a.im.holder); S.frames.forEach(fr => { fr.ver++; queueThumbFor(fr); }); scheduleSave(); ppSyncBar(); return;
-  }
+  if (a.kind === 'pppaint') { ppPaintEnd(a); return; }
   if (a.kind === 'pppatch') { const poly = lasso; lasso = null; if (poly && poly.length > 2) ppPatchLasso(poly); requestRender(); return; }
   if (a.kind === 'ppbox' && !a.moved) { ppSyncBar(); return; }
   if (a.kind === 'pprot' || a.kind === 'ppmove' || a.kind === 'ppik' || a.kind === 'ppbox') { ppMarkKey(f, a.kind === 'ppbox' ? a.root : a.part.id); pushEntry(ppEntry(f, a.before, ppState(f))); markEdited(f); ppRetween(); ppSyncBar(); updateFrameUI(); }
@@ -995,8 +981,8 @@ function ppSyncBar() { lyrSync(); lgSync(); ppBlinkInfo(); ppCycSync(); { const 
   { const vs2 = $('#ppVars'); vs2.innerHTML = '';
     if (sel) { const q2 = curFrame().pp && curFrame().pp[sel.id], cv = q2 && q2.v ? q2.v : 0;
       [sel.c, ...(sel.alts || []).map(a => a.c)].forEach((cc, i) => { const t = makeCanvas(36, 36), tx = t.getContext('2d'); const k2 = Math.min(34 / cc.width, 34 / cc.height); tx.drawImage(cc, (36 - cc.width * k2) / 2, (36 - cc.height * k2) / 2, cc.width * k2, cc.height * k2); t.className = 'vthumb' + (i === cv ? ' on' : ''); t.title = i ? 'Hình ' + (i + 1) : 'Hình gốc'; t.addEventListener('click', () => ppEdit(q => { if (i) q.v = i; else delete q.v; })); vs2.append(t); }); }
-    ['#ppVarAdd', '#ppVarDup', '#ppVarDel', '#ppPaintBtn', '#ppEraseBtn', '#ppDelChar', '#ppLibSave'].forEach(id => $(id).disabled = !sel);
-    $('#ppPaintBtn').classList.toggle('on', ppPaint === 'brush'); $('#ppEraseBtn').classList.toggle('on', ppPaint === 'erase'); }
+    ['#ppVarAdd', '#ppVarDup', '#ppVarDel', '#ppEraseBtn', '#ppDelChar', '#ppLibSave'].forEach(id => $(id).disabled = !sel);
+    ppPaintSync(sel); }
   { const f = curFrame(), k = ppIsKey(f); const kb = $('#ppKeyBtn'); kb.textContent = k ? '🔑 Keyframe' : '∿ Tự động (bấm để khoá)'; kb.classList.toggle('on', k);
     $('#ppEase').innerHTML = Object.entries(EASE_LABEL).map(([k2, v]) => `<option value="${k2}" ${(lgSelRoot() ? ppLayerEase(f, lgSelRoot()) : f.ppEase || 'inout') === k2 ? 'selected' : ''}>${v}</option>`).join(''); $('#ppEase').disabled = !k;
     const ps = $('#ppPoseSel'), cur = ps.value; ps.innerHTML = ppPoseList().map(o => `<option value="${o.id}">${o.name.replace(/</g, '&lt;')}</option>`).join(''); if (cur) ps.value = cur; }
@@ -1092,9 +1078,6 @@ document.querySelectorAll('[data-ppf]').forEach(b => b.addEventListener('click',
 $('#ppPatchBtn').addEventListener('click', () => { if (!ppSel) { toast('Chạm chọn mảnh bị hở (vd. Thân) trước'); return; } ppPatchMode = !ppPatchMode; ppCutMode = false; ppSyncBar(); if (ppPatchMode) toast('Khoanh chỗ bị hở — vùng khoanh nên chạm vào phần hình còn lại để lấy màu', 3500); });
 $('#ppKeep').addEventListener('change', e => { ppKeep = e.target.checked; });
 $('#ppTweenBtn').addEventListener('click', ppTween);
-let ppPaint = null;
-$('#ppPaintBtn').addEventListener('click', () => { ppPaint = ppPaint === 'brush' ? null : 'brush'; ppCutMode = ppPatchMode = false; ppSyncBar(); requestRender(); if (ppPaint) toast('Vẽ lên mảnh đang chọn bằng màu và cỡ bút hiện tại (đổi ở thanh trên)', 3000); });
-$('#ppEraseBtn').addEventListener('click', () => { ppPaint = ppPaint === 'erase' ? null : 'erase'; ppCutMode = ppPatchMode = false; ppSyncBar(); requestRender(); });
 $('#ppVarAdd').addEventListener('click', () => { if (ppSel) $('#ppVarFile').click(); });
 $('#ppVarFile').addEventListener('change', async e => {
   const file = e.target.files[0]; e.target.value = ''; const sel = ppPart(ppSel); if (!file || !sel) return;

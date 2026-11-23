@@ -58,7 +58,7 @@ async function applyEntry(e, key) {
   }
   if (e.wipe) { await wipeSwap(e.wipe[key === 'before' ? 'old' : 'neu'], e.wipe[key === 'before' ? 'neu' : 'old']); return null; }
   if (e.multi) { let o = null; const list = key === 'before' ? [...e.multi].reverse() : e.multi; for (const x of list) o = (await applyEntry(x, key)) || o; return o; }
-  if (e.partpix) { const pt = ppPart(e.pid); if (!pt) return null; const h = e.vi ? pt.alts && pt.alts[e.vi - 1] : pt; if (!h || h.c.width !== e[key].width || h.c.height !== e[key].height) return null; h.c.getContext('2d').putImageData(e[key], 0, 0); encodeHolder(h); S.frames.forEach(fr => { fr.ver++; queueThumbFor(fr); }); scheduleSave(); ppSyncBar(); requestRender(); return null; }
+  if (e.partpix) { ppPaintApply(e, key); return null; }
   const o = objByTarget(e.t); if (!o) return null;
   if (e.fxe) { fxSetState(o, e[key]); o.ver++; fxSyncBar(); requestRender(); return o; }
   if (e.lipe) { o.lip = e[key] ? JSON.parse(e[key]) : null; o.ver++; queueThumbFor(o); scheduleSave(); requestRender(); if (typeof ppBlinkInfo === 'function') ppBlinkInfo(); return o; }
@@ -135,7 +135,7 @@ function histCheck(force) {
 // A dedicated undo step was pushed: its own light changes (frames added…) must not become a 2nd step, so they are "covered" —
 // but only for a moment. Before, the cover lasted until the next check (400 ms after the LAST save), so a quick next action
 // (draw a line, then tap Nhân bản frame / + giữ khung right away) was swallowed: it could not be undone and undo reverted the line instead.
-const histLight = e => !!(e.add || e.del || e.ford || e.fdel || e.wipe || e.snap || e.sfxadd || e.ppose || e.fxe || e.lipe || (e.multi && e.multi.some(histLight)));
+const histLight = e => !!(e.add || e.del || e.ford || e.fdel || e.wipe || e.snap || e.sfxadd || e.ppose || e.fxe || e.lipe || e.partpix || (e.multi && e.multi.some(histLight)));
 let histCoverT = null;
 function histCover(e) {
   histCovered = true; clearTimeout(histCoverT); histCoverT = setTimeout(histCoverEnd, 150);
