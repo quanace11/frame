@@ -229,7 +229,7 @@ function camBadges() {
     ck.title = g.cam ? 'Camera key ở frame này' : 'Vẫn đang zoom (giữ từ camera key trước)';
   });
 }
-function fxSyncBar() { updateWaves(); camBadges(); trBadges(); trSyncBar(); ghostSync(); lookSync();
+function fxSyncBar() { updateWaves(); lgSync(); camBadges(); trBadges(); trSyncBar(); ghostSync(); lookSync();
   const bar = $('#fxbar'), show = S.tool === 'fx' && !panelHidden.fx; bar.hidden = !show; updPanelPill(); if (!show) return;
   const f = curFrame(), t = (f.texts || []).find(x => x.id === fxSel);
   ['#fxEditTxt', '#fxSize', '#fxRot', '#fxDelTxt', '#fxKeep', '#fxColorTxt', '#txIn', '#txLp', '#txOut', '#txPrev'].forEach(id => $(id).disabled = !t);
@@ -259,7 +259,7 @@ function txSyncBar(t) {
   fill('#txIn', TX_IN); fill('#txLp', TX_LP); fill('#txOut', TX_OUT);
   $('#txIn').value = t ? t.an || '' : ''; $('#txLp').value = t ? t.lp || '' : ''; $('#txOut').value = t ? t.ao || '' : '';
   if (!t) { $('#txInfo').textContent = 'Chạm 1 chữ trên khung để chọn'; return; }
-  const [a, b] = txRun(S.cur, t.id); $('#txInfo').textContent = a === b ? 'chữ này chỉ ở 1 frame (dùng Giữ cho để kéo dài)' : `chữ ở frame ${a + 1}–${b + 1}`;
+  const [a, b] = txRun(S.cur, t.id); $('#txInfo').textContent = a === b ? 'chữ này chỉ ở 1 frame (dùng Giữ cho, hoặc 🗂 Dòng layer: kéo đầu thanh vàng 🔤 để kéo dài)' : `chữ ở frame ${a + 1}–${b + 1}`;
 }
 // set the animation of the selected text on every neighbouring frame that holds it (undo: automatic snapshot)
 function txSetAnim(key, val) {

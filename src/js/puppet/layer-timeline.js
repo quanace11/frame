@@ -7,7 +7,32 @@
    ＋ Frame = insert a tween frame after this one (the move gets longer), − Frame = remove this frame. */
 SETTINGS_KEYS.push('lgOpen'); S.lgOpen = false;
 var LG = { cw: 32, rh: 34, hd: 18, sig: '', drag: null };   // hd = frame-number ruler on top of the cells
-const lgRows = () => [...lyrOrder().map(r => ({ id: r.id, name: lyrName(r), pp: true, r })), { id: 'draw', name: '✏️ Vẽ tay', pp: false }, { id: 'bg', name: '🖼 Nền', pp: false, bg: true }];
+const lgRows = () => [...lyrOrder().map(r => ({ id: r.id, name: lyrName(r), pp: true, r })), ...lgTxRows(), { id: 'draw', name: '✏️ Vẽ tay', pp: false }, { id: 'bg', name: '🖼 Nền', pp: false, bg: true }];
+// 🔤 one row per text (by id, in the order they first show up): each run of frames holding it is one bar,
+// drag its end (or its first cell) to make the text stay on more / fewer frames, like the 🖼 Nền row
+function lgTxRows() {
+  const seen = new Map();
+  S.frames.forEach(f => (f.texts || []).forEach(t => { if (!seen.has(t.id)) seen.set(t.id, t.str); }));
+  return [...seen].map(([id, str]) => { const s1 = String(str || '').replace(/\s+/g, ' ').trim(); return { id: 'tx:' + id, tx: id, name: '🔤 ' + (s1.length > 12 ? s1.slice(0, 11) + '…' : s1 || 'Chữ'), pp: false }; });
+}
+function lgTxSpans(id) {
+  const out = []; S.frames.forEach((f, i) => { if (!(f.texts || []).some(t => t.id === id)) return; const L = out[out.length - 1]; if (L && L.b === i - 1) L.b = i; else out.push({ a: i, b: i }); });
+  return out;
+}
+const lgTxSpanAt = (id, i) => lgTxSpans(id).find(s => s.a <= i && i <= s.b);
+// the bar's end (side 'b') or start (side 'a') goes to frame j: frames added get a copy of the text at that edge, frames let go lose it
+function lgTxStretch(id, sp, side, j) {
+  if (playing) stopPlay();
+  const n = S.frames.length; j = side === 'b' ? clamp(j, sp.a, n - 1) : clamp(j, 0, sp.b);
+  const edge = side === 'b' ? sp.b : sp.a; if (j === edge) { lgSync(true); return; }
+  const src = (S.frames[edge].texts || []).find(t => t.id === id); if (!src) return;
+  const put = i => { const g = S.frames[i]; g.texts = (g.texts || []).filter(t => t.id !== id); g.texts.push(JSON.parse(JSON.stringify(src))); g.ver++; queueThumbFor(g); };
+  const drop = i => { const g = S.frames[i]; g.texts = (g.texts || []).filter(t => t.id !== id); g.ver++; queueThumbFor(g); };
+  if (side === 'b') { if (j > sp.b) for (let i = sp.b + 1; i <= j; i++) put(i); else for (let i = j + 1; i <= sp.b; i++) drop(i); }
+  else { if (j < sp.a) for (let i = j; i < sp.a; i++) put(i); else for (let i = sp.a; i < j; i++) drop(i); }
+  scheduleSave(); requestRender(); if (S.tool === 'fx') fxSyncBar(); lgSync(true);
+  const r = lgTxSpanAt(id, side === 'b' ? sp.a : sp.b); toast(r ? `🔤 Chữ hiện ở frame ${r.a + 1} → ${r.b + 1}` : '🔤 Đã bỏ chữ ở các frame này', 2200);
+}
 // 🖼 Nền row: frames that share one background form a span (frame 1–5 = Nền 1, 6–10 = Nền 2…); drag its end to stretch / shrink it
 function lgBgSpans() {
   const out = [], no = new Map(); let k = 0;
@@ -56,7 +81,7 @@ function lgSync(force) {
   if (btn) btn.classList.toggle('on', !!S.lgOpen);
   box.hidden = !S.lgOpen; if (!S.lgOpen) return;
   const rows = lgRows(), sel = lgSelRoot();
-  const sig = JSON.stringify([rows.map(r => [r.id, r.name, r.r && r.r.lh]), S.frames.length, S.cur, sel, S.frames.map(f => [f.ppKey, f.ppK, f.ppE, f.ppEase, f.bgId, f.dur, rows.map(r => r.pp && lgHiddenAt(f, r.id))])]);
+  const sig = JSON.stringify([rows.map(r => [r.id, r.name, r.r && r.r.lh]), S.frames.length, S.cur, sel, fxSel, S.frames.map(f => [f.ppKey, f.ppK, f.ppE, f.ppEase, f.bgId, f.dur, (f.texts || []).map(t => t.id).join(), rows.map(r => r.pp && lgHiddenAt(f, r.id))])]);
   if (!force && sig === LG.sig) return; LG.sig = sig;
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   $('#lgNames').innerHTML = '<div class="lgnHd">frame</div>' + rows.map(r => `<div class="lgn${r.id === sel ? ' on' : ''}${r.r && r.r.lh ? ' off' : ''}" data-lgr="${r.id}">${r.pp ? (lyrParts(r.id).length > 1 ? '🧍 ' : '🖼 ') : ''}${esc(r.name)}</div>`).join('');
@@ -97,6 +122,17 @@ function lgDraw(rows, sel) {
       });
       return;
     }
+    if (r.tx) {
+      const dg = LG.drag && LG.drag.tx && LG.drag.moved && LG.drag.rid === r.id ? LG.drag : null;
+      lgTxSpans(r.tx).forEach(s => {
+        let a = s.a, b = s.b; if (dg && dg.tx.a === s.a) { if (dg.side === 'b') b = clamp(s.b + dg.j - dg.i, s.a, n - 1); else a = clamp(s.a + dg.j - dg.i, 0, s.b); }
+        const x0 = a * cw + 3, x1 = (b + 1) * cw - 3;
+        x.fillStyle = r.tx === fxSel ? 'rgba(255,200,40,.75)' : 'rgba(230,170,40,.5)'; x.fillRect(x0, y + 6, x1 - x0, rh - 12);
+        x.fillStyle = '#fff'; x.fillRect(x0 + 2, y + 9, 2, rh - 18); x.fillRect(x1 - 4, y + 9, 2, rh - 18);   // grips: drag to stretch / shrink
+        if (x1 - x0 > 40) { x.font = '10px system-ui,sans-serif'; x.textAlign = 'left'; x.textBaseline = 'middle'; x.fillStyle = '#1b1d22'; x.fillText(`${a + 1}→${b + 1}`, x0 + 7, y + rh / 2 + 1); }
+      });
+      return;
+    }
     if (!r.pp) { for (let i = 0; i < n; i++) { x.fillStyle = '#8a8f99'; x.beginPath(); x.arc(i * cw + cw / 2, y + rh / 2, 3.5, 0, 7); x.fill(); } return; }
     const keys = []; for (let i = 0; i < n; i++) if (ppLayerKey(S.frames[i], r.id)) keys.push(i);
     // tween bands between keyframes (violet, like a classic tween), with an arrow
@@ -129,7 +165,13 @@ function lgDraw(rows, sel) {
 async function lgPick(i, rid) {
   if (playing) stopPlay();
   if (i !== S.cur && i >= 0 && i < S.frames.length) await selectFrame(i);
-  if (rid && rid !== 'draw' && rid !== 'bg') lyrSelect(rid);
+  if (rid && rid.startsWith('tx:')) {
+    const id = rid.slice(3); setTool('fx'); openTab('fx', 'text');
+    if ((curFrame().texts || []).some(t => t.id === id)) fxSel = id;
+    fxSyncBar(); requestRender();
+    const sp = lgTxSpanAt(id, S.cur); toast(sp ? `🔤 Chữ ở frame ${sp.a + 1} → ${sp.b + 1} · kéo 2 đầu thanh vàng để kéo dài / rút ngắn` : 'Frame này chưa có chữ này · kéo đầu thanh vàng tới đây để chữ hiện ở đây', 2600);
+  }
+  else if (rid && rid !== 'draw' && rid !== 'bg') lyrSelect(rid);
   else if (rid === 'bg') { if (S.tool === 'puppet' || S.tool === 'fx' || S.tool === 'vedit') setTool('brush'); setLayer('bg'); const sp = lgBgSpanAt(S.cur); if (sp) toast(`🖼 Nền ${sp.no}: frame ${sp.a + 1} → ${sp.b + 1} · kéo cuối thanh nền để kéo dài / rút ngắn`, 2400); }
   else if (rid === 'draw') { if (S.tool === 'puppet' || S.tool === 'fx' || S.tool === 'vedit') setTool('brush'); if (S.layer !== 'char' && S.layer !== 'vec') setLayer(S.lineLayer || 'char'); }
   lgSync(true);
@@ -233,13 +275,18 @@ function lgWire() {
   cv.addEventListener('pointerdown', e => {
     if (e.button > 0) return;
     const c = cell(e), r = lgRows()[c.ri], key = !!(r && r.pp && S.pp && ppLayerKey(S.frames[c.i], r.id));
-    LG.drag = { id: e.pointerId, x0: e.clientX, s0: sc.scrollLeft, i: c.i, j: c.i, ri: c.ri, rid: r && r.id, key, moved: false, bg: r && r.bg ? lgBgSpanAt(c.i) : null };
+    LG.drag = { id: e.pointerId, x0: e.clientX, s0: sc.scrollLeft, i: c.i, j: c.i, ri: c.ri, rid: r && r.id, key, moved: false, bg: r && r.bg ? lgBgSpanAt(c.i) : null, tx: null };
+    if (r && r.tx) {
+      // grab inside a bar: its first cell moves the start, the rest moves the end; one cell past an end grabs that end too
+      const sps = lgTxSpans(r.tx), sp = sps.find(s => s.a <= c.i && c.i <= s.b) || sps.find(s => s.b === c.i - 1) || sps.find(s => s.a === c.i + 1);
+      if (sp) { LG.drag.tx = sp; LG.drag.side = c.i < sp.a || (c.i === sp.a && sp.a !== sp.b) ? 'a' : 'b'; LG.drag.i = c.i < sp.a ? sp.a : c.i > sp.b ? sp.b : c.i; LG.drag.j = LG.drag.i; }
+    }
     try { cv.setPointerCapture(e.pointerId); } catch (_) {}
   });
   cv.addEventListener('pointermove', e => {
     const d = LG.drag; if (!d || d.id !== e.pointerId) return;
     if (Math.abs(e.clientX - d.x0) > 6) d.moved = true; if (!d.moved) return;
-    if (d.key || d.bg) { const j = cell(e).i; if (j !== d.j) { d.j = j; lgDraw(lgRows(), lgSelRoot()); } }
+    if (d.key || d.bg || d.tx) { const j = cell(e).i; if (j !== d.j) { d.j = j; lgDraw(lgRows(), lgSelRoot()); } }
     else sc.scrollLeft = d.s0 - (e.clientX - d.x0);
   });
   const up = e => {
@@ -247,6 +294,7 @@ function lgWire() {
     if (e.type === 'pointercancel') { lgSync(true); return; }
     if (!d.moved) { const rows = lgRows(); if (d.ri < 0) lgPick(d.i, null); else if (rows[d.ri]) lgPick(d.i, rows[d.ri].id); return; }
     if (d.bg) { lgBgStretch(d.bg, d.bg.b + (d.j - d.i)); return; }
+    if (d.tx) { const e0 = d.side === 'b' ? d.tx.b : d.tx.a; lgTxStretch(d.rid.slice(3), d.tx, d.side, e0 + (d.j - d.i)); return; }
     if (d.key && d.j !== d.i) lgMoveKey(d.rid, d.i, d.j); else lgSync(true);
   };
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);

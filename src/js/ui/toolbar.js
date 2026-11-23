@@ -339,7 +339,7 @@ document.querySelectorAll('[data-twp]').forEach(b => b.addEventListener('click',
 document.querySelectorAll('[data-twe]').forEach(b => b.addEventListener('click', () => { TW.ease = b.dataset.twe; twSync(); requestRender(); }));
 // keyboard (for desktop testing / keyboard covers)
 document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
+  if (typingIn(e)) return;
   const k = e.key.toLowerCase();
   if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
   if ((e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); redo(); return; }
