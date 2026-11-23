@@ -827,7 +827,13 @@ function ppEnd() {
   if (a.kind === 'ppjedit') { ppJEEnd(a); return; }
   if (a.kind === 'pppatch') { const poly = lasso; lasso = null; if (poly && poly.length > 2) ppPatchLasso(poly); requestRender(); return; }
   if (a.kind === 'ppbox' && !a.moved) { ppSyncBar(); return; }
-  if (a.kind === 'pprot' || a.kind === 'ppmove' || a.kind === 'ppik' || a.kind === 'ppbox') { ppMarkKey(f, a.kind === 'ppbox' ? a.root : a.part.id); pushEntry(ppEntry(f, a.before, ppState(f))); markEdited(f); ppRetween(); ppSyncBar(); updateFrameUI(); }
+  if (a.kind === 'pprot' || a.kind === 'ppmove' || a.kind === 'ppik' || a.kind === 'ppbox') {
+    ppMarkKey(f, a.kind === 'ppbox' ? a.root : a.part.id);
+    const rid = a.kind === 'ppbox' ? a.root : (a.kind === 'ppmove' || a.kind === 'pprot') && !ppPart(a.part.parent) ? a.part.id : null;   // whole character: 🔗 may spread to other frames
+    const more = ppScopeSpread(f, rid, a.before.pp), e = ppEntry(f, a.before, ppState(f));
+    pushEntry(more.length ? { multi: [e, ...more] } : e); markEdited(f); ppRetween(); ppSyncBar(); updateFrameUI();
+    if (more.length) toast(`Đã áp cho ${more.length + 1} keyframe (${PP_SCOPE_LABEL[S.ppScope]})`, 1800);
+  }
   if (a.kind === 'pppivot') { scheduleSave(); }
 }
 function ppEntry(f, before, after) { return { t: targetOf(f), ppose: true, before, after, bytes: 200 }; }
