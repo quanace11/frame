@@ -218,7 +218,6 @@ function ppPrevSync() {
   if (b) b.disabled = !Object.keys(ppPrev).length;
 }
 function ppPrevDraw(c, f, px) {
-  ppGhostDraw(c, f, px);
   if (!ppPrevMode() || !ppPrevShow) return;
   const M = ppMats(ppPoseFor(f)), j = ppPart(ppPrevJ);
   c.save();
@@ -237,27 +236,3 @@ function ppPrevDraw(c, f, px) {
 }
 $('#ppPrevReset').addEventListener('click', ppPrevReset);
 $('#ppPrevShow').addEventListener('change', e => { ppPrevShow = e.target.checked; requestRender(); });
-/* ===== 👻 Bóng các góc: while redrawing a piece, the limb at the chosen joint (or the piece being painted) is shown faded
-   at several angles round its joint at once (−135° … +135°, every 45°) + a dashed circle (radius = half the limb width)
-   round the joint. Where all the ghosts meet the body shows where the outline must go so it still fits the body
-   whether the arm hangs down, is held out or raised: draw the joint end as that circle. Screen only. ===== */
-let ppGhostOn = true;
-const PP_GHOST_OFF = [-135, -90, -45, 45, 90, 135];
-function ppGhostPart() { const j = ppPart(ppPrevJ); if (j && j.parent) return j; const s = ppPart(ppSel); return s && s.parent && ppPart(s.parent) ? s : null; }
-function ppGhostDraw(c, f, px) {
-  if (!ppGhostOn || !ppPrevMode()) return;
-  const J = ppGhostPart(); if (!J || !J.c) return;
-  const base = ppPoseFor(f), r0 = (base[J.id] && base[J.id].r) || 0, kids = new Set([J.id]);
-  for (let more = true; more;) { more = false; for (const p of S.pp.parts) if (!kids.has(p.id) && kids.has(p.parent)) { kids.add(p.id); more = true; } }
-  const list = S.pp.parts.filter(p => kids.has(p.id) && p.c).sort((a, b) => a.z - b.z);
-  c.save(); c.globalAlpha = 0.22;
-  for (const d of PP_GHOST_OFF) {
-    const P = { ...base, [J.id]: { ...(base[J.id] || {}), r: r0 + d } }, M = ppMats(P);
-    for (const p of list) { const q = P[p.id]; if (q && q.h) continue; const im = ppImg(p, q); c.save(); c.transform(...M[p.id]); c.drawImage(im.c, im.x, im.y); c.restore(); }
-  }
-  c.restore();
-  const M = ppMats(base), w = mApply(M[J.id], J.px, J.py), k = Math.hypot(M[J.id][0], M[J.id][1]) || 1;
-  c.save(); c.setLineDash([6 * px, 5 * px]); c.lineWidth = 2 * px; c.strokeStyle = '#ff3b9a';
-  c.beginPath(); c.arc(w.x, w.y, ppJECapR(J) * k, 0, Math.PI * 2); c.stroke(); c.restore();
-}
-$('#ppGhostOn').addEventListener('change', e => { ppGhostOn = e.target.checked; requestRender(); });
