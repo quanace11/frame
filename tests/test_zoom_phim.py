@@ -78,7 +78,7 @@ async def main():
         check('swap start/end', abs(k3['s']['z'] - 1.5) < 0.01 and abs(k3['z'] - k2['s']['z']) < 0.01)
         # ease
         await pg.select_option('#camEase', 'linear'); check('ease set', await pg.evaluate("S.frames[1].cam.e") == 'linear')
-        zl = await Z(1, k3['d'] * 0.25); exp = k3['s']['z'] + (k3['z'] - k3['s']['z']) * 0.25
+        zl = await Z(1, k3['d'] * 0.25); exp = k3['s']['z'] * (k3['z'] / k3['s']['z']) ** 0.25  # zoom goes on a log scale (camMix): steady speed for the eye
         check('linear ease', abs(zl - exp) < 0.02)
         # 4) ⚡ crash zoom: fast, overshoots, impact shake, whoosh sound, one undo step
         await pg.evaluate("S.cur=2; updateFrameUI(); fxSyncBar()"); n_sfx = await pg.evaluate("(S.audio.sfx||[]).length")
@@ -99,7 +99,7 @@ async def main():
         await pg.click('[data-camfx=kb]'); await drag([[W * 0.7, H * 0.35]])
         k = await pg.evaluate("S.frames[2].cam"); print('kb', k)
         a, m, e = await C(2, 0), await C(2, k['d'] / 2), await C(2, k['d'])
-        check('ken burns pans + zooms slowly', k['e'] == 'linear' and k['d'] == 3 and a['z'] < e['z'] and abs(m['x'] - (a['x'] + e['x']) / 2) < 2 and abs(a['x'] - e['x']) > 50)
+        check('ken burns pans + zooms slowly', k['e'] == 'linear' and k['d'] == 3 and a['z'] < e['z'] and min(a['x'], e['x']) < m['x'] < max(a['x'], e['x']) and abs(a['x'] - e['x']) > 50)
         # 7) ↔ pan keeps the zoom
         await pg.click('[data-camfx=pan]'); await drag([[W * 0.25, H * 0.5]])
         k = await pg.evaluate("S.frames[2].cam"); check('pan keeps zoom', abs(k['s']['z'] - k['z']) < 0.01 and abs(k['s']['x'] - k['x']) > 50)
