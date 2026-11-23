@@ -147,6 +147,7 @@ function abortAction() {
   if (action.kind === 'vbend' || action.kind === 'vmove' || action.kind === 'verase' || action.kind === 'vmulti' || action.kind === 'vxform') { if (action.col) colLiftAbort(curFrame(), action.col); curFrame().vec = action.before; if (action.kind === 'vmulti' && action.polyBase) vpoly = action.polyBase; requestRender(); }
   if (action.kind === 'pprot' || action.kind === 'ppmove' || action.kind === 'ppik') { ppSetState(curFrame(), action.before); requestRender(); }
   if (action.kind === 'hcjoint' && action.r) action.r.jm = action.jm0 || null;
+  if (action.kind === 'hcpaint' && HC && action.before) { hcPaintUndo(action.before); requestRender(); }
   if (action.kind === 'hclasso' || action.kind === 'ppcut' || action.kind === 'pppatch' || action.kind === 'pppath') { lasso = null; lassoOpen = false; requestRender(); }
   if ((action.kind === 'fxmove' || action.kind.startsWith('cam')) && action.before) { fxSetState(curFrame(), action.before); fxSyncBar(); requestRender(); }
   if ((action.kind === 'labpaint' || action.kind === 'lablasso') && ppSetup) { lasso = null; if (ppSetup.undo.length) ppSetup.hand = ppSetup.undo.pop(); ppLabOverlay(ppSetup); requestRender(); }
