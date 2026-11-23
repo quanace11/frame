@@ -270,13 +270,21 @@ function hcParts() {   // the loops → cut-out pieces (each piece = the drawing
           if (!q.m[i]) continue; const l = lk.get(q);
           if (l && l.inside) continue;   // eyes / mouth lassoed inside the head: both keep their drawing
           if (l && (l.front ? l.c : l.p) === r) { const dx = X - l.j.x, dy = Y - l.j.y; if (dx * dx + dy * dy <= l.R * l.R) continue; }   // the round joint: kept by the piece in front, it covers the turn
-          const cw = hcColWin(r, q, d[o], d[o + 1], d[o + 2]);   // a colour only one of the two pieces has (shorts vs hand) goes to that one
-          if (cw < 0) { d[o + 3] = 0; break; }
-          if (cw > 0) continue;
-          const ow = own[i] - 1;   // else: the piece whose own drawing reaches it first without crossing an outline (sleeve vs shirt)
-          if (ow === ri) continue;
-          if (ow >= 0 && HC.regs[ow] === q) { d[o + 3] = 0; break; }
-          if (l && ((X - l.j.x) * l.d.x + (Y - l.j.y) * l.d.y >= 0) !== (l.c === r)) { d[o + 3] = 0; break; }   // nobody reaches it: the side of the joint
+          // pieces not joined to each other (a hand lying on the shorts), or the body and a limb / the head near their joint:
+          // a colour only one of the two has (shorts vs hand) goes to that one, else the piece whose own drawing reaches it first
+          // without crossing an outline (sleeve vs shirt). Between two limb pieces (elbow, knee), and farther than the round joint
+          // from the body, a colour / outline edge is a sock or glove inside one piece, not the seam between two: only the side
+          // of the joint decides there (else the thigh takes the shin's skin down to the sock and the knee tears when it bends)
+          const sd = l ? (X - l.j.x) * l.d.x + (Y - l.j.y) * l.d.y : 0;
+          if (!l || (l.p === root && Math.abs(sd) <= l.R * 1.25)) {
+            const cw = hcColWin(r, q, d[o], d[o + 1], d[o + 2]);
+            if (cw < 0) { d[o + 3] = 0; break; }
+            if (cw > 0) continue;
+            const ow = own[i] - 1;
+            if (ow === ri) continue;
+            if (ow >= 0 && HC.regs[ow] === q) { d[o + 3] = 0; break; }
+          }
+          if (l && (sd >= 0) !== (l.c === r)) { d[o + 3] = 0; break; }   // nobody reaches it: the side of the joint
         }
       }
       hcDropCrumbs(d, w, h); cx.putImageData(id, 0, 0);
@@ -325,6 +333,47 @@ async function hcFinish() {
     toast(`Đã tạo nhân vật ${n} mảnh có xương. 🦴 Kéo tay/chân để xoay quanh khớp, kéo thân để dời cả người; Dòng layer để đặt keyframe`, 5500);
   } catch (e) { pm.close(); console.error(e); toast('Lỗi cắt: ' + e.message, 3000); }
 }
+// 📖 Mẹo cắt: which picture to pick and how to lasso, with a sample drawn in code (A-pose with loops past the joints vs arms glued)
+function hcTipsDraw(cv) {
+  const x = cv.getContext('2d'), Wc = cv.width, Hc = cv.height, k = Hc / 330;
+  x.fillStyle = '#fff'; x.fillRect(0, 0, Wc, Hc); x.lineCap = x.lineJoin = 'round';
+  const seg = (pts, w, col) => { for (const [ww, c] of [[w + 5, '#232028'], [w, col]]) { x.strokeStyle = c; x.lineWidth = ww * k; x.beginPath(); pts.forEach((p, i) => i ? x.lineTo(p[0] * k, p[1] * k) : x.moveTo(p[0] * k, p[1] * k)); x.stroke(); } };
+  const blob = (cx, cy, rx, ry, col) => { x.beginPath(); x.ellipse(cx * k, cy * k, rx * k, ry * k, 0, 0, 7); x.fillStyle = col; x.fill(); x.lineWidth = 2.5 * k; x.strokeStyle = '#232028'; x.stroke(); };
+  const loop = (a, b, r, e, col) => {   // the lasso: a capsule round the bone a→b, pushed e past both joints
+    const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L, A = [a[0] - ux * e, a[1] - uy * e], B = [b[0] + ux * e, b[1] + uy * e], an = Math.atan2(uy, ux);
+    x.beginPath(); x.arc(B[0] * k, B[1] * k, r * k, an - Math.PI / 2, an + Math.PI / 2); x.arc(A[0] * k, A[1] * k, r * k, an + Math.PI / 2, an + Math.PI * 1.5); x.closePath();
+    x.fillStyle = col + '30'; x.fill(); x.setLineDash([5 * k, 4 * k]); x.lineWidth = 2 * k; x.strokeStyle = col; x.stroke(); x.setLineDash([]);
+  };
+  const dot = (p) => { x.beginPath(); x.arc(p[0] * k, p[1] * k, 4.5 * k, 0, 7); x.fillStyle = '#ff3b9a'; x.fill(); x.lineWidth = 1.5 * k; x.strokeStyle = '#fff'; x.stroke(); };
+  const man = (ox, good) => {
+    const P = (a, b) => [ox + a, b], sh = good ? [[-34, 100], [34, 100]] : [[-34, 100], [34, 100]];
+    const el = good ? [[-58, 140], [58, 140]] : [[-40, 142], [40, 142]], ha = good ? [[-76, 182], [76, 182]] : [[-33, 180], [33, 180]];
+    const hip = [[-16, 196], [16, 196]], kn = good ? [[-26, 248], [26, 248]] : [[-9, 248], [9, 248]], an = good ? [[-32, 296], [32, 296]] : [[-8, 296], [8, 296]];
+    for (const s of [0, 1]) seg([P(...hip[s]), P(...kn[s]), P(...an[s])], 15, '#f9cda0');
+    for (const s of [0, 1]) blob(ox + an[s][0] + (s ? 6 : -6), 304, 13, 7, '#3c3c46');
+    for (const s of [0, 1]) { seg([P(...sh[s]), P(...el[s]), P(...ha[s])], 12, '#f9cda0'); blob(ox + ha[s][0], ha[s][1] + 6, 8, 8, '#f9cda0'); seg([P(...sh[s]), [ox + (sh[s][0] * 0.6 + el[s][0] * 0.4), sh[s][1] * 0.6 + el[s][1] * 0.4]], 16, '#f07820'); }
+    x.beginPath(); x.moveTo((ox - 34) * k, 94 * k); x.lineTo((ox + 34) * k, 94 * k); x.lineTo((ox + 28) * k, 170 * k); x.lineTo((ox - 28) * k, 170 * k); x.closePath(); x.fillStyle = '#f07820'; x.fill(); x.lineWidth = 2.5 * k; x.strokeStyle = '#232028'; x.stroke();
+    x.beginPath(); x.rect((ox - 30) * k, 166 * k, 60 * k, 36 * k); x.fillStyle = '#3260c8'; x.fill(); x.stroke();
+    blob(ox, 58, 32, 31, '#f9cda0');
+    if (!good) return;
+    loop(P(-34, 100), P(...el[0]), 13, 12, '#2ec4b6'); loop(P(...el[0]), P(...ha[0]), 13, 12, '#3a86ff');
+    loop(P(...hip[0]), P(...kn[0]), 14, 12, '#a06cd5'); loop(P(...kn[0]), P(...an[0]), 16, 14, '#7b2cbf');
+    for (const p of [sh[0], el[0], hip[0], kn[0]]) dot(P(...p));
+  };
+  man(Wc / k * 0.27, true); man(Wc / k * 0.75, false);
+  x.font = `bold ${15 * k}px system-ui`; x.textAlign = 'center';
+  x.fillStyle = '#169646'; x.fillText('✓ Nên: tay dang, chân tách', Wc * 0.27, 18 * k);
+  x.fillStyle = '#d22828'; x.fillText('✗ Tránh: tay sát thân', Wc * 0.75, 18 * k);
+}
+function hcTips() {
+  modal({ title: '📖 Mẹo chọn ảnh và cắt', buttons: [{ label: 'Đã hiểu', primary: true, value: 1 }],
+    html: `<canvas id="hcTipCv" width="520" height="330" style="width:100%;max-width:520px;border-radius:10px;display:block;margin:0 auto 8px"></canvas>
+<p><b>Chọn ảnh</b>: toàn thân, nền trắng trơn, viền tối rõ, quần áo khác màu da. Chính diện: tay dang ra 20–35° (có khe giữa tay và thân), khuỷu hơi cong, 2 chân tách nhau. Góc nghiêng: tay gần đưa ra trước, tay xa ra sau, không che thân; chân bước nhẹ để thấy cả 2 chân. Chỗ nào bị che, khi xoay sẽ thành lỗ.</p>
+<p><b>Khoanh</b>: Thân trước (cả áo + quần), rồi Đầu (cả cổ), Tay trên, Cẳng tay, Đùi, Ống chân. Mỗi vùng bo tròn <b>quá khớp khoảng 1 bề ngang tay/chân</b>, 2 vùng kề nhau chồng đều 2 bên khớp. Tay trên lấy đủ vai, vòng qua đỉnh vai.</p>
+<p><b>Trước khi Xong</b>: chấm hồng phải nằm đúng vai, khuỷu, hông, gối (kéo để chỉnh). Góc nghiêng: tay gần, đùi gần chọn ⏫ Trước. Xong thì thử kéo tay chân ở 🦴 Tạo dáng; lệch thì hoàn tác rồi khoanh lại vùng đó.</p>`,
+    onOpen: ov => hcTipsDraw(ov.querySelector('#hcTipCv')) });
+}
+$('#hcTips').addEventListener('click', hcTips);
 document.querySelectorAll('[data-hcr]').forEach(b => b.addEventListener('click', () => { if (!HC) return; HC.role = b.dataset.hcr; hcSync(); }));
 $('#hcUndo').addEventListener('click', () => { if (!HC || !HC.regs.length) return; const r = HC.regs[HC.regs.length - 1]; hcRemove(r); HC.role = r.role; hcSync(); requestRender(); });
 $('#hcRound').addEventListener('click', () => { if (!HC) return; HC.round = !HC.round; hcSync(); requestRender(); toast(HC.round ? '◯ Khớp tròn: chỗ chồng chia đôi tại khớp + 1 đĩa tròn chung, xoay không lộ khe, không thừa mẩu' : 'Giữ nguyên chỗ chồng ở cả 2 mảnh', 3500); });
