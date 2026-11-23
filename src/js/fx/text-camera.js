@@ -139,6 +139,14 @@ function camWins(T) {
   });
   return out;
 }
+// camera move from view A to view C (u = 0…1) as ONE straight zoom: the zoom grows evenly (log scale) round the point
+// that sits at the same place on screen in both views, so the target (a face) comes straight in. Lerping the centre and
+// the zoom apart made the target drift out and swing back ("lượn"). Same zoom (a pan) = plain slide.
+function camMix(A, C, u) {
+  if (Math.abs(C.z - A.z) < 0.02 * Math.max(A.z, C.z)) return { z: lerp(A.z, C.z, u), x: lerp(A.x, C.x, u), y: lerp(A.y, C.y, u) };
+  const z = A.z * Math.pow(C.z / A.z, u), fx = (C.x * C.z - A.x * A.z) / (C.z - A.z), fy = (C.y * C.z - A.y * A.z) / (C.z - A.z), k = A.z / z;
+  return { z, x: fx - (fx - A.x) * k, y: fy - (fy - A.y) * k };
+}
 function camAt(i, tIn = 0) {
   const def = { z: 1, x: W / 2, y: H / 2 }, n = S.frames.length; if (!n) return def;
   i = clamp(i, 0, n - 1);
@@ -151,8 +159,8 @@ function camAt(i, tIn = 0) {
     // value of this key's segment at time t (t ≥ T[k], before the next key)
     const at = t => {
       const c = S.frames[k].cam; let a = C;
-      if (c.tr === 'smooth') { const d = Math.max(0.05, c.d || 1), u = (CAM_EASE[c.e] || EASE.inout)(clamp((t - T[k]) / d, 0, 1)), A = c.s ? camPlain(c.s) : start; a = { z: lerp(A.z, C.z, u), x: lerp(A.x, C.x, u), y: lerp(A.y, C.y, u) }; }
-      if (next && !next.tr && nk > k + 1) { const u = EASE.inout(clamp((t - T[k]) / Math.max(1e-6, T[nk] - T[k]), 0, 1)), B = camPlain(next); a = { z: lerp(a.z, B.z, u), x: lerp(a.x, B.x, u), y: lerp(a.y, B.y, u) }; }
+      if (c.tr === 'smooth') { const d = Math.max(0.05, c.d || 1), u = (CAM_EASE[c.e] || EASE.inout)(clamp((t - T[k]) / d, 0, 1)), A = c.s ? camPlain(c.s) : start; a = camMix(A, C, u); }
+      if (next && !next.tr && nk > k + 1) { const u = EASE.inout(clamp((t - T[k]) / Math.max(1e-6, T[nk] - T[k]), 0, 1)), B = camPlain(next); a = camMix(a, B, u); }
       return a;
     };
     if (nk == null || T[nk] > tau) { v = at(tau); break; }
