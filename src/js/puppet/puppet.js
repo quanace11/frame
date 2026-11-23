@@ -778,6 +778,7 @@ function ppStart(p, base) {
   if (ppPathMode) { lasso = [p]; lassoOpen = true; action = { ...base, kind: 'pppath' }; return; }
   if (ppCutMode || ppPatchMode) { lasso = [p]; action = { ...base, kind: ppPatchMode ? 'pppatch' : 'ppcut' }; return; }
   if (ppPaint) { ppPaintStart(p, base, f); return; }
+  if (ppJEOn()) { ppJEStart(p, base, f); return; }
   if (ppDrag === 'box') { ppBoxStart(p, base, f); return; }
   if (ppDrag === 'bone') {   // 🦴 like Animate's bone tool: drag an arm/leg = it turns round its joint, drag the root = the whole character moves
     const hit = ppHit(p, ppPoseFor(f), true);
@@ -803,6 +804,7 @@ function ppMove(p) {
   const a = action, f = curFrame();
   if (a.kind === 'ppcut' || a.kind === 'pppatch' || a.kind === 'pppath') { const l = lasso[lasso.length - 1]; if (Math.hypot(p.x - l.x, p.y - l.y) > 3 / vs) { lasso.push(p); requestRender(); } return; }
   if (a.kind === 'pppaint') { ppPaintMove(a, p); return; }
+  if (a.kind === 'ppjedit') { ppJEMove(a, p, f); return; }
   if (a.kind === 'ppbox') { ppBoxMove(p, f); return; }
   if (a.kind === 'ppik') { ppIKDrag(a.part, p, f); }
   else if (a.kind === 'pprot') { const q = ppQ(f, a.part.id), ang = Math.atan2(p.y - a.wp.y, p.x - a.wp.x); let dr = (ang - a.a0) / DEG; q.r = a.r0 + dr; }
@@ -822,6 +824,7 @@ function ppEnd() {
   if (a.kind === 'ppcut') { const poly = lasso; lasso = null; if (poly && poly.length > 2) ppCutLasso(poly); requestRender(); return; }
   if (a.kind === 'pppath') { const poly = lasso; lasso = null; lassoOpen = false; ppPathMode = false; ppSyncBar(); if (poly && poly.length > 2) ppApplyPath(poly); requestRender(); return; }
   if (a.kind === 'pppaint') { ppPaintEnd(a); return; }
+  if (a.kind === 'ppjedit') { ppJEEnd(a); return; }
   if (a.kind === 'pppatch') { const poly = lasso; lasso = null; if (poly && poly.length > 2) ppPatchLasso(poly); requestRender(); return; }
   if (a.kind === 'ppbox' && !a.moved) { ppSyncBar(); return; }
   if (a.kind === 'pprot' || a.kind === 'ppmove' || a.kind === 'ppik' || a.kind === 'ppbox') { ppMarkKey(f, a.kind === 'ppbox' ? a.root : a.part.id); pushEntry(ppEntry(f, a.before, ppState(f))); markEdited(f); ppRetween(); ppSyncBar(); updateFrameUI(); }
@@ -984,7 +987,7 @@ function ppSyncBar() { lyrSync(); lgSync(); ppBlinkInfo(); ppCycSync(); { const 
     if (sel) { const q2 = curFrame().pp && curFrame().pp[sel.id], cv = q2 && q2.v ? q2.v : 0;
       [sel.c, ...(sel.alts || []).map(a => a.c)].forEach((cc, i) => { const t = makeCanvas(36, 36), tx = t.getContext('2d'); const k2 = Math.min(34 / cc.width, 34 / cc.height); tx.drawImage(cc, (36 - cc.width * k2) / 2, (36 - cc.height * k2) / 2, cc.width * k2, cc.height * k2); t.className = 'vthumb' + (i === cv ? ' on' : ''); t.title = i ? 'Hình ' + (i + 1) : 'Hình gốc'; t.addEventListener('click', () => ppEdit(q => { if (i) q.v = i; else delete q.v; })); vs2.append(t); }); }
     ['#ppVarAdd', '#ppVarDup', '#ppVarDel', '#ppEraseBtn', '#ppDelChar', '#ppLibSave'].forEach(id => $(id).disabled = !sel);
-    ppPaintSync(sel); }
+    ppPaintSync(sel); ppJESync(); }
   { const f = curFrame(), k = ppIsKey(f); const kb = $('#ppKeyBtn'); kb.textContent = k ? '🔑 Keyframe' : '∿ Tự động (bấm để khoá)'; kb.classList.toggle('on', k);
     $('#ppEase').innerHTML = Object.entries(EASE_LABEL).map(([k2, v]) => `<option value="${k2}" ${(lgSelRoot() ? ppLayerEase(f, lgSelRoot()) : f.ppEase || 'inout') === k2 ? 'selected' : ''}>${v}</option>`).join(''); $('#ppEase').disabled = !k;
     const ps = $('#ppPoseSel'), cur = ps.value; ps.innerHTML = ppPoseList().map(o => `<option value="${o.id}">${o.name.replace(/</g, '&lt;')}</option>`).join(''); if (cur) ps.value = cur; }
@@ -1003,6 +1006,7 @@ function renderPP(c, f, px) {
     c.restore(); return;
   }
   if (S.tool !== 'puppet' || !S.pp) return;
+  if (ppJEOn() && !ppPaint) { ppJEDraw(c, f, px); return; }
   if (ppDrag === 'box' && !ppPaint) { const sel0 = ppPart(ppSel); if (sel0) xbDraw(c, ppBoxOf(f, ppCharOf(sel0)), px); return; }
   if (ppDrag === 'bone' && !ppPaint) { ppDrawBones(c, f, px); return; }
   const sel = ppPart(ppSel); if (!sel || !sel.c) return;
@@ -1063,7 +1067,7 @@ $('#ppDown').addEventListener('click', () => { const p = ppPart(ppSel); if (!p) 
 $('#ppDel').addEventListener('click', async () => { const p = ppPart(ppSel); if (!p) return; const ok = await modal({ title: `Xoá mảnh "${p.name}"?`, html: '<p>Mảnh bị xoá khỏi mọi frame, mảnh con sẽ gắn sang mảnh cha. Lỡ tay thì bấm ↶ Hoàn tác.</p>', buttons: [{ label: 'Huỷ', value: false }, { label: 'Xoá', value: true, cls: 'danger' }] }); if (!ok) return; S.pp.parts.forEach(c => { if (c.parent === p.id) c.parent = p.parent; }); S.pp.parts = S.pp.parts.filter(x => x.id !== p.id); ppSel = null; S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); ppSyncBar(); scheduleSave(); requestRender(); });
 $('#ppSoftChk').addEventListener('change', e => { S.ppSoft = e.target.checked; saveSettings(); S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); requestRender(); toast(S.ppSoft ? 'Khớp uốn mềm: khuỷu, gối, vai, hông cong tự nhiên' : 'Khớp gập cứng (2 mảnh rời)'); });
 $('#ppSmoothChk').addEventListener('change', e => { S.ppSmooth = e.target.checked; saveSettings(); toast(S.ppSmooth ? 'Phát và xuất video: chuyển động liền mạch giữa các frame' : 'Phát đúng từng frame (kiểu giật frame)'); });
-document.querySelectorAll('[data-ppd]').forEach(b => b.addEventListener('click', () => { ppDrag = b.dataset.ppd; ppCutMode = false; ppPaint = null; ppSyncBar(); requestRender(); }));
+document.querySelectorAll('[data-ppd]').forEach(b => b.addEventListener('click', () => { ppDrag = b.dataset.ppd; ppCutMode = false; ppPaint = null; ppJE = null; ppSyncBar(); requestRender(); }));
 let ppSlBefore = null;
 const ppSlStart = () => { if (!ppSlBefore) ppSlBefore = ppState(curFrame()); };
 const ppSlEnd = () => { if (!ppSlBefore) return; const f = curFrame(); ppMarkKey(f, ppSel); pushEntry(ppEntry(f, ppSlBefore, ppState(f))); ppSlBefore = null; markEdited(f); ppRetween(); updateFrameUI(); };
@@ -1167,7 +1171,8 @@ async function ppShowAsk(rid, fresh) {
     buttons: [{ label: 'Mọi frame', value: 'all' }, { label: 'Chỉ frame này', value: 'only' }, { label: `Từ frame ${S.cur + 1} trở đi`, value: 'from', primary: true }] });
   if (v) ppShowRange(rid, v);
 }
-const ppPoseFor = f => { if (!f) return f; let P = f.pp; if (f.lip && f.lip.mv) P = ppApplyMv(P, f.lip.mv); if (f.lip && f.lip.off) P = ppApplyOff(P, f.lip.off); return P; };
+const ppPoseFor = f => ppJEOn() && f && f === curFrame() ? ppJEPose(ppPoseFor0(f)) : ppPoseFor0(f);   // 🔧 Sửa khớp shows the rest pose
+const ppPoseFor0 = f => { if (!f) return f; let P = f.pp; if (f.lip && f.lip.mv) P = ppApplyMv(P, f.lip.mv); if (f.lip && f.lip.off) P = ppApplyOff(P, f.lip.off); return P; };
 function ppLipAt(i, tIn) {
   const f = S.frames[i], nx = S.frames[i + 1], a = f.lip && f.lip.mv; if (!a || !nx) return f.lip;
   const b = (nx.lip && nx.lip.mv) || {}, dur = Math.max(1, f.dur), T = Math.min(dur, 160), u = clamp((tIn * 1000 - (dur - T)) / T, 0, 1); if (u <= 0) return f.lip;

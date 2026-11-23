@@ -194,6 +194,7 @@ function fingerActs(e) {
     if (ppPathMode) return true;
     if (ppPaint) return ppPaint === 'sel' || ppPaint === 'fill' || ppPaint === 'pick';   // taps work with a finger; brush/eraser strokes need the pen (or 'Ngón tay cũng vẽ')
     if (ppCutMode || ppPatchMode) return false;
+    if (ppJEOn()) return !!ppJEHit(p, f) || !!ppHit(p, ppPoseFor(f));
     const sel = ppDrag === 'box' && ppPart(ppSel), b = sel && ppBoxOf(f, ppCharOf(sel) || sel.id);
     return !!(b && xbHit(b, p, true)) || !!ppHit(p, ppPoseFor(f));
   }
