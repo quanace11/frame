@@ -12,6 +12,8 @@ const S = {
   uiHide: { rail: false, top: false, tl: false }, tlScale: 1
 };
 let uidN = 1;
+// the key goes to a text box (typing a space, a letter…): app shortcuts must leave it alone
+const typingIn = e => { const t = e.target; return !!t && (t.isContentEditable || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || (t.tagName === 'INPUT' && t.type !== 'range')); };
 const newId = () => Date.now().toString(36) + (uidN++).toString(36);
 function makeCanvas(w = W, h = H) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));

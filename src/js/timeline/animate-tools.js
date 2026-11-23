@@ -197,7 +197,7 @@ ${pxOk ? `<label class="set-row"><span>✏️ Nét bút thường (lớp Nhân v
 $('#ibBtn').addEventListener('click', inbetweenDialog);
 // keyboard, like desktop animation apps: , . = previous/next frame, F5 = hold 1 more khung (Shift: 1 less), F6 = keyframe (copy), F7 = blank keyframe, Enter = play
 document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT' && e.target.type !== 'range' || e.ctrlKey || e.metaKey || e.altKey || document.querySelector('.ov')) return;
+  if (typingIn(e) || e.ctrlKey || e.metaKey || e.altKey || document.querySelector('.ov')) return;
   const k = e.key;
   if (k === ',' || k === '<') { e.preventDefault(); if (playing) stopPlay(); selectFrame(S.cur - 1); }
   else if (k === '.' || k === '>') { e.preventDefault(); if (playing) stopPlay(); selectFrame(S.cur + 1); }
