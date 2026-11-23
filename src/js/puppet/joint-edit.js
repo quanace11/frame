@@ -157,3 +157,82 @@ $('#ppJEErase').addEventListener('click', () => ppPaintGo('erase'));
 $('#ppJEUndo').addEventListener('click', () => undo());
 $('#ppJERedo').addEventListener('click', () => redo());
 $('#ppJEDone').addEventListener('click', ppJEStop);
+/* ===== 🦴 Gập thử khớp while redrawing a piece: ✎ Vẽ lại mảnh / 🔧 Sửa khớp show a dot on every joint of the character;
+   tap a dot → a round knob on that limb, drag it = the limb turns round its joint. Only a preview (`ppPrev` = extra degrees
+   per piece, never saved, cleared when painting ends): the brush paints through the bent pose, so the joint can be drawn
+   where it tears and the frame's own pose is not touched. ===== */
+let ppPrev = {}, ppPrevJ = null, ppPrevShow = true;
+const ppPrevMode = () => S.tool === 'puppet' && !!S.pp && !playing && !ppSetup && !HC && (!!ppPaint || ppJEOn());
+const ppPrevOn = () => ppPrevMode() && Object.keys(ppPrev).length > 0;
+function ppPrevApply(P) {
+  const out = { ...(P || {}) };
+  for (const id in ppPrev) if (ppPart(id)) out[id] = { ...(out[id] || {}), r: ((out[id] && out[id].r) || 0) + ppPrev[id] };
+  return out;
+}
+// joints of the character being painted (pieces hung on a parent)
+function ppPrevJoints(f) {
+  const sel = ppPart(ppSel), rid = sel && (ppCharOf(sel) || sel.id), P = ppPoseFor(f);
+  return S.pp.parts.filter(p => p.parent && p.c && ppPart(p.parent) && !(P && P[p.id] && P[p.id].h) && (!rid || ppCharOf(p) === rid));
+}
+// the knob: on the limb, a fixed distance on screen from its joint
+function ppPrevKnob(f, p) {
+  const M = ppMats(ppPoseFor(f)), w = mApply(M[p.id], p.px, p.py), t = p.tip || ppTipOf(p), e = mApply(M[p.id], t.x, t.y);
+  let dx = e.x - w.x, dy = e.y - w.y; const l = Math.hypot(dx, dy); if (l < 1) { dx = 0; dy = 1; } else { dx /= l; dy /= l; }
+  const k = 64 * DPR / vs; return { w, x: w.x + dx * k, y: w.y + dy * k };
+}
+function ppPrevHit(pt, f) {   // → {knob: part} | {dot: part} | null
+  if (!ppPrevMode() || !ppPrevShow) return null;
+  const tol = 22 * DPR / vs, j = ppPart(ppPrevJ);
+  if (j && ppPrevJoints(f).includes(j)) { const k = ppPrevKnob(f, j); if (Math.hypot(k.x - pt.x, k.y - pt.y) <= tol) return { knob: j }; }
+  const M = ppMats(ppPoseFor(f)); let best = null, bd = 14 * DPR / vs;
+  for (const p of ppPrevJoints(f)) { const w = mApply(M[p.id], p.px, p.py), d = Math.hypot(w.x - pt.x, w.y - pt.y); if (d <= bd) { bd = d; best = p; } }
+  return best ? { dot: best } : null;
+}
+// called first by ppPaintStart (and ppJEStart): true = the touch was on a joint dot / knob
+function ppPrevStart(p, base, f) {
+  const h = ppPrevHit(p, f); if (!h) return false;
+  // a dot: a tap picks the joint; a stroke that starts on it is a normal brush stroke (the joint is where you draw)
+  if (h.dot) { action = { ...base, kind: 'ppprevdot', part: h.dot, p0: p, base, f }; return true; }
+  const k = ppPrevKnob(f, h.knob);
+  action = { ...base, kind: 'ppprevrot', part: h.knob, wp: k.w, a0: Math.atan2(p.y - k.w.y, p.x - k.w.x), r0: ppPrev[h.knob.id] || 0 };
+  return true;
+}
+function ppPrevMove(a, p) {
+  let d = (Math.atan2(p.y - a.wp.y, p.x - a.wp.x) - a.a0) / DEG; d = ((d + 540) % 360) - 180;
+  const v = a.r0 + d; if (Math.abs(v) < 0.5) delete ppPrev[a.part.id]; else ppPrev[a.part.id] = v;
+  curFrame().ver++; requestRender();
+}
+function ppPrevDotMove(a, p) {
+  if (Math.hypot(p.x - a.p0.x, p.y - a.p0.y) < 6 * DPR / vs) return;
+  if (!ppPaint) { action = null; if (ppJEOn()) ppJEStart(a.p0, a.base, a.f); if (action && action.kind === 'ppjedit') ppJEMove(action, p, a.f); return; }
+  action = null; ppPaintStart(a.p0, a.base, a.f); if (action && action.kind === 'pppaint') ppPaintMove(action, p);
+}
+function ppPrevDotEnd(a) {
+  ppPrevJ = ppPrevJ === a.part.id ? null : a.part.id; ppSyncBar(); requestRender();
+  if (ppPrevJ) toast('Kéo nút tròn để gập thử ' + a.part.name + ', rồi vẽ chỗ khớp. Dáng thử không đổi frame', 3000);
+}
+function ppPrevReset() { ppPrev = {}; ppPrevJ = null; ppSyncBar(); requestRender(); }
+function ppPrevSync() {
+  if (!ppPaint && !ppJE) { ppPrev = {}; ppPrevJ = null; }
+  const b = $('#ppPrevReset'), c = $('#ppPrevShow'); if (c) c.checked = ppPrevShow;
+  if (b) b.disabled = !Object.keys(ppPrev).length;
+}
+function ppPrevDraw(c, f, px) {
+  if (!ppPrevMode() || !ppPrevShow) return;
+  const M = ppMats(ppPoseFor(f)), j = ppPart(ppPrevJ);
+  c.save();
+  for (const p of ppPrevJoints(f)) {
+    const w = mApply(M[p.id], p.px, p.py), on = p === j;
+    c.beginPath(); c.arc(w.x, w.y, (on ? 8 : 6) * px, 0, Math.PI * 2); c.fillStyle = on ? '#ff3b9a' : ppPrev[p.id] ? '#ffb21e' : '#2f7bff'; c.fill(); c.lineWidth = 2 * px; c.strokeStyle = '#fff'; c.stroke();
+  }
+  if (j && ppPrevJoints(f).includes(j)) {
+    const k = ppPrevKnob(f, j); c.lineCap = 'round';
+    c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 5 * px; c.beginPath(); c.moveTo(k.w.x, k.w.y); c.lineTo(k.x, k.y); c.stroke();
+    c.strokeStyle = '#ff3b9a'; c.lineWidth = 2.5 * px; c.stroke();
+    c.beginPath(); c.arc(k.x, k.y, 13 * px, 0, Math.PI * 2); c.fillStyle = '#ff3b9a'; c.fill(); c.lineWidth = 2.5 * px; c.strokeStyle = '#fff'; c.stroke();
+    c.fillStyle = '#fff'; c.font = `bold ${15 * px}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('⟳', k.x, k.y + px);
+  }
+  c.restore();
+}
+$('#ppPrevReset').addEventListener('click', ppPrevReset);
+$('#ppPrevShow').addEventListener('change', e => { ppPrevShow = e.target.checked; requestRender(); });

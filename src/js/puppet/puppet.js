@@ -777,6 +777,7 @@ function ppStart(p, base) {
   const f = curFrame();
   if (ppPathMode) { lasso = [p]; lassoOpen = true; action = { ...base, kind: 'pppath' }; return; }
   if (ppCutMode || ppPatchMode) { lasso = [p]; action = { ...base, kind: ppPatchMode ? 'pppatch' : 'ppcut' }; return; }
+  if ((ppPaint || ppJEOn()) && ppPrevStart(p, base, f)) return;
   if (ppPaint) { ppPaintStart(p, base, f); return; }
   if (ppJEOn()) { ppJEStart(p, base, f); return; }
   if (ppDrag === 'box') { ppBoxStart(p, base, f); return; }
@@ -805,6 +806,8 @@ function ppMove(p) {
   if (a.kind === 'ppcut' || a.kind === 'pppatch' || a.kind === 'pppath') { const l = lasso[lasso.length - 1]; if (Math.hypot(p.x - l.x, p.y - l.y) > 3 / vs) { lasso.push(p); requestRender(); } return; }
   if (a.kind === 'pppaint') { ppPaintMove(a, p); return; }
   if (a.kind === 'ppjedit') { ppJEMove(a, p, f); return; }
+  if (a.kind === 'ppprevrot') { ppPrevMove(a, p); return; }
+  if (a.kind === 'ppprevdot') { ppPrevDotMove(a, p); return; }
   if (a.kind === 'ppbox') { ppBoxMove(p, f); return; }
   if (a.kind === 'ppik') { ppIKDrag(a.part, p, f); }
   else if (a.kind === 'pprot') { const q = ppQ(f, a.part.id), ang = Math.atan2(p.y - a.wp.y, p.x - a.wp.x); let dr = (ang - a.a0) / DEG; q.r = a.r0 + dr; }
@@ -825,6 +828,8 @@ function ppEnd() {
   if (a.kind === 'pppath') { const poly = lasso; lasso = null; lassoOpen = false; ppPathMode = false; ppSyncBar(); if (poly && poly.length > 2) ppApplyPath(poly); requestRender(); return; }
   if (a.kind === 'pppaint') { ppPaintEnd(a); return; }
   if (a.kind === 'ppjedit') { ppJEEnd(a); return; }
+  if (a.kind === 'ppprevrot') { ppSyncBar(); requestRender(); return; }
+  if (a.kind === 'ppprevdot') { ppPrevDotEnd(a); return; }
   if (a.kind === 'pppatch') { const poly = lasso; lasso = null; if (poly && poly.length > 2) ppPatchLasso(poly); requestRender(); return; }
   if (a.kind === 'ppbox' && !a.moved) { ppSyncBar(); return; }
   if (a.kind === 'pprot' || a.kind === 'ppmove' || a.kind === 'ppik' || a.kind === 'ppbox') {
@@ -993,7 +998,7 @@ function ppSyncBar() { lyrSync(); lgSync(); ppBlinkInfo(); ppCycSync(); { const 
     if (sel) { const q2 = curFrame().pp && curFrame().pp[sel.id], cv = q2 && q2.v ? q2.v : 0;
       [sel.c, ...(sel.alts || []).map(a => a.c)].forEach((cc, i) => { const t = makeCanvas(36, 36), tx = t.getContext('2d'); const k2 = Math.min(34 / cc.width, 34 / cc.height); tx.drawImage(cc, (36 - cc.width * k2) / 2, (36 - cc.height * k2) / 2, cc.width * k2, cc.height * k2); t.className = 'vthumb' + (i === cv ? ' on' : ''); t.title = i ? 'Hình ' + (i + 1) : 'Hình gốc'; t.addEventListener('click', () => ppEdit(q => { if (i) q.v = i; else delete q.v; })); vs2.append(t); }); }
     ['#ppVarAdd', '#ppVarDup', '#ppVarDel', '#ppEraseBtn', '#ppDelChar', '#ppLibSave'].forEach(id => $(id).disabled = !sel);
-    ppPaintSync(sel); ppJESync(); }
+    ppPaintSync(sel); ppJESync(); ppPrevSync(); }
   { const f = curFrame(), k = ppIsKey(f); const kb = $('#ppKeyBtn'); kb.textContent = k ? '🔑 Keyframe' : '∿ Tự động (bấm để khoá)'; kb.classList.toggle('on', k);
     $('#ppEase').innerHTML = Object.entries(EASE_LABEL).map(([k2, v]) => `<option value="${k2}" ${(lgSelRoot() ? ppLayerEase(f, lgSelRoot()) : f.ppEase || 'inout') === k2 ? 'selected' : ''}>${v}</option>`).join(''); $('#ppEase').disabled = !k;
     const ps = $('#ppPoseSel'), cur = ps.value; ps.innerHTML = ppPoseList().map(o => `<option value="${o.id}">${o.name.replace(/</g, '&lt;')}</option>`).join(''); if (cur) ps.value = cur; }
@@ -1012,7 +1017,7 @@ function renderPP(c, f, px) {
     c.restore(); return;
   }
   if (S.tool !== 'puppet' || !S.pp) return;
-  if (ppJEOn() && !ppPaint) { ppJEDraw(c, f, px); return; }
+  if (ppJEOn() && !ppPaint) { ppJEDraw(c, f, px); ppPrevDraw(c, f, px); return; }
   if (ppDrag === 'box' && !ppPaint) { const sel0 = ppPart(ppSel); if (sel0) xbDraw(c, ppBoxOf(f, ppCharOf(sel0)), px); return; }
   if (ppDrag === 'bone' && !ppPaint) { ppDrawBones(c, f, px); return; }
   const sel = ppPart(ppSel); if (!sel || !sel.c) return;
@@ -1020,7 +1025,8 @@ function renderPP(c, f, px) {
   c.lineWidth = 2 * px / Math.max(0.2, Math.hypot(M[sel.id][0], M[sel.id][1])); c.setLineDash([8 * px, 6 * px]); c.strokeStyle = ppPaint ? '#2f7bff' : '#ff3b9a';
   c.strokeRect(im.x, im.y, im.c.width, im.c.height); c.restore();
   const wp = mApply(M[sel.id], sel.px, sel.py);
-  c.save(); c.beginPath(); c.arc(wp.x, wp.y, (ppDrag === 'pivot' ? 11 : 8) * px, 0, Math.PI * 2); c.fillStyle = '#ff3b9a'; c.fill(); c.lineWidth = 2 * px; c.strokeStyle = '#fff'; c.stroke(); c.restore();
+  if (!ppPaint) { c.save(); c.beginPath(); c.arc(wp.x, wp.y, (ppDrag === 'pivot' ? 11 : 8) * px, 0, Math.PI * 2); c.fillStyle = '#ff3b9a'; c.fill(); c.lineWidth = 2 * px; c.strokeStyle = '#fff'; c.stroke(); c.restore(); }
+  ppPrevDraw(c, f, px);
 }
 function ppDrawBones(c, f, px) {   // 🦴 bones of the selected character (or every character): joint → child joint, the touched piece in pink
   const sel = ppPart(ppSel), rid = sel && (ppCharOf(sel) || sel.id), M = ppMats(ppPoseFor(f)), byId = {}; S.pp.parts.forEach(p => byId[p.id] = p);
@@ -1177,7 +1183,10 @@ async function ppShowAsk(rid, fresh) {
     buttons: [{ label: 'Mọi frame', value: 'all' }, { label: 'Chỉ frame này', value: 'only' }, { label: `Từ frame ${S.cur + 1} trở đi`, value: 'from', primary: true }] });
   if (v) ppShowRange(rid, v);
 }
-const ppPoseFor = f => ppJEOn() && f && f === curFrame() ? ppJEPose(ppPoseFor0(f)) : ppPoseFor0(f);   // 🔧 Sửa khớp shows the rest pose
+const ppPoseFor = f => {   // 🔧 Sửa khớp shows the rest pose; 🦴 gập thử (ppPrev) bends limbs while redrawing a piece
+  if (!f || f !== curFrame()) return ppPoseFor0(f);
+  let P = ppJEOn() ? ppJEPose(ppPoseFor0(f)) : ppPoseFor0(f); if (ppPrevOn()) P = ppPrevApply(P); return P;
+};
 const ppPoseFor0 = f => { if (!f) return f; let P = f.pp; if (f.lip && f.lip.mv) P = ppApplyMv(P, f.lip.mv); if (f.lip && f.lip.off) P = ppApplyOff(P, f.lip.off); return P; };
 function ppLipAt(i, tIn) {
   const f = S.frames[i], nx = S.frames[i + 1], a = f.lip && f.lip.mv; if (!a || !nx) return f.lip;
