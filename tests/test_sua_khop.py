@@ -146,6 +146,13 @@ async def main():
         await pg.click('#ppPrevReset'); await pg.wait_for_timeout(200)
         r = await pg.evaluate("Object.keys(ppPrev).length + ' ' + ppPoseFor(curFrame())[S.pp.parts.find(q=>q.role==='shinL').id].r")
         if r != '0 40': errs.append('↺ Dáng cũ did not reset the preview: %s' % r)
+        # 👻 Bóng các góc: the shin drawn faded at 6 angles round the knee (screen only)
+        GH = '''(()=>{ const c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d'); ppGhostDraw(x, curFrame(), 1);
+          const d=x.getImageData(0,0,W,H).data; let n=0; for(let i=3;i<d.length;i+=4) if(d[i]>20) n++; return n; })()'''
+        g1 = await pg.evaluate(GH); await pg.click('#ppGhostOn'); g0 = await pg.evaluate(GH); await pg.click('#ppGhostOn')
+        print('ghost pixels', g1, g0)
+        if not (g1 > 2000 and g0 == 0): errs.append('👻 Bóng các góc should draw the limb at several angles and turn off: %s %s' % (g1, g0))
+        await pg.screenshot(path='sua_khop_5.png')
         await pg.evaluate("ppPrev[S.pp.parts.find(q=>q.role==='armL').id]=30"); await pg.click('#ppPaintDone'); await pg.wait_for_timeout(200)
         if await pg.evaluate('Object.keys(ppPrev).length'): errs.append('ending the redraw should drop the preview bend')
         await b.close()
