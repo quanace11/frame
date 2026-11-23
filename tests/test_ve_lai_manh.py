@@ -4,7 +4,7 @@ os.makedirs(OUT, exist_ok=True); os.chdir(OUT)   # screenshots/outputs go to tes
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 import asyncio, subprocess, time
 from playwright.async_api import async_playwright
-srv = subprocess.Popen(['python3','-m','http.server','9131'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+srv = subprocess.Popen(['python3','-m','http.server','9140'], cwd=DIST, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 import atexit; atexit.register(srv.kill)
 time.sleep(1)
 # ✎ Vẽ lại mảnh: redraw a part of a cut-out character (a longer shoe on the shin, fill the shirt, erase, pick a colour).
@@ -22,7 +22,7 @@ async def main():
         b = await p.chromium.launch(executable_path=CHROME, args=['--no-sandbox'])
         pg = await b.new_page(viewport={'width':1366,'height':1024}); errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
         await pg.add_init_script("new MutationObserver(()=>document.querySelectorAll('.tabhide').forEach(e=>e.classList.remove('tabhide'))).observe(document,{subtree:true,attributes:true,childList:true,attributeFilter:['class']})")
-        await pg.goto('http://localhost:9131/index.html'); await pg.wait_for_timeout(1000)
+        await pg.goto('http://localhost:9140/index.html'); await pg.wait_for_timeout(1000)
         await pg.click('.dlg .btns >> text=Bắt đầu vẽ')
         await pg.evaluate('kitDialog()'); await pg.wait_for_timeout(300)
         await pg.click('.dlg .btns >> text=Thêm cầu thủ'); await pg.wait_for_timeout(600)
