@@ -31,7 +31,7 @@ function ppPaintCommit(sel, vi, st0, st1) {
   toBlob(st1.c).then(b => b.arrayBuffer()).then(buf => { st1.png = buf; if (h.c === st1.c) h.png = buf; histCover(e); scheduleSave(); });
 }
 function ppPaintCtx(sel, f) {
-  const q = f.pp && f.pp[sel.id], im = ppImg(sel, q), M = ppMats(ppPoseFor(f))[sel.id];
+  const P = ppPoseFor(f), q = P && P[sel.id], im = ppImg(sel, q), M = ppMats(P)[sel.id];
   return { im, vi: im.vi, inv: mInv(M), sc: Math.hypot(M[0], M[1]) || 1 };
 }
 function ppPaintOp(erase, B) {
