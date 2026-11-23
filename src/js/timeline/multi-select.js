@@ -5,6 +5,7 @@ function mselSync() {
   S.frames.forEach(f => f.el && f.el.classList.toggle('msel', msel.has(f.id)));
   $('#mselBar').hidden = !mselOn; $('#tl').classList.toggle('mselmode', mselOn);
   $('#mselBtn').classList.toggle('on', mselOn);
+  if (S.pp) ppSyncBar();   // 🙈 Ẩn ở frame này works on every selected frame
   const n = msel.size, ms = S.frames.filter(f => msel.has(f.id)).reduce((a, f) => a + f.dur, 0);
   $('#mselInfo').textContent = n ? `Đã chọn ${n} frame · ${(ms / 1000).toFixed(1)}s` : 'Chưa chọn frame nào';
   document.querySelectorAll('#mselBar [data-ms=dup],#mselBar [data-ms=del],#mselBar [data-ms=rev],#mselBar [data-ms=bgnew],#mselBar [data-ms=bgcur],#mselBar [data-ms=play],#mselDur .chip').forEach(b => b.disabled = !n || ((b.dataset.ms === 'rev' || b.dataset.ms === 'play') && n < 2));

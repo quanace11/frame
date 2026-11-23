@@ -978,7 +978,7 @@ function ppSyncBar() { lyrSync(); lgSync(); ppBlinkInfo(); ppCycSync(); { const 
   const q = sel && curFrame().pp && curFrame().pp[sel.id] || {};
   $('#ppRot').value = Math.round(((q.r || 0) % 360 + 540) % 360 - 180); $('#ppScale').value = Math.round((q.sx == null ? 1 : q.sx) * 100);
   $('#ppHide').textContent = q.h ? 'Hiện mảnh' : 'Ẩn mảnh';
-  { const rid = sel ? (ppCharOf(sel) || sel.id) : null, off = !!rid && ppOffAt(curFrame(), rid), b = $('#ppOffBtn'); b.disabled = !sel; b.textContent = off ? '👁 Hiện ở frame này' : '🙈 Ẩn ở frame này'; b.classList.toggle('on', off); }
+  { const rid = sel ? (ppCharOf(sel) || sel.id) : null, off = !!rid && ppOffAt(curFrame(), rid), b = $('#ppOffBtn'); b.disabled = !sel; const nm = mselOn && msel.size; b.textContent = nm ? `🙈 Ẩn/hiện ở ${msel.size} frame đã chọn` : off ? '👁 Hiện ở frame này' : '🙈 Ẩn ở frame này'; b.classList.toggle('on', off); }
   document.querySelectorAll('[data-ppd]').forEach(b => b.classList.toggle('on', b.dataset.ppd === ppDrag));
   { const vs2 = $('#ppVars'); vs2.innerHTML = '';
     if (sel) { const q2 = curFrame().pp && curFrame().pp[sel.id], cv = q2 && q2.v ? q2.v : 0;
@@ -1134,7 +1134,17 @@ function ppOffEdit(f, fn) { const before = f.lip ? JSON.stringify(f.lip) : null,
 // hide / show the selected character (or the given layer) on the frame being viewed only
 function ppOffToggle(rid) {
   rid = rid || ppSelChar(); if (!rid) { toast('Chạm chọn nhân vật trước'); return; }
-  const f = curFrame(), on = !ppOffAt(f, rid), e = ppOffEdit(f, o => { o[rid] = on ? 1 : 0; });
+  const f = curFrame(), on = !ppOffAt(f, rid);
+  // ☑ Chọn nhiều frame: hide / show on every selected frame at once (1 undo step), e.g. a hand that only comes in at the end
+  const many = mselOn && msel.size ? S.frames.filter(g => msel.has(g.id)) : null;
+  if (many) {
+    const on2 = !many.every(g => ppOffAt(g, rid)), es = many.map(g => ppOffEdit(g, o => { o[rid] = on2 ? 1 : 0; })).filter(Boolean);
+    if (es.length) { pushEntry({ multi: es, bytes: 64 * es.length }); many.forEach(markEdited); scheduleSave(); }
+    ppSyncBar(); lgSync(true); requestRender();
+    toast(on2 ? `🙈 Đã ẩn "${lyrName(ppPart(rid))}" ở ${many.length} frame đã chọn` : `👁 "${lyrName(ppPart(rid))}" hiện lại ở ${many.length} frame đã chọn`, 2600);
+    return;
+  }
+  const e = ppOffEdit(f, o => { o[rid] = on ? 1 : 0; });
   if (!e) return;
   pushEntry(e); markEdited(f); scheduleSave(); ppSyncBar(); lgSync(true); requestRender();
   toast(on ? `🙈 Đã ẩn "${lyrName(ppPart(rid))}" ở frame ${S.cur + 1} — các frame khác vẫn giữ. Bấm 👁 Hiện ở frame này để lấy lại` : `👁 "${lyrName(ppPart(rid))}" hiện lại ở frame ${S.cur + 1}`, 2600);
