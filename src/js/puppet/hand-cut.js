@@ -29,7 +29,7 @@ function hcOpen(f, src, img) {
   const d = src.getContext('2d').getImageData(0, 0, W, H).data;
   let n = 0; for (let i = 3; i < d.length; i += 16) if (d[i] > 20) n++;
   if (n < 40) return false;
-  HC = { f, src, ink: d, regs: [], role: 'torso', img: !!img, round: true, sel: null };
+  HC = { f, src, ink: d, regs: [], role: 'torso', img: !!img, round: true, sel: null, from: null, follow: true };
   setTool('puppet'); hcSync(); requestRender();
   toast('Khoanh Thân trước. Mỗi vùng bo tròn quá khớp một chút, các vùng được chồng lên nhau', 4000);
   return true;
@@ -37,7 +37,8 @@ function hcOpen(f, src, img) {
 async function hcBegin() {
   const f = curFrame(); if (!f) return;
   if (playing) stopPlay(); commitFloating(); await ensureLoaded(f);
-  if (!hcOpen(f, hcSource(f))) {
+  if (hcOpen(f, hcSource(f))) { const rid = hcTracedChar(); if (rid) hcFromChar(rid); }
+  else {
     modal({ title: '✂ Cắt từng bộ phận', html: '<p>Frame này chưa có hình vẽ. Bạn có thể:</p><p>• <b>Vẽ nhân vật</b> ở lớp Nét / Màu (đồ qua ảnh mờ cũng được), rồi bấm lại ✂ Cắt từng bộ phận.</p><p>• <b>Nhập ảnh nhân vật</b> rồi tự khoanh từng phần trên ảnh (frame giữ nguyên).</p>',
       buttons: [{ label: 'Để sau', value: null }, { label: '🖼 Nhập ảnh để tự cắt', primary: true, value: 1 }] }).then(v => { if (v) hcPickImage(); });
   }
@@ -99,7 +100,7 @@ function hcAdd(poly) {
   if (b[2] < 0 || ink < 6) { toast('Vùng khoanh không có hình vẽ'); return; }
   const role = HC.role, old = HC.regs.findIndex(r => r.role === role && role !== 'other');
   const r = { role, poly, m, b, jm: null };
-  if (old >= 0) { const o = HC.regs[old]; if (o.par !== undefined) r.par = o.par; if (o.front !== undefined) r.front = o.front; for (const q of HC.regs) if (q.par === o) q.par = r; HC.regs[old] = r; } else HC.regs.push(r);
+  if (old >= 0) { const o = HC.regs[old]; if (o.pid) r.pid = o.pid; if (o.par !== undefined) r.par = o.par; if (o.front !== undefined) r.front = o.front; for (const q of HC.regs) if (q.par === o) q.par = r; HC.regs[old] = r; } else HC.regs.push(r);
   HC.sel = r;
   const kid = Object.keys(HC_PARENT).find(k => HC_PARENT[k] === role && HC_SEQ.includes(k) && !hcReg(k) && role !== 'torso');
   const next = kid || HC_SEQ.find(q => !hcReg(q)); HC.role = next || 'other';
@@ -126,7 +127,7 @@ function hcEnd() {
     const poly = lasso; lasso = null;
     let len = 0; if (poly) for (let k = 1; k < poly.length; k++) len += Math.hypot(poly[k].x - poly[k - 1].x, poly[k].y - poly[k - 1].y);
     if (poly && len < 24 / vs) {   // a tap (no loop): pick the piece under the finger to hook it / order it
-      const hit = [...HC.regs].reverse().find(r => pip(poly[0], r.poly)); if (hit) { HC.sel = hit; hcSync(); }
+      const hit = [...HC.regs].reverse().find(r => hcIn(r, poly[0])); if (hit) { HC.sel = hit; hcSync(); }
     } else if (poly && poly.length > 2 && performance.now() - a.t0 > 120) hcAdd(poly);
     requestRender();
   }
@@ -137,9 +138,12 @@ function hcDraw(c, px) {
   if (HC.img) c.drawImage(HC.src, 0, 0);   // the imported picture being cut (the frame itself is not touched)
   for (const r of HC.regs) {
     const col = HC_COL[r.role] || '#ffd60a', on = r === HC.sel;
-    polyPath(c, r.poly); c.globalAlpha = on ? 0.26 : 0.16; c.fillStyle = col; c.fill(); c.globalAlpha = 1;
-    c.lineWidth = (on ? 5 : 3) * px; c.strokeStyle = col; c.setLineDash(on ? [] : [10 * px, 6 * px]); c.stroke(); c.setLineDash([]);
-    const t = HC_SHORT[r.role] || hcName(r), lx = r.poly.reduce((a, q) => a + q.x, 0) / r.poly.length, ly = r.poly.reduce((a, q) => a + q.y, 0) / r.poly.length;
+    if (r.mc) { c.globalAlpha = on ? 0.4 : 0.22; c.drawImage(r.mc, r.b[0], r.b[1]); c.globalAlpha = 1; }   // 🪄 a region taken from the faded character: its shape, tinted
+    else {
+      polyPath(c, r.poly); c.globalAlpha = on ? 0.26 : 0.16; c.fillStyle = col; c.fill(); c.globalAlpha = 1;
+      c.lineWidth = (on ? 5 : 3) * px; c.strokeStyle = col; c.setLineDash(on ? [] : [10 * px, 6 * px]); c.stroke(); c.setLineDash([]);
+    }
+    const t = HC_SHORT[r.role] || hcName(r), lx = r.mc ? r.lx : r.poly.reduce((a, q) => a + q.x, 0) / r.poly.length, ly = r.mc ? r.ly : r.poly.reduce((a, q) => a + q.y, 0) / r.poly.length;
     c.font = `bold ${13 * px}px system-ui`; c.textAlign = 'center'; c.textBaseline = 'middle'; const tw = c.measureText(t).width + 10 * px;
     c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(lx - tw / 2, ly - 10 * px, tw, 20 * px); c.fillStyle = col; c.fillText(t, lx, ly);
   }
@@ -162,6 +166,7 @@ function hcSync() {
   bar.querySelectorAll('[data-hcr]').forEach(b => { const k = b.dataset.hcr, done = k !== 'other' && !!hcReg(k); b.classList.toggle('on', HC.role === k); b.classList.toggle('done', done); b.textContent = (done ? '✓ ' : '') + (k === 'other' ? '＋ Mảnh khác' : PP_ROLES[k]); });
   $('#hcUndo').disabled = !HC.regs.length; $('#hcDone').disabled = !HC.regs.length;
   $('#hcRound').classList.toggle('on', HC.round);
+  $('#hcFromBtn').hidden = HC.img || !lyrRoots().some(r => !r.lh); $('#hcFollow').hidden = !HC.from; $('#hcFollow').classList.toggle('on', !!HC.follow);
   $('#hcHint').textContent = `Khoanh: ${HC.role === 'other' ? 'mảnh khác' : PP_ROLES[HC.role]} · đã có ${HC.regs.length} vùng`;
   // the piece picked last (or tapped in the list): hook it to another piece, in front of / behind it, or drop it
   $('#hcRegs').innerHTML = HC.regs.length ? '<span class="lbl">Mảnh:</span>' + HC.regs.map((q, i) => `<button class="chip small${q === HC.sel ? ' on' : ''}" data-hci="${i}" style="border-color:${HC_COL[q.role] || '#ffd60a'}">${hcName(q)}</button>`).join('') : '';
@@ -251,6 +256,7 @@ function hcParts() {   // the loops → cut-out pieces (each piece = the drawing
   // every joint between two loops: child side = the way the child points, both keep a disc round the joint
   const links = HC.regs.map(r => { const pr = r === root ? null : hcParentOf(r) || root; if (!pr) return null; const j = hcJoint(r); return { c: r, p: pr, j, d: hcDir(r, pr, j), R: HC.round ? hcCapR(r, pr, j) : 0, inside: hcInside(r, pr), front: hcFront(r, pr) }; }).filter(Boolean);
   let own = null; if (HC.round) { hcHists(); own = hcOwners(); }
+  const ao = HC.from && HC.aown, pk = new Map(HC.regs.map(r => [r, r.pid && HC.from ? HC.from.pids.indexOf(r.pid) + 1 : -1]));
   // stacking: a piece sits just in front of / behind its parent (Trước/Sau), half as far at each level so a forearm stays next to its arm
   const zOf = new Map(), zz = (r, k = 0) => {
     if (zOf.has(r)) return zOf.get(r); const pr = r === root ? null : hcParentOf(r) || root, i = HC.regs.indexOf(r) * 1e-4;
@@ -260,7 +266,10 @@ function hcParts() {   // the loops → cut-out pieces (each piece = the drawing
   for (const r of HC.regs) {
     const x0 = Math.max(0, r.b[0] - 2), y0 = Math.max(0, r.b[1] - 2), x1 = Math.min(W, r.b[2] + 3), y1 = Math.min(H, r.b[3] + 3), w = x1 - x0, h = y1 - y0;
     const c = makeCanvas(w, h), cx = c.getContext('2d');
-    cx.save(); cx.translate(-x0, -y0); polyPath(cx, r.poly); cx.clip(); cx.drawImage(HC.src, 0, 0); cx.restore();
+    cx.save(); cx.translate(-x0, -y0);
+    if (r.mc) { cx.drawImage(HC.src, 0, 0); cx.globalCompositeOperation = 'destination-in'; cx.drawImage(r.mc, r.b[0], r.b[1]); }
+    else { polyPath(cx, r.poly); cx.clip(); cx.drawImage(HC.src, 0, 0); }
+    cx.restore();
     const others = HC.round ? HC.regs.filter(q => q !== r && q.b[0] <= r.b[2] && q.b[2] >= r.b[0] && q.b[1] <= r.b[3] && q.b[3] >= r.b[1]) : [];
     if (others.length) {
       const ri = HC.regs.indexOf(r), id = cx.getImageData(0, 0, w, h), d = id.data, lk = new Map(others.map(q => [q, links.find(l => (l.c === r && l.p === q) || (l.c === q && l.p === r))]));
@@ -270,6 +279,7 @@ function hcParts() {   // the loops → cut-out pieces (each piece = the drawing
           if (!q.m[i]) continue; const l = lk.get(q);
           if (l && l.inside) continue;   // eyes / mouth lassoed inside the head: both keep their drawing
           if (l && (l.front ? l.c : l.p) === r) { const dx = X - l.j.x, dy = Y - l.j.y; if (dx * dx + dy * dy <= l.R * l.R) continue; }   // the round joint: kept by the piece in front, it covers the turn
+          if (ao && ao[i]) { const w = ao[i]; if (w === pk.get(r)) continue; if (w === pk.get(q)) { d[o + 3] = 0; break; } }   // 🪄 cut along a faded character: the piece that was on top there
           // pieces not joined to each other (a hand lying on the shorts), or the body and a limb / the head near their joint:
           // a colour only one of the two has (shorts vs hand) goes to that one, else the piece whose own drawing reaches it first
           // without crossing an outline (sleeve vs shirt). Between two limb pieces (elbow, knee), and farther than the round joint
@@ -302,6 +312,7 @@ function hcParts() {   // the loops → cut-out pieces (each piece = the drawing
 async function hcFinish() {
   if (!HC || !HC.regs.length) return;
   const f = HC.img ? curFrame() : HC.f; if (f !== curFrame()) { toast('Quay lại frame đang cắt để xong'); return; }
+  const from = HC.from && HC.follow && ppPart(HC.from.rid) ? HC.from : null, regs = HC.regs;
   const pm = progress('Đang tạo nhân vật…'); await new Promise(r => setTimeout(r, 30));
   try {
     histFlush(); const hb = histSnap();
@@ -312,16 +323,17 @@ async function hcFinish() {
     const rect = [b[0], b[1], Math.max(1, b[2] - b[0]), Math.max(1, b[3] - b[1])];
     const clear = (cv, col) => {
       if (!cv) return; const x = cv.getContext('2d'), before = x.getImageData(...rect);
-      x.save(); x.globalCompositeOperation = 'destination-out'; x.fillStyle = '#000'; for (const r of all) { polyPath(x, r.poly); x.fill(); } x.restore();
+      x.save(); x.globalCompositeOperation = 'destination-out'; x.fillStyle = '#000'; for (const r of all) { if (r.mc) x.drawImage(r.mc, r.b[0], r.b[1]); else { polyPath(x, r.poly); x.fill(); } } x.restore();
       ents.push(pixEntry(f, rect, before, x.getImageData(...rect), col));
     };
     if (!HC.img && S.showChar) clear(f.canvas, false);
     if (!HC.img && S.showCol && f.col) { clear(f.col, true); f.colVer++; }
     if (!HC.img && S.showVec && f.vec && f.vec.length) {
-      const vb = cloneVec(f.vec), inside = st => { let n = 0; for (const q of st.pts) if (all.some(r => pip(q, r.poly))) n++; return st.pts.length && n / st.pts.length >= 0.6; };
+      const vb = cloneVec(f.vec), inside = st => { let n = 0; for (const q of st.pts) if (all.some(r => hcIn(r, q))) n++; return st.pts.length && n / st.pts.length >= 0.6; };
       f.vec = f.vec.filter(st => !inside(st)); if (f.vec.length !== vb.length) ents.push(vecEntry(f, vb, cloneVec(f.vec)));
     }
     ppPushChar(parts);
+    if (from) hcFollowChar(from, regs, parts);
     const n = parts.length; HC = null; hcSync();
     ppSel = (parts.find(p => !p.parent) || parts[0]).id; ppDrag = 'bone';
     markEdited(f); ppShowAdded(); lyrSync(true); render();   // drawn once first: drawing fills the parts' alpha caches, which the snapshot sees
@@ -330,8 +342,138 @@ async function hcFinish() {
     ents.push({ snap: { before: hb, after: ha, fr }, bytes: 2000 });
     pushEntry({ multi: ents }); histRebase();
     pm.close();
-    toast(`Đã tạo nhân vật ${n} mảnh có xương. 🦴 Kéo tay/chân để xoay quanh khớp, kéo thân để dời cả người; Dòng layer để đặt keyframe`, 5500);
+    if (from) toast(`Đã tạo nhân vật ${n} mảnh có xương, thay nhân vật gốc và đi theo dáng của nó ở mọi frame. Nhân vật gốc đã ẩn (🗂 Layer → 👁 để hiện lại)`, 6000);
+    else toast(`Đã tạo nhân vật ${n} mảnh có xương. 🦴 Kéo tay/chân để xoay quanh khớp, kéo thân để dời cả người; Dòng layer để đặt keyframe`, 5500);
   } catch (e) { pm.close(); console.error(e); toast('Lỗi cắt: ' + e.message, 3000); }
+}
+/* --- 🪄 Cắt theo nhân vật mờ: a drawing traced over a faded cut-out character (📝 Giấy can) is cut along that character's
+   own pieces, with its joints and bones, so nothing has to be lassoed. Each piece's region = where the piece is drawn on this
+   frame, widened a little (a traced line is never exactly on the old one); ink farther out goes to the nearest piece. Who
+   keeps a pixel where regions overlap = the piece that was on top there while tracing (what the tracer saw), so the new
+   pieces stack like the old ones. 🔁 Thay nhân vật gốc (`HC.follow`): the new character takes over the old one's moves on
+   every frame (each piece's world move from this frame, same keyframes / ease / path / hidden frames) and the old one is
+   hidden (lh), all in the same undo step. --- */
+function hcIn(r, q) { if (!r.mc) return pip(q, r.poly); const x = Math.round(q.x), y = Math.round(q.y); return x >= 0 && y >= 0 && x < W && y < H && !!r.m[y * W + x]; }
+function hcPoseOf(f) { let pose = f.pp || {}; if (f.lip && f.lip.mv) pose = ppApplyMv(pose, f.lip.mv); if (f.lip && f.lip.off) pose = ppApplyOff(pose, f.lip.off); return pose; }
+function hcDist(a, w, h) {   // chamfer 3-4 distance to the nearest set pixel (3 = one pixel), capped at 65000
+  const d = new Uint16Array(w * h); for (let i = 0; i < d.length; i++) d[i] = a[i] ? 0 : 65000;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; let v = d[i]; if (!v) continue;
+    if (x > 0) v = Math.min(v, d[i - 1] + 3);
+    if (y > 0) { v = Math.min(v, d[i - w] + 3); if (x > 0) v = Math.min(v, d[i - w - 1] + 4); if (x < w - 1) v = Math.min(v, d[i - w + 1] + 4); }
+    d[i] = v; }
+  for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) { const i = y * w + x; let v = d[i]; if (!v) continue;
+    if (x < w - 1) v = Math.min(v, d[i + 1] + 3);
+    if (y < h - 1) { v = Math.min(v, d[i + w] + 3); if (x < w - 1) v = Math.min(v, d[i + w + 1] + 4); if (x > 0) v = Math.min(v, d[i + w - 1] + 4); }
+    d[i] = v; }
+  return d;
+}
+function hcDrawChar(x, rid, pose, M) {
+  x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, W, H);
+  for (const p of lyrParts(rid).sort((a, b) => a.z - b.z)) { const q = pose[p.id]; if ((q && q.h) || !p.c) continue; const im = ppImg(p, q); x.setTransform(...M[p.id]); x.drawImage(im.c, im.x, im.y); }
+  x.setTransform(1, 0, 0, 1, 0, 0);
+}
+// the shown character the drawing on this frame lies on most (null: none, or the drawing is beside it)
+function hcTracedChar() {
+  if (!HC || HC.img || !S.pp || !S.pp.parts.length) return null;
+  const f = HC.f, pose = hcPoseOf(f), M = ppMats(pose), c = makeCanvas(), x = c.getContext('2d'); let best = null, bn = 0;
+  for (const r of lyrRoots()) {
+    if (r.lh) continue; hcDrawChar(x, r.id, pose, M);
+    const d = x.getImageData(0, 0, W, H).data; let a = 0, n = 0;
+    for (let i = 3; i < d.length; i += 16) if (d[i] > 20) { a++; if (HC.ink[i] > 20) n++; }
+    if (a > 20 && n > 0.04 * a && n > bn) { bn = n; best = r.id; }
+  }
+  c.width = 0; return best;
+}
+function hcFromChar(rid) {
+  if (!HC || HC.img || !ppPart(rid)) return false;
+  const f = HC.f, pose = hcPoseOf(f), M = ppMats(pose), ink = HC.ink, info = [], U = [W, H, -1, -1];
+  for (const p of lyrParts(rid)) {
+    const q = pose[p.id]; if ((q && q.h) || !p.c) continue;
+    const im = ppImg(p, q), cs = [[0, 0], [im.c.width, 0], [0, im.c.height], [im.c.width, im.c.height]].map(([a, b]) => mApply(M[p.id], im.x + a, im.y + b));
+    const b = [Math.max(0, Math.floor(Math.min(...cs.map(v => v.x)))), Math.max(0, Math.floor(Math.min(...cs.map(v => v.y)))), Math.min(W - 1, Math.ceil(Math.max(...cs.map(v => v.x)))), Math.min(H - 1, Math.ceil(Math.max(...cs.map(v => v.y))))];
+    if (b[2] < b[0] || b[3] < b[1]) continue;
+    info.push({ p, b, im, m: M[p.id] }); U[0] = Math.min(U[0], b[0]); U[1] = Math.min(U[1], b[1]); U[2] = Math.max(U[2], b[2]); U[3] = Math.max(U[3], b[3]);
+  }
+  if (!info.length) return false;
+  const D = Math.round(clamp(0.025 * (U[3] - U[1]), 6, 36)), E = 4 * D, D3 = D * 3, E3 = E * 3, c = makeCanvas(), x = c.getContext('2d');
+  for (const o of info) {   // distance from every pixel near the piece to the piece as it is drawn on this frame
+    const x0 = Math.max(0, o.b[0] - E), y0 = Math.max(0, o.b[1] - E), x1 = Math.min(W - 1, o.b[2] + E), y1 = Math.min(H - 1, o.b[3] + E), w = x1 - x0 + 1, h = y1 - y0 + 1;
+    x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, W, H); x.setTransform(...o.m); x.drawImage(o.im.c, o.im.x, o.im.y); x.setTransform(1, 0, 0, 1, 0, 0);
+    const d = x.getImageData(x0, y0, w, h).data, a = new Uint8Array(w * h); for (let k = 0; k < a.length; k++) a[k] = d[k * 4 + 3] > 40 ? 1 : 0;
+    o.box = [x0, y0, w, h]; o.dist = hcDist(a, w, h);
+  }
+  c.width = 0;
+  const ms = info.map(() => new Uint8Array(W * H)), bb = info.map(() => [W, H, -1, -1]), own = new Uint8Array(W * H), n = info.length;
+  const dAt = (o, X, Y) => { const [bx, by, w, h] = o.box, lx = X - bx, ly = Y - by; return lx < 0 || ly < 0 || lx >= w || ly >= h ? 65000 : o.dist[ly * w + lx]; };
+  const put = (k, i, X, Y) => { ms[k][i] = 1; const B = bb[k]; if (X < B[0]) B[0] = X; if (Y < B[1]) B[1] = Y; if (X > B[2]) B[2] = X; if (Y > B[3]) B[3] = Y; };
+  const dd = new Uint16Array(n);
+  for (let Y = Math.max(0, U[1] - E); Y <= Math.min(H - 1, U[3] + E); Y++) for (let X = Math.max(0, U[0] - E); X <= Math.min(W - 1, U[2] + E); X++) {
+    const i = Y * W + X, inked = ink[i * 4 + 3] > 20; let best = -1, bd = E3 + 1, any = false;
+    for (let k = 0; k < n; k++) { const v = dd[k] = dAt(info[k], X, Y); if (v <= D3) { put(k, i, X, Y); any = true; } if (v < bd || (v === bd && v <= E3 && best >= 0 && info[k].p.z > info[best].p.z)) { bd = v; best = k; } }
+    if (!inked || best < 0) continue;
+    if (!any) put(best, i, X, Y);
+    own[i] = best + 1;   // on top while tracing: the highest piece covering it, else the nearest
+    if (bd === 0) for (let k = 0; k < n; k++) if (!dd[k] && info[k].p.z > info[own[i] - 1].p.z) own[i] = k + 1;
+  }
+  const regs = [], byPid = new Map();
+  info.forEach((o, k) => {
+    const m = ms[k], b = bb[k]; if (b[2] < 0) return;
+    let cnt = 0, sx = 0, sy = 0; for (let y = b[1]; y <= b[3]; y += 2) for (let X = b[0]; X <= b[2]; X += 2) { const i = y * W + X; if (m[i] && ink[i * 4 + 3] > 20) { cnt++; sx += X; sy += y; } }
+    if (cnt < 6) return;
+    const w = b[2] - b[0] + 1, h = b[3] - b[1] + 1, mc = makeCanvas(w, h), mx = mc.getContext('2d'), id = mx.createImageData(w, h), col = HC_COL[o.p.role] || '#ffd60a';
+    const R = parseInt(col.slice(1, 3), 16), G = parseInt(col.slice(3, 5), 16), B = parseInt(col.slice(5, 7), 16);
+    for (let y = 0; y < h; y++) for (let X = 0; X < w; X++) if (m[(y + b[1]) * W + X + b[0]]) { const q = (y * w + X) * 4; id.data[q] = R; id.data[q + 1] = G; id.data[q + 2] = B; id.data[q + 3] = 255; }
+    mx.putImageData(id, 0, 0);
+    const role = o.p.role && HC_PARENT[o.p.role] ? o.p.role : o.p.parent ? 'other' : 'torso';
+    const r = { role, poly: null, m, b, mc, lx: sx / cnt, ly: sy / cnt, jm: mApply(o.m, o.p.px, o.p.py), pid: o.p.id };
+    regs.push(r); byPid.set(o.p.id, r);
+  });
+  if (!regs.length) return false;
+  for (const r of regs) {   // bones as in the old character: the nearest piece up the old parent chain that got a region
+    let a = ppPart(ppPart(r.pid).parent), k = 0; while (a && !byPid.has(a.id) && k++ < 30) a = a.parent ? ppPart(a.parent) : null;
+    const pr = a && byPid.get(a.id); r.par = pr || undefined; if (pr) r.front = ppPart(r.pid).z > ppPart(pr.pid).z;
+  }
+  const rootR = regs.find(r => !r.par); if (rootR) { regs.splice(regs.indexOf(rootR), 1); regs.unshift(rootR); if (rootR.role !== 'torso' && !regs.some(r => r.role === 'torso')) rootR.role = 'torso'; }
+  HC.regs = regs; HC.sel = null; HC.aown = own; HC.from = { rid, fid: f.id, pids: info.map(o => o.p.id) }; HC.role = 'other';
+  hcSync(); requestRender();
+  toast(`🪄 Đã tự chia hình đồ theo "${lyrName(ppPart(rid))}": ${regs.length} mảnh, khớp đặt sẵn. Kiểm tra chấm hồng rồi bấm ✓ Xong (khoanh lại 1 vai trò nếu chia chưa đúng)`, 6000);
+  return true;
+}
+// 🔁 the new character takes over the old one: every frame, each new piece moves as the old piece it came from moved away
+// from the frame that was traced (T = old world there · old world here⁻¹), written as the usual local pose (turn, shift, size)
+function hcFollowChar(from, regs, parts) {
+  const old = ppPart(from.rid), fk = S.frames.find(g => g.id === from.fid) || curFrame(), nr = parts.find(p => !p.parent) || parts[0];
+  const mk = fk.lip && fk.lip.mv && fk.lip.mv[from.rid], Mk = ppMats(fk.pp || {}), sh = mT(-(mk ? mk.x : 0), -(mk ? mk.y : 0));
+  const oldOf = new Map(); regs.forEach((r, k) => { let a = r, n = 0; while (a && !a.pid && n++ < 30) a = hcParentOf(a); oldOf.set(parts[k], ppPart(a && a.pid) || old); });
+  const rd = v => Math.round(v * 1e4) / 1e4;
+  for (const g of S.frames) {
+    const src = g.pp || {}, Mg = ppMats(src), T = new Map(), pp = g.pp = { ...src };
+    for (const nq of parts) { const o = oldOf.get(nq); T.set(nq.id, mMul(mMul(Mg[o.id], mInv(Mk[o.id])), sh)); }
+    for (const nq of parts) {
+      const o = oldOf.get(nq), L = nq.parent && T.has(nq.parent) ? mMul(mInv(T.get(nq.parent)), T.get(nq.id)) : T.get(nq.id);
+      const sx = Math.hypot(L[0], L[1]) || 1e-6, sy = (L[0] * L[3] - L[1] * L[2]) / sx, q = {};
+      const r = rd(Math.atan2(L[1], L[0]) / DEG), dx = L[0] * nq.px + L[2] * nq.py + L[4] - nq.px, dy = L[1] * nq.px + L[3] * nq.py + L[5] - nq.py;
+      if (r) q.r = r; if (Math.abs(dx) > 1e-3) q.dx = rd(dx); if (Math.abs(dy) > 1e-3) q.dy = rd(dy);
+      if (Math.abs(sx - 1) > 1e-4) q.sx = rd(sx); if (Math.abs(sy - 1) > 1e-4) q.sy = rd(sy);
+      if ((src[o.id] && src[o.id].h) || (src[old.id] && src[old.id].h)) q.h = true;
+      pp[nq.id] = q;
+    }
+    if (g.ppK && g.ppK[old.id] !== undefined) g.ppK = { ...g.ppK, [nr.id]: g.ppK[old.id] };
+    if (g.ppE && g.ppE[old.id] !== undefined) g.ppE = { ...g.ppE, [nr.id]: g.ppE[old.id] };
+    const l = g.lip;
+    if (l && ((l.mv && l.mv[old.id]) || (l.off && l.off[old.id]))) { const n2 = { ...l }; if (l.mv && l.mv[old.id]) n2.mv = { ...l.mv, [nr.id]: { ...l.mv[old.id] } }; if (l.off && l.off[old.id]) n2.off = { ...l.off, [nr.id]: 1 }; g.lip = n2; }
+  }
+  nr.lname = old.lname ? old.lname + ' (vẽ lại)' : null; old.lh = true;
+}
+// 📝 while tracing a faded character, a button on the canvas goes straight to cutting the drawing along it
+function hcTraceChip(on) {
+  const b = $('#traceCut'); if (!b) return; const v = !!on && !HC && S.tool !== 'puppet'; if (b.hidden === !v) return; b.hidden = !v;
+}
+async function hcTraceCut() {
+  const f = curFrame(); if (!f) return;
+  if (playing) stopPlay(); commitFloating(); await ensureLoaded(f);
+  if (!hcOpen(f, hcSource(f))) { toast('Frame này chưa có hình vẽ: đồ nét lên nhân vật mờ trước'); return; }
+  const rid = hcTracedChar(); if (!rid || !hcFromChar(rid)) toast('Hình vẽ không nằm trên nhân vật mờ nào: khoanh từng bộ phận bằng tay (Thân trước)', 4500);
 }
 // 📖 Mẹo cắt: which picture to pick and how to lasso, with a sample drawn in code (A-pose with loops past the joints vs arms glued)
 function hcTipsDraw(cv) {
@@ -384,5 +526,8 @@ $('#hcDel').addEventListener('click', () => { const r = HC && HC.sel; if (r) { h
 $('#hcRegs').addEventListener('click', e => { const b = e.target.closest('[data-hci]'); if (!b || !HC) return; HC.sel = HC.regs[+b.dataset.hci] || null; hcSync(); requestRender(); });
 $('#hcCancel').addEventListener('click', hcCancel);
 $('#hcDone').addEventListener('click', hcFinish);
+$('#hcFromBtn').addEventListener('click', () => { if (!HC) return; const rid = hcTracedChar(); if (!rid || !hcFromChar(rid)) toast('Hình vẽ ở frame này không nằm trên nhân vật ghép nào đang hiện', 3500); });
+$('#hcFollow').addEventListener('click', () => { if (!HC || !HC.from) return; HC.follow = !HC.follow; hcSync(); toast(HC.follow ? '🔁 Nhân vật mới thay nhân vật gốc: đi theo dáng của nó ở mọi frame, nhân vật gốc ẩn đi' : 'Nhân vật mới đứng riêng từ frame này, nhân vật gốc giữ nguyên', 3500); });
+$('#traceCut').addEventListener('click', hcTraceCut);
 document.querySelectorAll('.hcStart').forEach(b => b.addEventListener('click', hcBegin));
 document.querySelectorAll('.hcImg').forEach(b => b.addEventListener('click', hcPickImage));
