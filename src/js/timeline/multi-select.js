@@ -7,7 +7,7 @@ function mselSync() {
   $('#mselBtn').classList.toggle('on', mselOn);
   const n = msel.size, ms = S.frames.filter(f => msel.has(f.id)).reduce((a, f) => a + f.dur, 0);
   $('#mselInfo').textContent = n ? `Đã chọn ${n} frame · ${(ms / 1000).toFixed(1)}s` : 'Chưa chọn frame nào';
-  document.querySelectorAll('#mselBar [data-ms=dup],#mselBar [data-ms=del],#mselBar [data-ms=rev],#mselBar [data-ms=play],#mselDur .chip').forEach(b => b.disabled = !n || ((b.dataset.ms === 'rev' || b.dataset.ms === 'play') && n < 2));
+  document.querySelectorAll('#mselBar [data-ms=dup],#mselBar [data-ms=del],#mselBar [data-ms=rev],#mselBar [data-ms=bgnew],#mselBar [data-ms=bgcur],#mselBar [data-ms=play],#mselDur .chip').forEach(b => b.disabled = !n || ((b.dataset.ms === 'rev' || b.dataset.ms === 'play') && n < 2));
 }
 function mselStart() { if (playing) stopPlay(); commitFloating(); mselOn = true; mselSync(); }
 function mselEnd() { mselOn = false; msel.clear(); mselLast = -1; mselSync(); }
@@ -77,6 +77,21 @@ function mselReverse() {
   tintCache.clear(); ppRetween(); buildStrip(); selectFrame(S.cur); scheduleSave(); updUndoBtns(); mselSync();
   toast(`Đã đảo ngược ${idx.length} frame — bấm Phát để xem chạy ngược`);
 }
+// 🖼 the selected frames share one background: a new empty one ('new') or the one of the frame on screen ('cur').
+// Undo: bgId is in H_FKEYS, so the automatic undo takes it.
+async function mselBg(mode) {
+  const idx = mselIdx(); if (!idx.length) return;
+  if (playing) stopPlay(); commitFloating();
+  let id;
+  if (mode === 'new') { const nb = newBgObj(); S.bgs.push(nb); id = nb.id; }
+  else id = curFrame().bgId;
+  idx.forEach(i => { S.frames[i].bgId = id; });
+  if (mode === 'new' && !idx.includes(S.cur)) await selectFrame(idx[0]);
+  setLayer('bg'); if (S.tool === 'puppet' || S.tool === 'fx' || S.tool === 'vedit') setTool('brush');
+  await lgBgRefresh(mode === 'new' ? `🖼 ${idx.length} frame dùng chung 1 nền mới. Vẽ, đổ màu hoặc Nền ▾ → Ảnh làm nền / Nền vẽ sẵn: đổi cho cả ${idx.length} frame`
+    : `🖼 ${idx.length} frame dùng nền của frame ${S.cur + 1}`);
+  mselSync();
+}
 function mselSetDur(sec) {
   const fs = S.frames.filter(f => msel.has(f.id)); if (!fs.length) return;
   fs.forEach(f => f.dur = clamp(Math.round(sec * 1000), 20, 30000)); updateFrameUI(); scheduleSave(); mselSync();
@@ -92,6 +107,8 @@ $('#mselBar').addEventListener('click', e => {
   else if (k === 'none') { msel.clear(); mselSync(); }
   else if (k === 'dup') mselDuplicate();
   else if (k === 'rev') mselReverse();
+  else if (k === 'bgnew') mselBg('new');
+  else if (k === 'bgcur') mselBg('cur');
   else if (k === 'del') mselDelete();
   else if (k === 'play') { if (playing) stopPlay(); startPlay(); }
   else if (k === 'done') mselEnd();
