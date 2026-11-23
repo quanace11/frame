@@ -978,7 +978,7 @@ function ppSyncBar() { lyrSync(); lgSync(); ppBlinkInfo(); ppCycSync(); { const 
   const q = sel && curFrame().pp && curFrame().pp[sel.id] || {};
   $('#ppRot').value = Math.round(((q.r || 0) % 360 + 540) % 360 - 180); $('#ppScale').value = Math.round((q.sx == null ? 1 : q.sx) * 100);
   $('#ppHide').textContent = q.h ? 'Hiện mảnh' : 'Ẩn mảnh';
-  { const rid = sel ? (ppCharOf(sel) || sel.id) : null, off = !!rid && ppOffAt(curFrame(), rid), b = $('#ppOffBtn'); b.disabled = !sel; b.textContent = off ? '👁 Hiện ở frame này' : '🙈 Ẩn ở frame này'; b.classList.toggle('on', off); }
+  { const rid = sel ? (ppCharOf(sel) || sel.id) : null, off = !!rid && ppOffAt(curFrame(), rid), b = $('#ppOffBtn'); b.disabled = !sel; $('#ppShowBtn').disabled = !sel || S.frames.length < 2; const nm = mselOn && msel.size; b.textContent = nm ? `🙈 Ẩn/hiện ở ${msel.size} frame đã chọn` : off ? '👁 Hiện ở frame này' : '🙈 Ẩn ở frame này'; b.classList.toggle('on', off); }
   document.querySelectorAll('[data-ppd]').forEach(b => b.classList.toggle('on', b.dataset.ppd === ppDrag));
   { const vs2 = $('#ppVars'); vs2.innerHTML = '';
     if (sel) { const q2 = curFrame().pp && curFrame().pp[sel.id], cv = q2 && q2.v ? q2.v : 0;
@@ -1074,6 +1074,7 @@ $('#ppScale').addEventListener('change', ppSlEnd);
 $('#ppFlip').addEventListener('click', () => ppEdit(q => { q.fl = !q.fl; }));
 $('#ppHide').addEventListener('click', () => ppEdit(q => { q.h = !q.h; }));
 $('#ppOffBtn').addEventListener('click', () => ppOffToggle());
+$('#ppShowBtn').addEventListener('click', () => ppShowAsk());
 $('#ppReset').addEventListener('click', () => ppEdit((q, p, f) => { delete f.pp[p.id]; }));
 $('#ppResetAll').addEventListener('click', () => ppKeyEdit(f => { f.pp = {}; f.ppKey = true; }));
 $('#ppCutBtn').addEventListener('click', () => { if (!ppSel) { toast('Chạm chọn mảnh nguồn (vd. Thân) trước, rồi khoanh vùng cần tách'); return; } ppCutMode = !ppCutMode; ppPatchMode = false; ppSyncBar(); if (ppCutMode) toast('Khoanh quanh phần muốn tách (tay, miệng, mắt…)', 3000); });
@@ -1134,10 +1135,37 @@ function ppOffEdit(f, fn) { const before = f.lip ? JSON.stringify(f.lip) : null,
 // hide / show the selected character (or the given layer) on the frame being viewed only
 function ppOffToggle(rid) {
   rid = rid || ppSelChar(); if (!rid) { toast('Chạm chọn nhân vật trước'); return; }
-  const f = curFrame(), on = !ppOffAt(f, rid), e = ppOffEdit(f, o => { o[rid] = on ? 1 : 0; });
+  const f = curFrame(), on = !ppOffAt(f, rid);
+  // ☑ Chọn nhiều frame: hide / show on every selected frame at once (1 undo step), e.g. a hand that only comes in at the end
+  const many = mselOn && msel.size ? S.frames.filter(g => msel.has(g.id)) : null;
+  if (many) {
+    const on2 = !many.every(g => ppOffAt(g, rid)), es = many.map(g => ppOffEdit(g, o => { o[rid] = on2 ? 1 : 0; })).filter(Boolean);
+    if (es.length) { pushEntry({ multi: es, bytes: 64 * es.length }); many.forEach(markEdited); scheduleSave(); }
+    ppSyncBar(); lgSync(true); requestRender();
+    toast(on2 ? `🙈 Đã ẩn "${lyrName(ppPart(rid))}" ở ${many.length} frame đã chọn` : `👁 "${lyrName(ppPart(rid))}" hiện lại ở ${many.length} frame đã chọn`, 2600);
+    return;
+  }
+  const e = ppOffEdit(f, o => { o[rid] = on ? 1 : 0; });
   if (!e) return;
   pushEntry(e); markEdited(f); scheduleSave(); ppSyncBar(); lgSync(true); requestRender();
   toast(on ? `🙈 Đã ẩn "${lyrName(ppPart(rid))}" ở frame ${S.cur + 1} — các frame khác vẫn giữ. Bấm 👁 Hiện ở frame này để lấy lại` : `👁 "${lyrName(ppPart(rid))}" hiện lại ở frame ${S.cur + 1}`, 2600);
+}
+// 📍 where a layer shows: 'all' frames / 'from' this frame on / 'only' this frame (others hidden by lip.off), 1 undo step
+function ppShowRange(rid, mode) {
+  rid = rid || ppSelChar(); if (!rid) { toast('Chạm chọn nhân vật / hình trước'); return; }
+  const es = S.frames.map((g, i) => ppOffEdit(g, o => { o[rid] = mode === 'all' ? 0 : mode === 'from' ? (i < S.cur ? 1 : 0) : (i === S.cur ? 0 : 1); })).filter(Boolean);
+  if (es.length) { pushEntry(es.length > 1 ? { multi: es, bytes: 64 * es.length } : es[0]); S.frames.forEach(markEdited); scheduleSave(); }
+  ppSyncBar(); lgSync(true); requestRender();
+  const nm = lyrName(ppPart(rid));
+  toast(mode === 'all' ? `👁 "${nm}" hiện ở mọi frame` : mode === 'from' ? `📍 "${nm}" chỉ hiện từ frame ${S.cur + 1} trở đi` : `📍 "${nm}" chỉ hiện ở frame ${S.cur + 1}`, 2800);
+}
+async function ppShowAsk(rid, fresh) {
+  rid = rid || ppSelChar(); if (!rid) { toast('Chạm chọn nhân vật / hình trước'); return; }
+  if (S.frames.length < 2) return;
+  const v = await modal({ title: fresh ? `📍 "${lyrName(ppPart(rid))}" hiện ở frame nào?` : `📍 Hiện "${lyrName(ppPart(rid))}" ở…`,
+    html: `<p>Frame đang xem: ${S.cur + 1} / ${S.frames.length}. Các frame khác vẫn giữ nguyên, đổi lại được bất cứ lúc nào (nút 📍 Hiện ở… trong bảng Ghép).</p>`,
+    buttons: [{ label: 'Mọi frame', value: 'all' }, { label: 'Chỉ frame này', value: 'only' }, { label: `Từ frame ${S.cur + 1} trở đi`, value: 'from', primary: true }] });
+  if (v) ppShowRange(rid, v);
 }
 const ppPoseFor = f => { if (!f) return f; let P = f.pp; if (f.lip && f.lip.mv) P = ppApplyMv(P, f.lip.mv); if (f.lip && f.lip.off) P = ppApplyOff(P, f.lip.off); return P; };
 function ppLipAt(i, tIn) {
