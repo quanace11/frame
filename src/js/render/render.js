@@ -130,7 +130,7 @@ function render() {
     }
   }
   if (floating && floatPlace() === 'under') { if (floating.cc) drawFloating(c, floating.cc); drawFloating(c); }
-  const trace = ppTracing(); if (trace) ppDrawTrace(c, f);
+  const trace = ppTracing(); if (trace) ppDrawTrace(c, f); hcTraceChip(trace);
   if (S.showCol && f.col) c.drawImage(stroke && stroke.cv === f.col ? work : f.col, 0, 0);
   if (floating && floating.cc && S.showCol && floatPlace() === 'top') drawFloating(c, floating.cc);
   drawGhosts(c, f);
