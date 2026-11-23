@@ -61,7 +61,7 @@ function lgSync(force) {
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   $('#lgNames').innerHTML = '<div class="lgnHd">frame</div>' + rows.map(r => `<div class="lgn${r.id === sel ? ' on' : ''}${r.r && r.r.lh ? ' off' : ''}" data-lgr="${r.id}">${r.pp ? (lyrParts(r.id).length > 1 ? '🧍 ' : '🖼 ') : ''}${esc(r.name)}</div>`).join('');
   lgDraw(rows, sel);
-  const has = !!sel && S.pp; ['#lgSplit', '#lgJoin'].forEach(id => { $(id).disabled = !has; });
+  const has = !!sel && S.pp; ['#lgSplit', '#lgJoin', '#lgShow'].forEach(id => { $(id).disabled = !has; });
   const f = curFrame(), k = has && ppLayerKey(f, sel);
   $('#lgSplit').classList.toggle('on', !!k);
   const seg = has && lgSegAt(sel, S.cur), es = $('#lgEase');
@@ -222,6 +222,7 @@ function lgWire() {
     toast(on ? '🧅 Onion chỉ hiện layer đang chọn ở frame trước/sau' : '🧅 Onion hiện cả frame như cũ', 2000);
   });
   $('#lgOff').addEventListener('click', () => ppOffToggle(lgSelRoot()));
+  $('#lgShow').addEventListener('click', () => ppShowAsk(lgSelRoot()));
   $('#lgCopy').addEventListener('click', lgCopy); $('#lgPaste').addEventListener('click', lgPaste);
   $('#lgDel').addEventListener('click', () => delFrame());
   $('#lgNames').addEventListener('click', e => { const r = e.target.closest('[data-lgr]'); if (r) lgPick(S.cur, r.dataset.lgr); });

@@ -104,6 +104,7 @@ async function floatToPart() {
   setTool('puppet'); openTab('pp', 'parts'); ppSyncBar();
   S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); scheduleSave(); requestRender();
   toast('Đã thành mảnh ghép "' + p.name + '" — dùng ⏫ ⏬ (hoặc ▲ ▼) ở 🧩 Mảnh & hình để đặt trước/sau nhân vật', 4500);
+  if (S.frames.length > 1) await ppShowAsk(p.id, true);   // a hand drawn on frame 121 should not pop up on frame 1
 }
 function stampFloating() {
   if (!floating || !floating.c || !floating.o.canvas) return;
