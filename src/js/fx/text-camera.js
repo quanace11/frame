@@ -354,7 +354,8 @@ const SFX = {
   ting: { label: 'Ting', dur: 1.3 }, whistle: { label: 'Còi trọng tài', dur: 1.3 }, drum: { label: 'Trống', dur: 0.5 }, crowd: { label: 'Khán giả ồ', dur: 2.2 },
   bonk: { label: 'Cốp', dur: 0.3 }, slap: { label: 'Bốp', dur: 0.25 }, bang: { label: 'Bùm', dur: 0.6 }, boom: { label: 'Nổ', dur: 1.2 }, crash: { label: 'Loảng xoảng', dur: 1.3 }, zap: { label: 'Điện giật', dur: 0.45 },
   splat: { label: 'Bẹp', dur: 0.35 }, poof: { label: 'Phụt khói', dur: 0.5 }, slide: { label: 'Huýt trượt', dur: 0.8 }, swirl: { label: 'Choáng vòng vòng', dur: 1.2 }, tweet: { label: 'Chim kêu', dur: 1.2 }, scuffle: { label: 'Đánh túi bụi', dur: 1.6 }, kick: { label: 'Sút bóng', dur: 0.3 },
-  tvoff: { label: 'Tắt TV', dur: 0.9 }, tvon: { label: 'Bật TV', dur: 0.9 }, glitch: { label: 'Nhiễu rè', dur: 0.6 }, roar: { label: 'Hét giận', dur: 1.5 }
+  tvoff: { label: 'Tắt TV', dur: 0.9 }, tvon: { label: 'Bật TV', dur: 0.9 }, glitch: { label: 'Nhiễu rè', dur: 0.6 }, roar: { label: 'Hét giận', dur: 1.5 },
+  laugh: { label: 'Cười gian haha', dur: 1.7 }, horn: { label: 'Còi tàu hoả', dur: 1.5 }, chug: { label: 'Tàu chạy xình xịch', dur: 2.2 }
 };
 const sfxCache = {};
 async function sfxBuffer(kind) {
@@ -403,6 +404,30 @@ async function sfxBuffer(kind) {
     const n = noise(d), nb = oc.createBiquadFilter(), ng = oc.createGain(); nb.type = 'bandpass'; nb.frequency.value = 1400; nb.Q.value = 0.8; ng.gain.value = 0.35; n.connect(nb).connect(ng).connect(mix); n.start();
     g.gain.setValueAtTime(0.0001, 0); g.gain.exponentialRampToValueAtTime(0.9, 0.08); g.gain.setValueAtTime(0.9, 0.95); g.gain.exponentialRampToValueAtTime(0.0001, d);
     mix.connect(g).connect(out); o.start(); v.start();
+  }
+  // a villain's "HA HA HA HA": deep voiced syllables (sawtooth through the vowel "a" formants), each starting with a breathy "h", pitch sagging
+  if (kind === 'laugh') {
+    const mix = oc.createGain(); mix.gain.value = 0.9; mix.connect(out);
+    const vow = []; for (const [fq, q, gn] of [[700, 5, 1], [1150, 6, 0.55], [2500, 8, 0.2]]) { const bp = oc.createBiquadFilter(), bg = oc.createGain(); bp.type = 'bandpass'; bp.frequency.value = fq; bp.Q.value = q; bg.gain.value = gn; bp.connect(bg).connect(mix); vow.push(bp); }
+    for (let i = 0; i < 7; i++) {
+      const s0 = 0.04 + i * 0.21, len = i === 6 ? 0.34 : 0.15, f0 = 175 - i * 9 + (i === 0 ? 25 : 0);
+      const o = oc.createOscillator(), g = oc.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(f0 * 1.12, s0); o.frequency.exponentialRampToValueAtTime(f0 * 0.85, s0 + len);
+      g.gain.setValueAtTime(0.0001, s0); g.gain.exponentialRampToValueAtTime(0.75, s0 + 0.03); g.gain.setValueAtTime(0.75, s0 + len * 0.6); g.gain.exponentialRampToValueAtTime(0.0001, s0 + len);
+      o.connect(g); vow.forEach(bp => g.connect(bp)); o.start(s0); o.stop(s0 + len + 0.02);
+      hiss(s0 - 0.03, 0.06, 'bandpass', 1600, 0.35, 0.01);
+    }
+  }
+  // a steam train whistle: a breathy three-note chord, a short toot then a long one, sliding up into pitch
+  if (kind === 'horn') {
+    for (const [s0, len] of [[0, 0.38], [0.5, 0.95]]) {
+      for (const [fq, gn] of [[392, 0.32], [494, 0.26], [587, 0.22]]) { const o = oc.createOscillator(), g = oc.createGain(); o.frequency.setValueAtTime(fq * 0.94, s0); o.frequency.exponentialRampToValueAtTime(fq, s0 + 0.08); g.gain.setValueAtTime(0.0001, s0); g.gain.exponentialRampToValueAtTime(gn, s0 + 0.05); g.gain.setValueAtTime(gn, s0 + len - 0.08); g.gain.exponentialRampToValueAtTime(0.0001, s0 + len); o.connect(g).connect(out); o.start(s0); o.stop(s0 + len + 0.02); }
+      const n = noise(len), bp = oc.createBiquadFilter(), g = oc.createGain(); bp.type = 'bandpass'; bp.frequency.value = 1400; bp.Q.value = 2; g.gain.setValueAtTime(0.0001, s0); g.gain.exponentialRampToValueAtTime(0.18, s0 + 0.04); g.gain.exponentialRampToValueAtTime(0.0001, s0 + len); n.connect(bp).connect(g).connect(out); n.start(s0);
+    }
+  }
+  // a steam engine picking up speed: "chuff" bursts of filtered noise coming closer together over a low rumble
+  if (kind === 'chug') {
+    let s0 = 0, k = 0; while (s0 < d - 0.15) { const gap = 0.26 - 0.15 * (s0 / d); hiss(s0, 0.13, 'bandpass', k % 2 ? 650 : 480, k % 2 ? 0.45 : 0.7, 0.008); s0 += gap; k++; }
+    const n = noise(d), lp = oc.createBiquadFilter(), g = oc.createGain(); lp.type = 'lowpass'; lp.frequency.value = 140; g.gain.setValueAtTime(0.0001, 0); g.gain.exponentialRampToValueAtTime(0.6, 0.4); g.gain.setValueAtTime(0.6, d - 0.3); g.gain.exponentialRampToValueAtTime(0.0001, d); n.connect(lp).connect(g).connect(out); n.start();
   }
   const buf = await oc.startRendering(); sfxCache[kind] = buf; return buf;
 }
