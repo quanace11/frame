@@ -151,6 +151,7 @@ function drawPuppet(ctx, pose, lip) {
   if (lip && lip.pid) lipOpen(lip.pid, lip.lv);
   if (lip && lip.m) for (const id in lip.m) if (id !== lip.pid) lipOpen(id, lip.m[id]);
   if (lip && lip.mv) pose = ppApplyMv(pose, lip.mv);
+  if (lip && lip.off) pose = ppApplyOff(pose, lip.off);
   const M = ppMats(pose), byId = {}; S.pp.parts.forEach(p => byId[p.id] = p);
   const off = lyrOff('lh');
   const order = [...S.pp.parts].sort((a, b) => a.z - b.z), foc = ppPaintFocus && order.find(p => p.id === ppPaintFocus);
@@ -976,7 +977,8 @@ function ppSyncBar() { lyrSync(); lgSync(); ppBlinkInfo(); ppCycSync(); { const 
   ['#ppRole', '#ppParent', '#ppUp', '#ppDown', '#ppCharTop', '#ppCharBot', '#ppDel', '#ppRot', '#ppScale', '#ppFlip', '#ppHide', '#ppReset', '#ppRename'].forEach(id => $(id).disabled = !sel);
   const q = sel && curFrame().pp && curFrame().pp[sel.id] || {};
   $('#ppRot').value = Math.round(((q.r || 0) % 360 + 540) % 360 - 180); $('#ppScale').value = Math.round((q.sx == null ? 1 : q.sx) * 100);
-  $('#ppHide').textContent = q.h ? 'Hiện' : 'Ẩn';
+  $('#ppHide').textContent = q.h ? 'Hiện mảnh' : 'Ẩn mảnh';
+  { const rid = sel ? (ppCharOf(sel) || sel.id) : null, off = !!rid && ppOffAt(curFrame(), rid), b = $('#ppOffBtn'); b.disabled = !sel; b.textContent = off ? '👁 Hiện ở frame này' : '🙈 Ẩn ở frame này'; b.classList.toggle('on', off); }
   document.querySelectorAll('[data-ppd]').forEach(b => b.classList.toggle('on', b.dataset.ppd === ppDrag));
   { const vs2 = $('#ppVars'); vs2.innerHTML = '';
     if (sel) { const q2 = curFrame().pp && curFrame().pp[sel.id], cv = q2 && q2.v ? q2.v : 0;
@@ -1071,6 +1073,7 @@ $('#ppScale').addEventListener('input', e => { const p = ppPart(ppSel); if (!p) 
 $('#ppScale').addEventListener('change', ppSlEnd);
 $('#ppFlip').addEventListener('click', () => ppEdit(q => { q.fl = !q.fl; }));
 $('#ppHide').addEventListener('click', () => ppEdit(q => { q.h = !q.h; }));
+$('#ppOffBtn').addEventListener('click', () => ppOffToggle());
 $('#ppReset').addEventListener('click', () => ppEdit((q, p, f) => { delete f.pp[p.id]; }));
 $('#ppResetAll').addEventListener('click', () => ppKeyEdit(f => { f.pp = {}; f.ppKey = true; }));
 $('#ppCutBtn').addEventListener('click', () => { if (!ppSel) { toast('Chạm chọn mảnh nguồn (vd. Thân) trước, rồi khoanh vùng cần tách'); return; } ppCutMode = !ppCutMode; ppPatchMode = false; ppSyncBar(); if (ppCutMode) toast('Khoanh quanh phần muốn tách (tay, miệng, mắt…)', 3000); });
@@ -1119,7 +1122,24 @@ function ppApplyMv(pose, mv) {
   for (const id in mv) { const m = mv[id]; if (!m || !ppPart(id)) continue; const q = P[id] = { ...(P[id] || {}) }; q.dx = (q.dx || 0) + m.x; q.dy = (q.dy || 0) + m.y; }
   return P;
 }
-const ppPoseFor = f => f && f.lip && f.lip.mv ? ppApplyMv(f.pp, f.lip.mv) : f && f.pp;
+// 🙈 Ẩn ở frame này: f.lip.off = {rootId: 1} hides a whole character on ONE frame (like a blank keyframe in Animate).
+// It sits in the lip overlay (not in the pose), so tweening never spreads it to the frames around it.
+function ppApplyOff(pose, off) {
+  const P = { ...(pose || {}) };
+  for (const p of S.pp ? S.pp.parts : []) if (off[ppCharOf(p) || p.id]) P[p.id] = { ...(P[p.id] || {}), h: true };
+  return P;
+}
+const ppOffAt = (f, rid) => !!(f && f.lip && f.lip.off && f.lip.off[rid]);
+function ppOffEdit(f, fn) { const before = f.lip ? JSON.stringify(f.lip) : null, l = { ...(f.lip || {}) }; l.off = { ...(l.off || {}) }; fn(l.off); for (const k in l.off) if (!l.off[k]) delete l.off[k]; if (!Object.keys(l.off).length) delete l.off; const lip = Object.keys(l).length ? l : null, after = lip ? JSON.stringify(lip) : null; if (before === after) return null; f.lip = lip; f.ver++; queueThumbFor(f); return { t: targetOf(f), lipe: true, before, after, bytes: 64 }; }
+// hide / show the selected character (or the given layer) on the frame being viewed only
+function ppOffToggle(rid) {
+  rid = rid || ppSelChar(); if (!rid) { toast('Chạm chọn nhân vật trước'); return; }
+  const f = curFrame(), on = !ppOffAt(f, rid), e = ppOffEdit(f, o => { o[rid] = on ? 1 : 0; });
+  if (!e) return;
+  pushEntry(e); markEdited(f); scheduleSave(); ppSyncBar(); lgSync(true); requestRender();
+  toast(on ? `🙈 Đã ẩn "${lyrName(ppPart(rid))}" ở frame ${S.cur + 1} — các frame khác vẫn giữ. Bấm 👁 Hiện ở frame này để lấy lại` : `👁 "${lyrName(ppPart(rid))}" hiện lại ở frame ${S.cur + 1}`, 2600);
+}
+const ppPoseFor = f => { if (!f) return f; let P = f.pp; if (f.lip && f.lip.mv) P = ppApplyMv(P, f.lip.mv); if (f.lip && f.lip.off) P = ppApplyOff(P, f.lip.off); return P; };
 function ppLipAt(i, tIn) {
   const f = S.frames[i], nx = S.frames[i + 1], a = f.lip && f.lip.mv; if (!a || !nx) return f.lip;
   const b = (nx.lip && nx.lip.mv) || {}, dur = Math.max(1, f.dur), T = Math.min(dur, 160), u = clamp((tIn * 1000 - (dur - T)) / T, 0, 1); if (u <= 0) return f.lip;

@@ -139,9 +139,18 @@ async function selectFrame(i) {
 }
 async function addFrame() {
   if (playing) stopPlay(); commitFloating();
-  const f = newFrameObj(curFrame().bgId);
+  const src = curFrame(), f = newFrameObj(src.bgId);
+  // + Frame trống = nothing drawn AND no character: the characters keep their pose/place (an in-between of the frames
+  // around it, so tweens on both sides don't change) but are hidden on this frame only (🙈, f.lip.off)
+  if (S.pp && S.pp.parts.length) {
+    f.pp = ppClone(src.pp); f.ppKey = false; f.lip = lipCopy(src) || {};
+    delete f.lip.m; delete f.lip.pid; delete f.lip.lv; delete f.lip.eb;
+    f.lip.off = {}; for (const r of ppRoots()) f.lip.off[r.id] = 1;
+  }
   S.frames.splice(S.cur + 1, 0, f); loaded.push(f);
+  if (f.pp) ppRetween();
   await drawThumb(f); buildStrip(); await selectFrame(S.cur + 1); scheduleSave(); evictSoon();
+  if (f.lip && f.lip.off) toast('+ Frame trống: nhân vật được ẩn ở frame này. Muốn hiện lại: Ghép → chạm chọn trên Dòng layer → 👁 Hiện ở frame này', 3200);
 }
 // f.lip = mouth/eye pictures + 〰 Đường đi offsets (lip.mv): a copied frame must keep them, else the character jumps back to where it started
 function lipCopy(f) { return f && f.lip ? JSON.parse(JSON.stringify(f.lip)) : null; }
