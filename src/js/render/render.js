@@ -143,7 +143,7 @@ function render() {
   if (stroke) drawStrokePred(c);
   if (S.sym && (S.tool === 'brush' || S.tool === 'eraser')) { const q = 1 / vs * DPR; c.save(); c.setLineDash([10 * q, 8 * q]); c.lineWidth = 1.5 * q; c.strokeStyle = 'rgba(125,107,255,.85)'; c.beginPath(); if (S.sym !== 2) { c.moveTo(W / 2, 0); c.lineTo(W / 2, H); } if (S.sym !== 1) { c.moveTo(0, H / 2); c.lineTo(W, H / 2); } c.stroke(); c.restore(); }
   const px = 1 / vs * DPR;
-  if (S.pp && S.showPP && !ppSetup && !trace) { ppPaintFocus = ppPaintFocusId(); const jp = ppJEOn() && ppPoseFor(f); try { drawPuppet(c, jp || f.pp, jp ? null : f.lip); } finally { ppPaintFocus = null; } }
+  if (S.pp && S.showPP && !ppSetup && !trace) { ppPaintFocus = ppPaintFocusId(); const jp = (ppJEOn() || ppPrevOn()) && ppPoseFor(f); try { drawPuppet(c, jp || f.pp, jp ? { ...(f.lip || {}), mv: null, off: null } : f.lip); } finally { ppPaintFocus = null; } }
   if (S.showVec) renderVec(c, rig && rig.pv ? { vec: rig.pv } : rig ? { vec: f.vec } : motion && motion.pv ? { vec: motion.pv } : f, px);
   if (rig) renderRig(c, px);
   if (HC) hcDraw(c, px); else renderPP(c, f, px);
