@@ -29,7 +29,7 @@ function hcOpen(f, src, img) {
   const d = src.getContext('2d').getImageData(0, 0, W, H).data;
   let n = 0; for (let i = 3; i < d.length; i += 16) if (d[i] > 20) n++;
   if (n < 40) return false;
-  HC = { f, src, ink: d, regs: [], role: 'torso', img: !!img, round: true, sel: null, from: null, follow: true };
+  HC = { f, src, ink: d, regs: [], role: 'torso', img: !!img, round: true, sel: null, from: null, follow: true, tool: 'lasso', br: +($('#hcBr') || {}).value || 18, undo: [] };
   setTool('puppet'); hcSync(); requestRender();
   toast('Khoanh Thân trước. Mỗi vùng bo tròn quá khớp một chút, các vùng được chồng lên nhau', 4000);
   return true;
@@ -101,7 +101,7 @@ function hcAdd(poly) {
   const role = HC.role, old = HC.regs.findIndex(r => r.role === role && role !== 'other');
   const r = { role, poly, m, b, jm: null };
   if (old >= 0) { const o = HC.regs[old]; if (o.pid) r.pid = o.pid; if (o.par !== undefined) r.par = o.par; if (o.front !== undefined) r.front = o.front; for (const q of HC.regs) if (q.par === o) q.par = r; HC.regs[old] = r; } else HC.regs.push(r);
-  HC.sel = r;
+  HC.sel = r; HC.tool = 'lasso'; HC.undo.push({ add: r });
   const kid = Object.keys(HC_PARENT).find(k => HC_PARENT[k] === role && HC_SEQ.includes(k) && !hcReg(k) && role !== 'torso');
   const next = kid || HC_SEQ.find(q => !hcReg(q)); HC.role = next || 'other';
   hcSync(); requestRender();
@@ -112,17 +112,21 @@ function hcHitJoint(p) {
   return null;
 }
 function hcStart(p, base) {
+  const s = HC.sel && HC.regs.includes(HC.sel) ? HC.sel : null;
+  if (s && HC.tool !== 'lasso') { action = { ...base, kind: 'hcpaint', r: s, before: hcPaintSnap(s), last: p, val: HC.tool === 'add' ? 1 : 0 }; hcPaintTo(s, p, p, action.val); return; }
   const r = hcHitJoint(p);
   if (r) { const j = hcJoint(r), jm0 = r.jm; r.jm = { x: j.x, y: j.y }; action = { ...base, kind: 'hcjoint', r, jm0, last: p }; return; }
   lasso = [p]; lassoOpen = false; action = { ...base, kind: 'hclasso' };
 }
 function hcMove(p) {
   const a = action; if (!a || !HC) return;
+  if (a.kind === 'hcpaint') { hcPaintTo(a.r, a.last, p, a.val); a.last = p; return; }
   if (a.kind === 'hcjoint') { a.r.jm.x += p.x - a.last.x; a.r.jm.y += p.y - a.last.y; a.last = p; requestRender(); return; }
   const l = lasso && lasso[lasso.length - 1]; if (l && Math.hypot(p.x - l.x, p.y - l.y) > 3 / vs) { lasso.push(p); requestRender(); }
 }
 function hcEnd() {
   const a = action; if (!a || !HC) return;
+  if (a.kind === 'hcpaint') { hcPaintDone(a.r); HC.undo.push({ paint: a.before }); a.last = null; requestRender(); return; }
   if (a.kind === 'hclasso') {
     const poly = lasso; lasso = null;
     let len = 0; if (poly) for (let k = 1; k < poly.length; k++) len += Math.hypot(poly[k].x - poly[k - 1].x, poly[k].y - poly[k - 1].y);
@@ -131,6 +135,51 @@ function hcEnd() {
     } else if (poly && poly.length > 2 && performance.now() - a.t0 > 120) hcAdd(poly);
     requestRender();
   }
+}
+/* 🖌 Tô thêm / 🧽 Tẩy bớt: a round brush that adds to / takes from the selected region's mask, for cutting exactly
+   (a lassoed region turns into a mask region, like the ones from 🪄 Theo nhân vật mờ). Undo per stroke = the mask inside
+   the old box (outside it the mask was empty). */
+function hcPaintSnap(r) {
+  const [x0, y0, x1, y1] = r.b, w = Math.max(0, x1 - x0 + 1), h = Math.max(0, y1 - y0 + 1), crop = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) crop.set(r.m.subarray((y + y0) * W + x0, (y + y0) * W + x0 + w), y * w);
+  return { r, b: [...r.b], crop, mc: r.mc, poly: r.poly, lx: r.lx, ly: r.ly };
+}
+function hcPaintUndo(u) {
+  const r = u.r, [x0, y0, x1, y1] = r.b;
+  for (let y = Math.max(0, y0); y <= Math.min(H - 1, y1); y++) r.m.fill(0, y * W + Math.max(0, x0), y * W + Math.min(W - 1, x1) + 1);
+  const [a0, b0, a1] = u.b, w = Math.max(0, a1 - a0 + 1); for (let y = 0; w && y < u.crop.length / w; y++) r.m.set(u.crop.subarray(y * w, y * w + w), (y + b0) * W + a0);
+  r.b = u.b; r.mc = u.mc; r.poly = u.poly; r.lx = u.lx; r.ly = u.ly; for (const q of HC.regs) q.capK = null;
+}
+function hcMaskCanvas(r) {   // the tinted picture of a mask region over its box
+  const [x0, y0, x1, y1] = r.b, w = Math.max(1, x1 - x0 + 1), h = Math.max(1, y1 - y0 + 1), mc = r.mc && r.mc.width === w && r.mc.height === h ? r.mc : makeCanvas(w, h);
+  const x = mc.getContext('2d'), id = x.createImageData(w, h), u = new Uint32Array(id.data.buffer), col = HC_COL[r.role] || '#ffd60a';
+  const v = (255 << 24 | parseInt(col.slice(5, 7), 16) << 16 | parseInt(col.slice(3, 5), 16) << 8 | parseInt(col.slice(1, 3), 16)) >>> 0;
+  for (let y = 0; y < h; y++) { const o = (y + y0) * W + x0; for (let X = 0; X < w; X++) if (r.m[o + X]) u[y * w + X] = v; }
+  x.putImageData(id, 0, 0); return mc;
+}
+function hcPaintTo(r, a, b, val) {
+  if (!r.mc) { r.lx = r.poly.reduce((s, q) => s + q.x, 0) / r.poly.length; r.ly = r.poly.reduce((s, q) => s + q.y, 0) / r.poly.length; }
+  const R = Math.max(1, HC.br * DPR / vs), L = Math.hypot(b.x - a.x, b.y - a.y), n = Math.max(1, Math.ceil(L / (R / 3))), R2 = R * R;
+  for (let k = 0; k <= n; k++) {
+    const cx = a.x + (b.x - a.x) * k / n, cy = a.y + (b.y - a.y) * k / n;
+    const X0 = Math.max(0, Math.floor(cx - R)), X1 = Math.min(W - 1, Math.ceil(cx + R)), Y0 = Math.max(0, Math.floor(cy - R)), Y1 = Math.min(H - 1, Math.ceil(cy + R));
+    for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) if ((x - cx) ** 2 + (y - cy) ** 2 <= R2) r.m[y * W + x] = val;
+    if (val && X0 <= X1 && Y0 <= Y1) { r.b = [Math.min(r.b[0], X0), Math.min(r.b[1], Y0), Math.max(r.b[2], X1), Math.max(r.b[3], Y1)]; }
+  }
+  r.mc = hcMaskCanvas(r); for (const q of HC.regs) q.capK = null; requestRender();
+}
+function hcPaintDone(r) {   // shrink the box to what is left and put the name label in the middle of it
+  let b = [W, H, -1, -1], sx = 0, sy = 0, n = 0;
+  for (let y = r.b[1]; y <= r.b[3]; y++) for (let x = r.b[0]; x <= r.b[2]; x++) if (r.m[y * W + x]) { if (x < b[0]) b[0] = x; if (y < b[1]) b[1] = y; if (x > b[2]) b[2] = x; if (y > b[3]) b[3] = y; sx += x; sy += y; n++; }
+  if (!n) { b = [r.b[0], r.b[1], r.b[0], r.b[1]]; toast('Vùng đã bị tẩy hết: 🖌 Tô thêm lại hoặc ↶ để lấy lại', 3000); } else { r.lx = sx / n; r.ly = sy / n; }
+  r.b = b; r.mc = hcMaskCanvas(r); for (const q of HC.regs) q.capK = null;
+}
+function hcUndoStep() {
+  const u = HC.undo.pop();
+  if (u && u.paint) { if (HC.regs.includes(u.paint.r)) { hcPaintUndo(u.paint); HC.sel = u.paint.r; } else return hcUndoStep(); }
+  else if (u && u.add) { if (!HC.regs.includes(u.add)) return hcUndoStep(); hcRemove(u.add); HC.role = u.add.role; }
+  else if (HC.regs.length) { const r = HC.regs[HC.regs.length - 1]; hcRemove(r); HC.role = r.role; }
+  hcSync(); requestRender();
 }
 function hcDraw(c, px) {
   if (!HC) return;
@@ -156,6 +205,7 @@ function hcDraw(c, px) {
     }
     c.beginPath(); c.arc(j.x, j.y, 10 * px, 0, Math.PI * 2); c.fillStyle = '#ff3b9a'; c.fill(); c.lineWidth = 3 * px; c.strokeStyle = '#fff'; c.stroke();
   }
+  if (action && action.kind === 'hcpaint' && action.last) { c.beginPath(); c.arc(action.last.x, action.last.y, HC.br * DPR / vs, 0, Math.PI * 2); c.lineWidth = 2 * px; c.strokeStyle = action.val ? '#fff' : '#ff4d4d'; c.stroke(); }
   c.restore();
 }
 function hcSync() {
@@ -171,6 +221,9 @@ function hcSync() {
   // the piece picked last (or tapped in the list): hook it to another piece, in front of / behind it, or drop it
   $('#hcRegs').innerHTML = HC.regs.length ? '<span class="lbl">Mảnh:</span>' + HC.regs.map((q, i) => `<button class="chip small${q === HC.sel ? ' on' : ''}" data-hci="${i}" style="border-color:${HC_COL[q.role] || '#ffd60a'}">${hcName(q)}</button>`).join('') : '';
   const r = HC.sel && HC.regs.includes(HC.sel) ? HC.sel : null, row = $('#hcSelRow'); row.hidden = !r;
+  if (!r) HC.tool = 'lasso';
+  document.querySelectorAll('[data-hct]').forEach(b => b.classList.toggle('on', HC.tool === b.dataset.hct));
+  $('#hcHint').textContent = HC.tool === 'add' ? `🖌 Tô thêm vào ${hcName(r)} · đã có ${HC.regs.length} vùng` : HC.tool === 'erase' ? `🧽 Tẩy bớt khỏi ${hcName(r)} · đã có ${HC.regs.length} vùng` : $('#hcHint').textContent;
   if (!r) return;
   const pr = hcParentOf(r), sel = $('#hcPar');
   $('#hcSelName').textContent = hcName(r);
@@ -517,7 +570,9 @@ function hcTips() {
 }
 $('#hcTips').addEventListener('click', hcTips);
 document.querySelectorAll('[data-hcr]').forEach(b => b.addEventListener('click', () => { if (!HC) return; HC.role = b.dataset.hcr; hcSync(); }));
-$('#hcUndo').addEventListener('click', () => { if (!HC || !HC.regs.length) return; const r = HC.regs[HC.regs.length - 1]; hcRemove(r); HC.role = r.role; hcSync(); requestRender(); });
+$('#hcUndo').addEventListener('click', () => { if (HC && (HC.regs.length || HC.undo.length)) hcUndoStep(); });
+document.querySelectorAll('[data-hct]').forEach(b => b.addEventListener('click', () => { if (!HC || !HC.sel) return; const t = b.dataset.hct; HC.tool = HC.tool === t && t !== 'lasso' ? 'lasso' : t; hcSync(); if (HC.tool !== 'lasso') toast(HC.tool === 'add' ? `🖌 Kéo trên hình để tô thêm vào ${hcName(HC.sel)}. Chạm tên mảnh ở hàng Mảnh để đổi mảnh` : `🧽 Kéo trên hình để tẩy bớt khỏi ${hcName(HC.sel)}`, 3500); }));
+$('#hcBr').addEventListener('input', e => { if (HC) HC.br = +e.target.value; });
 $('#hcRound').addEventListener('click', () => { if (!HC) return; HC.round = !HC.round; hcSync(); requestRender(); toast(HC.round ? '◯ Khớp tròn: chỗ chồng chia đôi tại khớp + 1 đĩa tròn chung, xoay không lộ khe, không thừa mẩu' : 'Giữ nguyên chỗ chồng ở cả 2 mảnh', 3500); });
 $('#hcPar').addEventListener('change', e => { const r = HC && HC.sel; if (!r) return; const q = HC.regs[+e.target.value]; r.par = e.target.value === '' || !q ? undefined : q; r.jm = null; hcSync(); requestRender(); });
 $('#hcFront').addEventListener('click', () => { const r = HC && HC.sel; if (r) { r.front = true; hcSync(); } });
