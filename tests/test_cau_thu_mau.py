@@ -47,6 +47,7 @@ async def main():
         if after['px'] != before['px'] or after['py'] != before['py'] or abs(after['bot'] - before['bot']) > 1 or after['h'] != before['h']: errs.append('swap moved the joint/size')
         await pg.screenshot(path='cau_thu_dau_moi.png')
         await pg.wait_for_timeout(600)   # let the automatic undo snapshot run
+        await pg.wait_for_function('!histT', timeout=5000)   # slow CI: it may still be waiting (histBusy retries every 400 ms)
         await pg.evaluate("undo()"); await pg.wait_for_timeout(400)
         back = await pg.evaluate("(()=>{ const h=S.pp.parts.find(q=>q.role==='head'); return {w:h.c.width,h:h.c.height,ox:h.ox} })()")
         print('after undo', back)
