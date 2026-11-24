@@ -84,7 +84,7 @@ async def main():
         await pg.wait_for_selector('text=Lưu file ZIP', timeout=30000)
         async with pg.expect_download() as dl: await pg.click('text=Lưu file ZIP')
         d=await dl.value; await d.save_as('pp.zip'); z=zipfile.ZipFile('pp.zip'); print('zip puppet files', len([n for n in z.namelist() if n.startswith('puppet/')]))
-        await pg.set_input_files('#zipFile','pp.zip'); await pg.click('.dlg .btns >> text=Mở'); await pg.wait_for_timeout(2500)
+        await pg.set_input_files('#zipFile','pp.zip'); await pg.wait_for_timeout(2500)
         print('import parts', await pg.evaluate('S.pp && S.pp.parts.length'), 'frames', await pg.evaluate('S.frames.length'))
         print('ERR', errs); await b.close()
 asyncio.run(main()); srv.kill()

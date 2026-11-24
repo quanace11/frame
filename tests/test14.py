@@ -65,7 +65,7 @@ async def main():
         await pg.click('#menuBtn'); await pg.click('[data-m=export]'); await pg.wait_for_selector('text=Lưu file ZIP', timeout=30000)
         async with pg.expect_download() as dl: await pg.click('text=Lưu file ZIP')
         d=await dl.value; await d.save_as('b.zip')
-        await pg.set_input_files('#zipFile','b.zip'); await pg.click('.dlg .btns >> text=Mở'); await pg.wait_for_timeout(2500)
+        await pg.set_input_files('#zipFile','b.zip'); await pg.wait_for_timeout(2500)
         print('import parts', await pg.evaluate('S.pp.parts.length'), 'mouth alts', await pg.evaluate("S.pp.parts.filter(x=>x.role==='mouth').map(p=>p.alts.length)"))
         await pg.reload(); await pg.wait_for_timeout(2000)
         print('reload mouth alts', await pg.evaluate("S.pp.parts.filter(x=>x.role==='mouth').map(p=>p.alts.length)"))

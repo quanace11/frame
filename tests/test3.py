@@ -80,7 +80,7 @@ async def main():
         await pg.wait_for_selector('text=Lưu file ZIP', timeout=20000)
         async with pg.expect_download() as dl: await pg.click('text=Lưu file ZIP')
         d=await dl.value; await d.save_as('v.zip'); z=zipfile.ZipFile('v.zip'); print([n for n in z.namelist() if 'lines' in n])
-        await pg.set_input_files('#zipFile','v.zip'); await pg.click('.dlg .btns >> text=Mở'); await pg.wait_for_timeout(1500)
+        await pg.set_input_files('#zipFile','v.zip'); await pg.wait_for_timeout(1500)
         print('import vec', await pg.evaluate('S.frames.map(f=>f.vec.length)'))
         await pg.screenshot(path='v4.png')
         print('ERRORS', errs)
