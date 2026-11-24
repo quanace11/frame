@@ -543,9 +543,10 @@ function ppPartMeta(p) { return { id: p.id, name: p.name, role: p.role, parent: 
 function ppHideBefore(parts) {
   const ids = new Set(parts.map(q => q.id)), roots = parts.filter(q => !q.parent || !ids.has(q.parent)).map(q => q.id);
   for (let i = 0; i < S.cur; i++) ppOffEdit(S.frames[i], o => { for (const r of roots) o[r] = 1; });
-  // like a new layer in Animate: ONE keyframe (this frame), every other frame holds it. Without this, on frames that are all
-  // 🔑 (drawn / duplicated frames) moving the new layer moved it on this frame only, so it jumped about when played
-  S.frames.forEach((f, i) => { for (const r of roots) ppLayerSetKey(f, r, i === S.cur); });
+  // a layer from 🎨/🧍/⚽/Nhập ảnh is its own layer with the same keyframes (● on Dòng layer) as the first picture: copy the key
+  // pattern of a layer already there (or the frame's own 🔑). Its pose starts the same on every frame, so it does not jump.
+  const old = ppRoots().find(r => !ids.has(r.id));
+  S.frames.forEach(f => { const k = old ? ppLayerKey(f, old.id) : ppIsKey(f); for (const r of roots) ppLayerSetKey(f, r, k); });
 }
 // …and right after adding, ask where it shows (like a picture turned into a piece, floatToPart): its own undo step
 async function ppAskNew(rid) { if (!rid || !ppPart(rid) || S.frames.length < 2) return; histFlush(); await ppShowAsk(rid, true); }

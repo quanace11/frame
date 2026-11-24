@@ -8,8 +8,8 @@ srv = subprocess.Popen(['python3','-m','http.server','9217'], cwd=DIST, stdout=s
 import atexit; atexit.register(srv.kill)
 time.sleep(1)
 # A picture (a speaker) saved to 🧍 Kho nhân vật and taken out again on frame 3 of a project whose frames are all 🔑:
-# it is a new layer with ONE keyframe, so moving it moves it on every frame (it used to move on that frame only and jump
-# about when played); ⧉ Nhân bản keeps it holding, and a pose / 🔑 on a held frame still makes a keyframe.
+# it is its own layer with the same keyframes (● on every frame) as the first picture, it stands still when played,
+# ⧉ Nhân bản copies it, and moving it never moves the old speaker.
 POS = '''(rid)=>S.frames.map((f,i)=>{const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');ppOnlyRoot=rid;try{drawPuppet(x,f.pp,f.lip);}finally{ppOnlyRoot=null;}const d=x.getImageData(0,0,W,H).data;let n=0,sx=0;for(let y=0;y<H;y+=4)for(let X=0;X<W;X+=4)if(d[(y*W+X)*4+3]>20){n++;sx+=X;}return n?Math.round(sx/n):-1})'''
 def ok(c, m):
     print(('OK ' if c else 'FAIL ') + m)
@@ -31,27 +31,16 @@ async def main():
         await pg.evaluate("charLibDialog(); 0"); await pg.wait_for_timeout(600); await pg.click('.ov:last-child #chList [data-a=add] >> nth=0'); await pg.wait_for_timeout(1200)
         await pg.click('.ov:last-child .btns >> text=Mọi frame'); await pg.wait_for_timeout(400)
         new = await pg.evaluate("ppRoots().map(r=>r.id).find(id=>id!==%r)" % loa)
-        ok(await pg.evaluate("S.frames.filter(f=>ppLayerKey(f,%r)).length" % new) == 1, 'layer mới có 1 keyframe')
-        x0 = await pg.evaluate(POS, new); ok(len(set(x0)) == 1 and x0[0] > 0, 'hiện ở mọi frame, cùng chỗ %s' % x0)
+        ok(await pg.evaluate("S.frames.every(f=>ppLayerKey(f,%r))" % new), 'layer mới: ● ở mọi frame như hình gốc')
+        x0 = await pg.evaluate(POS, new); ok(len(set(x0)) == 1 and x0[0] > 0, 'hiện ở mọi frame, cùng chỗ (không nhảy) %s' % x0)
+        xo0 = await pg.evaluate(POS, loa)
         await pg.evaluate("ppSel=%r; ppEdit(q=>{q.dx=(q.dx||0)-200;})" % new); await pg.wait_for_timeout(300)
-        x1 = await pg.evaluate(POS, new); ok(len(set(x1)) == 1 and abs(x1[0] - (x0[0] - 200)) < 3, 'dời ở frame 3 → dời ở mọi frame %s' % x1)
-        xo = await pg.evaluate(POS, loa); ok(len(set(xo)) == 1, 'loa gốc đứng yên %s' % xo)
-        # ⧉ Nhân bản frame 3: the copy holds too, moving again still moves every frame
+        x1 = await pg.evaluate(POS, new); ok(abs(x1[2] - (x0[2] - 200)) < 3 and x1[:2] == x0[:2] and x1[3] == x0[3], 'dời ở frame 3 = chỉ frame 3, như hình gốc %s' % x1)
+        xo = await pg.evaluate(POS, loa); ok(xo == xo0, 'loa gốc không đổi %s' % xo)
         await pg.click('#dupBtn'); await pg.wait_for_timeout(400)
-        ok(await pg.evaluate("S.frames.filter(f=>ppLayerKey(f,%r)).length" % new) == 1, 'nhân bản: vẫn 1 keyframe')
-        await pg.evaluate('selectFrame(2)'); await pg.wait_for_timeout(200)   # its keyframe
-        await pg.evaluate("ppSel=%r; ppEdit(q=>{q.dx=(q.dx||0)+100;})" % new); await pg.wait_for_timeout(300)
-        x2 = await pg.evaluate(POS, new); ok(len(x2) == 5 and len(set(x2)) == 1 and abs(x2[0] - (x1[0] + 100)) < 3, 'sau nhân bản: dời ở mọi frame %s' % x2)
-        # animate it: a pose on the last frame = 2nd keyframe, frames between tween
-        await pg.evaluate('selectFrame(4)'); await pg.wait_for_timeout(300)
-        await pg.evaluate("ppSel=%r; ppEdit(q=>{q.dx=(q.dx||0)+300;})" % new); await pg.wait_for_timeout(300)
-        x3 = await pg.evaluate(POS, new); ok(x3[:3] == x2[:3] and x2[3] < x3[3] < x3[4] and abs(x3[4] - x2[4] - 300) < 3, 'keyframe thứ 2 ở frame 5, frame 4 tự chuyển %s' % x3)
-        # 🔑 on a frame where it only holds = a keyframe of it
-        await pg.evaluate('selectFrame(0)'); await pg.wait_for_timeout(200)
-        await pg.evaluate("ppSel=%r; ppFlipChar()" % new); await pg.wait_for_timeout(300)
-        ok(await pg.evaluate("ppLayerKey(S.frames[0],%r)" % new), 'lật ở frame 1 = keyframe')
-        await pg.evaluate('undo()'); await pg.wait_for_timeout(400)
-        ok(not await pg.evaluate("ppLayerKey(S.frames[0],%r)" % new), 'hoàn tác')
+        ok(await pg.evaluate("S.frames.length==5 && S.frames.every(f=>ppLayerKey(f,%r))" % new), 'nhân bản: frame mới cũng có ●')
+        x2 = await pg.evaluate(POS, new); ok(x2[3] == x1[2], 'nhân bản giữ chỗ của frame 3 %s' % x2)
+        ok(await pg.evaluate(POS, loa) == xo0[:3] + [xo0[2]] + xo0[3:], 'loa gốc vẫn không đổi')
         await b.close()
         print('ERR', errs)
 asyncio.run(main())

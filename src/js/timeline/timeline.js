@@ -181,10 +181,7 @@ async function dupFrame() {
   if (playing) stopPlay(); commitFloating();
   const src = curFrame(); await ensureLoaded(src);
   const f = frameCopyOf(src);
-  // a layer that is not a keyframe here (it tweens through, or a picture / speaker with ONE keyframe that just holds)
-  // stays that way on the copy: otherwise moving it later moves it on one frame only and it jumps when played
-  for (const r of ppRoots()) if (!ppLayerKey(src, r.id) || S.frames.filter(g => ppLayerKey(g, r.id)).length === 1) ppLayerSetKey(f, r.id, false);
-  S.frames.splice(S.cur + 1, 0, f); loaded.push(f); if (f.ppK) ppRetween();
+  S.frames.splice(S.cur + 1, 0, f); loaded.push(f);
   await drawThumb(f); buildStrip(); await selectFrame(S.cur + 1); scheduleSave(); evictSoon();
 }
 // repeat frames a..b (0-based) after b: 'loop' = a..b again, 'pingpong' = b-1..a (there and back); undo = one step
