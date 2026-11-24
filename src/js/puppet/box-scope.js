@@ -47,7 +47,8 @@ function ppScopeSet(sc) {
   S.ppScope = PP_SCOPE_LABEL[sc] ? sc : 'one'; ppScopeSync();
   if (S.ppScope !== 'one') toast(`⬚ Cả nhóm: dời, phóng to/thu nhỏ, xoay nhân vật sẽ áp cho ${PP_SCOPE_LABEL[S.ppScope]}`, 3000);
 }
-function ppScopeSync() { document.querySelectorAll('[data-ppsc]').forEach(b => b.classList.toggle('on', b.dataset.ppsc === S.ppScope)); }
+// the row only means something with 2+ frames (it also keeps the Ghép bar short on an upright tablet)
+function ppScopeSync() { document.querySelectorAll('[data-ppsc]').forEach(b => b.classList.toggle('on', b.dataset.ppsc === S.ppScope)); const r = $('#ppScopeRow'); if (r) r.classList.toggle('solo', S.frames.length < 2); }
 async function ppSizeSync() {
   const f = curFrame(), sel = ppPart(ppSel), rid = sel && (ppCharOf(sel) || sel.id);
   if (!rid) { toast('Chạm chọn nhân vật / hình trước'); return; }
