@@ -543,6 +543,9 @@ function ppPartMeta(p) { return { id: p.id, name: p.name, role: p.role, parent: 
 function ppHideBefore(parts) {
   const ids = new Set(parts.map(q => q.id)), roots = parts.filter(q => !q.parent || !ids.has(q.parent)).map(q => q.id);
   for (let i = 0; i < S.cur; i++) ppOffEdit(S.frames[i], o => { for (const r of roots) o[r] = 1; });
+  // like a new layer in Animate: ONE keyframe (this frame), every other frame holds it. Without this, on frames that are all
+  // 🔑 (drawn / duplicated frames) moving the new layer moved it on this frame only, so it jumped about when played
+  S.frames.forEach((f, i) => { for (const r of roots) ppLayerSetKey(f, r, i === S.cur); });
 }
 // …and right after adding, ask where it shows (like a picture turned into a piece, floatToPart): its own undo step
 async function ppAskNew(rid) { if (!rid || !ppPart(rid) || S.frames.length < 2) return; histFlush(); await ppShowAsk(rid, true); }

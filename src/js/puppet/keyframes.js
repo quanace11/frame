@@ -48,5 +48,6 @@ function ppRetween() {
   S.frames.forEach((f, i) => { if (JSON.stringify(out[i]) !== JSON.stringify(f.pp || {})) { f.pp = out[i]; f.ver++; changed.push(f); } });
   changed.forEach(f => queueThumbFor(f)); if (changed.length) { scheduleSave(); requestRender(); }
 }
-function ppKeyEdit(fn) { const f = curFrame(), before = ppState(f); fn(f); pushEntry(ppEntry(f, before, ppState(f))); markEdited(f); ppRetween(); ppSyncBar(); updateFrameUI(); requestRender(); }
+// 🔑 / a pose on a frame where the selected layer only held (f.ppK false) makes it that layer's keyframe too
+function ppKeyEdit(fn) { const f = curFrame(), before = ppState(f); fn(f); { const rid = ppIsKey(f) && ppSelChar(); if (rid && f.ppK && f.ppK[rid] === false) ppLayerSetKey(f, rid, true); } pushEntry(ppEntry(f, before, ppState(f))); markEdited(f); ppRetween(); ppSyncBar(); updateFrameUI(); requestRender(); }
 

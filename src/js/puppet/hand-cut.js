@@ -512,7 +512,7 @@ function hcFollowChar(from, regs, parts) {
       if ((src[o.id] && src[o.id].h) || (src[old.id] && src[old.id].h)) q.h = true;
       pp[nq.id] = q;
     }
-    if (g.ppK && g.ppK[old.id] !== undefined) g.ppK = { ...g.ppK, [nr.id]: g.ppK[old.id] };
+    ppLayerSetKey(g, nr.id, ppLayerKey(g, old.id));   // keyframes exactly where the old one has them
     if (g.ppE && g.ppE[old.id] !== undefined) g.ppE = { ...g.ppE, [nr.id]: g.ppE[old.id] };
     const l = g.lip;
     if (l && l.mv && l.mv[old.id]) g.lip = { ...l, mv: { ...l.mv, [nr.id]: { ...l.mv[old.id] } } };
