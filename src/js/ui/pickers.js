@@ -28,14 +28,100 @@ function addRecentColor(c) {
   const r = S.recentColors || []; if (r[0] === c) return;
   S.recentColors = [c, ...r.filter(x => x !== c)].slice(0, 24); saveSettings(); renderRecentSw();
 }
-// a few recent colours that are not already in the fixed palette, next to it in the top bar
+/* ----- ⭐ Màu hay dùng: the swatches in the top bar are the user's own (S.favColors, saved in settings, same on every project) ----- */
+const FAV_MAX = 16;
+let pickFav = null;   // 💧 picking for Màu hay dùng: {mode: 'add'} keeps picking, {mode: 'set', i} replaces swatch i
+const favList = () => (Array.isArray(S.favColors) ? S.favColors : PALETTE).map(c => normHex(c)).filter(Boolean);
+function favSet(list, msg) { S.favColors = list.slice(0, FAV_MAX); saveSettings(); renderFavSw(); if (msg) toast(msg); if (popEl && popEl._favSync) popEl._favSync(); }
+function favAdd(c) {
+  c = normHex(c); if (!c) return false;
+  const l = favList();
+  if (l.includes(c)) { toast('Màu ' + c + ' đã có trong màu hay dùng'); return false; }
+  if (l.length >= FAV_MAX) { toast(`Đã đủ ${FAV_MAX} màu. Giữ lâu 1 ô màu trên thanh trên để thay hoặc bỏ màu đó`, 3500); return false; }
+  favSet([...l, c]); return true;
+}
+function favReplace(i, c) {   // a colour that was already in the list elsewhere moves here (no doubles)
+  c = normHex(c); const l = favList(); if (!c || i < 0 || i >= l.length) return;
+  l[i] = c; favSet(l.filter((x, k) => k === i || x !== c));
+}
+function favRemove(i) { const l = favList(); l.splice(i, 1); favSet(l, 'Đã bỏ màu khỏi màu hay dùng'); }
+function favMove(i, d) { const l = favList(), j = i + d; if (j < 0 || j >= l.length) return i; [l[i], l[j]] = [l[j], l[i]]; favSet(l); return j; }
+function favReset() { S.favColors = null; saveSettings(); renderFavSw(); toast('Đã về bảng màu mặc định'); if (popEl && popEl._favSync) popEl._favSync(); }
+// 💧 eyedropper for favourites: 'add' stays on the dropper so several colours can be taken one after another
+function favPickStart(mode, i) {
+  closePop(); pickFav = { mode, i };
+  if (S.tool !== 'pick') setTool('pick'); else dropBtnLabel();
+  toast(mode === 'add' ? 'Chạm vào các màu trên hình để thêm vào màu hay dùng. Xong thì bấm ✓ Xong' : 'Chạm vào hình để lấy màu thay cho ô này', 3500);
+}
+function favPicked(c) {
+  const f = pickFav;
+  if (f.mode === 'set') { pickFav = null; favReplace(f.i, c); setColor(c); toast('Đã thay bằng màu ' + c); setTool(pickBack && pickBack !== 'pick' ? pickBack : 'brush'); return; }
+  setColor(c);
+  if (favAdd(c)) toast(`Đã thêm ${c} (${favList().length}/${FAV_MAX}). Chạm tiếp để thêm màu khác, hoặc bấm ✓ Xong`, 2500);
+}
+function dropBtnLabel() { const b = $('#dropBtn'); if (b) b.textContent = pickFav && S.tool === 'pick' ? '✓ Xong hút màu' : '💧 Dò màu'; }
+function renderFavSw() {
+  const box = $('#favSw'); if (!box) return;
+  box.innerHTML = '';
+  favList().forEach((c, i) => {
+    const s = document.createElement('button'); s.className = 'sw fav'; s.style.background = c; s.dataset.c = c; s.dataset.i = i;
+    s.title = c + ' · giữ lâu để thay hoặc bỏ màu này';
+    let lp = null, fired = false;
+    s.addEventListener('pointerdown', () => { fired = false; clearTimeout(lp); lp = setTimeout(() => { fired = true; favSwatchPop(s, i); }, 550); });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(t => s.addEventListener(t, () => clearTimeout(lp)));
+    s.addEventListener('contextmenu', e => { e.preventDefault(); if (!fired) { fired = true; favSwatchPop(s, i); } });
+    s.addEventListener('click', () => { if (fired) { fired = false; return; } setColor(c); });
+    box.append(s);
+  });
+  renderRecentSw();
+}
+// long-press one top-bar swatch: replace it (current colour / 💧 from the picture), move it, or remove it
+function favSwatchPop(anchor, i) {
+  const d = openPop(anchor, `<div class="cp-lbl">Màu hay dùng số ${i + 1}: <b class="fv-hex"></b></div>
+    <div class="fv-acts">
+      <button class="chip small fv-cur">Thay bằng màu đang chọn <span class="fv-dot"></span></button>
+      <button class="chip small fv-pick">💧 Hút màu từ hình để thay</button>
+      <button class="chip small fv-full">🎨 Chọn màu khác…</button>
+      <span class="fv-mv"><button class="chip small fv-l" aria-label="Dời sang trái">◀</button><button class="chip small fv-r" aria-label="Dời sang phải">▶</button></span>
+      <button class="chip small fv-del">🗑 Bỏ màu này</button>
+    </div>`, 'fvpop');
+  const sync = () => { const c = favList()[i]; d.querySelector('.fv-hex').textContent = c || ''; d.querySelector('.fv-dot').style.background = S.color; d.querySelector('.fv-cur').disabled = c === S.color; };
+  d.querySelector('.fv-cur').addEventListener('click', () => { favReplace(i, S.color); toast('Đã thay bằng màu ' + S.color); closePop(); });
+  d.querySelector('.fv-pick').addEventListener('click', () => favPickStart('set', i));
+  d.querySelector('.fv-full').addEventListener('click', () => { closePop(); setColor(favList()[i] || S.color); colorPop({ favIdx: i }); });
+  d.querySelector('.fv-l').addEventListener('click', () => { i = favMove(i, -1); sync(); });
+  d.querySelector('.fv-r').addEventListener('click', () => { i = favMove(i, 1); sync(); });
+  d.querySelector('.fv-del').addEventListener('click', () => { favRemove(i); closePop(); });
+  sync();
+}
+function favAddPop() {
+  const btn = $('#favAddBtn');
+  if (popEl && popEl._anchor === btn) { closePop(); return; }
+  const d = openPop(btn, `<div class="cp-lbl">Màu hay dùng (<span class="fv-n"></span>/${FAV_MAX})</div>
+    <div class="fv-acts">
+      <button class="chip small fv-add">＋ Thêm màu đang chọn <span class="fv-dot"></span></button>
+      <button class="chip small fv-pick">💧 Hút màu từ hình để thêm (chạm nhiều chỗ liền)</button>
+      <button class="chip small fv-full">🎨 Chọn màu để thêm…</button>
+      <button class="chip small fv-reset">↺ Về màu mặc định</button>
+    </div>
+    <div class="br-tip">Mẹo: giữ lâu 1 ô màu trên thanh trên để thay, dời chỗ hoặc bỏ màu đó.</div>`, 'fvpop');
+  const sync = () => { d.querySelector('.fv-n').textContent = favList().length; d.querySelector('.fv-dot').style.background = S.color; };
+  d._favSync = sync;
+  d.querySelector('.fv-add').addEventListener('click', () => { if (favAdd(S.color)) toast('Đã thêm ' + S.color + ' vào màu hay dùng'); sync(); });
+  d.querySelector('.fv-pick').addEventListener('click', () => favPickStart('add'));
+  d.querySelector('.fv-full').addEventListener('click', () => { closePop(); colorPop(); });
+  d.querySelector('.fv-reset').addEventListener('click', () => { favReset(); sync(); });
+  sync();
+}
+// a few recent colours that are not already in Màu hay dùng, next to them in the top bar
 function renderRecentSw() {
   const pal = $('#palette'); if (!pal) return;
   pal.querySelectorAll('.rc,.rsep').forEach(e => e.remove());
-  const fixed = new Set(PALETTE.map(c => c.toLowerCase())), list = (S.recentColors || []).filter(c => !fixed.has(c)).slice(0, 4);
-  if (!list.length) return;
-  const sep = document.createElement('span'); sep.className = 'rsep'; pal.append(sep);
-  for (const c of list) { const s = document.createElement('button'); s.className = 'sw rc'; s.style.background = c; s.dataset.c = c; s.title = 'Màu vừa dùng ' + c; s.addEventListener('click', () => setColor(c)); pal.append(s); }
+  const fixed = new Set(favList()), list = (S.recentColors || []).filter(c => !fixed.has(c)).slice(0, 4);
+  if (list.length) {
+    const sep = document.createElement('span'); sep.className = 'rsep'; pal.append(sep);
+    for (const c of list) { const s = document.createElement('button'); s.className = 'sw rc'; s.style.background = c; s.dataset.c = c; s.title = 'Màu vừa dùng ' + c; s.addEventListener('click', () => setColor(c)); pal.append(s); }
+  }
   pal.querySelectorAll('.sw').forEach(s => s.classList.toggle('on', s.dataset.c.toLowerCase() === S.color.toLowerCase()));
 }
 let popEl = null;
@@ -57,9 +143,10 @@ function openPop(anchor, html, cls = '') {
   document.addEventListener('pointerdown', popOutside, true);
   return d;
 }
-function colorPop() {
+function colorPop(opt = {}) {
   const btn = $('#curColor');
   if (popEl && popEl._anchor === btn) { closePop(); return; }
+  let favIdx = opt.favIdx ?? -1;   // ≥ 0: this popover was opened to change that Màu hay dùng swatch
   const old = S.color;
   const d = openPop(btn, `
     <canvas class="cp-sv"></canvas>
@@ -70,6 +157,8 @@ function colorPop() {
       <span class="spacer"></span>
       <button class="chip cp-pick" title="Chạm vào hình trên khung vẽ để lấy đúng màu đó">💧 Hút màu</button>
     </div>
+    <div class="cp-fvset" hidden><button class="chip small on cp-fvok">✓ Đặt màu này cho ô số <b></b></button></div>
+    <div class="cp-lbl cp-fvlbl">⭐ Màu hay dùng <small>(hiện trên thanh trên)</small><span class="spacer"></span><button class="chip small cp-fvadd" title="Thêm màu đang chọn vào màu hay dùng">＋ Thêm màu này</button><button class="chip small cp-fvpick" title="Chạm vào các màu trên hình để thêm vào màu hay dùng">💧 Hút để thêm</button></div><div class="cp-grid cp-fav"></div>
     <div class="cp-lbl">Màu vừa dùng</div><div class="cp-grid cp-recent"></div>
     <div class="cp-lbl">Bảng màu</div><div class="cp-grid cp-pal"></div>`);
   const sv = d.querySelector('.cp-sv'), hue = d.querySelector('.cp-hue'), hexIn = d.querySelector('.cp-hex');
@@ -94,6 +183,7 @@ function colorPop() {
     d.querySelector('.cp-o').style.background = old; d.querySelector('.cp-n').style.background = S.color;
     if (!fromHex) hexIn.value = S.color;
     d.querySelectorAll('.cp-grid button').forEach(b => b.classList.toggle('on', b.dataset.c === S.color.toLowerCase()));
+    d.querySelector('.cp-fvadd').disabled = favList().includes(S.color);
     draw();
   }
   function setFromHsv() { setColor(hsvToHex(hsv.h, hsv.s, hsv.v)); syncUI(); }
@@ -111,15 +201,25 @@ function colorPop() {
   d.querySelector('.cp-o').addEventListener('click', () => { setColor(old); hsv = hexToHsv(old); syncUI(); });
   const fill = (sel, list) => {
     const g = d.querySelector(sel);
-    if (!list.length) { g.innerHTML = '<span class="cp-empty">Chưa có — màu bạn vẽ sẽ hiện ở đây.</span>'; return; }
+    if (!list.length) { g.innerHTML = sel === '.cp-fav' ? '<span class="cp-empty">Chưa có màu nào: bấm ＋ Thêm màu này hoặc 💧 Hút để thêm.</span>' : '<span class="cp-empty">Chưa có — màu bạn vẽ sẽ hiện ở đây.</span>'; return; }
     for (const c of list) { const b = document.createElement('button'); b.style.background = c; b.dataset.c = c.toLowerCase(); b.title = c;
       b.addEventListener('click', () => { setColor(c); hsv = hexToHsv(c); syncUI(); }); g.append(b); }
   };
   fill('.cp-recent', (S.recentColors || []).slice(0, 24)); fill('.cp-pal', BIG_PALETTE);
+  const favSync = () => {
+    const g = d.querySelector('.cp-fav'); g.innerHTML = ''; fill('.cp-fav', favList());
+    g.querySelectorAll('button').forEach((b, i) => b.classList.toggle('fvsel', i === favIdx));
+    const set = d.querySelector('.cp-fvset'); set.hidden = favIdx < 0; set.querySelector('b').textContent = favIdx + 1;
+    syncUI();
+  };
+  d._favSync = favSync;
+  d.querySelector('.cp-fvadd').addEventListener('click', () => { if (favAdd(S.color)) toast('Đã thêm ' + S.color + ' vào màu hay dùng'); });
+  d.querySelector('.cp-fvpick').addEventListener('click', () => favPickStart('add'));
+  d.querySelector('.cp-fvok').addEventListener('click', () => { favReplace(favIdx, S.color); toast('Đã đặt màu ' + S.color + ' cho ô số ' + (favIdx + 1)); favIdx = -1; favSync(); });
   d.querySelector('.cp-pick').addEventListener('click', () => {
     closePop(); setTool('pick'); toast('Chạm vào hình trên khung vẽ để lấy màu');
   });
-  syncUI();
+  favSync();
 }
 // small preview of each brush: an S curve that tapers at both ends, drawn with the real engine
 function brushPreview(cv, B, erase) {
@@ -202,3 +302,4 @@ $('#bgMenuBtn').addEventListener('click', bgMenuPop);
 $('#curColor').addEventListener('click', colorPop);
 $('#brushBtn').addEventListener('click', brushPop);
 
+$('#favAddBtn').addEventListener('click', favAddPop);

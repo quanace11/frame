@@ -61,7 +61,7 @@ function startAction(e, isTouch) {
       strokeBegin(p, e.timeStamp); action = { ...base, kind: 'stroke' }; break;
     }
     case 'fill': if (e.altKey) { pickBack = 'fill'; doPick(p); break; } if (!layerVisible()) { toast('Lớp đang ẩn'); return; } doFill(p); break;
-    case 'pick': doPick(p); break;
+    case 'pick': if (e.tapAt) { doPick(p); break; } action = { ...base, kind: 'pick', p }; if (e.clientX || e.clientY) pickLoupe(e, pickColorAt(p)); break;   // drag to see the colour, lift to pick it
     case 'lasso': if (selMode() === 'warp' && warpSel && warpSel.f === curFrame() && warpW(warpSel, p.x, p.y) >= 0.5) { warpBegin(p, base); break; } warpSel = null; lasso = [p]; action = { ...base, kind: 'lasso' }; requestRender(); break;
   }
 }
@@ -73,6 +73,7 @@ function moveAction(e) {
     const pr = e.getPredictedEvents ? e.getPredictedEvents() : [];
     stroke.pred = pr.length ? pr.slice(-3).map(ev => toDoc(ev, action.rect)) : null;
   }
+  else if (action.kind === 'pick') { action.p = toDoc(e, action.rect); pickLoupe(e, pickColorAt(action.p)); }
   else if (action.kind === 'fxtap') { const p = toDoc(e, action.rect); if (Math.hypot(p.x - action.p.x, p.y - action.p.y) > 24 * DPR / vs) action.moved = true; }
   else if (action.kind === 'ballpath') {
     if (ballMode && ballMode.pts) for (const ev of list) { const p = toDoc(ev, action.rect), l = ballMode.pts[ballMode.pts.length - 1]; if (Math.hypot(p.x - l.x, p.y - l.y) > 4 / vs) ballMode.pts.push(p); }
@@ -117,6 +118,7 @@ function endAction() {
   if (!action) return;
   $('#selbar').classList.remove('peek');
   if (action.kind === 'fxtap') { const a = action; action = null; if (!a.moved) startAction({ clientX: 0, clientY: 0, pointerType: 'touch', pointerId: a.id, tapAt: a.p }, false); action = null; return; }
+  if (action.kind === 'pick') { const p = action.p; action = null; doPick(p); return; }
   if (action.kind === 'stroke') strokeEnd();
   else if (action.kind === 'refmove') scheduleSave();
   else if (action.kind === 'rjoint') { scheduleSave(); rigPreview(); }
@@ -141,6 +143,7 @@ function abortAction() {
   if (!action) return;
   $('#selbar').classList.remove('peek');
   if (action.kind === 'stroke') strokeAbort();
+  if (action.kind === 'pick') pickLoupe(null);
   if (action.kind === 'lasso' || action.kind === 'vlasso') { lasso = null; requestRender(); }
   if (action.kind === 'warp') warpEnd(true);
   if (action.kind === 'ballpath' && ballMode) { ballMode.pts = null; requestRender(); }
@@ -182,6 +185,7 @@ let penSeen = false, fingerHinted = false;
 function fingerActs(e) {
   const f = curFrame(); if (!f || !f.canvas) return false;
   const p = toDoc(e, view.getBoundingClientRect());
+  if (S.tool === 'pick') return true;   // 💧 Dò màu: the finger picks (drag to see the colour, lift to take it)
   // the 8 handles + rotate knob of a ⬚ box stick out past the picture: a finger on them works the box instead of panning
   if (floating) { const k = floating.c && xbHit(floatXbox(), p, true); return !!k && k !== 'in'; }
   if (HC && S.tool === 'puppet') return !!hcHitJoint(p);
@@ -202,11 +206,18 @@ function fingerActs(e) {
   }
   return false;
 }
+// one quick finger tap with Đổ màu fills there (one finger still pans when it drags), even without "Ngón tay cũng vẽ"
+function fingerTap(g) {
+  const s = [...g.starts.values()][0]; if (!s || !g.rect) return;
+  vtx = g.tx0; vty = g.ty0;   // undo the few pixels the tap may have panned
+  const p = scrToDoc((s.x - g.rect.left) * DPR, (s.y - g.rect.top) * DPR);
+  startAction({ clientX: 0, clientY: 0, pointerType: 'touch', pointerId: -1, tapAt: { ...p, p: 1 } }, true); requestRender();
+}
 function gestureEnd() {
   const g = gesture; gesture = null; if (!g) return;
   // a beginner without a stylus drags one finger to draw and the drawing only slides: say how to draw with a finger (once)
   if (g.max === 1 && g.moved && !penSeen && !fingerHinted && !S.fingerDraw && ['brush', 'eraser', 'lasso'].includes(S.tool)) { fingerHinted = true; toast('1 ngón tay dùng để kéo khung vẽ. Không có bút? Vào ☰ Menu → bật “Ngón tay cũng vẽ”', 5000); }
-  if (!g.moved && performance.now() - g.t0 < 400) { if (g.max === 2) undo(); else if (g.max >= 3) redo(); }
+  if (!g.moved && performance.now() - g.t0 < 400) { if (g.max === 2) undo(); else if (g.max >= 3) redo(); else if (g.max === 1 && S.tool === 'fill') fingerTap(g); }
 }
 view.addEventListener('pointerdown', e => {
   e.preventDefault();
