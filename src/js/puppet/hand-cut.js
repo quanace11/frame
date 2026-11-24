@@ -72,6 +72,7 @@ function hcIsUnder(q, r) { for (let k = 0, a = q; a && k < 40; k++) { if (a === 
 // joint of a part = middle of the drawing where its loop overlaps its parent's loop (no ink there → middle of the overlap,
 // no overlap at all → the part's drawing nearest to the parent)
 function hcJointAuto(r, pr) {
+  const e = hcEdge(r, pr); if (e.within) return { x: e.x, y: e.y };
   const a = r.m, b = pr.m, ink = HC.ink, x0 = Math.max(r.b[0], pr.b[0]), y0 = Math.max(r.b[1], pr.b[1]), x1 = Math.min(r.b[2], pr.b[2]), y1 = Math.min(r.b[3], pr.b[3]);
   let sx = 0, sy = 0, n = 0, ex = 0, ey = 0, en = 0;
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = y * W + x; if (!a[i] || !b[i]) continue; ex += x; ey += y; en++; if (ink[i * 4 + 3] > 20) { sx += x; sy += y; n++; } }
@@ -83,6 +84,38 @@ function hcJointAuto(r, pr) {
   cx /= cn; cy /= cn; let best = { x: (r.b[0] + r.b[2]) / 2, y: r.b[1] }, bd = Infinity;
   for (let y = r.b[1]; y <= r.b[3]; y += 2) for (let x = r.b[0]; x <= r.b[2]; x += 2) { const i = y * W + x; if (a[i] && ink[i * 4 + 3] > 20) { const dd = (x - cx) ** 2 + (y - cy) ** 2; if (dd < bd) { bd = dd; best = { x, y }; } } }
   return best;
+}
+/* 👥 A limb lassoed INSIDE its parent's loop (one player's arm in a group picture whose whole picture is the body): the
+   overlap is the whole limb, so its middle is no joint. The loop's edge crosses the drawing only where the limb goes on
+   into the body (the shoulder), the rest of the loop runs over empty paper: joint = the middle of the biggest such
+   crossing (crossings into the piece's own child loops, e.g. the elbow, don't count). A loop whose edge lies on the
+   drawing nearly all round (eyes, mouth, a badge on the shirt) is a feature drawn on the parent, not a limb (`within` false):
+   both keep their drawing there as before. Cached per region (`edgeK`). */
+function hcEdge(r, pr) {
+  const key = r.b.join() + ',' + HC.regs.indexOf(pr) + ',' + HC.regs.length; if (r.edgeK === key) return r.edge;
+  const m = r.m, ink = HC.ink, kids = HC.regs.filter(q => q !== r && q !== pr && hcParentOf(q) === r);
+  const has = i => ink[i * 4 + 3] > 20, out = [];
+  let edge = 0;
+  for (let y = Math.max(1, r.b[1]); y <= Math.min(H - 2, r.b[3]); y++) for (let x = Math.max(1, r.b[0]); x <= Math.min(W - 2, r.b[2]); x++) {
+    const i = y * W + x; if (!m[i]) continue;
+    const o = !m[i - 1] ? i - 1 : !m[i + 1] ? i + 1 : !m[i - W] ? i - W : !m[i + W] ? i + W : -1; if (o < 0) continue;
+    edge++; if (has(i) && has(o) && !kids.some(q => q.m[o])) out.push(i);
+  }
+  let res = { within: false };
+  if (r.role !== 'eyes' && r.role !== 'mouth' && edge > 20 && out.length >= 3 && out.length < 0.7 * edge && hcInside(r, pr)) {
+    // the shoulder is at an END of the limb, and wide, while a loop drawn a bit sloppily also slices along the hair or the shirt
+    // beside it, or clips a fingertip: score each crossing = crossings within about an arm's width × distance from the middle
+    // of the limb's drawing; the joint = the middle of the crossings round the best one
+    let mx = 0, my = 0, mn = 0; for (let y = r.b[1]; y <= r.b[3]; y += 2) for (let x = r.b[0]; x <= r.b[2]; x += 2) { const i = y * W + x; if (m[i] && has(i)) { mx += x; my += y; mn++; } }
+    mx /= mn || 1; my /= mn || 1;
+    const xy = out.map(i => { const x = i % W; return [x, (i - x) / W]; });
+    const rad = Math.max(12, 0.2 * Math.max(r.b[2] - r.b[0], r.b[3] - r.b[1])), step = Math.max(1, Math.floor(xy.length / 300));
+    let far = xy[0], fd = -1;
+    for (let a = 0; a < xy.length; a += step) { const q = xy[a]; let c = 0; for (let t = 0; t < xy.length; t += step) if (Math.abs(xy[t][0] - q[0]) <= rad && Math.abs(xy[t][1] - q[1]) <= rad) c++; const sc = c * Math.hypot(q[0] - mx, q[1] - my); if (sc > fd) { fd = sc; far = q; } }
+    let sx = 0, sy = 0, n = 0; for (const q of xy) if (Math.hypot(q[0] - far[0], q[1] - far[1]) <= rad) { sx += q[0]; sy += q[1]; n++; }
+    res = { within: true, x: sx / n, y: sy / n };
+  }
+  r.edgeK = key; r.edge = res; return res;
 }
 function hcJoint(r) {
   if (r.jm) return r.jm;
@@ -100,11 +133,30 @@ function hcAdd(poly) {
   if (b[2] < 0 || ink < 6) { toast('Vùng khoanh không có hình vẽ'); return; }
   const role = HC.role, old = HC.regs.findIndex(r => r.role === role && role !== 'other');
   const r = { role, poly, m, b, jm: null };
+  if (role === 'other' && old < 0) {   // 👥 a loop drawn over the end of another limb loop (forearm after upper arm) hangs from it
+    const root = hcAutoRoot(); let best = null, bn = 12;
+    for (const q of HC.regs) {
+      if (q === root || q.role === 'eyes' || q.role === 'mouth') continue; let n = 0;
+      for (let y = Math.max(b[1], q.b[1]); y <= Math.min(b[3], q.b[3]); y += 2) for (let x = Math.max(b[0], q.b[0]); x <= Math.min(b[2], q.b[2]); x += 2) { const i = y * W + x; if (m[i] && q.m[i] && HC.ink[i * 4 + 3] > 20) n++; }
+      if (n > bn) { bn = n; best = q; }
+    }
+    if (best) r.par = best;
+  }
   if (old >= 0) { const o = HC.regs[old]; if (o.pid) r.pid = o.pid; if (o.par !== undefined) r.par = o.par; if (o.front !== undefined) r.front = o.front; for (const q of HC.regs) if (q.par === o) q.par = r; HC.regs[old] = r; } else HC.regs.push(r);
   HC.sel = r; HC.tool = 'lasso'; HC.undo.push({ add: r });
   const kid = Object.keys(HC_PARENT).find(k => HC_PARENT[k] === role && HC_SEQ.includes(k) && !hcReg(k) && role !== 'torso');
-  const next = kid || HC_SEQ.find(q => !hcReg(q)); HC.role = next || 'other';
+  const next = kid || HC_SEQ.find(q => !hcReg(q)); HC.role = HC.group && role === 'other' ? 'other' : next || 'other';   // 👥 group picture: one arm after another
   hcSync(); requestRender();
+}
+// 🖼 Cả hình làm thân: one tap makes the whole drawing the body (a group picture: 4 players on a train), then each arm
+// that should move is lassoed on its own (＋ Mảnh khác) and turns round where it joins the picture
+function hcWhole() {
+  if (!HC) return; const d = HC.ink; let b = [W, H, -1, -1];
+  for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 2) if (d[(y * W + x) * 4 + 3] > 20) { if (x < b[0]) b[0] = x; if (y < b[1]) b[1] = y; if (x > b[2]) b[2] = x; if (y > b[3]) b[3] = y; }
+  if (b[2] < 0) return; const x0 = Math.max(0, b[0] - 6), y0 = Math.max(0, b[1] - 6), x1 = Math.min(W - 1, b[2] + 7), y1 = Math.min(H - 1, b[3] + 7);
+  HC.role = 'torso'; hcAdd([{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }]);
+  HC.role = 'other'; HC.group = true; HC.sel = null; hcSync(); requestRender();
+  toast('Cả hình là thân. Giờ khoanh từng cánh tay muốn cử động (mỗi tay 1 vùng, khoanh qua vai một chút): khớp vai tự đặt ở chỗ tay nối vào người', 6000);
 }
 function hcHitJoint(p) {
   const tol = 22 * DPR / vs;
@@ -148,7 +200,7 @@ function hcPaintUndo(u) {
   const r = u.r, [x0, y0, x1, y1] = r.b;
   for (let y = Math.max(0, y0); y <= Math.min(H - 1, y1); y++) r.m.fill(0, y * W + Math.max(0, x0), y * W + Math.min(W - 1, x1) + 1);
   const [a0, b0, a1] = u.b, w = Math.max(0, a1 - a0 + 1); for (let y = 0; w && y < u.crop.length / w; y++) r.m.set(u.crop.subarray(y * w, y * w + w), (y + b0) * W + a0);
-  r.b = u.b; r.mc = u.mc; r.poly = u.poly; r.lx = u.lx; r.ly = u.ly; for (const q of HC.regs) q.capK = null;
+  r.b = u.b; r.mc = u.mc; r.poly = u.poly; r.lx = u.lx; r.ly = u.ly; for (const q of HC.regs) q.capK = q.edgeK = null;
 }
 function hcMaskCanvas(r) {   // the tinted picture of a mask region over its box
   const [x0, y0, x1, y1] = r.b, w = Math.max(1, x1 - x0 + 1), h = Math.max(1, y1 - y0 + 1), mc = r.mc && r.mc.width === w && r.mc.height === h ? r.mc : makeCanvas(w, h);
@@ -166,13 +218,13 @@ function hcPaintTo(r, a, b, val) {
     for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) if ((x - cx) ** 2 + (y - cy) ** 2 <= R2) r.m[y * W + x] = val;
     if (val && X0 <= X1 && Y0 <= Y1) { r.b = [Math.min(r.b[0], X0), Math.min(r.b[1], Y0), Math.max(r.b[2], X1), Math.max(r.b[3], Y1)]; }
   }
-  r.mc = hcMaskCanvas(r); for (const q of HC.regs) q.capK = null; requestRender();
+  r.mc = hcMaskCanvas(r); for (const q of HC.regs) q.capK = q.edgeK = null; requestRender();
 }
 function hcPaintDone(r) {   // shrink the box to what is left and put the name label in the middle of it
   let b = [W, H, -1, -1], sx = 0, sy = 0, n = 0;
   for (let y = r.b[1]; y <= r.b[3]; y++) for (let x = r.b[0]; x <= r.b[2]; x++) if (r.m[y * W + x]) { if (x < b[0]) b[0] = x; if (y < b[1]) b[1] = y; if (x > b[2]) b[2] = x; if (y > b[3]) b[3] = y; sx += x; sy += y; n++; }
   if (!n) { b = [r.b[0], r.b[1], r.b[0], r.b[1]]; toast('Vùng đã bị tẩy hết: 🖌 Tô thêm lại hoặc ↶ để lấy lại', 3000); } else { r.lx = sx / n; r.ly = sy / n; }
-  r.b = b; r.mc = hcMaskCanvas(r); for (const q of HC.regs) q.capK = null;
+  r.b = b; r.mc = hcMaskCanvas(r); for (const q of HC.regs) q.capK = q.edgeK = null;
 }
 function hcUndoStep() {
   const u = HC.undo.pop();
@@ -214,6 +266,7 @@ function hcSync() {
   document.body.classList.toggle('hcOn', !!HC);
   if (!HC) return;
   bar.querySelectorAll('[data-hcr]').forEach(b => { const k = b.dataset.hcr, done = k !== 'other' && !!hcReg(k); b.classList.toggle('on', HC.role === k); b.classList.toggle('done', done); b.textContent = (done ? '✓ ' : '') + (k === 'other' ? '＋ Mảnh khác' : PP_ROLES[k]); });
+  $('#hcWhole').hidden = !!hcReg('torso');
   $('#hcUndo').disabled = !HC.regs.length; $('#hcDone').disabled = !HC.regs.length;
   $('#hcRound').classList.toggle('on', HC.round);
   $('#hcFromBtn').hidden = HC.img || !lyrRoots().some(r => !r.lh); $('#hcFollow').hidden = !HC.from; $('#hcFollow').classList.toggle('on', !!HC.follow);
@@ -232,7 +285,7 @@ function hcSync() {
   const front = hcFront(r, pr);
   $('#hcFront').classList.toggle('on', !!pr && front); $('#hcBack').classList.toggle('on', !!pr && !front); $('#hcFront').disabled = $('#hcBack').disabled = !pr;
 }
-const hcFront = (r, pr) => r.front !== undefined ? r.front : pr ? (HC_Z[r.role] || 7) > (HC_Z[pr.role] || 7) : true;
+const hcFront = (r, pr) => r.front !== undefined ? r.front : pr ? hcEdge(r, pr).within || (HC_Z[r.role] || 7) > (HC_Z[pr.role] || 7) : true;
 // radius of the round joint between a piece and its parent: half the width of the piece across its bone at the joint
 function hcCapR(r, pr, j) {
   const key = j.x + ',' + j.y + ',' + HC.regs.indexOf(pr); if (r.capK === key) return r.capR;
@@ -307,8 +360,9 @@ function hcDir(r, pr, j) {
 function hcParts() {   // the loops → cut-out pieces (each piece = the drawing inside its loop; overlaps split at the joint + a shared disc)
   const ids = new Map(HC.regs.map(r => [r, newId()])), parts = [], root = hcRoot();
   // every joint between two loops: child side = the way the child points, both keep a disc round the joint
-  const links = HC.regs.map(r => { const pr = r === root ? null : hcParentOf(r) || root; if (!pr) return null; const j = hcJoint(r); return { c: r, p: pr, j, d: hcDir(r, pr, j), R: HC.round ? hcCapR(r, pr, j) : 0, inside: hcInside(r, pr), front: hcFront(r, pr) }; }).filter(Boolean);
+  const links = HC.regs.map(r => { const pr = r === root ? null : hcParentOf(r) || root; if (!pr) return null; const j = hcJoint(r); return { c: r, p: pr, j, d: hcDir(r, pr, j), R: HC.round ? hcCapR(r, pr, j) : 0, inside: hcInside(r, pr) && !hcEdge(r, pr).within, within: hcEdge(r, pr).within, front: hcFront(r, pr) }; }).filter(Boolean);
   let own = null; if (HC.round) { hcHists(); own = hcOwners(); }
+  const wl = new Set(); for (const r of HC.regs) for (let a = r, k = 0; a && a !== root && k < 40; a = hcParentOf(a) || root, k++) { const l = links.find(q => q.c === a); if (l && l.p === root && l.within) { wl.add(r); break; } }
   const ao = HC.from && HC.aown, pk = new Map(HC.regs.map(r => [r, r.pid && HC.from ? HC.from.pids.indexOf(r.pid) + 1 : -1]));
   // stacking: a piece sits just in front of / behind its parent (Trước/Sau), half as far at each level so a forearm stays next to its arm
   const zOf = new Map(), zz = (r, k = 0) => {
@@ -331,6 +385,8 @@ function hcParts() {   // the loops → cut-out pieces (each piece = the drawing
         for (const q of others) {
           if (!q.m[i]) continue; const l = lk.get(q);
           if (l && l.inside) continue;   // eyes / mouth lassoed inside the head: both keep their drawing
+          if (!l && r === root && wl.has(q)) { d[o + 3] = 0; break; }   // a forearm below an arm lassoed inside the group picture: it is the forearm's
+          if (!l && q === root && wl.has(r)) continue;
           if (l && (l.front ? l.c : l.p) === r) { const dx = X - l.j.x, dy = Y - l.j.y; if (dx * dx + dy * dy <= l.R * l.R) continue; }   // the round joint: kept by the piece in front, it covers the turn
           if (ao && ao[i]) { const w = ao[i]; if (w === pk.get(r)) continue; if (w === pk.get(q)) { d[o + 3] = 0; break; } }   // 🪄 cut along a faded character: the piece that was on top there
           // pieces not joined to each other (a hand lying on the shorts), or the body and a limb / the head near their joint:
@@ -339,7 +395,7 @@ function hcParts() {   // the loops → cut-out pieces (each piece = the drawing
           // from the body, a colour / outline edge is a sock or glove inside one piece, not the seam between two: only the side
           // of the joint decides there (else the thigh takes the shin's skin down to the sock and the knee tears when it bends)
           const sd = l ? (X - l.j.x) * l.d.x + (Y - l.j.y) * l.d.y : 0;
-          if (!l || (l.p === root && Math.abs(sd) <= l.R * 1.25)) {
+          if (!l || (l.p === root && !l.within && Math.abs(sd) <= l.R * 1.25)) {   // a limb inside the body's loop has no drawing of its own to compare: the joint decides
             const cw = hcColWin(r, q, d[o], d[o + 1], d[o + 2]);
             if (cw < 0) { d[o + 3] = 0; break; }
             if (cw > 0) continue;
@@ -571,6 +627,7 @@ function hcTips() {
     onOpen: ov => hcTipsDraw(ov.querySelector('#hcTipCv')) });
 }
 $('#hcTips').addEventListener('click', hcTips);
+$('#hcWhole').addEventListener('click', hcWhole);
 document.querySelectorAll('[data-hcr]').forEach(b => b.addEventListener('click', () => { if (!HC) return; HC.role = b.dataset.hcr; hcSync(); }));
 $('#hcUndo').addEventListener('click', () => { if (HC && (HC.regs.length || HC.undo.length)) hcUndoStep(); });
 document.querySelectorAll('[data-hct]').forEach(b => b.addEventListener('click', () => { if (!HC || !HC.sel) return; const t = b.dataset.hct; HC.tool = HC.tool === t && t !== 'lasso' ? 'lasso' : t; hcSync(); if (HC.tool !== 'lasso') toast(HC.tool === 'add' ? `🖌 Kéo trên hình để tô thêm vào ${hcName(HC.sel)}. Chạm tên mảnh ở hàng Mảnh để đổi mảnh` : `🧽 Kéo trên hình để tẩy bớt khỏi ${hcName(HC.sel)}`, 3500); }));
