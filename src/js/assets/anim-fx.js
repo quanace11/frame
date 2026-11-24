@@ -179,23 +179,28 @@ async function assetStampAnim(fl, keep) {
 }
 function assetToFrame(cat, key) {
   if (ASSET_CATS[cat].anim) return assetToFrameAnim(cat, key); const c = assetRender(cat, key, (W * 0.3 * assetOpt.size) / ASSET_CATS[cat].w, assetOpt); floatFromImage(c); toast('Kéo để đặt, kéo góc để đổi cỡ — bấm ✓ để dán', 2500); }
+// 🗂 a picture from the library as its own layer, like Nhập ảnh: it shows over the frames chosen in 📍 (asked right away)
+async function assetToLayer(cat, key) {
+  const C = ASSET_CATS[cat]; if (C.anim) return assetToFrameAnim(cat, key);
+  return imgToLayer(assetRender(cat, key, (W * 0.3 * assetOpt.size) / C.w, assetOpt), null, C.items[key][0]);
+}
 function assetDialog(startCat) {
   let cat = startCat || 'dizzy', animT = null;
   const ppOK = () => S.pp && S.pp.parts.length;
   modal({ title: '🎨 Kho hình', html: `<div class="mrow" id="aCats" style="flex-wrap:wrap;gap:4px"></div>
-    <div class="mrow" style="flex-wrap:wrap;gap:6px;margin:8px 0"><span class="lbl">Đặt vào:</span><button class="chip small" data-adst="pp">Nhân vật ghép (mảnh đang chọn)</button><button class="chip small" data-adst="frame">Frame (lớp nhân vật)</button></div>
+    <div class="mrow" style="flex-wrap:wrap;gap:6px;margin:8px 0"><span class="lbl">Đặt vào:</span><button class="chip small" data-adst="pp">Nhân vật ghép (mảnh đang chọn)</button><button class="chip small" data-adst="layer">🗂 Layer mới</button><button class="chip small" data-adst="frame">Chỉ frame này (lớp nhân vật)</button></div>
     <div class="mrow" style="flex-wrap:wrap;gap:6px"><span class="lbl">Cỡ</span><input type="range" id="aSize" min="0.4" max="2.5" step="0.05" value="${assetOpt.size}" style="width:110px"><label class="lbl"><input type="checkbox" id="aFlip" ${assetOpt.flip ? 'checked' : ''}> Lật ngang</label><label class="lbl" id="aCoverL"><input type="checkbox" id="aCover" ${assetOpt.cover ? 'checked' : ''}> Che mắt/miệng cũ bằng màu da</label><span id="aSkins" class="mrow" style="gap:3px"></span><span id="aAnimOpt" class="mrow" style="gap:4px;margin-left:10px"><span class="lbl">Lặp</span><button class="chip small" data-aloop="1">1×</button><button class="chip small" data-aloop="2">2×</button><button class="chip small" data-aloop="3">3×</button><label class="lbl"><input type="checkbox" id="aSound" ${assetOpt.sound ? 'checked' : ''}> Kèm âm thanh</label></span></div>
     <div id="aSets" style="margin:8px 0;display:flex;flex-wrap:wrap;gap:6px"></div>
     <div id="aGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:8px;max-height:46vh;overflow:auto;padding:2px"></div>
     <p class="lbl" id="aHint" style="margin-top:8px"></p>`,
     buttons: [{ label: 'Đóng', value: null }],
     onOpen: (ov, close) => {
-      let dst = ppOK() ? 'pp' : 'frame';
+      let dst = ppOK() && ppPart(ppSel) ? 'pp' : 'layer';
       const draw = () => {
         const C = ASSET_CATS[cat]; if (C.anim) dst = 'frame';
         ov.querySelector('#aAnimOpt').style.display = C.anim ? '' : 'none'; ov.querySelectorAll('[data-aloop]').forEach(b => b.classList.toggle('on', +b.dataset.aloop === assetOpt.loops));
         ov.querySelector('#aCats').innerHTML = Object.entries(ASSET_CATS).map(([k, v]) => `<button class="chip small ${k === cat ? 'on' : ''}" data-acat="${k}">${v.name}</button>`).join('');
-        ov.querySelectorAll('[data-adst]').forEach(b => { b.classList.toggle('on', b.dataset.adst === dst); b.disabled = b.dataset.adst === 'pp' && (!ppOK() || !!C.anim); });
+        ov.querySelectorAll('[data-adst]').forEach(b => { b.classList.toggle('on', b.dataset.adst === dst); b.disabled = b.dataset.adst !== 'frame' && (b.dataset.adst === 'pp' && !ppOK() || !!C.anim); });
         ov.querySelector('#aSkins').innerHTML = C.skin ? ASSET_SKINS.map(s => `<button data-skin="${s}" title="Màu da" style="width:26px;height:26px;border-radius:50%;border:3px solid ${s === assetOpt.skin ? 'var(--accent)' : 'var(--line)'};background:${s};cursor:pointer"></button>`).join('') : '';
         ov.querySelector('#aCoverL').style.display = /eyes|mouth|face/.test(cat) && dst === 'pp' ? '' : 'none';
         ov.querySelector('#aSets').innerHTML = dst === 'pp' ? Object.entries(C.sets).map(([k, v]) => `<button class="btn" data-aset="${k}">＋ ${v[0]}</button>`).join('') : '';
@@ -204,12 +209,12 @@ function assetDialog(startCat) {
           const b = document.createElement('button'); b.className = 'chip'; b.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px;height:auto;background:#fff;color:#222';
           const t = assetRender(cat, key, 72 / Math.max(C.w, C.h), { ...assetOpt, t: 0 }); t.style.cssText = 'max-width:72px;max-height:72px'; b.append(t);
           if (C.anim) { const fr = []; for (let i = 0; i < assetAnimN(cat, key); i++) fr.push(assetRender(cat, key, 72 / Math.max(C.w, C.h), { ...assetOpt, t: i })); anims.push([t, fr]); const sk = it[2] && it[2].sfx; if (sk && SFX[sk]) { b.title = 'Âm thanh: ' + SFX[sk].label; } } const s = document.createElement('span'); s.textContent = it[0]; s.style.fontSize = '11px'; b.append(s);
-          b.addEventListener('click', async () => { if (dst === 'pp') { close(null); await assetToPart(cat, [key]); } else { close(null); assetToFrame(cat, key); } });
+          b.addEventListener('click', async () => { close(null); if (dst === 'pp') await assetToPart(cat, [key]); else if (dst === 'layer') await assetToLayer(cat, key); else assetToFrame(cat, key); });
           g.append(b);
         }
         if (anims.length) { let tick = 0; animT = setInterval(() => { if (!ov.isConnected) { clearInterval(animT); return; } tick++; for (const [t, fr] of anims) { const f = fr[tick % fr.length], x = t.getContext('2d'); x.clearRect(0, 0, t.width, t.height); x.drawImage(f, 0, 0); } }, 110); }
         const sel = ppPart(ppSel);
-        ov.querySelector('#aHint').textContent = C.anim ? 'Hiệu ứng động: đặt ở frame đang xem rồi bấm ✓, app tự vẽ tiếp lên các frame sau (thiếu frame thì tự thêm). Bấm Phát để xem chuyển động.' : dst === 'frame' ? 'Hình dán vào frame đang xem như ảnh — kéo, đổi cỡ, xoay rồi bấm ✓.' : !sel ? 'Chưa chọn mảnh: đóng bảng, chạm vào mảnh (vd. Đầu) rồi mở lại Kho.' : sel.asset && sel.asset.cat === cat ? `Đang chọn mảnh kho "${sel.name}": bấm một hình để đổi hình ở frame này.` : `Sẽ gắn vào mảnh "${sel.name}", tự cử động theo mảnh đó. Gắn bộ nhiều hình để đổi theo frame (nhép miệng, chớp mắt, đổi biểu cảm).`;
+        ov.querySelector('#aHint').textContent = C.anim ? 'Hiệu ứng động: đặt ở frame đang xem rồi bấm ✓, app tự vẽ tiếp lên các frame sau (thiếu frame thì tự thêm). Bấm Phát để xem chuyển động.' : dst === 'layer' ? 'Hình thành 1 layer riêng (như Nhập ảnh): kéo, 8 chấm để đổi cỡ/xoay, chọn hiện ở mọi frame / chỉ frame này / từ frame này trở đi (đổi lại bằng 📍 Hiện ở…).' : dst === 'frame' ? 'Hình dán thẳng vào nét vẽ của frame đang xem — kéo, đổi cỡ, xoay rồi bấm ✓. Muốn hình hiện ở nhiều frame thì chọn 🗂 Layer mới.' : !sel ? 'Chưa chọn mảnh: đóng bảng, chạm vào mảnh (vd. Đầu) rồi mở lại Kho.' : sel.asset && sel.asset.cat === cat ? `Đang chọn mảnh kho "${sel.name}": bấm một hình để đổi hình ở frame này.` : `Sẽ gắn vào mảnh "${sel.name}", tự cử động theo mảnh đó. Gắn bộ nhiều hình để đổi theo frame (nhép miệng, chớp mắt, đổi biểu cảm).`;
       };
       ov.addEventListener('click', async e => {
         const t = e.target.closest('[data-acat],[data-adst],[data-skin],[data-aset],[data-aloop]'); if (!t) return;

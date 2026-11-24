@@ -397,6 +397,7 @@ async function hcFinish() {
     pm.close();
     if (from) toast(`Đã tạo nhân vật ${n} mảnh có xương, thay nhân vật gốc và đi theo dáng của nó ở mọi frame. Nhân vật gốc đã ẩn (🗂 Layer → 👁 để hiện lại)`, 6000);
     else toast(`Đã tạo nhân vật ${n} mảnh có xương. 🦴 Kéo tay/chân để xoay quanh khớp, kéo thân để dời cả người; Dòng layer để đặt keyframe`, 5500);
+    if (!from) await ppAskNew(ppSel);
   } catch (e) { pm.close(); console.error(e); toast('Lỗi cắt: ' + e.message, 3000); }
 }
 /* --- 🪄 Cắt theo nhân vật mờ: a drawing traced over a faded cut-out character (📝 Giấy can) is cut along that character's
@@ -514,7 +515,8 @@ function hcFollowChar(from, regs, parts) {
     if (g.ppK && g.ppK[old.id] !== undefined) g.ppK = { ...g.ppK, [nr.id]: g.ppK[old.id] };
     if (g.ppE && g.ppE[old.id] !== undefined) g.ppE = { ...g.ppE, [nr.id]: g.ppE[old.id] };
     const l = g.lip;
-    if (l && ((l.mv && l.mv[old.id]) || (l.off && l.off[old.id]))) { const n2 = { ...l }; if (l.mv && l.mv[old.id]) n2.mv = { ...l.mv, [nr.id]: { ...l.mv[old.id] } }; if (l.off && l.off[old.id]) n2.off = { ...l.off, [nr.id]: 1 }; g.lip = n2; }
+    if (l && l.mv && l.mv[old.id]) g.lip = { ...l, mv: { ...l.mv, [nr.id]: { ...l.mv[old.id] } } };
+    ppOffEdit(g, o => { o[nr.id] = ppOffAt(g, old.id) ? 1 : 0; });   // shown exactly where the old one showed (not hidden before the traced frame)
   }
   nr.lname = old.lname ? old.lname + ' (vẽ lại)' : null; old.lh = true;
 }

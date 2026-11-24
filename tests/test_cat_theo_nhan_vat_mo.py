@@ -66,7 +66,9 @@ async def main():
         # 🔁 off: new character stands on its own from this frame, the old one stays
         await pg.click('.tool[data-tool=brush]'); await pg.wait_for_timeout(300)
         await pg.click('#traceCut'); await pg.wait_for_timeout(600)
-        await pg.click('#hcFollow'); await pg.click('#hcDone'); await pg.wait_for_function('HC===null && !document.querySelector(".ov")', timeout=15000); await pg.wait_for_timeout(300)
+        await pg.click('#hcFollow'); await pg.click('#hcDone'); await pg.wait_for_function('HC===null && !!document.querySelector(".ov")', timeout=15000)
+        ok('🔁 off: asks where the new character shows', 'hiện ở frame nào' in await pg.text_content('.ov:last-child h3'), '')
+        await pg.keyboard.press('Escape'); await pg.wait_for_function('!document.querySelector(".ov")', timeout=5000); await pg.wait_for_timeout(300)
         st = await pg.evaluate('[lyrRoots().length, !ppPart(%r).lh]' % old)
         ok('🔁 off: old character kept', st[0] == 2 and st[1], st)
         # manual cut (no faded character under the drawing) still starts empty

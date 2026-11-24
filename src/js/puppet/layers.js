@@ -125,6 +125,7 @@ async function imgToLayer(img, col, name) {
   await encodePart(p); ppPushChar([p]);
   lyrShowNew(p);
   toast(`Đã thành layer "${name}" — kéo để dời, kéo 8 chấm vuông để phóng to/thu nhỏ, nút tròn để xoay. 🗂 Layer để đặt trước/sau`, 5000);
+  await ppAskNew(p.id);
   return p;
 }
 function lyrShowNew(p) {

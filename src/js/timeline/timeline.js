@@ -119,6 +119,7 @@ function updateFrameUI() {
   document.querySelectorAll('#durChips .chip').forEach(ch => ch.classList.toggle('on', Math.abs(+ch.dataset.s * 1000 - f.dur) < 1));
   const total = S.frames.reduce((a, g) => a + g.dur, 0);
   $('#totalLbl').textContent = `${S.frames.length} frame · ${(total / 1000).toFixed(1)}s`;
+  if (typeof ppScopeSync === 'function') ppScopeSync();   // 🔗 Sửa cả nhóm row: only with 2+ frames
   $('#dockTlLbl').textContent = `Frame ${S.cur + 1}/${S.frames.length}`;
   if (!flipPeek) { $('#fnLbl').textContent = `${S.cur + 1}/${S.frames.length}`; $('#fnPrev').disabled = S.cur === 0; $('#fnNext').disabled = S.cur === S.frames.length - 1; }
   const shared = S.frames.filter(g => g.bgId === f.bgId).length;

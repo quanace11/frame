@@ -29,6 +29,8 @@ async def main():
         await pg.wait_for_function("document.querySelector('#impBusy').hidden", timeout=180000); await pg.wait_for_timeout(500)
         await pg.click('.dlg .btns >> text=Dùng'); await pg.wait_for_timeout(600)
         await pg.click('#ppCutAuto'); await pg.click('#ppLabCut'); await pg.wait_for_function('S.pp && S.pp.parts.length', timeout=180000); await pg.wait_for_timeout(300)
+        print('asks where it shows', 'hiện ở frame nào' in await pg.text_content('.ov:last-child h3'))
+        await pg.keyboard.press('Escape'); await pg.wait_for_timeout(300)   # = from this frame on
         px = [await pg.evaluate(f"{PUPPIX}({i})") for i in range(4)]
         print('earlier frames untouched', px[0] == 0 and px[1] == 0, px)
         print('shown from the current frame on', px[2] > 100 and px[3] > 100)

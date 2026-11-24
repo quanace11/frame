@@ -33,8 +33,10 @@ async def main():
         await pg.click('#ppLibBtn0'); await pg.wait_for_timeout(500)
         await pg.screenshot(path='kho_nhan_vat.png')
         await pg.click('.ch-item [data-a=add]'); await pg.wait_for_timeout(1200)
+        print('asks where it shows', 'hiện ở frame nào' in await pg.text_content('.ov:last-child h3'))
+        await pg.keyboard.press('Escape'); await pg.wait_for_timeout(300)   # = from this frame on
         sig1 = await pg.evaluate(SIG); print('same pieces', sig1 == sig0)
-        print('hidden before cur', await pg.evaluate("S.pp.parts.every(p=>S.frames[0].pp[p.id]&&S.frames[0].pp[p.id].h) && S.pp.parts.every(p=>!(S.frames[1].pp[p.id]||{}).h)"))
+        print('hidden before cur', await pg.evaluate("(r=>ppOffAt(S.frames[0],r) && !ppOffAt(S.frames[1],r))(ppRoots()[0].id)"))
         print('roles linked', await pg.evaluate("(()=>{const ids=new Set(S.pp.parts.map(p=>p.id)); return S.pp.parts.filter(p=>!p.parent).length===1 && S.pp.parts.every(p=>!p.parent||ids.has(p.parent)) && !!ppByRole('armL') && !!ppPart(ppByRole('armL').parent)})()"))
         await pg.wait_for_timeout(600)
         # second copy: new ids, its own NV2 name, one more root

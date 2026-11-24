@@ -153,6 +153,7 @@ body.bigui .tool{width:66px;min-height:62px;font-size:12px} body.bigui .tool svg
 #ppbar input[type=range]{width:90px}
 #ppbar select{max-width:190px}
 #ppbar.mini > :not(:first-child){display:none!important}
+#ppbar #ppScopeRow.solo{display:none!important}
 #layerPP .name{color:inherit}
 #app.focus{grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"stage"}
 #app.focus #rail,#app.focus #top,#app.focus #tl{display:none}

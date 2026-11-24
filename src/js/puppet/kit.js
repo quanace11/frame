@@ -127,7 +127,7 @@ function kitDialog() {
       grp('kc', v => o.c = +v); grp('kp', v => o.pat = v); grp('ks', v => o.skin = +v); grp('kh', v => o.hair = v); grp('khc', v => o.hc = +v);
       ov.querySelector('#kitNum').addEventListener('input', e => { o.num = e.target.value.replace(/\D/g, '').slice(0, 2); prev(); });
       ov.querySelector('.dlg').style.maxWidth = '640px'; prev();
-    } }).then(v => { if (v !== 'add') return; kitOpt = o; try { localStorage.setItem('fs-kit', JSON.stringify(o)); } catch (e) {} kitAdd(o); });
+    } }).then(v => { if (v !== 'add') return; kitOpt = o; try { localStorage.setItem('fs-kit', JSON.stringify(o)); } catch (e) {} kitAdd(o).then(ps => ppAskNew(ps && ps[0] && ppCharOf(ps[0]))); });
 }
 /* --- 🔄 Đổi hình mảnh: put another picture (e.g. a caricature head) on the selected part, keeping its joint, poses and children.
    The new picture is fitted to the old piece's height, centred, its bottom on the old bottom (a head sits on the neck). White paper

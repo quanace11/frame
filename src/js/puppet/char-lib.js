@@ -73,7 +73,7 @@ ${sel ? '<div class="mrow"><button class="btn primary" id="chSave" title="Lưu n
         d.style.cssText = 'display:flex;flex-direction:column;gap:4px;align-items:center;width:112px';
         const u = e.thumb ? URL.createObjectURL(e.thumb) : ''; if (u) urls.push(u);
         d.innerHTML = `<button class="btn" data-a="add" title="Thêm vào dự án này" style="padding:4px;width:112px;height:120px;background:#fff;border-radius:10px"><img alt="" src="${u}" style="width:100%;height:100%;object-fit:contain"></button><div class="lbl" style="font-size:13px;text-align:center;word-break:break-word">${escHtml(e.name)} · ${e.n} mảnh</div><div style="display:flex;gap:4px"><button class="btn" data-a="ren" title="Đổi tên" style="min-width:44px">✏️</button><button class="btn" data-a="del" title="Xoá khỏi kho" style="min-width:44px;color:var(--danger)">🗑</button></div>`;
-        d.querySelector('[data-a=add]').addEventListener('click', async () => { close(null); await charLibAdd(e.id); });
+        d.querySelector('[data-a=add]').addEventListener('click', async () => { close(null); if (await charLibAdd(e.id)) await ppAskNew(ppCharOf(ppPart(ppSel))); });
         d.querySelector('[data-a=ren]').addEventListener('click', async () => {
           const L2 = await charLib(), it = L2.find(x => x.id === e.id); if (!it) return;
           ov.style.display = 'none'; let nn = null;
