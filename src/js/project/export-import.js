@@ -116,9 +116,16 @@ async function importZip(file) {
     let ppData = null;
     const zbuf = f2 => { const d = z.get(f2); return d ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : null; };
     if (t.puppet && t.puppet.parts) ppData = { parts: t.puppet.parts.map(q => ({ ...q, png: zbuf(q.file), alts: (q.alts || []).map(a => ({ png: zbuf(a.file), dx: a.dx, dy: a.dy })).filter(a => a.png) })).filter(q => q.png) };
-    await loadProjectData({ W: t.width, H: t.height, cur: 0, bgs, frames, pp: ppData });
-    S.frames.forEach(f => f.pngVer = 0); S.bgs.forEach(b => b.pngVer = 0);
-    pm.close(); toast('Đã mở dự án'); scheduleSave();
+    // a ZIP opens as a NEW project: the open one (with its sounds, video and undo history) stays in 📁 Dự án
+    await flushSave();
+    const prev = curProjId, name = (String(file.name || '').replace(/\.zip$/i, '').trim() || 'Dự án từ ZIP').slice(0, 60);
+    try {
+      S.projName = name; S.poses = []; setCurProj(newId());
+      await loadProjectData({ W: t.width, H: t.height, cur: 0, bgs, frames, pp: ppData, name });
+      S.frames.forEach(f => f.pngVer = 0); S.bgs.forEach(b => b.pngVer = 0);
+    } catch (e) { pm.close(); await projRecover(prev, null); throw e; }
+    await saveProject(); updateProjLabel();
+    pm.close(); toast('Đã mở ZIP thành dự án mới — dự án cũ vẫn ở 📁 Dự án', 3000);
   } catch (e) { pm.close(); console.error(e); toast('Không mở được: ' + e.message, 3500); }
 }
 $('#imgFile').addEventListener('change', async e => {

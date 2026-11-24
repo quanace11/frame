@@ -331,5 +331,5 @@ function strokeEnd() {
   }
   stroke = null; requestRender();
 }
-function strokeAbort() { stroke = null; requestRender(); }
+function strokeAbort() { if (stroke) clearTimeout(stroke.holdT); stroke = null; requestRender(); }
 

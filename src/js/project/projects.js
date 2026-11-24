@@ -5,21 +5,32 @@ async function projIndex() { try { return (await idbGet('projects')) || []; } ca
 function setCurProj(id) { curProjId = id; try { localStorage.setItem('fs-cur-proj', id); } catch (e) {} updateProjLabel(); }
 function updateProjLabel() { const el = document.getElementById('projBtn'); if (el) el.textContent = '📁 ' + (S.projName || 'Dự án'); }
 async function createProject(w, h, name) {
-  if (saveT) { clearTimeout(saveT); await saveProject(); }
+  await flushSave();
   const list = await projIndex();
   S.projName = name || `Dự án ${list.length + 1}`; S.poses = [];
   setCurProj(newId()); newProject(w, h); await saveProject();
 }
 async function openProject(id) {
   if (id === curProjId) return;
-  if (saveT) { clearTimeout(saveT); await saveProject(); }
-  const pm = progress('Đang mở dự án…');
-  try { const p = await idbGet('project:' + id); if (!p) throw new Error('Không tìm thấy dự án'); await resolveProjectRefs(p, id); setCurProj(id); await loadProjectData(p); S.projName = p.name || S.projName; updateProjLabel(); }
-  catch (e) { toast('Không mở được: ' + e.message, 3000); }
+  if (curProjId) await flushSave(); else { clearTimeout(saveT); saveT = null; }   // no open project (sync reload): nothing to write
+  const prev = curProjId, pm = progress('Đang mở dự án…');
+  let ok = false, started = false;
+  try {
+    const p = await idbGet('project:' + id); if (!p) throw new Error('Không tìm thấy dự án');
+    await resolveProjectRefs(p, id); started = true; setCurProj(id); await loadProjectData(p); S.projName = p.name || S.projName; updateProjLabel(); ok = true;
+  } catch (e) { console.error(e); toast('Không mở được: ' + e.message, 3000); }
   pm.close();
+  // half loaded: the screen holds a mix of 2 projects, and autosave would write it over one of them → load a whole project again
+  if (!ok && started) await projRecover(prev, id);
+}
+async function projRecover(prev, failed) {
+  clearTimeout(saveT); saveT = null; curProjId = null;
+  if (prev && prev !== failed) { await openProject(prev); if (curProjId) return; }   // (a failed reopen already recovered itself)
+  clearTimeout(saveT); saveT = null;
+  await createProject(1080, 1920);
 }
 async function projectsDialog() {
-  if (saveT) { clearTimeout(saveT); await saveProject(); }
+  await flushSave();
   const list = (await projIndex()).sort((a, b) => b.updated - a.updated);
   const fmt = t => { const d = new Date(t); return d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }); };
   const rows = list.map(p => `<div class="prow ${p.id === curProjId ? 'on' : ''}" data-id="${p.id}">
@@ -36,7 +47,7 @@ async function projectsDialog() {
           if (v) { if (id === curProjId) { S.projName = v.slice(0, 60); updateProjLabel(); await saveProject(); } else { const p = await idbGet('project:' + id); if (p) { p.name = v.slice(0, 60); await idbPut('project:' + id, p); } const L = await projIndex(); const it = L.find(x => x.id === id); if (it) { it.name = v.slice(0, 60); it.updated = Date.now(); await idbPut('projects', L); syncSoon(); } } close(); projectsDialog(); } }
         else if (act === 'dup') { const p = await idbGet('project:' + id); if (!p) return; const nid = newId(); p.name = (p.name || 'Dự án') + ' (bản sao)'; await copyProjectBlobs(id, nid, p); await idbPut('project:' + nid, p); const L = await projIndex(); L.push({ ...item, id: nid, name: p.name, updated: Date.now() }); await idbPut('projects', L); close(); projectsDialog(); }
         else if (act === 'del') {
-          const ok = await modal({ title: `Xoá dự án "${item.name}"?`, html: '<p>Lỡ tay thì bấm ↶ Hoàn tác để lấy lại.</p>', buttons: [{ label: 'Huỷ', value: false }, { label: 'Xoá', value: true, cls: 'danger' }] });
+          const ok = await modal({ title: `Xoá dự án "${item.name}"?`, html: `<p><b>Không hoàn tác được</b>: dự án bị xoá khỏi máy này.</p><p class="lbl">${syncCfg() ? 'Bản đã đồng bộ ☁ vẫn lấy lại được ở ☁ → 🕘 Bản cũ.' : 'Muốn giữ thì bấm Huỷ rồi mở dự án đó và ☰ Menu → Xuất ZIP trước.'}</p>`, buttons: [{ label: 'Huỷ', value: false, primary: true }, { label: 'Xoá hẳn', value: true, cls: 'danger' }] });
           if (!ok) return; await idbDel('project:' + id); try { await deleteProjectBlobs(id); } catch (e) { console.error(e); } const L = (await projIndex()).filter(x => x.id !== id); await idbPut('projects', L); await syncNoteDeleted(id);
           if (id === curProjId) { close(); if (L.length) { curProjId = null; await openProject(L.sort((a, b) => b.updated - a.updated)[0].id); } else await createProject(1080, 1920); }
           else { close(); projectsDialog(); }

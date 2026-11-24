@@ -13,7 +13,18 @@ function modal({ title, html = '', buttons = [{ label: 'OK', value: true, primar
     buttons.forEach(b => {
       const el = document.createElement('button');
       el.className = 'btn' + (b.primary ? ' primary' : '') + (b.cls ? ' ' + b.cls : ''); el.textContent = b.label;
-      el.addEventListener('click', async ev => { if (b.action) { const r = await b.action(ev); if (r === false) return; } close(b.value); });
+      // async actions (save a file, call AI…): a 2nd tap while one runs is ignored; an error is shown instead of a dead dialog
+      el.addEventListener('click', async ev => {
+        if (!b.action) { close(b.value); return; }
+        if (ov.dataset.busy) return;
+        const bs = [...bx.querySelectorAll('button')], was = bs.map(x => x.disabled);
+        ov.dataset.busy = '1'; bs.forEach(x => x.disabled = true);
+        let r;
+        try { r = await b.action(ev); }
+        catch (err) { console.error(err); toast('Lỗi: ' + (err && err.message || err), 3500); r = false; }
+        finally { delete ov.dataset.busy; bs.forEach((x, k) => x.disabled = was[k]); }
+        if (r === false) return; close(b.value);
+      });
       bx.append(el);
     });
     if (dismissable) ov.addEventListener('pointerdown', e => { if (e.target === ov) close(null); });

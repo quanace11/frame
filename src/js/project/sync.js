@@ -105,8 +105,7 @@ function syncNow(opt = {}) {
 async function syncRun(opt) {
   const cfg = syncCfg(); clearTimeout(syncT); syncT = null;
   if (stroke || playing || floating) { syncSoon(5000); return null; }
-  if (saveT) { clearTimeout(saveT); saveT = null; await saveProject(); }
-  for (let i = 0; saving && i < 100; i++) await new Promise(r => setTimeout(r, 100));
+  await flushSave();
   setSyncState('☁ …', opt.startup ? 'Đang lấy bản mới nhất…' : 'Đang đồng bộ…');
   // joining with a session code on a fresh device: the untouched blank project would only clutter the other device's list
   if (opt.join) {

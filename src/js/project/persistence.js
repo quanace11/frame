@@ -45,13 +45,27 @@ async function copyProjectBlobs(fromId, toId, rec) {
   fix(rec); return rec;
 }
 async function deleteProjectBlobs(id) { const db = await idbOpen(); return new Promise((res, rej) => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').delete(blobRange(id)); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); }); }
-async function saveProject() {
-  if (saving) { saveAgain = true; return; }
-  saving = true; clearTimeout(saveRetryT); $('#saveState').textContent = 'Đang lưu…';
+// a save already running is waited for (and a 2nd one queued): before, openProject could swap S.frames while a save was
+// half done and that save wrote the new project's frames with the old project's puppet under the new id
+let saveRun = null, projLoading = false;
+function saveProject() {
+  if (saving) { saveAgain = true; return saveRun; }
+  saving = true; saveRun = saveWork(); return saveRun;
+}
+// write everything that is pending (or being written) and wait until it is on disk
+async function flushSave() {
+  const had = !!saveT; clearTimeout(saveT); saveT = null;
+  if (had) await saveProject(); else if (saving) await saveRun;
+}
+async function saveWork() {
+  clearTimeout(saveRetryT);
+  if (projLoading) { saving = false; saveT = setTimeout(autoSave, 1500); return; }   // a project is half loaded: never write that state
+  $('#saveState').textContent = 'Đang lưu…';
   try {
-    for (const o of [...S.bgs, ...S.frames]) await ensurePng(o);
     if (!curProjId) setCurProj(newId());
     const pid = curProjId;
+    for (const o of [...S.bgs, ...S.frames]) await ensurePng(o);
+    if (pid !== curProjId || projLoading) throw Object.assign(new Error('project changed'), { moved: true });
     if (savedBlobsProj !== pid) { savedBlobs = new Map(); savedBlobsProj = pid; }
     const dirty = [], live = new Set();
     const ref = (name, buf) => { if (!buf) return null; const k = blobPrefix(pid) + name; live.add(k); if (savedBlobs.get(k) !== buf) dirty.push([k, buf]); return { ref: k }; };
@@ -78,15 +92,20 @@ async function saveProject() {
     } catch (e) { console.error(e); }
     storageOk = true; saveFails = 0; saveWarned = false; setSaveState(); syncSoon(SYNC_AFTER_SAVE);
   } catch (e) {
+    if (e.moved) { saving = false; if (saveAgain) { saveAgain = false; await saveProject(); } return; }
     // never give up for good: a full disk or a busy tab can recover, so retry with a growing delay
     console.error(e); storageOk = false; setSaveState();
     saveFails++; clearTimeout(saveRetryT); saveRetryT = setTimeout(saveProject, Math.min(60000, 3000 * 2 ** (saveFails - 1)));
     if (!saveWarned) { saveWarned = true; toast('⚠ Chưa lưu được vào máy (có thể máy hết dung lượng). App sẽ tự thử lại — nên Xuất ZIP để giữ bài.', 5000); }
   }
   saving = false;
-  if (saveAgain) { saveAgain = false; saveProject(); }
+  if (saveAgain) { saveAgain = false; await saveProject(); }
 }
 async function loadProjectData(p) {
+  projLoading = true;
+  try { await loadProjectData0(p); } finally { projLoading = false; }
+}
+async function loadProjectData0(p) {
   W = p.W; H = p.H; setupWorkCanvases();
   S.bgs = p.bgs.map(b => ({ kind: 'bg', id: b.id, ver: 0, png: b.png || null, pngVer: 0, canvas: null }));
   S.frames = p.frames.map(f => ({ kind: 'char', id: f.id, dur: f.dur, bgId: f.bgId, ver: 0, png: f.png || null, pngVer: 0, canvas: null, col: null, colPng: f.col || null, colVer: 0, colPngVer: 0, thumb: null, play: null, playKey: '', vec: f.vec || [], pp: f.pp || {}, ppKey: f.ppKey, ppK: f.ppK || null, ppE: f.ppE || null, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || undefined, tr: f.tr || undefined, tre: f.tre || undefined, ghost: f.ghost || undefined, bgs: f.bgs || undefined, sl: f.sl || undefined, flt: f.flt || undefined }));
@@ -101,8 +120,10 @@ async function loadProjectData(p) {
   if (p.pp && p.pp.parts) {
     const parts = [];
     const dec = async png => { const bmp = await decodePng(png); const c = makeCanvas(bmp.width, bmp.height); c.getContext('2d').drawImage(bmp, 0, 0); bmp.close && bmp.close(); return c; };
-    for (const q of p.pp.parts) { try { const c = await dec(q.png); const alts = []; for (const a of (q.alts || [])) { try { alts.push({ c: await dec(a.png), png: a.png, dx: a.dx, dy: a.dy }); } catch (e) {} } parts.push({ ...q, c, alts }); } catch (e) { console.error(e); } }
+    let lost = 0;
+    for (const q of p.pp.parts) { try { const c = await dec(q.png); const alts = []; for (const a of (q.alts || [])) { try { alts.push({ c: await dec(a.png), png: a.png, dx: a.dx, dy: a.dy }); } catch (e) { lost++; } } parts.push({ ...q, c, alts }); } catch (e) { console.error(e); lost++; } }
     S.pp = { parts };
+    if (lost) setTimeout(() => toast(`⚠ ${lost} hình mảnh nhân vật bị hỏng, không đọc được. Nên Xuất ZIP để giữ phần còn lại.`, 5000), 300);
   }
   clearRef(true);
   if (p.ref && p.ref.png) {
@@ -119,9 +140,9 @@ async function loadProjectData(p) {
 }
 function newProject(w, h) {
   W = w; H = h; setupWorkCanvases();
-  S.frames.forEach(freeFrame);
-  S.bgs.forEach(b => { if (b.canvas) b.canvas.width = 0; });
-  loaded.length = 0; undoStack.length = 0; redoStack.length = 0; undoBytes = 0;
+  S.frames.forEach(f => { freeFrame(f); f.canvas = null; }); thumbQ.clear();
+  S.bgs.forEach(b => { if (b.canvas) b.canvas.width = 0; b.canvas = null; });
+  loaded.length = 0; loadedBg.length = 0; undoStack.length = 0; redoStack.length = 0; undoBytes = 0;
   const b = newBgObj(); S.bgs = [b];
   const f = newFrameObj(b.id); S.frames = [f]; loaded.push(f);
   clearRef(true); updateRefUI(); S.rig = null; S.pp = null; ppSetup = null; ppSel = null; S.audio = null; S.bgVideo = null; bgVideoSetup();

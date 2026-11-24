@@ -246,7 +246,8 @@ function onUp(e, cancelled) {
     return;
   }
   if (mousePan) { mousePan = null; return; }
-  if (action && action.id === e.pointerId) endAction();
+  // the system took the pen away (edge swipe, Control Centre…): drop the half line like a cancelled finger, don't keep it
+  if (action && action.id === e.pointerId) cancelled ? abortAction() : endAction();
 }
 view.addEventListener('pointerup', e => onUp(e, false));
 view.addEventListener('pointercancel', e => onUp(e, true));

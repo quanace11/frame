@@ -452,8 +452,7 @@ ${st.ed ? '<button class="chip" id="iEdClr" title="Bỏ hết chỗ đã sửa t
 }
 $('#zipFile').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  const ok = await modal({ title: 'Mở dự án từ ZIP?', html: '<p>Dự án hiện tại sẽ bị thay thế. Hãy xuất ZIP trước nếu muốn giữ.</p>', buttons: [{ label: 'Huỷ', value: false }, { label: 'Mở', value: true, primary: true }] });
-  if (ok) importZip(f);
+  importZip(f);   // opens as a new project, nothing is replaced
 });
 
 

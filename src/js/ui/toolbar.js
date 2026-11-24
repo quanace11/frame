@@ -340,6 +340,7 @@ document.querySelectorAll('[data-twe]').forEach(b => b.addEventListener('click',
 // keyboard (for desktop testing / keyboard covers)
 document.addEventListener('keydown', e => {
   if (typingIn(e)) return;
+  if (document.querySelector('.ov')) return;   // a dialog is open: Space / arrows / Ctrl+Z belong to it, not to the film behind (Esc: modal())
   const k = e.key.toLowerCase();
   if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
   if ((e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); redo(); return; }

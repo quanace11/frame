@@ -239,7 +239,14 @@ async function removeFrameAt(i) {
   if (bg) S.bgs = S.bgs.filter(b => b !== bg);
   return { f, index: i, bg };
 }
+// a 2nd tap while the 1st delete still writes the frame's PNG saw the same frame and removed its neighbour with a wrong undo step
+let delBusy = false;
 async function delFrame() {
+  if (delBusy) return;
+  delBusy = true;
+  try { await delFrame0(); } finally { delBusy = false; }
+}
+async function delFrame0() {
   if (playing) stopPlay();
   if (S.frames.length === 1) { toast('Không xoá được frame cuối cùng'); return; }
   if (stroke) strokeEnd(); commitFloating(); motionClose(); rigClose();
@@ -265,6 +272,7 @@ async function newBg(copy) {
   const shared = S.frames.filter(g => g.bgId === f.bgId).length;
   if (copy && shared < 2) { toast('Nền này đã là nền riêng của frame'); return; }
   const b = newBgObj();
+  if (copy && old) await ensureLoaded(old);   // a lazily loaded background (video frame) may not be in memory yet
   if (copy && old && old.canvas) { b.canvas.getContext('2d').drawImage(old.canvas, 0, 0); b.ver = 1; }
   S.bgs.push(b); f.bgId = b.id; gcBgs();
   await drawThumb(f); buildStrip(); setLayer('bg'); requestRender(); scheduleSave();
