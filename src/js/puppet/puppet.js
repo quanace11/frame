@@ -539,7 +539,13 @@ function ppLabSyncBar() {
 // it back with { ...q }). A new piece field only needs adding here.
 function ppPartMeta(p) { return { id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null, lname: p.lname || null, lh: p.lh || null, lk: p.lk || null, hard: p.hard || null }; }
 // a new character appears from the frame being edited on: frames before it keep showing only what they had
-function ppHideBefore(parts) { for (let i = 0; i < S.cur; i++) { const f = S.frames[i]; f.pp = f.pp || {}; for (const q of parts) f.pp[q.id] = { ...(f.pp[q.id] || {}), h: true }; f.ppKey = true; } }
+// (hidden with 🙈 lip.off of its layer, like every other "where does it show" choice, so 📍 Hiện ở… / 👁 can show it there again)
+function ppHideBefore(parts) {
+  const ids = new Set(parts.map(q => q.id)), roots = parts.filter(q => !q.parent || !ids.has(q.parent)).map(q => q.id);
+  for (let i = 0; i < S.cur; i++) ppOffEdit(S.frames[i], o => { for (const r of roots) o[r] = 1; });
+}
+// …and right after adding, ask where it shows (like a picture turned into a piece, floatToPart): its own undo step
+async function ppAskNew(rid) { if (!rid || !ppPart(rid) || S.frames.length < 2) return; histFlush(); await ppShowAsk(rid, true); }
 // a character was added (cut, 🧍 Kho nhân vật, ⚽ Cầu thủ mẫu): add its pieces on top of the others
 function ppPushChar(parts) {
   if (!S.pp) { S.pp = { parts: [] }; S.frames.forEach(f => { if (!f.pp) f.pp = {}; }); }
@@ -719,6 +725,7 @@ async function ppAutoCut(whole) {
   ppSetup = null; ppSel = parts[0] ? parts[0].id : null; pm.close();
   ppShowAdded();
   toast(whole ? 'Đã tạo 1 mảnh — dùng ✂ Khoanh cắt để tách tay, chân…' : `Đã cắt ${parts.length} mảnh — chạm mảnh rồi kéo để xoay quanh khớp. Cho nhân vật di chuyển: tab 🎞 Tạo frame → ✎ Vẽ đường đi / 🛷 Trượt gối`, 6000);
+  if (!recut && S.cur > 0) await ppAskNew(ppCharOf(ppPart(ppSel)));   // on frame 1 it shows everywhere anyway
 }
 /* --- lasso cut a new part out of the selected part --- */
 async function ppCutLasso(poly) {
@@ -1147,29 +1154,39 @@ function ppApplyOff(pose, off) {
   return P;
 }
 const ppOffAt = (f, rid) => !!(f && f.lip && f.lip.off && f.lip.off[rid]);
+// projects made before: a layer added later was hidden on earlier frames in the pose (h on every piece), which 📍 / 👁 could not undo
+const ppLegacyHid = (f, rid) => { const ps = lyrParts(rid); return !!(f && f.pp && ps.length && ps.every(p => f.pp[p.id] && f.pp[p.id].h)); };
+function ppUnhideLegacy(f, rid) {
+  if (!ppLegacyHid(f, rid)) return null;
+  const before = ppState(f); f.pp = { ...f.pp };
+  for (const p of lyrParts(rid)) { const q = { ...f.pp[p.id] }; delete q.h; f.pp[p.id] = q; }
+  f.ver++; queueThumbFor(f); return ppEntry(f, before, ppState(f));
+}
+// set 🙈 of a layer on one frame (v = 1 hidden / 0 shown, which also lifts an old pose hide): the undo entries
+function ppOffSet(f, rid, v) { const a = v ? null : ppUnhideLegacy(f, rid), b = ppOffEdit(f, o => { o[rid] = v; }); return [a, b].filter(Boolean); }
 function ppOffEdit(f, fn) { const before = f.lip ? JSON.stringify(f.lip) : null, l = { ...(f.lip || {}) }; l.off = { ...(l.off || {}) }; fn(l.off); for (const k in l.off) if (!l.off[k]) delete l.off[k]; if (!Object.keys(l.off).length) delete l.off; const lip = Object.keys(l).length ? l : null, after = lip ? JSON.stringify(lip) : null; if (before === after) return null; f.lip = lip; f.ver++; queueThumbFor(f); return { t: targetOf(f), lipe: true, before, after, bytes: 64 }; }
 // hide / show the selected character (or the given layer) on the frame being viewed only
 function ppOffToggle(rid) {
   rid = rid || ppSelChar(); if (!rid) { toast('Chạm chọn nhân vật trước'); return; }
-  const f = curFrame(), on = !ppOffAt(f, rid);
+  const f = curFrame(), on = !ppOffAt(f, rid) && !ppLegacyHid(f, rid);
   // ☑ Chọn nhiều frame: hide / show on every selected frame at once (1 undo step), e.g. a hand that only comes in at the end
   const many = mselOn && msel.size ? S.frames.filter(g => msel.has(g.id)) : null;
   if (many) {
-    const on2 = !many.every(g => ppOffAt(g, rid)), es = many.map(g => ppOffEdit(g, o => { o[rid] = on2 ? 1 : 0; })).filter(Boolean);
+    const on2 = !many.every(g => ppOffAt(g, rid) || ppLegacyHid(g, rid)), es = many.flatMap(g => ppOffSet(g, rid, on2 ? 1 : 0));
     if (es.length) { pushEntry({ multi: es, bytes: 64 * es.length }); many.forEach(markEdited); scheduleSave(); }
     ppSyncBar(); lgSync(true); requestRender();
     toast(on2 ? `🙈 Đã ẩn "${lyrName(ppPart(rid))}" ở ${many.length} frame đã chọn` : `👁 "${lyrName(ppPart(rid))}" hiện lại ở ${many.length} frame đã chọn`, 2600);
     return;
   }
-  const e = ppOffEdit(f, o => { o[rid] = on ? 1 : 0; });
-  if (!e) return;
-  pushEntry(e); markEdited(f); scheduleSave(); ppSyncBar(); lgSync(true); requestRender();
+  const es = ppOffSet(f, rid, on ? 1 : 0);
+  if (!es.length) return;
+  pushEntry(es.length > 1 ? { multi: es } : es[0]); markEdited(f); scheduleSave(); ppSyncBar(); lgSync(true); requestRender();
   toast(on ? `🙈 Đã ẩn "${lyrName(ppPart(rid))}" ở frame ${S.cur + 1} — các frame khác vẫn giữ. Bấm 👁 Hiện ở frame này để lấy lại` : `👁 "${lyrName(ppPart(rid))}" hiện lại ở frame ${S.cur + 1}`, 2600);
 }
 // 📍 where a layer shows: 'all' frames / 'from' this frame on / 'only' this frame (others hidden by lip.off), 1 undo step
 function ppShowRange(rid, mode) {
   rid = rid || ppSelChar(); if (!rid) { toast('Chạm chọn nhân vật / hình trước'); return; }
-  const es = S.frames.map((g, i) => ppOffEdit(g, o => { o[rid] = mode === 'all' ? 0 : mode === 'from' ? (i < S.cur ? 1 : 0) : (i === S.cur ? 0 : 1); })).filter(Boolean);
+  const es = S.frames.flatMap((g, i) => ppOffSet(g, rid, mode === 'all' ? 0 : mode === 'from' ? (i < S.cur ? 1 : 0) : (i === S.cur ? 0 : 1)));
   if (es.length) { pushEntry(es.length > 1 ? { multi: es, bytes: 64 * es.length } : es[0]); S.frames.forEach(markEdited); scheduleSave(); }
   ppSyncBar(); lgSync(true); requestRender();
   const nm = lyrName(ppPart(rid));
