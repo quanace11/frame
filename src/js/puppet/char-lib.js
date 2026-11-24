@@ -34,14 +34,19 @@ async function charLibSave() {
 }
 async function charLibAdd(id) {
   let rec = null; try { rec = await idbGet('char:' + id); } catch (e) {}
-  if (!rec || !rec.parts || !rec.parts.length) { toast('Không đọc được nhân vật này'); return false; }
+  return !!(await charAddRec(rec));
+}
+// add a saved character record ({w, h, parts}) to this project as a new layer; returns {old part id → new id} (null = failed)
+async function charAddRec(rec) {
+  if (!rec || !rec.parts || !rec.parts.length) { toast('Không đọc được nhân vật này'); return null; }
   if (playing) stopPlay();
+  let idMap = null;
   const pm = progress('Đang thêm nhân vật…');
   try {
     const dec = async png => { const bmp = await decodePng(png); const c = makeCanvas(bmp.width, bmp.height); c.getContext('2d').drawImage(bmp, 0, 0); bmp.close && bmp.close(); return c; };
     // a project of another size: keep the character's size, place it at the same spot relative to the frame
     const sx = rec.w && rec.w !== W ? (W - rec.w) / 2 : 0, sy = rec.h && rec.h !== H ? (H - rec.h) : 0;
-    const idMap = {}; rec.parts.forEach(q => idMap[q.id] = newId());
+    idMap = {}; rec.parts.forEach(q => idMap[q.id] = newId());
     const others = S.pp ? S.pp.parts.filter(q => !q.parent).length : 0, suf = others ? ` (NV${others + 1})` : '';
     const zb = S.pp && S.pp.parts.length ? Math.max(...S.pp.parts.map(q => q.z)) + 1 : 0, parts = [];
     for (const q of rec.parts) {
@@ -54,7 +59,7 @@ async function charLibAdd(id) {
   } finally { pm.close(); }
   ppShowAdded();
   toast('Đã thêm nhân vật — kéo để dời, chạm mảnh để tạo dáng. Lỡ tay thì ↶ Hoàn tác', 4000);
-  return true;
+  return idMap;
 }
 async function charLibDialog() {
   if (ppSetup) { toast('Đang cắt nhân vật — xong bước cắt rồi mở kho'); return; }

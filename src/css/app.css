@@ -390,3 +390,17 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
 #lgBar #lgEaseRow{display:inline-flex;align-items:center;gap:4px;font-size:12px}
 #lgBar #lgEaseRow.off{opacity:.45}
 #lgBar #lgEase{height:38px;max-width:180px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:0 6px}
+
+/* ===== 📮 Hộp thư + 📱 chế độ gọn cho tablet (mailbox.js) ===== */
+#mboxBanner{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:70;display:flex;gap:8px;align-items:center;max-width:92vw;
+  padding:8px 10px 8px 14px;border-radius:14px;background:var(--panel);border:1px solid var(--accent, #ffb21e);box-shadow:0 6px 24px #0008;font-size:14px}
+#mboxBanner[hidden]{display:none}
+#mboxBanTxt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#mailBtn{position:relative}
+#mailBtn .mbadge{position:absolute;top:2px;right:4px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#e53935;color:#fff;font-size:11px;line-height:18px;text-align:center}
+#mailBtn .mbadge[hidden]{display:none}
+body:not(.gon) .gon-only{display:none !important}
+body.gon #rail [data-tool=lasso], body.gon #rail [data-tool=vedit], body.gon #rail [data-tool=fx], body.gon #camToolBtn, body.gon #lyrBtn,
+body.gon #safeBtn, body.gon #onionBtn, body.gon #bgMenuBtn, body.gon #bgHold, body.gon #refGrp, body.gon #layerBg, body.gon #wizBtn,
+body.gon #aiFxBtn, body.gon #aiCharBtn, body.gon #assetBtn, body.gon #autoColBtn, body.gon #tl, body.gon #flipNav, body.gon #lg, body.gon #atl,
+body.gon #lyrPanel, body.gon #ppbar [data-t=frames], body.gon #ppbar [data-tab=frames], body.gon #fxbar{display:none !important}
