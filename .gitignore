@@ -8,3 +8,4 @@ dist/
 /index.html
 /sw.js
 node_modules/
+penpad/platform-tools/

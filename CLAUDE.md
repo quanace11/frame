@@ -14,6 +14,7 @@ vendor/onnxruntime/   onnxruntime-web 1.31.1 (WASM, numThreads=1)
 models/               u2netp-model.js (tách nền, window.U2NETP_B64), migan-1/2/3.js (vá hình MI-GAN, mỗi phần < 16 MB)
 tools/build.py        build src/ → dist/ (1 file index.html + sw.js + manifest + icons, chép vendor/ + models/)
 tools/lint/           ESLint cho src/js (npm ci --prefix tools/lint && node tools/lint/lint.mjs)
+penpad/               PenPad: tablet Android + bút làm bảng vẽ (server Python chạy trên PC + trang cho tablet), xem penpad/HUONG_DAN.md
 tests/                test hồi quy Playwright (python) + run_all.py; tests/assets/ = ảnh/âm thanh mẫu tự tạo
 .github/workflows/    pages.yml (đăng app khi push main), tests.yml (lint + toàn bộ test trên mỗi PR)
 dist/                 bản build, KHÔNG commit (gitignore)
@@ -74,7 +75,7 @@ git checkout -b feat/<tên> && git commit && git push   # 5. làm trên nhánh, 
 | `import/` | `import-dialog` (Nhập ảnh, sửa tay vùng tách nền) |
 | `video/` | `video-track` (nền video, 🎞 ghép theo video) · `video-frames` (🎬 video → frame) |
 | `scenes/` | `scene-lib` (🏞 nền vẽ sẵn, nền bóng đá) |
-| `ui/` | `input` (cử chỉ, phím tắt) · `toolbar` · `pickers` (bảng màu/bút) · `modal` · `panel-tabs` · `wizard` · `menu` |
+| `ui/` | `input` (cử chỉ, phím tắt) · `toolbar` · `pickers` (bảng màu/bút) · `modal` · `panel-tabs` · `wizard` · `remote-pad` (🖊 Tablet làm bảng vẽ) · `menu` |
 | `app/` | `init` · `pwa` (cập nhật) |
 
 ## Bản đồ code (chi tiết từng tính năng; tìm theo tiêu đề `/* ===== ... */` trong file tương ứng)
@@ -162,6 +163,7 @@ git checkout -b feat/<tên> && git commit && git push   # 5. làm trên nhánh, 
   - **Font chữ truyện tranh Bangers** nhúng base64 (`@font-face` đầu file, 3 bộ chữ có tiếng Việt), không lấy từ Google Fonts nữa để chạy offline. Trước khi xuất ảnh/video thì `await fontsReady()`. Xuất chuỗi PNG chia thành nhiều ZIP khi vượt `PNG_ZIP_PART` (mỗi phần bấm 💾 Lưu để có thao tác người dùng). `tests/test_xuat_offline.py`.
   - **🖼 Nền chung cho nhiều frame** (thanh Chọn nhiều, `mselBg`, `tests/test_nen_chon_nhieu.py`): 🖼 Nền mới chung = các frame đã chọn (không cần liền nhau) dùng 1 nền trống mới; 🖼 Dùng nền frame này = lấy `bgId` của frame đang xem. Hoàn tác qua undo tự động.
   - **⇕ Cỡ thanh frame** (tay kéo `#tlGrip` trên đầu thanh frame, `tlScaleSet`/`tlCap`, `tests/test_co_thanh_frame.py`): kéo lên/xuống đổi `S.tlScale` (0,75–2,5, lưu trong settings) → biến CSS `--tls` (ảnh frame, nút +, thanh tua) + `ATL_LANE` (dòng 🎚 Âm thanh). Chạm = 100% → 150% → 200%. Không cho thanh chiếm quá 60% chiều cao màn hình. `thumbSize()` vẽ ảnh frame nét hơn theo bậc 0,5.
+  - **🖊 Tablet làm bảng vẽ** (`remote-pad.js`, Menu → 🖊, `padDialog`, `tests/test_bang_ve_tablet.py`): Frame Studio trên máy tính nối `ws://127.0.0.1:<cổng>/ws?role=host` tới PenPad (`penpad/penpad_server.py`, chạy trên PC; tablet vào trang PenPad qua `adb reverse` hoặc Wi-Fi). Bật/cổng lưu ở localStorage `fs-pad`, tự nối lại mỗi 3 s. Tablet gửi mẫu bút theo toạ độ FRAME (byte đầu 2 + 10 byte/mẫu: trạng thái 0/1/2, cờ nút bút/đầu tẩy, x, y 0..65535, lực 0..1024, nghiêng) → `padPen` đổi sang toạ độ màn hình qua `viewMat()` rồi phát PointerEvent `pen` (id `PAD_ID`) lên `#view`, nên mọi công cụ/undo chạy như bút thật; đầu tẩy tạm `setTool('eraser')`; vòng `#padCur` hiện chỗ bút trên PC. Lệnh từ tablet (`padCmd`): tool/brush/eraser/color/size/op/layer/pressure/undo/redo/frame/goto/add/onion/play/want/penout. Gửi lại `padState()` khi đổi (so chuỗi JSON mỗi 250 ms) và ảnh JPEG frame (`padImg`, cạnh dài ≤ 1400, nền + onion frame trước + Màu + Nhân vật + puppet + vector; gửi khi `padImgKey()` đổi hoặc 4 s, không gửi khi đang vẽ). Server chỉ nhận app (role=host) từ máy này với Origin `https://quanace11.github.io`/localhost, và tablet từ chính trang PenPad (Origin = Host), để trang web lạ không gõ phím giả được.
   - **👆 Nút to** (`S.bigUi`, class `body.bigui`). Test `tests/test_more_features.py`.
   - Image → vector (centre-line tracing), Snap-to-line, Delete all
   - Input (cử chỉ, phím tắt), Toolbar, Modal, Persistence, ZIP, Import dialog

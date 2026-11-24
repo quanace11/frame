@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0e0f12">
+<link rel="manifest" id="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg">
+<title>PenPad</title>
+<style>
+  :root{--bg:#0e0f12;--panel:#16181d;--line:#2a2e36;--area:#1a1d23;--txt:#d9dce2;--mut:#8a909b;--acc:#8cbeff;--ok:#5fd08a;--bad:#ff7a7a}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:14px/1.35 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none;overscroll-behavior:none}
+  button{font:inherit;color:inherit}
+  #app{display:flex;height:100%}
+  #app.right{flex-direction:row-reverse}
+  .side{flex:none;display:flex;flex-direction:column;gap:6px;padding:8px 6px;background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;touch-action:pan-y}
+  #app.right .side{border-right:0;border-left:1px solid var(--line)}
+  #bar{width:76px}
+  #bar button{appearance:none;border:1px solid var(--line);background:#1f2228;border-radius:10px;min-height:52px;padding:4px;font:600 12px/1.15 inherit;word-break:break-word;touch-action:none}
+  #bar button.on{background:var(--acc);color:#0b0d10;border-color:var(--acc)}
+  .side .sys{min-height:44px;font-size:20px;background:transparent}
+  .side hr{border:0;border-top:1px solid var(--line);margin:4px 0;width:100%}
+  body.fs #bar, body:not(.fs) #fpanel{display:none}
+
+  /* --- Frame Studio panel --- */
+  #fpanel{width:252px;padding:8px 10px 12px;gap:6px}
+  #fpanel .lbl{font-size:12px;color:var(--mut);display:flex;justify-content:space-between;margin-top:2px}
+  #fpanel .lbl b{color:var(--txt);font-weight:600}
+  .grid{display:grid;gap:6px}
+  .g4{grid-template-columns:repeat(4,1fr)} .g2{grid-template-columns:1fr 1fr} .g3{grid-template-columns:repeat(3,1fr)}
+  .fb{appearance:none;border:1px solid var(--line);background:#1f2228;border-radius:10px;min-height:44px;padding:4px 2px;font-size:12px;font-weight:600;line-height:1.1;touch-action:none}
+  .fb .i{display:block;font-size:20px;line-height:1.15}
+  .fb.on{background:var(--acc);color:#0b0d10;border-color:var(--acc)}
+  .fb:disabled{opacity:.35}
+  .chips{display:flex;flex-wrap:wrap;gap:5px}
+  .chip{appearance:none;border:1px solid var(--line);background:#1f2228;border-radius:16px;padding:5px 9px;min-height:32px;font-size:12.5px;touch-action:none}
+  .chip.on{background:var(--acc);color:#0b0d10;border-color:var(--acc)}
+  .pal{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+  .sw{appearance:none;border:2px solid #0000;border-radius:50%;aspect-ratio:1;min-height:28px;padding:0;box-shadow:inset 0 0 0 1px #0006;touch-action:none}
+  .sw.on{border-color:#fff;outline:2px solid var(--acc)}
+  .colrow{display:flex;gap:8px;align-items:center}
+  #fCur{width:46px;height:46px;border-radius:12px;border:2px solid #fff3;flex:none}
+  #fColIn{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+  .sl{display:flex;align-items:center;gap:6px}
+  .sl input{flex:1;min-width:0;height:32px}
+  .stp{appearance:none;width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:#1f2228;font-size:18px;flex:none;touch-action:none}
+  #fFr{flex:1;text-align:center;font-weight:600}
+
+  #stage{flex:1;position:relative;overflow:hidden}
+  #area{position:absolute;background:var(--area);border:1px solid #30353e;border-radius:6px;overflow:hidden;transform-origin:0 0}
+  body.fs #area{background:#fff;border-color:#3b414c;border-radius:2px}
+  #fimg{position:absolute;inset:0;width:100%;height:100%;display:none;pointer-events:none}
+  body.fs #fimg{display:block}
+  #trail{position:absolute;inset:0;width:100%;height:100%}
+  #dot{position:absolute;left:0;top:0;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid var(--acc);opacity:0;pointer-events:none;will-change:transform;box-shadow:0 0 0 1px #0008}
+  #dot.down{background:var(--acc)}
+  #hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--mut);font-size:15px;pointer-events:none;padding:20px;white-space:pre-line}
+  body.fs #hint{color:#666;background:#ffffffd0}
+  #status{position:absolute;top:6px;right:10px;font-size:12px;color:var(--mut);pointer-events:none;background:#0e0f12b0;padding:2px 8px;border-radius:8px}
+  #status.ok b{color:var(--ok)} #status.bad b{color:var(--bad)}
+
+  #settings{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:9;touch-action:auto;user-select:text;-webkit-user-select:text}
+  #settings[hidden]{display:none}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;width:min(560px,92vw);max-height:90vh;overflow:auto;touch-action:pan-y}
+  .card h2{margin:0 0 12px;font-size:18px}
+  .row{margin:12px 0}
+  .row>label{display:block;margin-bottom:5px;color:var(--mut);font-size:13px}
+  .chk{display:flex;gap:10px;align-items:center;margin:10px 0;font-size:14px}
+  .chk input{width:20px;height:20px}
+  select,textarea{width:100%;background:#0f1115;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px;font:14px/1.4 ui-monospace,Consolas,monospace}
+  input[type=range]{width:100%}
+  small{color:var(--mut)}
+  #pbar{height:8px;background:#0f1115;border-radius:4px;overflow:hidden;margin-top:6px}
+  #pbar i{display:block;height:100%;width:0;background:var(--acc)}
+  .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+  .btns button{appearance:none;border:0;border-radius:9px;padding:10px 18px;font:600 14px inherit;background:var(--acc);color:#0b0d10}
+  .btns button.sec{background:#2a2e36;color:var(--txt)}
+  body.fs .pc-only{display:none}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- chế độ thường: bảng vẽ cho cả máy tính -->
+  <div id="bar" class="side">
+    <button class="sys" id="bSet" title="Cài đặt">⚙</button>
+    <button class="sys" id="bFull" title="Toàn màn hình">⛶</button>
+    <hr>
+    <div id="keys" style="display:contents"></div>
+  </div>
+  <!-- chế độ Frame Studio -->
+  <div id="fpanel" class="side">
+    <div class="grid g4" id="fTools">
+      <button class="fb" data-tool="brush"><span class="i">✏️</span>Bút</button>
+      <button class="fb" data-tool="eraser"><span class="i">🧽</span>Tẩy</button>
+      <button class="fb" data-tool="fill"><span class="i">🪣</span>Đổ màu</button>
+      <button class="fb" data-tool="pick"><span class="i">💧</span>Hút màu</button>
+    </div>
+    <div class="chips" id="fKinds"></div>
+    <div class="lbl">Màu</div>
+    <div class="colrow">
+      <button id="fCur" title="Chọn màu khác"></button>
+      <button class="chip" id="fColMore">🎨 Màu khác…</button>
+      <input type="color" id="fColIn">
+    </div>
+    <div class="pal" id="fPal"></div>
+    <div class="pal" id="fRecent"></div>
+    <div class="lbl">Cỡ nét <b id="fSizeV"></b></div>
+    <div class="sl"><button class="stp" data-stp="size" data-d="-1">−</button><input type="range" id="fSize" min="0" max="1000" step="1"><button class="stp" data-stp="size" data-d="1">+</button></div>
+    <div class="lbl">Độ đậm <b id="fOpV"></b></div>
+    <div class="sl"><button class="stp" data-stp="op" data-d="-1">−</button><input type="range" id="fOp" min="5" max="100" step="1"><button class="stp" data-stp="op" data-d="1">+</button></div>
+    <div class="lbl">Lớp</div>
+    <div class="chips" id="fLayers">
+      <button class="chip" data-layer="char">Nhân vật</button><button class="chip" data-layer="vec">Nét</button>
+      <button class="chip" data-layer="col">Màu</button><button class="chip" data-layer="bg">Nền</button>
+    </div>
+    <div class="grid g2">
+      <button class="fb" id="fUndo"><span class="i">↶</span>Hoàn tác</button>
+      <button class="fb" id="fRedo"><span class="i">↷</span>Làm lại</button>
+    </div>
+    <div class="lbl">Frame</div>
+    <div class="sl"><button class="stp" id="fPrev">◀</button><span id="fFr">–</span><button class="stp" id="fNext">▶</button><button class="stp" id="fAdd" title="Thêm frame trống">＋</button></div>
+    <div class="grid g2">
+      <button class="fb" id="fOnion"><span class="i">🧅</span>Onion</button>
+      <button class="fb" id="fPlay"><span class="i">▶</span>Phát</button>
+    </div>
+    <div class="grid g3">
+      <button class="fb" id="fFit" title="Bỏ phóng to trên tablet"><span class="i">⤢</span>Vừa khung</button>
+      <button class="fb" id="fFull"><span class="i">⛶</span>Toàn MH</button>
+      <button class="fb" id="fSet"><span class="i">⚙</span>Cài đặt</button>
+    </div>
+  </div>
+  <div id="stage">
+    <div id="area">
+      <img id="fimg" alt="">
+      <canvas id="trail"></canvas>
+      <div id="hint"></div>
+      <div id="dot"></div>
+    </div>
+    <div id="status" class="bad"><b>○</b> Đang kết nối…</div>
+  </div>
+</div>
+
+<div id="settings" hidden>
+  <div class="card">
+    <h2>Cài đặt PenPad</h2>
+    <div class="row pc-only"><label>Vẽ lên màn hình PC nào</label><select id="sMon"></select></div>
+    <div class="row">
+      <label>Độ nhạy lực nhấn: <span id="vGamma"></span></label>
+      <input type="range" id="sGamma" min="0.3" max="2.5" step="0.05">
+      <small>Kéo sang trái: ấn nhẹ đã đậm · Kéo sang phải: phải ấn mạnh mới đậm</small>
+      <div id="pbar"><i></i></div>
+      <small>Thử ấn bút vào vùng vẽ (sau lớp này) để xem thanh lực nhấn.</small>
+    </div>
+    <label class="chk"><input type="checkbox" id="sFinger"> Cho phép vẽ bằng ngón tay (tắt thì ngón tay dùng để phóng to, hoàn tác)</label>
+    <label class="chk pc-only"><input type="checkbox" id="sTrail"> Hiện nét mờ trên tablet</label>
+    <label class="chk pc-only"><input type="checkbox" id="sStretch"> Kéo giãn hết tablet (không giữ tỉ lệ màn hình PC)</label>
+    <label class="chk"><input type="checkbox" id="sRight"> Bảng nút bên phải (cho người thuận tay trái)</label>
+    <div class="row pc-only">
+      <label>Phím tắt – mỗi dòng: <code>Tên=phím</code>. Thêm <code>:hold</code> để giữ khi đè, <code>:toggle</code> để chạm bật/chạm tắt.</label>
+      <textarea id="sKeys" rows="9" spellcheck="false"></textarea>
+    </div>
+    <div class="btns">
+      <button class="sec" id="sReset">Mặc định</button>
+      <button id="sClose">Xong</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const OUT = 0, HOVER = 1, CONTACT = 2;
+const $ = s => document.querySelector(s);
+const app = $('#app'), stage = $('#stage'), area = $('#area'), cv = $('#trail'), g = cv.getContext('2d');
+const dot = $('#dot'), hint = $('#hint'), statusEl = $('#status'), pbar = $('#pbar i'), fimg = $('#fimg');
+
+const DEF = {
+  gamma: 1, finger: false, trail: true, stretch: false, monitor: 0, right: false,
+  shortcuts: [
+    'Hoàn tác=ctrl+z', 'Làm lại=ctrl+y', 'Cọ=b', 'Tẩy=e', 'Cọ nhỏ=[', 'Cọ to=]',
+    'Kéo=space:hold', 'Lấy màu=alt:hold', 'Phóng to=ctrl+=', 'Thu nhỏ=ctrl+-', 'Lưu=ctrl+s'
+  ].join('\n')
+};
+let S;
+try { S = Object.assign({}, DEF, JSON.parse(localStorage.getItem('penpad') || '{}')); } catch (e) { S = Object.assign({}, DEF); }
+const save = () => { try { localStorage.setItem('penpad', JSON.stringify(S)); } catch (e) {} };
+
+const KEY = new URLSearchParams(location.search).get('k') || '';
+if (KEY) $('#manifest').href = '/manifest.webmanifest?k=' + encodeURIComponent(KEY);
+
+const HINT_PC = 'Đưa bút lại gần để di chuột · chạm để vẽ\nNhìn lên màn hình PC khi vẽ (giống bảng Wacom không màn hình)\nNgón tay bị bỏ qua để tránh chạm nhầm bằng lòng bàn tay';
+const HINT_FS = 'Đang chờ hình frame từ Frame Studio…';
+
+// ---------------- kết nối ----------------
+let ws = null, connected = false, backend = '', latency = null, fs = false, F = null;
+let monitors = [{ x: 0, y: 0, w: 1920, h: 1080, primary: true }];
+const BN = { 'windows-pen': 'Windows Ink', 'windows-mouse': 'Chuột', 'pynput-mouse': 'Chuột', 'dummy': 'Thử nghiệm' };
+
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws${KEY ? '?k=' + encodeURIComponent(KEY) : ''}`);
+  ws.binaryType = 'arraybuffer';
+  ws.onopen = () => { connected = true; sendJSON({ t: 'cfg', monitor: S.monitor }); showStatus(); };
+  ws.onmessage = e => {
+    if (typeof e.data !== 'string') return;
+    let m; try { m = JSON.parse(e.data); } catch (_) { return; }
+    if (m.t === 'hello') {
+      monitors = m.monitors && m.monitors.length ? m.monitors : monitors;
+      backend = m.backend || '';
+      if (S.monitor >= monitors.length) { S.monitor = 0; sendJSON({ t: 'cfg', monitor: 0 }); }
+      fillMonitors(); setMode(!!m.host); showStatus();
+    } else if (m.t === 'host') { setMode(!!m.on); }
+    else if (m.t === 'state') { F = m; if (!fs) setMode(true); else { layout(); } renderPanel(); showStatus(); }
+    else if (m.t === 'img') { showImg(m); }
+    else if (m.t === 'pong' && typeof m.ts === 'number') { latency = Math.round(performance.now() - m.ts); showStatus(); }
+  };
+  ws.onclose = () => { connected = false; latency = null; setMode(false); showStatus(); setTimeout(connect, 1000); };
+}
+function sendJSON(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
+const sendApp = m => sendJSON({ t: 'app', m });
+setInterval(() => sendJSON({ t: 'ping', ts: performance.now() }), 2000);
+
+function setMode(on) {
+  if (on === fs) return;
+  fs = on; document.body.classList.toggle('fs', fs);
+  if (!fs) { F = null; fimg.removeAttribute('src'); }
+  zoomReset(); clearTrail(); hint.style.display = ''; hint.textContent = fs ? HINT_FS : HINT_PC;
+  layout(); showStatus();
+}
+function showStatus() {
+  statusEl.className = connected ? 'ok' : 'bad';
+  const lat = latency != null ? ' · ' + latency + ' ms' : '';
+  if (!connected) { statusEl.innerHTML = '<b>○</b> Mất kết nối – đang thử lại…'; return; }
+  if (fs) { statusEl.innerHTML = `<b>●</b> Frame Studio${F ? ' · frame ' + (F.cur + 1) + '/' + F.n : ''}${lat}`; return; }
+  const m = monitors[S.monitor] || monitors[0];
+  statusEl.innerHTML = `<b>●</b> ${BN[backend] || backend} · ${m.w}×${m.h}${lat}`;
+}
+
+// ---------------- bố cục + phóng to trên tablet (chế độ Frame Studio) ----------------
+let rect = null, Z = { s: 1, x: 0, y: 0 };
+function docSize() {
+  if (fs) return F ? { w: F.W, h: F.H } : { w: 1080, h: 1920 };
+  const m = monitors[S.monitor] || monitors[0]; return { w: m.w, h: m.h };
+}
+function layout() {
+  app.classList.toggle('right', !!S.right);
+  const sr = stage.getBoundingClientRect(), d = docSize();
+  let w = sr.width - 12, h = sr.height - 12;
+  if (fs || !S.stretch) { const a = d.w / d.h; if (w / h > a) w = h * a; else h = w / a; }
+  w = Math.max(50, w); h = Math.max(50, h);
+  Object.assign(area.style, { width: w + 'px', height: h + 'px', left: (sr.width - w) / 2 + 'px', top: (sr.height - h) / 2 + 'px' });
+  const dpr = Math.min(3, (window.devicePixelRatio || 1) * (fs ? Math.min(Z.s, 3) : 1));
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  g.setTransform(cv.width / w, 0, 0, cv.height / h, 0, 0);
+  applyZoom();
+}
+function applyZoom() { area.style.transform = fs && (Z.s !== 1 || Z.x || Z.y) ? `translate(${Z.x}px,${Z.y}px) scale(${Z.s})` : ''; rect = area.getBoundingClientRect(); }
+function zoomReset() { Z = { s: 1, x: 0, y: 0 }; applyZoom(); }
+new ResizeObserver(layout).observe(stage);
+document.addEventListener('fullscreenchange', () => setTimeout(layout, 50));
+
+// ---------------- gửi mẫu bút (byte đầu: 1 = cho cả máy tính, 2 = cho Frame Studio; sau đó 10 byte / mẫu) ----------------
+const MAXS = 512, buf = new ArrayBuffer(1 + MAXS * 10), dv = new DataView(buf);
+let n = 0;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+
+function push(st, e) {
+  if (!rect) return;
+  let x = (e.clientX - rect.left) / rect.width, y = (e.clientY - rect.top) / rect.height;
+  if (st === HOVER && (x < 0 || x > 1 || y < 0 || y > 1)) st = OUT;
+  x = clamp(x, 0, 1); y = clamp(y, 0, 1);
+  let p = 0;
+  if (st === CONTACT) {
+    const raw = e.pointerType === 'touch' ? 0.5 : (e.pressure || (e.pointerType === 'mouse' ? 0.5 : 0));
+    p = Math.max(0.002, Math.pow(clamp(raw, 0, 1), S.gamma));
+  }
+  const eraser = !!((e.buttons & 32) || e.button === 5);
+  const barrel = !eraser && !!(e.buttons & 2);
+  if (n >= MAXS) flush();
+  const o = 1 + n * 10;
+  dv.setUint8(o, st);
+  dv.setUint8(o + 1, (barrel ? 1 : 0) | (eraser ? 2 : 0));
+  dv.setUint16(o + 2, Math.round(x * 65535), true);
+  dv.setUint16(o + 4, Math.round(y * 65535), true);
+  dv.setUint16(o + 6, Math.round(p * 1024), true);
+  dv.setInt8(o + 8, clamp(Math.round(e.tiltX || 0), -90, 90));
+  dv.setInt8(o + 9, clamp(Math.round(e.tiltY || 0), -90, 90));
+  n++;
+  draw(st, x, y, p, eraser);
+}
+function flush() {
+  if (n && ws && ws.readyState === 1) { dv.setUint8(0, fs ? 2 : 1); ws.send(buf.slice(0, 1 + n * 10)); }
+  n = 0;
+}
+
+// ---------------- hiển thị trên tablet ----------------
+let lastX = null, lastY = null, dirty = false, idle = 0, strokeT = 0;
+function draw(st, x, y, p, eraser) {
+  const w = area.clientWidth, h = area.clientHeight, px = x * w, py = y * h;
+  pbar.style.width = (p * 100).toFixed(1) + '%';
+  if (st === OUT) { dot.style.opacity = 0; lastX = null; return; }
+  dot.style.opacity = 1;
+  dot.style.transform = `translate(${px}px,${py}px)`;
+  dot.classList.toggle('down', st === CONTACT);
+  if (st === CONTACT && (fs || S.trail)) {
+    if (lastX != null) {
+      if (fs && F) {
+        const er = eraser || F.tool === 'eraser', k = w / F.W, z = F.size * k;
+        g.strokeStyle = er ? 'rgba(255,255,255,.95)' : F.color;
+        g.globalAlpha = er ? 1 : Math.max(0.15, F.op || 1);
+        g.lineWidth = Math.max(0.6, F.pressure ? z * (0.12 + 0.88 * Math.pow(p, 0.85)) : z);
+      } else {
+        g.globalAlpha = 1;
+        g.strokeStyle = eraser ? 'rgba(255,130,130,.85)' : 'rgba(140,190,255,.85)';
+        g.lineWidth = 0.8 + p * 5;
+      }
+      g.lineCap = 'round'; g.lineJoin = 'round';
+      g.beginPath(); g.moveTo(lastX, lastY); g.lineTo(px, py); g.stroke(); g.globalAlpha = 1;
+    }
+    lastX = px; lastY = py; dirty = true; idle = 0; strokeT = performance.now();
+  } else { lastX = null; }
+}
+function clearTrail() { g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height); g.restore(); dirty = false; }
+(function fade() {   // chế độ thường: nét mờ dần; chế độ Frame Studio: nét ở lại tới khi hình mới về
+  if (dirty && !fs) {
+    g.save(); g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalCompositeOperation = 'destination-out';
+    g.fillStyle = 'rgba(0,0,0,0.035)'; g.fillRect(0, 0, cv.width, cv.height);
+    g.restore();
+    if (++idle > 240) clearTrail();
+  }
+  requestAnimationFrame(fade);
+})();
+function showImg(m) {
+  if (!fs || !m.data) return;
+  const im = new Image();
+  im.onload = () => {
+    fimg.src = m.data; hint.style.display = 'none';
+    if (!down.size && performance.now() - strokeT > 150) clearTrail();
+  };
+  im.src = m.data;
+}
+
+// ---------------- sự kiện bút ----------------
+const down = new Set();
+let penSeenAt = -1e9, touchId = null;
+const penNear = () => performance.now() - penSeenAt < 1000;
+function accept(e) {
+  if (e.pointerType === 'pen') { penSeenAt = performance.now(); return true; }
+  if (e.pointerType === 'mouse') return true;
+  if (e.pointerType === 'touch') {
+    if (!S.finger || penNear()) return false;   // chống chạm lòng bàn tay
+    if (touchId !== null && touchId !== e.pointerId) return false;
+    return true;
+  }
+  return false;
+}
+stage.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'touch' && fs && !S.finger) { gestDown(e); return; }
+  if (!accept(e)) return;
+  e.preventDefault();
+  if (e.pointerType === 'touch') touchId = e.pointerId;
+  try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+  down.add(e.pointerId);
+  if (!fs) hint.style.display = 'none';
+  rect = area.getBoundingClientRect();
+  push(CONTACT, e); flush();
+}, { passive: false });
+stage.addEventListener('pointermove', e => {
+  if (e.pointerType === 'touch' && fs && !S.finger) { gestMove(e); return; }
+  if (!accept(e)) return;
+  const isDown = down.has(e.pointerId);
+  if (!isDown && e.pointerType === 'touch') return;
+  const list = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+  for (const ce of (list.length ? list : [e])) push(isDown ? CONTACT : HOVER, ce);
+  flush();
+}, { passive: false });
+function end(e, cancel) {
+  if (e.pointerType === 'touch' && fs && !S.finger) { gestUp(e); return; }
+  if (!down.has(e.pointerId)) return;
+  down.delete(e.pointerId);
+  if (e.pointerId === touchId) touchId = null;
+  push(cancel || e.pointerType === 'touch' ? OUT : HOVER, e); flush();
+}
+stage.addEventListener('pointerup', e => end(e, false));
+stage.addEventListener('pointercancel', e => end(e, true));
+stage.addEventListener('pointerleave', e => {
+  if (e.pointerType === 'pen' && !down.size) penSeenAt = performance.now() - 800;   // bút đã ra xa: ngón tay dùng được sau 0,2 s
+  if (down.has(e.pointerId)) return;
+  if (e.pointerType === 'pen' || e.pointerType === 'mouse') { push(OUT, e); flush(); }
+});
+for (const t of ['contextmenu', 'gesturestart', 'dblclick'])
+  document.addEventListener(t, e => { if (!e.target.closest('textarea')) e.preventDefault(); }, { passive: false });
+
+// ---------------- ngón tay (chế độ Frame Studio): chụm = phóng to, kéo 2 ngón = dời, chạm 2 ngón = hoàn tác, 3 ngón = làm lại ----------------
+const T = new Map(); let G = null;
+function gestDown(e) {
+  e.preventDefault();
+  if (penNear() || down.size) return;   // lòng bàn tay khi đang cầm bút
+  try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+  T.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (!G) G = { t0: performance.now(), max: 0, moved: false };
+  G.max = Math.max(G.max, T.size); gestBase();
+}
+function gestBase() {
+  const p = [...T.values()]; if (!p.length || !G) return;
+  const cx = p.reduce((a, q) => a + q.x, 0) / p.length, cy = p.reduce((a, q) => a + q.y, 0) / p.length;
+  const d = p.length > 1 ? Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) : 0;
+  Object.assign(G, { cx, cy, d, z0: { ...Z }, sx: cx, sy: cy });
+}
+function gestMove(e) {
+  if (!T.has(e.pointerId) || !G) return;
+  T.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  const p = [...T.values()];
+  const cx = p.reduce((a, q) => a + q.x, 0) / p.length, cy = p.reduce((a, q) => a + q.y, 0) / p.length;
+  if (Math.hypot(cx - G.sx, cy - G.sy) > 10) G.moved = true;
+  if (p.length < 2) return;
+  const d = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+  if (Math.abs(d - G.d) > 12) G.moved = true;
+  if (!G.moved) return;
+  const sr = stage.getBoundingClientRect(), ox = parseFloat(area.style.left) + sr.left, oy = parseFloat(area.style.top) + sr.top;
+  const s = clamp(G.z0.s * (G.d ? d / G.d : 1), 1, 6);
+  // giữ điểm giữa 2 ngón đứng yên trên hình
+  const lx = (G.cx - ox - G.z0.x) / G.z0.s, ly = (G.cy - oy - G.z0.y) / G.z0.s;
+  Z = { s, x: cx - ox - lx * s, y: cy - oy - ly * s };
+  applyZoom();
+}
+function gestUp(e) {
+  if (!T.has(e.pointerId)) return;
+  T.delete(e.pointerId);
+  if (T.size) { gestBase(); return; }
+  const g0 = G; G = null; if (!g0) return;
+  if (!g0.moved && performance.now() - g0.t0 < 400) { if (g0.max === 2) sendApp({ t: 'undo' }); else if (g0.max >= 3) sendApp({ t: 'redo' }); }
+  if (Z.s <= 1.02) zoomReset(); else layout();
+}
+
+// ---------------- bảng nút Frame Studio ----------------
+const SIZE_MAX = 150;
+const sizeToPos = s => Math.round(Math.sqrt((clamp(s, 1, SIZE_MAX) - 1) / (SIZE_MAX - 1)) * 1000);
+const posToSize = v => Math.max(1, Math.round(1 + (SIZE_MAX - 1) * Math.pow(v / 1000, 2)));
+function sizeStep(s, d) { const k = d > 0 ? s : s - 1, st = k < 10 ? 1 : k < 30 ? 2 : k < 60 ? 5 : 10; return clamp(d > 0 ? Math.floor(s / st) * st + st : Math.ceil(s / st) * st - st, 1, SIZE_MAX); }
+let sliding = null;
+const tap = (el, fn) => el.addEventListener('pointerdown', e => { e.preventDefault(); if (navigator.vibrate) navigator.vibrate(6); fn(e); });
+
+function renderPanel() {
+  if (!F) return;
+  document.querySelectorAll('#fTools [data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === F.tool));
+  const kinds = $('#fKinds'), isE = F.tool === 'eraser', list = isE ? F.erasers : F.tool === 'brush' ? F.brushes : null, curK = isE ? F.eraser : F.brush;
+  const sig = (list ? (isE ? 'e' : 'b') + list.map(x => x[0]).join() : '') + '|' + curK;
+  if (kinds.dataset.sig !== sig) {
+    kinds.dataset.sig = sig; kinds.innerHTML = '';
+    for (const [k, name] of list || []) {
+      const b = document.createElement('button'); b.className = 'chip' + (k === curK ? ' on' : ''); b.textContent = name;
+      tap(b, () => { sendApp({ t: isE ? 'eraser' : 'brush', v: k }); kinds.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c === b)); });
+      kinds.appendChild(b);
+    }
+  }
+  $('#fCur').style.background = F.color;
+  swatches($('#fPal'), F.pal || []);
+  const fixed = new Set((F.pal || []).map(c => c.toLowerCase()));
+  swatches($('#fRecent'), (F.recent || []).filter(c => !fixed.has(c.toLowerCase())).slice(0, 6));
+  if (sliding !== 'size') { $('#fSize').value = sizeToPos(F.size); }
+  $('#fSizeV').textContent = F.size + ' px';
+  if (sliding !== 'op') { $('#fOp').value = Math.round((F.op || 1) * 100); }
+  $('#fOpV').textContent = Math.round((F.op || 1) * 100) + '%';
+  document.querySelectorAll('#fLayers [data-layer]').forEach(b => b.classList.toggle('on', b.dataset.layer === F.layer));
+  $('#fUndo').disabled = !F.undo; $('#fRedo').disabled = !F.redo;
+  $('#fFr').textContent = (F.cur + 1) + ' / ' + F.n;
+  $('#fPrev').disabled = F.cur <= 0; $('#fNext').disabled = F.cur >= F.n - 1;
+  $('#fOnion').classList.toggle('on', !!F.onion);
+  $('#fPlay').innerHTML = F.playing ? '<span class="i">■</span>Dừng' : '<span class="i">▶</span>Phát';
+}
+function swatches(box, cols) {
+  const sig = cols.join() + '|' + (F && F.color);
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig; box.innerHTML = '';
+  for (const c of cols) {
+    const b = document.createElement('button'); b.className = 'sw' + (F && c.toLowerCase() === F.color.toLowerCase() ? ' on' : ''); b.style.background = c; b.title = c;
+    tap(b, () => { sendApp({ t: 'color', v: c }); if (F) { F.color = c; renderPanel(); } });
+    box.appendChild(b);
+  }
+}
+document.querySelectorAll('#fTools [data-tool]').forEach(b => tap(b, () => { sendApp({ t: 'tool', v: b.dataset.tool }); if (F) { F.tool = b.dataset.tool; renderPanel(); } }));
+document.querySelectorAll('#fLayers [data-layer]').forEach(b => tap(b, () => { sendApp({ t: 'layer', v: b.dataset.layer }); if (F) { F.layer = b.dataset.layer; renderPanel(); } }));
+tap($('#fUndo'), () => sendApp({ t: 'undo' }));
+tap($('#fRedo'), () => sendApp({ t: 'redo' }));
+tap($('#fPrev'), () => sendApp({ t: 'frame', d: -1 }));
+tap($('#fNext'), () => sendApp({ t: 'frame', d: 1 }));
+tap($('#fAdd'), () => sendApp({ t: 'add' }));
+tap($('#fOnion'), () => sendApp({ t: 'onion' }));
+tap($('#fPlay'), () => sendApp({ t: 'play' }));
+tap($('#fFit'), () => { zoomReset(); layout(); });
+tap($('#fSet'), openSettings);
+tap($('#fFull'), toggleFull);
+const colIn = $('#fColIn');
+const pickColor = () => { colIn.value = F ? F.color : '#111111'; colIn.click(); };
+$('#fCur').addEventListener('click', pickColor); $('#fColMore').addEventListener('click', pickColor);
+colIn.addEventListener('input', () => { sendApp({ t: 'color', v: colIn.value }); if (F) { F.color = colIn.value; $('#fCur').style.background = colIn.value; } });
+const fSize = $('#fSize'), fOp = $('#fOp');
+fSize.addEventListener('input', () => { sliding = 'size'; const v = posToSize(+fSize.value); $('#fSizeV').textContent = v + ' px'; sendApp({ t: 'size', v }); if (F) F.size = v; });
+fOp.addEventListener('input', () => { sliding = 'op'; $('#fOpV').textContent = fOp.value + '%'; sendApp({ t: 'op', v: fOp.value / 100 }); if (F) F.op = fOp.value / 100; });
+for (const el of [fSize, fOp]) for (const t of ['change', 'pointerup', 'pointercancel']) el.addEventListener(t, () => { sliding = null; });
+document.querySelectorAll('#fpanel [data-stp]').forEach(b => {
+  let rep = null;
+  const step = () => {
+    if (!F) return;
+    if (b.dataset.stp === 'size') { F.size = sizeStep(F.size, +b.dataset.d); sendApp({ t: 'size', v: F.size }); }
+    else { F.op = clamp(Math.round((F.op || 1) * 100) + 5 * b.dataset.d, 5, 100) / 100; sendApp({ t: 'op', v: F.op }); }
+    renderPanel();
+  };
+  b.addEventListener('pointerdown', e => { e.preventDefault(); step(); clearInterval(rep); const t0 = setTimeout(() => { rep = setInterval(step, 90); }, 400); b._t0 = t0; });
+  const stop = () => { clearTimeout(b._t0); clearInterval(rep); rep = null; };
+  for (const t of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(t, stop);
+});
+
+// ---------------- phím tắt (chế độ thường) ----------------
+function buildBar() {
+  const box = $('#keys'); box.innerHTML = '';
+  for (const line of S.shortcuts.split('\n')) {
+    const i = line.indexOf('=');
+    if (i < 1) continue;
+    const label = line.slice(0, i).trim();
+    let combo = line.slice(i + 1).trim();
+    const mode = /:hold$/i.test(combo) ? 'hold' : /:toggle$/i.test(combo) ? 'toggle' : 'tap';
+    combo = combo.replace(/:(hold|toggle)$/i, '').trim();
+    if (!label || !combo) continue;
+    const b = document.createElement('button');
+    b.textContent = label; b.title = combo;
+    b.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      if (navigator.vibrate) navigator.vibrate(8);
+      if (mode === 'tap') { sendJSON({ t: 'key', combo, a: 'tap' }); b.classList.add('on'); setTimeout(() => b.classList.remove('on'), 120); }
+      else if (mode === 'hold') { b.classList.add('on'); sendJSON({ t: 'key', combo, a: 'down' }); try { b.setPointerCapture(e.pointerId); } catch (_) {} }
+      else { const on = !b.classList.contains('on'); b.classList.toggle('on', on); sendJSON({ t: 'key', combo, a: on ? 'down' : 'up' }); }
+    });
+    if (mode === 'hold') {
+      const up = () => { if (b.classList.contains('on')) { b.classList.remove('on'); sendJSON({ t: 'key', combo, a: 'up' }); } };
+      b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up);
+    }
+    box.appendChild(b);
+  }
+}
+
+// ---------------- cài đặt ----------------
+const dlg = $('#settings');
+function fillMonitors() {
+  const sel = $('#sMon'); sel.innerHTML = '';
+  monitors.forEach((m, i) => {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = `Màn hình ${i + 1}: ${m.w}×${m.h}${m.primary ? ' (chính)' : ''}`;
+    sel.appendChild(o);
+  });
+  sel.value = S.monitor;
+}
+function openSettings() {
+  fillMonitors();
+  $('#sGamma').value = S.gamma; $('#vGamma').textContent = (+S.gamma).toFixed(2);
+  $('#sFinger').checked = S.finger; $('#sTrail').checked = S.trail;
+  $('#sStretch').checked = S.stretch; $('#sRight').checked = S.right;
+  $('#sKeys').value = S.shortcuts;
+  dlg.hidden = false;
+}
+$('#sGamma').addEventListener('input', e => { S.gamma = +e.target.value; $('#vGamma').textContent = S.gamma.toFixed(2); save(); });
+$('#sMon').addEventListener('change', e => { S.monitor = +e.target.value; sendJSON({ t: 'cfg', monitor: S.monitor }); save(); layout(); showStatus(); });
+for (const [id, k] of [['#sFinger', 'finger'], ['#sTrail', 'trail'], ['#sStretch', 'stretch'], ['#sRight', 'right']])
+  $(id).addEventListener('change', e => { S[k] = e.target.checked; save(); layout(); });
+$('#sClose').addEventListener('click', () => { S.shortcuts = $('#sKeys').value; save(); buildBar(); dlg.hidden = true; layout(); });
+$('#sReset').addEventListener('click', () => { const mon = S.monitor; S = Object.assign({}, DEF, { monitor: mon }); save(); openSettings(); buildBar(); layout(); });
+$('#bSet').addEventListener('click', openSettings);
+
+// ---------------- toàn màn hình + giữ màn hình sáng ----------------
+function toggleFull() {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+}
+$('#bFull').addEventListener('click', toggleFull);
+let wl = null;
+async function keepAwake() {
+  try { if ('wakeLock' in navigator && !wl) { wl = await navigator.wakeLock.request('screen'); wl.addEventListener('release', () => { wl = null; }); } } catch (_) {}
+}
+document.addEventListener('pointerdown', keepAwake);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
+
+hint.textContent = HINT_PC;
+buildBar(); layout(); showStatus(); connect();
+})();
+</script>
+</body>
+</html>

@@ -9,6 +9,7 @@ function helpHtml() {
 <li><b>Nhập ảnh</b>: đặt ảnh mờ dưới để đồ theo, hoặc để AI tách nhân vật khỏi nền, hoặc tự chuyển ảnh thành nét viền rồi tô lại.</li>
 <li><b>🪄 AI vẽ đẹp</b> (thanh trên): vẽ phác thật nhanh rồi để AI làm phần tốn công. <b>✨ Làm đẹp nét phác</b> = vẽ lại thành nét sạch + tô màu, giữ đúng dáng và chỗ đứng; <b>🎨 Tô màu</b> = giữ nét của bạn, AI tô vào lớp Màu; <b>🎞 Vẽ frame giữa</b> = AI vẽ dáng ở giữa frame này và frame sau, chen thành frame mới. Kết quả là hình nổi phủ cả frame (nét → lớp Nhân vật, màu → lớp Màu): kéo cho khớp, bấm Xong (1 bước hoàn tác). Dùng chung key Gemini với 🤖 AI nhân vật.</li>
 <li><b>🤖 AI nhân vật</b> (thanh trên): chọn ảnh chụp 1 người, AI (Google Gemini) vẽ lại thành nhân vật hoạt hình theo ảnh mẫu phong cách, lưu vào <b>Nhân vật AI</b>; bấm <b>✂ Cắt mảnh</b> để thành Nhân vật ghép. Cần key Gemini của bạn (Menu → 🔑 Key Gemini), key chỉ lưu trên máy này.</li>
+<li><b>🖊 Tablet làm bảng vẽ</b> (Menu): mở Frame Studio trên máy tính, chạy PenPad (thư mục <code>penpad</code>) rồi cắm tablet Android. Tablet hiện frame đang vẽ, có nút bút/tẩy/màu/cỡ; vẽ bằng bút trên tablet là nét vào frame trên máy tính.</li>
 <li><b>☁ Đồng bộ tablet ↔ laptop</b> (Menu): bài được giữ trong một repo GitHub riêng tư của bạn. Cài 1 lần trên mỗi máy (tên repo + token), sau đó app tự gửi bài khi bạn sửa xong hoặc chuyển sang app khác, và tự lấy bài mới khi mở lại. Hai máy cùng sửa 1 dự án thì app giữ cả 2 bản.</li>
 <li><b>🤪 Biếm hoạ</b>: Nhập ảnh → tab "Biếm hoạ". Chọn ảnh chụp 1 người, app tự tách người, phóng to đầu, thu nhỏ thân, phồng giữa mặt và tô màu kiểu hoạt hình. Chỉnh Đầu to / Cỡ thân / Vị trí cổ rồi đưa vào vùng chọn hoặc thành Nhân vật ghép để làm động.</li>
 <li><b>🎞 Chuyển động</b> (trượt gối, chạy vào, bay đi…): dùng <b>Chọn vùng</b> khoanh cả người (nét, màu và nét vector đi cùng nhau) → bấm <b>🎞 Chuyển động</b> → hình mờ là chỗ bắt đầu, kéo hình tới chỗ kết thúc (Xoay = nghiêng, Cỡ = lại gần) → chọn số frame, Đường (Thẳng, Rung nhẹ, Vòng cung, Nảy), Tốc độ (Chậm dần hợp với trượt) → <b>✓ Tạo frame</b>. App tự thêm frame còn thiếu. Hoàn tác 1 lần là bỏ hết.</li>
@@ -53,6 +54,7 @@ $('#menuBtn').addEventListener('click', () => {
   <button class="btn primary" data-m="wizard">🚀 Làm video nhanh (từng bước)</button>
   <button class="btn" data-m="projects">📁 Dự án của bạn</button>
   <button class="btn" data-m="sync">☁ Làm tiếp trên máy khác</button>
+  <button class="btn" data-m="pad">🖊 Tablet làm bảng vẽ (PenPad)</button>
   <button class="btn" data-m="update">🔄 Kiểm tra cập nhật</button>
   <button class="btn primary" data-m="video">🎬 Xuất video (MP4)</button>
   <button class="btn" data-m="gif">🖼 Xuất GIF / ảnh PNG</button>
@@ -106,6 +108,7 @@ $('#menuBtn').addEventListener('click', () => {
       else if (m === 'scenes') shotsDialog();
       else if (m === 'projects') projectsDialog();
       else if (m === 'sync') syncDialog();
+      else if (m === 'pad') padDialog();
       else if (m === 'export') exportZip();
       else if (m === 'open') $('#zipFile').click();
       else if (m === 'img') $('#imgFile').click();
