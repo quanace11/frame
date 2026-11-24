@@ -3,6 +3,7 @@ function setTool(t) {
   // Chọn vùng always lifts the whole drawing under the loop: pixel lines + colour + vector lines (it used to jump to Sửa nét on lớp Nét)
   if (t === 'lasso' && selMode() !== 'layer' && (S.layer === 'vec' || S.layer === 'col')) { setLayer('char'); toast('Chọn vùng lấy cả nét vẽ, màu và nét vector bên trong vùng khoanh (đổi kiểu chọn ở thanh trên)', 2500); }
   if (t === 'pick' && S.tool !== 'pick') pickBack = S.tool;
+  if (t !== 'pick') pickFav = null;
   motionClose(); rigClose();
   if (t !== 'lasso' && floating) commitFloating();
   S.tool = t;
@@ -15,7 +16,7 @@ function setTool(t) {
   updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); updBrushBtn(); syncSizeOp(); requestRender();
   document.querySelectorAll('.tool[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
   document.body.dataset.tool = t; syncLassoBar(); hcSync();
-  $('#dropBtn').hidden = !(t === 'fill' || t === 'pick'); $('#dropBtn').classList.toggle('on', t === 'pick');
+  $('#dropBtn').hidden = !(t === 'fill' || t === 'pick'); $('#dropBtn').classList.toggle('on', t === 'pick'); dropBtnLabel();
 }
 function setLayer(l) {
   if (floating) commitFloating();
@@ -43,7 +44,6 @@ document.querySelectorAll('[data-layer]').forEach(b => b.addEventListener('click
 document.querySelectorAll('[data-eye]').forEach(b => b.addEventListener('click', () => {
   const k = b.dataset.eye; if (k === 'bg') S.showBg = !S.showBg; else if (k === 'vec') S.showVec = !S.showVec; else if (k === 'pp') S.showPP = !S.showPP; else if (k === 'col') { S.showCol = !S.showCol; } else S.showChar = !S.showChar; updateToggles(); requestRender();
 }));
-PALETTE.forEach(c => { const s = document.createElement('button'); s.className = 'sw'; s.style.background = c; s.dataset.c = c; s.title = c; s.addEventListener('click', () => setColor(c)); $('#palette').append(s); });
 wireSizeOp($('#top')); document.querySelectorAll('#top .stpv').forEach(b => b.addEventListener('click', () => sizeOpPop(b)));
 $('#pressBtn').addEventListener('click', () => { S.pressure = !S.pressure; updateToggles(); saveSettings(); });
 $('#snapBtn').addEventListener('click', () => { S.snap = !S.snap; snapField = null; updateToggles(); saveSettings(); toast(S.snap ? `Hút nét: BẬT (bán kính ${S.snapR}px — chỉnh trong Menu)` : 'Hút nét: TẮT'); });

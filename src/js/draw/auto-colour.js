@@ -139,20 +139,36 @@ function fillPixels(o, p) {
   const after = lc.getImageData(...rect);
   pushUndo(o, rect, before, after); markEdited(o); requestRender();
 }
-function doPick(p) {
-  const f = curFrame(), bg = bgOf(f);
+// the colour seen at one spot of the picture (all visible layers on white, the video background too)
+function pickColorAt(p) {
+  const f = curFrame(), bg = bgOf(f), px = Math.floor(p.x), py = Math.floor(p.y);
   const c = makeCanvas(1, 1), x = c.getContext('2d');
   x.fillStyle = '#fff'; x.fillRect(0, 0, 1, 1);
-  if (S.showBg && bg && bg.canvas) x.drawImage(bg.canvas, -Math.floor(p.x), -Math.floor(p.y));
-  if (S.showCol && f.col) x.drawImage(f.col, -Math.floor(p.x), -Math.floor(p.y));
-  if (S.showChar && f.canvas) x.drawImage(f.canvas, -Math.floor(p.x), -Math.floor(p.y));
-  if (S.pp && S.showPP) { x.save(); x.translate(-Math.floor(p.x), -Math.floor(p.y)); drawPuppet(x, f.pp, f.lip); x.restore(); }
-  if (S.showVec && f.vec.length) { x.save(); x.translate(-Math.floor(p.x), -Math.floor(p.y)); drawVec(x, f.vec); x.restore(); }
-  const d = x.getImageData(0, 0, 1, 1).data;
-  setColor('#' + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, '0')).join(''));
+  if (S.showBg && S.bgVideo && bgVid.ready && bgVid.el) { x.save(); x.translate(-px, -py); try { drawVideoCover(x, bgVid.el); } catch (e) {} x.restore(); }
+  if (S.showBg && bg && bg.canvas) x.drawImage(bg.canvas, -px, -py);
+  if (S.showCol && f.col) x.drawImage(f.col, -px, -py);
+  if (S.showChar && f.canvas) x.drawImage(f.canvas, -px, -py);
+  if (S.pp && S.showPP) { x.save(); x.translate(-px, -py); drawPuppet(x, f.pp, f.lip); x.restore(); }
+  if (S.showVec && f.vec.length) { x.save(); x.translate(-px, -py); drawVec(x, f.vec); x.restore(); }
+  let d; try { d = x.getImageData(0, 0, 1, 1).data; } catch (e) { d = [255, 255, 255]; }   // a cross-origin video frame cannot be read
+  return rgbHex(d[0], d[1], d[2]);
+}
+function doPick(p) {
+  const c = pickColorAt(p);
+  pickLoupe(null);
+  if (pickFav) { favPicked(c); return; }   // 💧 picking colours for Màu hay dùng
+  setColor(c);
   const back = pickBack && pickBack !== 'pick' ? pickBack : 'brush';
   toast(back === 'fill' ? 'Đã lấy màu — chạm vào vùng để đổ màu này' : 'Đã lấy màu');
   setTool(back);
+}
+// a round colour preview above the finger/pen while 💧 picking (the finger hides the spot it touches)
+function pickLoupe(ev, c) {
+  let el = document.getElementById('pickLoupe');
+  if (!ev) { if (el) el.hidden = true; return; }
+  if (!el) { el = document.createElement('div'); el.id = 'pickLoupe'; document.body.append(el); }
+  el.hidden = false; el.style.background = c; el.style.left = ev.clientX + 'px'; el.style.top = ev.clientY + 'px';
+  const [r, g, b] = hexToRgb(c); el.style.color = r * 0.3 + g * 0.59 + b * 0.11 > 150 ? '#111' : '#fff'; el.textContent = c;
 }
 let pickBack = null;   // tool to return to after the eyedropper
 

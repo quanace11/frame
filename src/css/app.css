@@ -46,6 +46,19 @@ input[type=range]{width:110px;accent-color:var(--accent);height:28px}
   background:conic-gradient(red,#ff0,lime,cyan,blue,#f0f,red)}
 .sw.rc{width:24px;height:24px}
 .rsep{width:1px;height:24px;background:var(--line);flex:none}
+#favSw{display:contents}
+#favAddBtn{min-width:36px;font-size:18px;padding:0 8px}
+.fvpop .fv-acts{display:flex;flex-direction:column;align-items:stretch;gap:6px;min-width:250px}
+.fvpop .fv-acts .chip{justify-content:flex-start;min-height:40px}
+.fvpop .fv-mv{display:flex;gap:6px}.fvpop .fv-mv .chip{flex:1;justify-content:center}
+.fv-dot{display:inline-block;width:18px;height:18px;border-radius:50%;border:1px solid #0006;margin-left:6px;vertical-align:middle}
+.cp-fvlbl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.cp-fvlbl .chip{min-height:32px}
+.cp-fvset{margin:8px 0 2px}
+.cp-grid button.fvsel{outline:3px dashed var(--accent);outline-offset:1px}
+/* 💧 colour preview above the finger while picking */
+#pickLoupe{position:fixed;z-index:9999;width:76px;height:76px;margin:-130px 0 0 -38px;border-radius:50%;border:4px solid #fff;box-shadow:0 0 0 2px #000a,0 6px 16px #0008;
+  pointer-events:none;display:flex;align-items:flex-end;justify-content:center;font:600 11px/1 system-ui,sans-serif;padding-bottom:12px;box-sizing:border-box}
+#pickLoupe[hidden]{display:none}
 #brushBtn{min-height:36px;min-width:92px}
 /* Popovers: colour picker & brush picker */
 .pop{position:fixed;z-index:45;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 40px #000c;padding:12px;
@@ -333,7 +346,8 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
 @media (pointer:coarse){
   .chip,.chip.small,#top .chip.small{min-height:40px}
   .chip.small{min-width:40px}
-  .sw{width:34px;height:34px}
+  .sw,.sw.rc{width:34px;height:34px}
+  #favAddBtn{min-width:40px}
   .layer .eye{min-width:40px}
 }
 #delAllBtn{margin-left:12px}   /* keep "Xoá hết" a little apart from "Xoá" so a finger does not hit the wrong one */

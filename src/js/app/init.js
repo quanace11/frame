@@ -6,7 +6,7 @@ async function init() {
   if (!S.brushOp || typeof S.brushOp !== 'object') S.brushOp = {};
   if (S.opacity < 1 && !Object.keys(S.brushOp).length) S.brushOp[BRUSHES[S.brush] ? S.brush : 'pen'] = S.opacity;   // old single setting
   syncSizeOp();
-  setColor(S.color); renderRecentSw(); updateToggles(); setTool('brush'); setLayer(S.lineLayer === 'vec' ? 'vec' : 'char');
+  renderFavSw(); setColor(S.color); updateToggles(); setTool('brush'); setLayer(S.lineLayer === 'vec' ? 'vec' : 'char');
   if (S.atlOpen) atlShow(true);
   tlScaleSet(S.tlScale || 1); setTimeout(tlCap, 300);
   if (S.tlCollapsed) { $('#tl').classList.add('collapsed'); $('#tlCollapse').textContent = '▴ Hiện dòng frame'; }
