@@ -49,6 +49,11 @@ async def main():
         await pg.evaluate("ppShowAsk(%r); 0" % r2); await pg.wait_for_timeout(300)
         await pg.click('.ov:last-child .btns >> text=Mọi frame'); await pg.wait_for_timeout(300)
         v = await ink(r2); ok(all(n > 50 for n in v), '📍 Mọi frame %s' % v)
+        # 2b) 📍 Từ … tới …: shown on frames 2–4 only
+        await pg.evaluate("ppShowAsk(%r); 0" % r2); await pg.wait_for_timeout(300)
+        await pg.fill('#psA', '2'); await pg.fill('#psB', '4'); await pg.click('.ov:last-child .btns >> text=Từ … tới …'); await pg.wait_for_timeout(300)
+        v = await ink(r2); ok(v[0] == 0 and v[1] > 50 and v[2] > 50 and v[3] > 50 and v[4] == 0, '📍 từ frame 2 tới 4 %s' % v)
+        await pg.evaluate("ppShowRange(%r,'all')" % r2); await pg.wait_for_timeout(200)
         # 3) Esc on the question = from this frame on (the default), 👁 Hiện ở frame này shows it on an earlier frame
         await pg.evaluate('selectFrame(2)'); await pg.wait_for_timeout(200)
         c = await pg.evaluate("(()=>{const c=document.createElement('canvas');c.width=200;c.height=200;const x=c.getContext('2d');x.fillStyle='#e33';x.fillRect(20,20,160,160);window._l=imgToLayer(c,null,'Ô đỏ');return 1})()")
