@@ -49,6 +49,11 @@ async def main():
         await pg.evaluate("ppShowAsk(%r); 0" % r2); await pg.wait_for_timeout(300)
         await pg.click('.ov:last-child .btns >> text=Mọi frame'); await pg.wait_for_timeout(300)
         v = await ink(r2); ok(all(n > 50 for n in v), '📍 Mọi frame %s' % v)
+        # 2b) 📍 Từ … tới …: shown on frames 2–4 only
+        await pg.evaluate("ppShowAsk(%r); 0" % r2); await pg.wait_for_timeout(300)
+        await pg.fill('#psA', '2'); await pg.fill('#psB', '4'); await pg.click('.ov:last-child .btns >> text=Từ … tới …'); await pg.wait_for_timeout(300)
+        v = await ink(r2); ok(v[0] == 0 and v[1] > 50 and v[2] > 50 and v[3] > 50 and v[4] == 0, '📍 từ frame 2 tới 4 %s' % v)
+        await pg.evaluate("ppShowRange(%r,'all')" % r2); await pg.wait_for_timeout(200)
         # 3) Esc on the question = from this frame on (the default), 👁 Hiện ở frame này shows it on an earlier frame
         await pg.evaluate('selectFrame(2)'); await pg.wait_for_timeout(200)
         c = await pg.evaluate("(()=>{const c=document.createElement('canvas');c.width=200;c.height=200;const x=c.getContext('2d');x.fillStyle='#e33';x.fillRect(20,20,160,160);window._l=imgToLayer(c,null,'Ô đỏ');return 1})()")
@@ -59,7 +64,7 @@ async def main():
         await pg.evaluate("ppOffToggle(%r)" % r3); await pg.wait_for_timeout(200)
         v = await ink(r3); ok(v[0] > 50 and v[1] == 0, '👁 hiện ở frame 1 %s' % v)
         # 4) an old project: the layer was hidden in the pose on earlier frames → 📍 Mọi frame still shows it
-        await pg.evaluate("""(()=>{const rid=%r;for(const i of [0,1]){const f=S.frames[i];f.pp=f.pp||{};for(const p of lyrParts(rid))f.pp[p.id]={...(f.pp[p.id]||{}),h:true};f.ppKey=true;}})()""" % r1)
+        await pg.evaluate("""(()=>{const rid=%r;for(const i of [0,1]){const f=S.frames[i];f.pp=f.pp||{};for(const p of lyrParts(rid))f.pp[p.id]={...(f.pp[p.id]||{}),h:true};f.ppKey=true;ppLayerSetKey(f,rid,true);}})()""" % r1)
         v = await ink(r1); ok(v[0] == 0 and v[1] == 0, 'dự án cũ: ẩn bằng tư thế %s' % v)
         await pg.evaluate("ppShowRange(%r,'all')" % r1); await pg.wait_for_timeout(300)
         v = await ink(r1); ok(all(n > 20 for n in v), 'dự án cũ: 📍 Mọi frame hiện lại %s' % v)

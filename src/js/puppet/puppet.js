@@ -543,6 +543,10 @@ function ppPartMeta(p) { return { id: p.id, name: p.name, role: p.role, parent: 
 function ppHideBefore(parts) {
   const ids = new Set(parts.map(q => q.id)), roots = parts.filter(q => !q.parent || !ids.has(q.parent)).map(q => q.id);
   for (let i = 0; i < S.cur; i++) ppOffEdit(S.frames[i], o => { for (const r of roots) o[r] = 1; });
+  // a layer from 🎨/🧍/⚽/Nhập ảnh is its own layer with the same keyframes (● on Dòng layer) as the first picture: copy the key
+  // pattern of a layer already there (or the frame's own 🔑). Its pose starts the same on every frame, so it does not jump.
+  const old = ppRoots().find(r => !ids.has(r.id));
+  S.frames.forEach(f => { const k = old ? ppLayerKey(f, old.id) : ppIsKey(f); for (const r of roots) ppLayerSetKey(f, r, k); });
 }
 // …and right after adding, ask where it shows (like a picture turned into a piece, floatToPart): its own undo step
 async function ppAskNew(rid) { if (!rid || !ppPart(rid) || S.frames.length < 2) return; histFlush(); await ppShowAsk(rid, true); }
@@ -1184,21 +1188,25 @@ function ppOffToggle(rid) {
   toast(on ? `🙈 Đã ẩn "${lyrName(ppPart(rid))}" ở frame ${S.cur + 1} — các frame khác vẫn giữ. Bấm 👁 Hiện ở frame này để lấy lại` : `👁 "${lyrName(ppPart(rid))}" hiện lại ở frame ${S.cur + 1}`, 2600);
 }
 // 📍 where a layer shows: 'all' frames / 'from' this frame on / 'only' this frame (others hidden by lip.off), 1 undo step
-function ppShowRange(rid, mode) {
+// 'range': shown on frames a…b only (0-based, both included), e.g. 2 speakers each on their own stretch of the film
+function ppShowRange(rid, mode, a, b) {
   rid = rid || ppSelChar(); if (!rid) { toast('Chạm chọn nhân vật / hình trước'); return; }
-  const es = S.frames.flatMap((g, i) => ppOffSet(g, rid, mode === 'all' ? 0 : mode === 'from' ? (i < S.cur ? 1 : 0) : (i === S.cur ? 0 : 1)));
+  if (mode === 'range') { a = clamp(Math.round(a), 0, S.frames.length - 1); b = clamp(Math.round(b), 0, S.frames.length - 1); if (a > b) [a, b] = [b, a]; }
+  const es = S.frames.flatMap((g, i) => ppOffSet(g, rid, mode === 'all' ? 0 : mode === 'range' ? (i < a || i > b ? 1 : 0) : mode === 'from' ? (i < S.cur ? 1 : 0) : (i === S.cur ? 0 : 1)));
   if (es.length) { pushEntry(es.length > 1 ? { multi: es, bytes: 64 * es.length } : es[0]); S.frames.forEach(markEdited); scheduleSave(); }
   ppSyncBar(); lgSync(true); requestRender();
   const nm = lyrName(ppPart(rid));
-  toast(mode === 'all' ? `👁 "${nm}" hiện ở mọi frame` : mode === 'from' ? `📍 "${nm}" chỉ hiện từ frame ${S.cur + 1} trở đi` : `📍 "${nm}" chỉ hiện ở frame ${S.cur + 1}`, 2800);
+  toast(mode === 'range' ? `📍 "${nm}" chỉ hiện từ frame ${a + 1} tới frame ${b + 1}` : mode === 'all' ? `👁 "${nm}" hiện ở mọi frame` : mode === 'from' ? `📍 "${nm}" chỉ hiện từ frame ${S.cur + 1} trở đi` : `📍 "${nm}" chỉ hiện ở frame ${S.cur + 1}`, 2800);
 }
 async function ppShowAsk(rid, fresh) {
   rid = rid || ppSelChar(); if (!rid) { toast('Chạm chọn nhân vật / hình trước'); return; }
   if (S.frames.length < 2) return;
+  let rg = null;
   const v = await modal({ title: fresh ? `📍 "${lyrName(ppPart(rid))}" hiện ở frame nào?` : `📍 Hiện "${lyrName(ppPart(rid))}" ở…`,
-    html: `<p>Frame đang xem: ${S.cur + 1} / ${S.frames.length}. Các frame khác vẫn giữ nguyên, đổi lại được bất cứ lúc nào (nút 📍 Hiện ở… trong bảng Ghép).</p>`,
-    buttons: [{ label: 'Mọi frame', value: 'all' }, { label: 'Chỉ frame này', value: 'only' }, { label: `Từ frame ${S.cur + 1} trở đi`, value: 'from', primary: true }] });
-  if (v) ppShowRange(rid, v);
+    html: `<p>Frame đang xem: ${S.cur + 1} / ${S.frames.length}. Các frame khác vẫn giữ nguyên, đổi lại được bất cứ lúc nào (nút 📍 Hiện ở… trong bảng Ghép hoặc Dòng layer).</p>
+      <div class="mrow" style="gap:8px;align-items:center;flex-wrap:wrap"><span class="lbl">Hoặc chỉ hiện từ frame</span><input id="psA" type="number" min="1" max="${S.frames.length}" value="${S.cur + 1}" style="width:72px;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:16px"><span class="lbl">tới frame</span><input id="psB" type="number" min="1" max="${S.frames.length}" value="${S.frames.length}" style="width:72px;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:16px"></div>`,
+    buttons: [{ label: 'Mọi frame', value: 'all' }, { label: 'Chỉ frame này', value: 'only' }, { label: '✓ Từ … tới …', value: 'range', action: () => { rg = [+$('#psA').value || 1, +$('#psB').value || S.frames.length]; } }, { label: `Từ frame ${S.cur + 1} trở đi`, value: 'from', primary: true }] });
+  if (v === 'range' && rg) ppShowRange(rid, 'range', rg[0] - 1, rg[1] - 1); else if (v && v !== 'range') ppShowRange(rid, v);
 }
 const ppPoseFor = f => {   // 🔧 Sửa khớp shows the rest pose; 🦴 gập thử (ppPrev) bends limbs while redrawing a piece
   if (!f || f !== curFrame()) return ppPoseFor0(f);
