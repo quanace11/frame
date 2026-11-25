@@ -217,16 +217,18 @@ const ghIdx = () => { const sel = msel && msel.size > 1 ? S.frames.map((g, i) =>
 // 🌈 Look tab wiring
 $('#lkBgsD').innerHTML = Object.entries(BGS_DIRS).map(([k, d]) => `<button class="chip small" data-bgsd="${k}" title="Nền trôi ${d[3].toLowerCase()} (nhân vật như chạy ${k === 'l' ? 'sang phải' : k === 'r' ? 'sang trái' : k === 'u' ? 'xuống / rơi' : 'lên / bay lên'})">${d[2]} ${d[3]}</button>`).join('');
 $('#lkBgsV').innerHTML = BGS_SPEEDS.map(([v, l]) => `<button class="chip small" data-bgsv="${v}">${l}</button>`).join('');
+$('#lkBgb').innerHTML = BGB_LEVELS.map(([k, l, t]) => `<button class="chip small" data-bgb="${k}" title="${t}">${l}</button>`).join('');
 $('#lkSlK').innerHTML = Object.entries(SL_KINDS).map(([k, d]) => `<button class="chip small" data-slk="${k}" title="${d[2]}">${d[0]} ${d[1]}</button>`).join('');
 $('#lkFlt').innerHTML = Object.entries(FLT_KINDS).map(([k, d]) => `<button class="chip small" data-flt="${k}" title="${d[2]}">${d[0]} ${d[1]}</button>`).join('');
 $('#lkN').value = S.lookOpt.n; $('#rpN').value = S.lookOpt.rn;
 $('#lkN').addEventListener('change', () => { S.lookOpt = { ...S.lookOpt, n: clamp(+$('#lkN').value || 1, 1, 300) }; saveSettings(); lookSync(); });
 $('#rpN').addEventListener('change', () => { S.lookOpt = { ...S.lookOpt, rn: clamp(+$('#rpN').value || 8, 2, 120) }; saveSettings(); });
 $('#fxbar').addEventListener('click', e => {
-  const b = e.target.closest('[data-bgsd],[data-bgsv],[data-slk],[data-slc],[data-flt],[data-rps]'); if (!b) return;
+  const b = e.target.closest('[data-bgsd],[data-bgsv],[data-bgb],[data-slk],[data-slc],[data-flt],[data-rps]'); if (!b) return;
   const f = curFrame(), d = b.dataset;
   if (d.bgsd !== undefined) lookSet('bgs', d.bgsd ? { d: d.bgsd, v: S.lookOpt.v } : null, '🏃 Nền chạy');
   else if (d.bgsv !== undefined) { S.lookOpt = { ...S.lookOpt, v: +d.bgsv }; saveSettings(); if (f.bgs) lookSet('bgs', { d: f.bgs.d, v: +d.bgsv }, '🏃 Nền chạy'); else lookSync(); }
+  else if (d.bgb !== undefined) lookSet('bgb', d.bgb ? { k: +d.bgb } : null, '🌫 Xoá phông');
   else if (d.slk !== undefined) lookSet('sl', d.slk ? { k: d.slk, c: d.slk === 'focus' && S.lookOpt.c === '#ffffff' && !f.sl ? '#111111' : S.lookOpt.c } : null, '💨 Đường tốc độ');
   else if (d.slc !== undefined) { S.lookOpt = { ...S.lookOpt, c: d.slc }; saveSettings(); if (f.sl) lookSet('sl', { k: f.sl.k, c: d.slc }, '💨 Đường tốc độ'); else lookSync(); }
   else if (d.flt !== undefined) lookSet('flt', d.flt ? { k: d.flt } : null, '🎨 Màu phim');

@@ -5,12 +5,36 @@
    f.sl = {k, c}: k 'h'/'v' = speed lines behind the character (new random streaks each frame, so they flicker like in anime),
    'focus' = manga focus lines (集中線) from the edges toward the middle, on top, shimmering ~12×/s. c = colour.
    f.flt = film colour over the picture (not over texts): bw, old, night, rage, cold, dream, replay. Uses blend modes (no ctx.filter: iPad).
-   All three are in the automatic undo (H_FKEYS) and the 3 save places. Shown on screen while editing: background + speed lines always,
+   f.bgb = {k}: 🌫 xoá phông, the background layer drawn blurred (k = 1 light … 3 strong), like a camera focused on the character.
+   Blur = mirrored padding, halve the size step by step, then double it back (smooth, works on iPad: no ctx.filter); cached per
+   background canvas, size and bg.ver. Not applied while drawing on the Nền layer (the picture stays sharp to edit).
+   All of them are in the automatic undo (H_FKEYS) and the 3 save places. Shown on screen while editing: background + speed lines always,
    focus lines + colour only while this tab is open (so drawing colours stay true). ===== */
 const BGS_DIRS = { l: [-1, 0, '◀', 'Sang trái'], r: [1, 0, '▶', 'Sang phải'], u: [0, -1, '▲', 'Lên trên'], d: [0, 1, '▼', 'Xuống dưới'] };
 const BGS_SPEEDS = [[0.35, 'Chậm'], [0.8, 'Vừa'], [1.6, 'Nhanh']];
 const SL_KINDS = { h: ['💨', 'Ngang', 'Vệt gió ngang sau nhân vật: chạy, lướt, sút mạnh'], v: ['↕', 'Dọc', 'Vệt dọc: rơi xuống, bật nhảy lên'], focus: ['💥', 'Tập trung', 'Tia truyện tranh từ mép vào giữa (集中線): khoảnh khắc sốc, quyết định, ghi bàn'] };
 const FLT_KINDS = { bw: ['⚫', 'Đen trắng', 'Hồi tưởng, kỷ niệm'], old: ['🟤', 'Phim cũ', 'Màu nâu ngả vàng như phim xưa'], night: ['🌙', 'Ban đêm', 'Tối và xanh như đêm'], rage: ['🔥', 'Giận đỏ', 'Đỏ rực, tối ở mép: tức điên'], cold: ['❄', 'Lạnh / sợ', 'Xanh lạnh: sợ hãi, buồn'], dream: ['💭', 'Mơ', 'Sáng mờ ở mép như giấc mơ'], replay: ['📺', 'Phát lại', 'Nhạt màu, tối ở mép (dùng cho phát lại chậm)'] };
+const BGB_LEVELS = [[1, 'Nhẹ', 'Nền hơi mờ'], [2, 'Vừa', 'Nền mờ rõ, nhân vật nổi bật'], [3, 'Mạnh', 'Nền mờ nhoè như chụp cận cảnh']];
+const BGB_F = [0, 1 / 24, 1 / 48, 1 / 96];   // the blurred picture is rebuilt from a copy this small (fraction of the width)
+const bgbCache = new WeakMap();
+function bgBlurred(img, lvl, w, h, ver) {
+  const tw = Math.max(1, Math.round(w || img.width)), th = Math.max(1, Math.round(h || img.height)), key = lvl + ':' + tw + 'x' + th + ':' + ver;
+  let m = bgbCache.get(img); if (m && m[key]) return m[key];
+  if (!m || m.ver !== ver) { m = { ver }; bgbCache.set(img, m); }
+  const mk = (cw, ch) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(cw)); c.height = Math.max(1, Math.round(ch)); const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; return [c, x]; };
+  const fr = BGB_F[clamp(lvl | 0, 1, 3)], M = Math.ceil(tw * fr * 3);
+  const [P, px] = mk(tw + 2 * M, th + 2 * M);   // mirrored copies around the edges, so the border does not fade to white
+  for (let kx = -1; kx <= 1; kx++) for (let ky = -1; ky <= 1; ky++) {
+    px.save(); px.translate(M + kx * tw + (kx ? tw : 0), M + ky * th + (ky ? th : 0)); px.scale(kx ? -1 : 1, ky ? -1 : 1); px.drawImage(img, 0, 0, tw, th); px.restore();
+  }
+  const sw = Math.max(4, P.width * fr), steps = [];
+  let cur = P;
+  while (cur.width / 2 >= sw) { const [c, x] = mk(cur.width / 2, cur.height / 2); x.drawImage(cur, 0, 0, c.width, c.height); steps.push(cur); cur = c; }
+  for (let j = steps.length - 1; j >= 0; j--) { const [c, x] = mk(steps[j].width, steps[j].height); x.drawImage(cur, 0, 0, c.width, c.height); cur = c; }
+  const [out, ox] = mk(tw, th); ox.drawImage(cur, M, M, tw, th, 0, 0, tw, th);
+  for (const c of [P, ...steps]) if (c !== cur) c.width = 0;
+  m[key] = out; return out;
+}
 SETTINGS_KEYS.push('lookOpt'); S.lookOpt = { v: 0.8, c: '#ffffff', n: 8, rs: 2, rn: 8 };
 function bgsOff(i) {   // [x, y] shift of the background on frame i (doc pixels), null = not sliding
   const f = S.frames[i]; if (!f || !f.bgs || S.bgVideo) return null;
@@ -21,8 +45,9 @@ function bgsOff(i) {   // [x, y] shift of the background on frame i (doc pixels)
   }
   return [Math.round(ox), Math.round(oy)];
 }
-const lookKey = i => { const f = S.frames[i], o = bgsOff(i); return (o ? 'b' + o.join(',') : '') + (f.sl && f.sl.k !== 'focus' ? 's' + f.sl.k + f.sl.c : '') + ':'; };
+const lookKey = i => { const f = S.frames[i], o = bgsOff(i); return (o ? 'b' + o.join(',') : '') + (f.bgb ? 'z' + f.bgb.k : '') + (f.sl && f.sl.k !== 'focus' ? 's' + f.sl.k + f.sl.c : '') + ':'; };
 function drawBgImg(ctx, i, img, w, h) {
+  const fb = S.frames[i]; if (fb && fb.bgb && fb.bgb.k) { const b = bgOf(fb); img = bgBlurred(img, fb.bgb.k, w, h, b ? b.id + '.' + b.ver : ''); }
   const o = bgsOff(i); if (!o || (!o[0] && !o[1])) { if (w) ctx.drawImage(img, 0, 0, w, h); else ctx.drawImage(img, 0, 0); return; }
   const tw = w || W, th = h || H, ox = o[0] * tw / W, oy = o[1] * th / H, kx0 = Math.floor(-ox / tw), ky0 = Math.floor(-oy / th);
   for (let kx = kx0; kx <= kx0 + 1; kx++) for (let ky = ky0; ky <= ky0 + 1; ky++) {
@@ -84,11 +109,12 @@ function lookSync() {
   const f = curFrame(); if (!f || !$('#lkStat')) return;
   document.querySelectorAll('[data-bgsd]').forEach(b => b.classList.toggle('on', !!f.bgs && f.bgs.d === b.dataset.bgsd));
   const v = f.bgs ? f.bgs.v : S.lookOpt.v; document.querySelectorAll('[data-bgsv]').forEach(b => b.classList.toggle('on', Math.abs(+b.dataset.bgsv - v) < 1e-6));
+  document.querySelectorAll('[data-bgb]').forEach(b => b.classList.toggle('on', (f.bgb ? String(f.bgb.k) : '') === b.dataset.bgb));
   document.querySelectorAll('[data-slk]').forEach(b => b.classList.toggle('on', !!f.sl && f.sl.k === b.dataset.slk));
   const c = f.sl ? f.sl.c : S.lookOpt.c; document.querySelectorAll('[data-slc]').forEach(b => b.classList.toggle('on', b.dataset.slc === c));
   document.querySelectorAll('[data-flt]').forEach(b => b.classList.toggle('on', f.flt === b.dataset.flt));
   document.querySelectorAll('[data-rps]').forEach(b => b.classList.toggle('on', +b.dataset.rps === S.lookOpt.rs));
-  const on = [f.bgs && `🏃 nền chạy ${BGS_DIRS[f.bgs.d][3].toLowerCase()}`, f.sl && `${SL_KINDS[f.sl.k][0]} đường ${SL_KINDS[f.sl.k][1].toLowerCase()}`, f.flt && `${FLT_KINDS[f.flt][0]} ${FLT_KINDS[f.flt][1].toLowerCase()}`].filter(Boolean);
+  const on = [f.bgs && `🏃 nền chạy ${BGS_DIRS[f.bgs.d][3].toLowerCase()}`, f.bgb && `🌫 xoá phông ${(BGB_LEVELS[f.bgb.k - 1] || BGB_LEVELS[1])[1].toLowerCase()}`, f.sl && `${SL_KINDS[f.sl.k][0]} đường ${SL_KINDS[f.sl.k][1].toLowerCase()}`, f.flt && `${FLT_KINDS[f.flt][0]} ${FLT_KINDS[f.flt][1].toLowerCase()}`].filter(Boolean);
   const sel = msel && msel.size > 1;
   $('#lkStat').textContent = `Frame ${S.cur + 1}: ${on.length ? on.join(', ') : 'chưa có hiệu ứng'} · Bấm nút = áp cho ${sel ? msel.size + ' frame đang chọn' : S.lookOpt.n + ' frame từ frame này'}`;
 }
