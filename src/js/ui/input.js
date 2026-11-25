@@ -272,5 +272,18 @@ view.addEventListener('wheel', e => {
   requestRender();
 }, { passive: false });
 document.addEventListener('gesturestart', e => e.preventDefault());
-document.addEventListener('touchmove', e => { if (e.target.closest && e.target.closest('#stage')) e.preventDefault(); }, { passive: false });
+// block page pan / pinch-zoom over the drawing area, but let the panels on it (bảng Ghép, Chữ & FX, Layer…) scroll with a finger
+function touchScrollable(el, stop) {
+  for (; el && el !== stop && el.nodeType === 1; el = el.parentElement) {
+    const cs = getComputedStyle(el);
+    if (/(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1) return true;
+    if (/(auto|scroll)/.test(cs.overflowX) && el.scrollWidth > el.clientWidth + 1) return true;
+  }
+  return false;
+}
+document.addEventListener('touchmove', e => {
+  const st = e.target.closest && e.target.closest('#stage'); if (!st) return;
+  if (e.touches.length === 1 && touchScrollable(e.target, st)) return;
+  if (e.cancelable) e.preventDefault();
+}, { passive: false });
 
