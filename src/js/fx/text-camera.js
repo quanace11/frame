@@ -413,29 +413,35 @@ const vtNoSound = new WeakSet();
 async function decodeAB(ac, ab) { if (decCache.has(ab)) return decCache.get(ab); const b = await ac.decodeAudioData(ab.slice(0)); decCache.set(ab, b); return b; }
 function frameStartTimes() { const t = [0]; S.frames.forEach((f, i) => t.push(t[i] + f.dur / 1000)); return t; }
 async function scheduleAudio(ac, dest, offsetSec, totalSec, lead = 0.05) {
-  const A = S.audio || {}, srcs = [], T = frameStartTimes(), now = ac.currentTime + lead;
-  const play = (buf, at, off, vol, dur) => { const s = ac.createBufferSource(), g = ac.createGain(); s.buffer = buf; g.gain.value = vol; s.connect(g).connect(dest); if (dur != null) s.start(at, off, dur); else s.start(at, off); srcs.push(s); };
+  // Decode every sound FIRST, then schedule them all against one clock. Before, the start time was read before decoding and each
+  // clip was scheduled right after its own decode, so a clip decoded later started late (or in the past = right away from the
+  // wrong spot) and overlapping sounds no longer played together in preview / real-time export.
+  const A = S.audio || {}, srcs = [], jobs = [], T = frameStartTimes();
   // one clip: starts at st on the timeline, plays the file from off for len seconds (🎚 audio timeline trims / splits)
   const clip = (b, c, kind, vol) => {
     const st = clipStart(c, kind, T); if (st == null) return; const off = Math.min(clipOff(c), b.duration), len = clipLen(c, kind, b.duration);
     if (len <= 0.005 || st + len <= offsetSec + 0.005 || st > totalSec) return;
-    const skip = Math.max(0, offsetSec - st); play(b, now + Math.max(0, st - offsetSec), off + skip, vol, len - skip);
+    const skip = Math.max(0, offsetSec - st); jobs.push([b, Math.max(0, st - offsetSec), off + skip, vol, len - skip]);
   };
-  try {
-    for (const c of musicClips()) clip(await decodeAB(ac, c.buf), c, 'music', c.vol ?? 0.6);
-    for (const c of voiceClips()) clip(await decodeAB(ac, c.buf), c, 'voice', c.vol ?? 1);
-    for (const x of (A.sfx || [])) { if (!SFX[x.kind] || clipStart(x, 'sfx', T) == null) continue; clip(await sfxBuffer(x.kind), x, 'sfx', x.vol ?? 0.9); }
-    // 🎞 the sound of each piece on the video row (a file without sound is skipped)
-    for (const o of vtList()) {
-      const vol = o.c.vol ?? 1, src = vtSrc(o.c.s); if (vol <= 0.001 || !src || !src.buf || vtNoSound.has(src.buf)) continue;
-      if (o.st + o.len <= offsetSec + 0.005 || o.st > totalSec) continue;
-      let b; try { b = await decodeAB(ac, src.buf); } catch (e) { vtNoSound.add(src.buf); continue; }
-      const off = Math.min(o.c.off || 0, b.duration), skip = Math.max(0, offsetSec - o.st), len = Math.min(o.len, b.duration - off) - skip;
-      if (len > 0.005) play(b, now + Math.max(0, o.st - offsetSec), off + skip, vol, len);
-    }
-    // transition sounds (📺 click, whoosh…) start with the transition itself, which can begin inside an earlier frame
-    for (const x of trList(T)) { const kk = TR_KINDS[x.k].sfx; if (!x.snd || !kk || !SFX[kk]) continue; const st = Math.max(0, x.k === 'tvoff' ? x.t0 + x.d * 0.05 : x.t0); if (st < offsetSec - 0.01 || st > totalSec) continue; play(await sfxBuffer(kk), now + st - offsetSec, 0, 0.8); }
-  } catch (e) { console.error(e); }
+  // one bad file only drops itself, never the sounds after it
+  const each = async (list, fn) => { for (const x of list) { try { await fn(x); } catch (e) { console.error(e); } } };
+  await each(musicClips(), async c => clip(await decodeAB(ac, c.buf), c, 'music', c.vol ?? 0.6));
+  await each(voiceClips(), async c => clip(await decodeAB(ac, c.buf), c, 'voice', c.vol ?? 1));
+  await each(A.sfx || [], async x => { if (!SFX[x.kind] || clipStart(x, 'sfx', T) == null) return; clip(await sfxBuffer(x.kind), x, 'sfx', x.vol ?? 0.9); });
+  // 🎞 the sound of each piece on the video row (a file without sound is skipped)
+  await each(vtList(), async o => {
+    const vol = o.c.vol ?? 1, src = vtSrc(o.c.s); if (vol <= 0.001 || !src || !src.buf || vtNoSound.has(src.buf)) return;
+    if (o.st + o.len <= offsetSec + 0.005 || o.st > totalSec) return;
+    let b; try { b = await decodeAB(ac, src.buf); } catch (e) { vtNoSound.add(src.buf); return; }
+    const off = Math.min(o.c.off || 0, b.duration), skip = Math.max(0, offsetSec - o.st), len = Math.min(o.len, b.duration - off) - skip;
+    if (len > 0.005) jobs.push([b, Math.max(0, o.st - offsetSec), off + skip, vol, len]);
+  });
+  // transition sounds (📺 click, whoosh…) start with the transition itself, which can begin inside an earlier frame
+  await each(trList(T), async x => { const kk = TR_KINDS[x.k].sfx; if (!x.snd || !kk || !SFX[kk]) return; const st = Math.max(0, x.k === 'tvoff' ? x.t0 + x.d * 0.05 : x.t0); if (st < offsetSec - 0.01 || st > totalSec) return; jobs.push([await sfxBuffer(kk), st - offsetSec, 0, 0.8, null]); });
+  const now = ac.currentTime + lead;
+  for (const [buf, at, off, vol, dur] of jobs) {
+    try { const s = ac.createBufferSource(), g = ac.createGain(); s.buffer = buf; g.gain.value = vol; s.connect(g).connect(dest); if (dur != null) s.start(now + at, off, dur); else s.start(now + at, off); srcs.push(s); } catch (e) { console.error(e); }
+  }
   return () => srcs.forEach(s => { try { s.stop(); } catch (e) {} });
 }
 /* --- lip sync from a voice track --- */
