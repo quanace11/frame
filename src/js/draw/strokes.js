@@ -224,7 +224,7 @@ function strokePoint(raw, t) {
   else {
     strokeFeed(raw, t);
     // QuickShape: holding the pen still for a moment turns the freehand stroke into a line / ellipse
-    if (!st.erase && Math.hypot(raw.x - st.hold.x, raw.y - st.hold.y) > 5 / (vs / DPR)) { st.hold = { x: raw.x, y: raw.y }; clearTimeout(st.holdT); st.holdT = setTimeout(() => quickShape(st), 550); }
+    if (!st.erase && S.quickShape && Math.hypot(raw.x - st.hold.x, raw.y - st.hold.y) > 5 / (vs / DPR)) { st.hold = { x: raw.x, y: raw.y }; clearTimeout(st.holdT); st.holdT = setTimeout(() => quickShape(st), 550); }
   }
   requestRender();
 }
@@ -251,6 +251,9 @@ function shapeRedraw() {
 }
 // drawing helpers for the brush: quick shapes, symmetry, draw-inside (lock alpha); remembered in settings
 SETTINGS_KEYS.push('shapeMode', 'sym', 'clipIn'); S.shapeMode = ''; S.sym = 0; S.clipIn = false;
+// "Giữ bút để nắn hình": off by default. When it was always on, pausing while tracing slowly turned the freehand line
+// into a straight line / ellipse, so the stroke looked "redrawn" after lifting the pen.
+SETTINGS_KEYS.push('quickShape'); S.quickShape = false;
 const SHAPES = [['', '✏ Tự do'], ['line', '╱ Thẳng'], ['rect', '▭ Chữ nhật'], ['ellipse', '◯ Tròn']], SYMS = ['⇋ Đối xứng', '⇋ Đối xứng: trái–phải', '⇋ Đối xứng: trên–dưới', '⇋ Đối xứng: 4 góc'];
 // icon + words; on a narrow top bar only the icon shows (the words stay in the tooltip and in the toast on tap)
 function setIconLabel(el, t) { const k = t.indexOf(' '); el.innerHTML = '<b class="tico">' + t.slice(0, k) + '</b><span class="tlbl"> ' + t.slice(k + 1) + '</span>'; el.setAttribute('aria-label', t); }
@@ -267,8 +270,12 @@ function quickShape(st) {
   for (const q of R) { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y); }
   if (len < 30) return;
   const chord = Math.hypot(b.x - a.x, b.y - a.y);
-  if (chord < len * 0.22 && x1 - x0 > 12 && y1 - y0 > 12) { st.shape = 'ellipse'; st.box = { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, rx: (x1 - x0) / 2, ry: (y1 - y0) / 2, a0: Math.atan2((a.y - (y0 + y1) / 2) / ((y1 - y0) / 2), (a.x - (x0 + x1) / 2) / ((x1 - x0) / 2)) }; }
-  else if (chord > len * 0.6) st.shape = 'line';
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, rx = (x1 - x0) / 2, ry = (y1 - y0) / 2;
+  // only when the freehand stroke really is close to the shape (a wobbly outline of a head or a slow trace stays as drawn)
+  const lineOk = () => { const L = chord || 1; let m = 0; for (const q of R) m = Math.max(m, Math.abs((b.x - a.x) * (a.y - q.y) - (a.x - q.x) * (b.y - a.y)) / L); return m < Math.max(4, chord * 0.06); };
+  const ellOk = () => { let e = 0; for (const q of R) e += Math.abs(Math.hypot((q.x - cx) / rx, (q.y - cy) / ry) - 1); return e / R.length < 0.12; };
+  if (chord < len * 0.22 && rx > 6 && ry > 6 && ellOk()) { st.shape = 'ellipse'; st.box = { cx, cy, rx, ry, a0: Math.atan2((a.y - cy) / ry, (a.x - cx) / rx) }; }
+  else if (chord > len * 0.85 && lineOk()) st.shape = 'line';
   else return;
   st.end = { x: b.x, y: b.y }; shapeRedraw(); requestRender();
   if (!quickShapeHint) { quickShapeHint = true; toast(st.shape === 'line' ? 'Đã nắn thành đường thẳng — kéo tiếp để chỉnh đầu nét' : 'Đã nắn thành hình tròn', 2200); }

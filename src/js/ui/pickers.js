@@ -256,7 +256,9 @@ function brushPop() {
     <div class="set-row"><span title="Mỗi loại bút / kiểu tẩy nhớ độ đậm riêng. Với tẩy: độ đậm thấp thì xoá nhạt">Độ đậm <small class="bp-opfor"></small></span><span class="stpw"><button class="stp" data-stp="op" data-d="-1" aria-label="Giảm độ đậm">−</button><input type="range" class="opR" min="5" max="100" step="1"><button class="stp" data-stp="op" data-d="1" aria-label="Tăng độ đậm">+</button><span class="val opV"></span></span></div>
     <div class="set-row"><span title="Kéo lên cao để nét thẳng và mượt hơn khi tay run (nét đi chậm hơn bút một chút)">Chống run tay</span><input type="range" class="bp-smooth" min="0" max="90" step="1"><span class="val bp-smoothv"></span></div>
     <label class="set-row"><span title="Nét to nhỏ theo lực nhấn bút">Nét theo lực nhấn bút</span><input type="checkbox" class="bp-press"></label>
-    <label class="set-row"><span title="Bật: phóng to thì nét vẽ mảnh lại, bút trông luôn to như nhau trên màn hình (để vẽ chi tiết). Tắt: cỡ tính theo hình, phóng to thì nét cũng to theo">Giữ cỡ bút khi phóng to</span><input type="checkbox" class="bp-zs"></label>`, 'wide');
+    <label class="set-row"><span title="Bật: phóng to thì nét vẽ mảnh lại, bút trông luôn to như nhau trên màn hình (để vẽ chi tiết). Tắt: cỡ tính theo hình, phóng to thì nét cũng to theo">Giữ cỡ bút khi phóng to</span><input type="checkbox" class="bp-zs"></label>
+    <label class="set-row"><span title="Bật: vẽ xong giữ yên bút một lúc thì nét tự nắn thành đường thẳng hoặc hình tròn. Tắt (mặc định): nét giữ đúng như tay vẽ">Giữ bút để nắn thành đường thẳng / hình tròn</span><input type="checkbox" class="bp-qs"></label>
+    <label class="set-row"><span title="Chỉ cho lớp Nét. Tắt (mặc định): tẩy tới đâu mất tới đó như cục tẩy thật. Bật: chạm vào nét nào là xoá cả nét đó">Tẩy cả nét (lớp Nét)</span><input type="checkbox" class="bp-vw"></label>`, 'wide');
   const tip = d.querySelector('.br-tip');
   function sync() {
     const isE = S.tool === 'eraser';
@@ -277,6 +279,10 @@ function brushPop() {
   pr.addEventListener('change', () => { S.pressure = pr.checked; updateToggles(); saveSettings(); });
   const zs = d.querySelector('.bp-zs'); zs.checked = S.sizeScreen !== false;
   zs.addEventListener('change', () => { S.sizeScreen = zs.checked; saveSettings(); toast(zs.checked ? 'Phóng to thì nét mảnh lại để vẽ chi tiết' : 'Cỡ nét tính theo hình: phóng to thì nét cũng to'); });
+  const qs = d.querySelector('.bp-qs'); qs.checked = !!S.quickShape;
+  qs.addEventListener('change', () => { S.quickShape = qs.checked; saveSettings(); toast(qs.checked ? 'Vẽ xong giữ yên bút thì nét thành đường thẳng / hình tròn' : 'Nét giữ đúng như tay vẽ'); });
+  const vw = d.querySelector('.bp-vw'); vw.checked = !!S.vecEraseWhole;
+  vw.addEventListener('change', () => { S.vecEraseWhole = vw.checked; saveSettings(); toast(vw.checked ? 'Tẩy ở lớp Nét: chạm vào nét nào xoá cả nét đó' : 'Tẩy ở lớp Nét: tẩy tới đâu mất tới đó'); });
   sync();
 }
 // background options live in a small menu so the top bar stays short; the real buttons are moved in and back out
