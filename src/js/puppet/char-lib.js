@@ -1,5 +1,6 @@
 /* ===== 🧍 character library: save a cut-out character once (pieces, pivots, roles, mouth/eye pictures), drop it into any project =====
-   IndexedDB: "char-lib" = [{id, name, t, n, thumb: Blob}] (newest first), "char:<id>" = {w, h, parts: [{…part, png, alts: [{png, dx, dy}]}]} */
+   IndexedDB: "char-lib" = [{id, name, t, n, thumb: Blob, rx?}] (newest first), "char:<id>" = {w, h, parts: [{…part, png, alts: [{png, dx, dy}]}], pose?}
+   (rx = nhận qua 📮 / 📥: khoá chống lưu trùng; pose = dáng lúc gửi, theo id mảnh cũ) */
 const CHAR_LIB_KEY = 'char-lib', CHAR_LIB_MAX = 60;
 async function charLib() { try { return (await idbGet(CHAR_LIB_KEY)) || []; } catch (e) { return []; } }
 const charBaseName = n => String(n || '').replace(/ \((NV\d+|kho)\)$/, '');
@@ -55,6 +56,11 @@ async function charAddRec(rec) {
       parts.push({ ...q, id: idMap[q.id], parent: q.parent ? idMap[q.parent] || null : null, name: q.name + suf, z: zb + q.z * 0.01, ox: q.ox + sx, oy: q.oy + sy, px: q.px + sx, py: q.py + sy, tip: q.tip ? { x: q.tip.x + sx, y: q.tip.y + sy } : null, asset: q.asset ? JSON.parse(JSON.stringify(q.asset)) : null, c, png: q.png, alts });
     }
     ppPushChar(parts);   // like a freshly cut character: it appears from the frame being edited on
+    // a character sent from another device (📮) keeps the pose it was sent in, on the frames where it shows
+    if (rec.pose) for (let i = S.cur; i < S.frames.length; i++) {
+      const f = S.frames[i]; f.pp = f.pp || {};
+      for (const q of rec.parts) if (rec.pose[q.id]) f.pp[idMap[q.id]] = { ...rec.pose[q.id] };
+    }
     ppSel = (parts.find(q => !q.parent) || parts[0]).id;
   } finally { pm.close(); }
   ppShowAdded();
