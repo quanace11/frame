@@ -407,3 +407,5 @@ body.gon #rail [data-tool=lasso], body.gon #rail [data-tool=vedit], body.gon #ra
 body.gon #safeBtn, body.gon #onionBtn, body.gon #bgMenuBtn, body.gon #bgHold, body.gon #refGrp, body.gon #layerBg, body.gon #wizBtn,
 body.gon #aiFxBtn, body.gon #aiCharBtn, body.gon #assetBtn, body.gon #autoColBtn, body.gon #tl, body.gon #flipNav, body.gon #lg, body.gon #atl,
 body.gon #lyrPanel, body.gon #ppbar [data-t=frames], body.gon #ppbar [data-tab=frames], body.gon #fxbar{display:none !important}
+/* panels on the drawing area scroll with a finger (input.js lets touchmove through when the panel can scroll) */
+#ppbar,#fxbar,#rigbar,#motionbar,#vecbar,#selbar,#lyrList,#lgBody{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}

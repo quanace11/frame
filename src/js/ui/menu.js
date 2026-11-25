@@ -57,6 +57,8 @@ $('#menuBtn').addEventListener('click', () => {
   <button class="btn" data-m="mbox">📮 Hộp thư: gửi / nhận nhân vật, ảnh</button>
   <button class="btn" data-m="fscin">📥 Nhập file nhân vật / ảnh</button>
   <button class="btn" data-m="gon">📱 Chế độ gọn cho tablet (vẽ + cắt nhân vật)</button>
+  <button class="btn${appInstalled() ? '' : ' primary'}" data-m="install">📲 Cài Frame thành app trên máy này</button>
+  <button class="btn" data-m="fullscr">⛶ Toàn màn hình (bật / tắt)</button>
   <button class="btn" data-m="update">🔄 Kiểm tra cập nhật</button>
   <button class="btn primary" data-m="video">🎬 Xuất video (MP4)</button>
   <button class="btn" data-m="gif">🖼 Xuất GIF / ảnh PNG</button>
@@ -102,6 +104,8 @@ $('#menuBtn').addEventListener('click', () => {
       const m = b.dataset.m; close(null);
       if (m === 'wizard') wizard();
       else if (m === 'update') checkUpdate();
+      else if (m === 'install') installDialog();
+      else if (m === 'fullscr') fullscreenToggle();
       else if (m === 'scene') sceneDialog();
       else if (m === 'vidframes') $('#vidFramesFile').click();
       else if (m === 'video') exportVideo();
