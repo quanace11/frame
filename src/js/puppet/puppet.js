@@ -158,7 +158,8 @@ function drawPuppet(ctx, pose, lip) {
   if (foc) { order.splice(order.indexOf(foc), 1); order.push(foc); }   // ✎ Vẽ lại mảnh: the part being redrawn on top, the others faded
   for (const p of order) {
     const q = pose && pose[p.id]; if ((q && q.h) || !p.c || (off && off.has(p.id)) || (ppOnlyRoot && (ppCharOf(p) || p.id) !== ppOnlyRoot)) continue;
-    const im = ppImg(p, q); if (foc) ctx.globalAlpha = p === foc ? 1 : 0.35;
+    let im = ppImg(p, q); if (lip && lip.jg) im = jgWarp(p, im, lip.jg, lip) || im;   // 🫨 Rung 1 chỗ
+    if (foc) ctx.globalAlpha = p === foc ? 1 : 0.35;
     if (S.ppSoft && !p.hard && p.role && (PP_SOFT1[p.role] || PP_SOFT2[p.role])) { const js = ppSoftJoints(p, byId); if (js.length) { ppDrawSoft(ctx, p, im, M, js); continue; } }
     ctx.save(); ctx.transform(...M[p.id]); ctx.drawImage(im.c, im.x, im.y); ctx.restore();
   }
@@ -787,6 +788,7 @@ function ppQ(f, id) { f.pp = f.pp || {}; return (f.pp[id] = f.pp[id] || {}); }
 function ppStart(p, base) {
   const f = curFrame();
   if (ppPathMode) { lasso = [p]; lassoOpen = true; action = { ...base, kind: 'pppath' }; return; }
+  if (jgMode) { lasso = [p]; lassoOpen = false; action = { ...base, kind: 'ppjg' }; return; }
   if (ppCutMode || ppPatchMode) { lasso = [p]; action = { ...base, kind: ppPatchMode ? 'pppatch' : 'ppcut' }; return; }
   if ((ppPaint || ppJEOn()) && ppPrevStart(p, base, f)) return;
   if (ppPaint) { ppPaintStart(p, base, f); return; }
@@ -814,7 +816,7 @@ function ppStart(p, base) {
 }
 function ppMove(p) {
   const a = action, f = curFrame();
-  if (a.kind === 'ppcut' || a.kind === 'pppatch' || a.kind === 'pppath') { const l = lasso[lasso.length - 1]; if (Math.hypot(p.x - l.x, p.y - l.y) > 3 / vs) { lasso.push(p); requestRender(); } return; }
+  if (a.kind === 'ppcut' || a.kind === 'pppatch' || a.kind === 'pppath' || a.kind === 'ppjg') { const l = lasso[lasso.length - 1]; if (Math.hypot(p.x - l.x, p.y - l.y) > 3 / vs) { lasso.push(p); requestRender(); } return; }
   if (a.kind === 'pppaint') { ppPaintMove(a, p); return; }
   if (a.kind === 'ppjedit') { ppJEMove(a, p, f); return; }
   if (a.kind === 'ppprevrot') { ppPrevMove(a, p); return; }
@@ -837,6 +839,7 @@ function ppEnd() {
   const a = action, f = curFrame();
   if (a.kind === 'ppcut') { const poly = lasso; lasso = null; if (poly && poly.length > 2) ppCutLasso(poly); requestRender(); return; }
   if (a.kind === 'pppath') { const poly = lasso; lasso = null; lassoOpen = false; ppPathMode = false; ppSyncBar(); if (poly && poly.length > 2) ppApplyPath(poly); requestRender(); return; }
+  if (a.kind === 'ppjg') { const poly = lasso; lasso = null; requestRender(); if (poly && poly.length > 2) jgLassoDone(poly); return; }
   if (a.kind === 'pppaint') { ppPaintEnd(a); return; }
   if (a.kind === 'ppjedit') { ppJEEnd(a); return; }
   if (a.kind === 'ppprevrot') { ppSyncBar(); requestRender(); return; }
