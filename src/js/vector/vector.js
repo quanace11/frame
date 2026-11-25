@@ -338,10 +338,49 @@ async function liftAll() {
   liftSelection([{ x: b[0], y: b[1] }, { x: b[2], y: b[1] }, { x: b[2], y: b[3] }, { x: b[0], y: b[3] }]);
   if (floating) toast('Đã chọn cả hình — kéo để dời, hoặc bấm 🎞 Chuyển động để tạo các frame trượt/chạy', 4000);
 }
+/* Eraser on the Nét layer. Default: rub out only what the eraser circle touches (like a real rubber): strokes are cut
+   where they cross the circle and the outside pieces stay (first piece keeps the stroke id). "Tẩy cả nét" (S.vecEraseWhole)
+   = the old way, a touched stroke goes away whole. */
+SETTINGS_KEYS.push('vecEraseWhole'); S.vecEraseWhole = false;
 function vecEraseAt(p) {
   const f = curFrame(), r = Math.max(bsz() / 2, 6 * DPR / vs);
-  const n0 = f.vec.length; f.vec = f.vec.filter(st => strokeDist(st, p) - st.w / 2 > r);
-  if (f.vec.length !== n0) { action.removed += n0 - f.vec.length; requestRender(); }
+  if (S.vecEraseWhole) {
+    const n0 = f.vec.length; f.vec = f.vec.filter(st => strokeDist(st, p) - st.w / 2 > r);
+    if (f.vec.length !== n0) { action.removed += n0 - f.vec.length; requestRender(); }
+    return;
+  }
+  const out = []; let hit = false;
+  for (const st of f.vec) {
+    if (strokeDist(st, p) - st.w / 2 > r) { out.push(st); continue; }
+    hit = true;
+    for (const pts of vecCutCircle(st.pts, p, r + st.w / 2)) out.push({ ...st, id: out.some(q => q.id === st.id) ? newId() : st.id, pts });
+  }
+  if (hit) { f.vec = out; action.removed++; requestRender(); }
+}
+// pieces of a polyline that lie outside the circle (c, R); each crossing gets an exact end point so the round cap of the
+// piece ends at the eraser's edge
+function vecCutCircle(P, c, R) {
+  const R2 = R * R, ins = q => (q.x - c.x) ** 2 + (q.y - c.y) ** 2 < R2, pieces = [];
+  if (P.length === 1) return ins(P[0]) ? [] : [P.slice()];
+  const cross = (a, b) => {   // t values in (0,1) where segment a→b meets the circle
+    const dx = b.x - a.x, dy = b.y - a.y, fx = a.x - c.x, fy = a.y - c.y, A = dx * dx + dy * dy;
+    if (!A) return []; const B = 2 * (fx * dx + fy * dy), C = fx * fx + fy * fy - R2, D = B * B - 4 * A * C;
+    if (D <= 0) return []; const s = Math.sqrt(D);
+    return [(-B - s) / (2 * A), (-B + s) / (2 * A)].filter(t => t > 0 && t < 1);
+  };
+  const at = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+  let cur = ins(P[0]) ? null : [{ x: P[0].x, y: P[0].y }];
+  for (let i = 0; i < P.length - 1; i++) {
+    const a = P[i], b = P[i + 1];
+    for (const t of cross(a, b)) {
+      const q = at(a, b, t);
+      if (cur) { cur.push(q); pieces.push(cur); cur = null; } else cur = [q];
+    }
+    if (cur) cur.push({ x: b.x, y: b.y });
+  }
+  if (cur) pieces.push(cur);
+  // drop crumbs shorter than a dot
+  return pieces.filter(q => { let L = 0; for (let i = 1; i < q.length; i++) L += Math.hypot(q[i].x - q[i - 1].x, q[i].y - q[i - 1].y); return q.length > 1 && L > 0.5; });
 }
 function vecMove(p) {
   const a = action, f = curFrame();
