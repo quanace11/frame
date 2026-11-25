@@ -255,7 +255,8 @@ body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:
   border-radius:14px;padding:6px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;box-shadow:0 8px 30px #0008;width:max-content;max-width:calc(100% - 20px)}
 #hcBar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 0}
 #hcBar[hidden]{display:none} #hcBar .hcRoles,#hcBar .hcAct{display:flex;flex-wrap:wrap;gap:6px;width:100%} #hcBar .hcAct{justify-content:flex-end}
-#hcBar .chip.done:not(.on){color:#8fe39a} #hcBar .hcRegs,#hcBar .hcSel{display:flex;flex-wrap:wrap;align-items:center;gap:6px;width:100%} #hcBar .hcRegs:empty,#hcBar .hcSel[hidden]{display:none} #hcBar .hcRegs .chip{border-width:2px} #hcBar .hcTip{width:100%;font-size:12px}
+#hcBar .chip.done:not(.on){color:#8fe39a} #hcBar .hcSrcRow{display:flex;align-items:center;gap:6px;width:100%} #hcBar .hcSrcRow[hidden]{display:none} #hcBar #hcSrc{max-width:min(100%,360px)}
+#hcBar .hcRegs,#hcBar .hcSel{display:flex;flex-wrap:wrap;align-items:center;gap:6px;width:100%} #hcBar .hcRegs:empty,#hcBar .hcSel[hidden]{display:none} #hcBar .hcRegs .chip{border-width:2px} #hcBar .hcTip{width:100%;font-size:12px}
 body.hcOn #ppbar > :not(#hcBar):not(:first-child){display:none}
 body.hcOn #lassobar{display:none}
 #lassobar[hidden],#lassoLayers[hidden],#lassoSoft[hidden]{display:none} #lassoLayers,#lassoSoft{display:flex;gap:6px;align-items:center;flex-wrap:wrap}

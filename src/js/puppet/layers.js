@@ -152,7 +152,7 @@ function lyrSync(force) {
   const list = drawRow(LYR_DRAW[0]) + (order.length ? order.map(ppRow).join('') : '<div class="lyr empty">Chưa có layer ảnh/nhân vật — bấm ＋ Ảnh</div>') + LYR_DRAW.slice(1).map(drawRow).join('');
   $('#lyrList').innerHTML = list;
   const has = !!selRoot;
-  ['#lyrUp', '#lyrDown', '#lyrRen', '#lyrDel'].forEach(id => { $(id).disabled = !has; });
+  ['#lyrUp', '#lyrDown', '#lyrRen', '#lyrCut', '#lyrDel'].forEach(id => { $(id).disabled = !has; });
 }
 function lyrWire() {
   const list = $('#lyrList');
@@ -189,6 +189,7 @@ function lyrWire() {
   $('#lyrUp').addEventListener('click', () => { const r = selRoot(); if (r) lyrMove(r, -1); });
   $('#lyrDown').addEventListener('click', () => { const r = selRoot(); if (r) lyrMove(r, 1); });
   $('#lyrRen').addEventListener('click', () => { const r = selRoot(); if (r) lyrRename(r); });
+  $('#lyrCut').addEventListener('click', () => { const r = selRoot(); if (r) hcBeginFrom('L:' + r); });
   $('#lyrDel').addEventListener('click', () => { if (selRoot()) $('#ppDelChar').click(); });
   $('#lyrAdd').addEventListener('click', () => { S.impLayer = true; saveSettings(); $('#imgFile').click(); });
   $('#lyrClose').addEventListener('click', () => { S.lyrOpen = false; saveSettings(); lyrSync(true); });

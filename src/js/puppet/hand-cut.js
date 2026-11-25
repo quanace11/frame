@@ -29,19 +29,71 @@ function hcOpen(f, src, img) {
   const d = src.getContext('2d').getImageData(0, 0, W, H).data;
   let n = 0; for (let i = 3; i < d.length; i += 16) if (d[i] > 20) n++;
   if (n < 40) return false;
-  HC = { f, src, ink: d, regs: [], role: 'torso', img: !!img, round: true, sel: null, from: null, follow: true, tool: 'lasso', br: +($('#hcBr') || {}).value || 18, undo: [] };
+  HC = { f, src, ink: d, regs: [], role: 'torso', img: !!img, sk: 'frame', srcs: [], round: true, sel: null, from: null, follow: true, tool: 'lasso', br: +($('#hcBr') || {}).value || 18, undo: [] };
   setTool('puppet'); hcSync(); requestRender();
   toast('Khoanh Thân trước. Mỗi vùng bo tròn quá khớp một chút, các vùng được chồng lên nhau', 4000);
   return true;
 }
 async function hcBegin() {
   const f = curFrame(); if (!f) return;
-  if (playing) stopPlay(); commitFloating(); await ensureLoaded(f);
-  if (hcOpen(f, hcSource(f))) { const rid = hcTracedChar(); if (rid) hcFromChar(rid); }
-  else {
-    modal({ title: '✂ Cắt từng bộ phận', html: '<p>Frame này chưa có hình vẽ. Bạn có thể:</p><p>• <b>Vẽ nhân vật</b> ở lớp Nét / Màu (đồ qua ảnh mờ cũng được), rồi bấm lại ✂ Cắt từng bộ phận.</p><p>• <b>Nhập ảnh nhân vật</b> rồi tự khoanh từng phần trên ảnh (frame giữ nguyên).</p>',
-      buttons: [{ label: 'Để sau', value: null }, { label: '🖼 Nhập ảnh để tự cắt', primary: true, value: 1 }] }).then(v => { if (v) hcPickImage(); });
+  if (await hcBeginFrom('frame', true)) return;
+  const cand = hcLayerCand(f), esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  modal({ title: '✂ Cắt từng bộ phận', html: '<p>Frame này chưa có hình vẽ ở lớp Nét / Vẽ tay / Màu. Bạn có thể:</p>'
+      + (cand ? `<p>• <b>Cắt layer "${esc(lyrName(cand))}"</b>: khoanh từng phần ngay trên layer đó (vd. hình đã đồ nét), nhân vật mới thay layer cũ.</p>` : '')
+      + '<p>• <b>Vẽ nhân vật</b> ở lớp Nét / Màu (đồ qua ảnh mờ cũng được), rồi bấm lại ✂ Cắt từng bộ phận.</p><p>• <b>Nhập ảnh nhân vật</b> rồi tự khoanh từng phần trên ảnh (frame giữ nguyên).</p>',
+    buttons: [{ label: 'Để sau', value: null }, ...(cand ? [{ label: `✂ Cắt layer "${lyrName(cand)}"`, primary: true, value: 2 }] : []), { label: '🖼 Nhập ảnh để tự cắt', primary: !cand, value: 1 }] })
+    .then(v => { if (v === 1) hcPickImage(); else if (v === 2) hcBeginFrom('L:' + cand.id); });
+}
+/* --- ✂ Cắt từ: which drawing is lassoed. 'frame' = everything drawn on this frame (Nét + Vẽ tay + Màu, as before); 'vec' /
+   'char' / 'col' = one drawing layer only (the rest of the frame stays when it is cut out); 'L:<rootId>' = a picture layer
+   (an imported image, a drawing traced and turned into a layer…) as it shows on this frame: it is cut like an imported
+   picture and the new character takes the layer's place (🔁 follows its moves on every frame, the old layer is hidden). --- */
+const HC_SHOW = { vec: 'showVec', char: 'showChar', col: 'showCol' };
+function hcHasInk(cv) { if (!cv) return false; const d = cv.getContext('2d').getImageData(0, 0, W, H).data; for (let i = 3; i < d.length; i += 64) if (d[i] > 20) return true; return false; }
+function hcSourceOf(f, k) {
+  if (k === 'frame') return hcSource(f);
+  const c = makeCanvas(), x = c.getContext('2d');
+  if (k === 'vec') { if (f.vec && f.vec.length) drawVec(x, f.vec); }
+  else if (k === 'char') { if (f.canvas) x.drawImage(f.canvas, 0, 0); }
+  else if (k === 'col') { if (f.col) x.drawImage(f.col, 0, 0); }
+  else if (k.startsWith('L:') && ppPart(k.slice(2))) { const pose = hcPoseOf(f); hcDrawChar(x, k.slice(2), pose, ppMats(pose)); }
+  return c;
+}
+const hcLayerShown = (f, r) => !r.lh && !ppOffAt(f, r.id) && !(f.pp && f.pp[r.id] && f.pp[r.id].h);
+function hcLayerCand(f) {   // the picture layer to offer: the one picked, else the top one shown on this frame
+  const s = ppPart(ppSel), sr = s ? ppPart(ppCharOf(s) || s.id) : null;
+  if (sr && hcLayerShown(f, sr)) return sr;
+  return lyrOrder().find(r => hcLayerShown(f, r)) || null;
+}
+function hcSrcList(f) {
+  const L = [['frame', '🖼 Cả hình vẽ ở frame này']], dl = [];
+  if (f.vec && f.vec.length) dl.push(['vec', '✒️ Chỉ lớp Nét (vector)']);
+  if (hcHasInk(f.canvas)) dl.push(['char', '✏️ Chỉ lớp Vẽ tay']);
+  if (hcHasInk(f.col)) dl.push(['col', '🎨 Chỉ lớp Màu']);
+  if (dl.length > 1) L.push(...dl);
+  for (const r of lyrOrder()) if (hcLayerShown(f, r)) L.push(['L:' + r.id, `${lyrParts(r.id).length > 1 ? '🧍' : '🗂'} Layer "${lyrName(r)}"`]);
+  return L;
+}
+async function hcBeginFrom(k, quiet) {
+  const f = curFrame(); if (!f) return false;
+  if (playing) stopPlay(); commitFloating(); motionClose(); rigClose(); await ensureLoaded(f);
+  const rid = k.startsWith('L:') ? k.slice(2) : null;
+  if (rid && !ppPart(rid)) return false;
+  if (!hcOpen(f, hcSourceOf(f, k), !!rid)) {
+    if (!quiet) toast(rid ? 'Layer này không hiện ở frame này (hoặc trống)' : 'Lớp này chưa có hình vẽ ở frame này', 3000);
+    return false;
   }
+  HC.sk = k; HC.srcs = hcSrcList(f);
+  if (rid) { HC.lyr = rid; HC.from = { rid, fid: f.id, pids: lyrParts(rid).map(p => p.id) }; toast(`Khoanh từng phần trên layer "${lyrName(ppPart(rid))}" (Thân trước). Xong thì nhân vật mới thay layer này ở mọi frame`, 4500); }
+  else { const t = hcTracedChar(); if (t) hcFromChar(t); }
+  hcSync(); requestRender();
+  return true;
+}
+async function hcSwitchSrc(k) {
+  if (!HC || k === HC.sk) return;
+  if (HC.regs.length && !await modal({ title: '✂ Đổi hình để cắt', html: `<p>Đổi sang hình khác thì bỏ ${HC.regs.length} vùng đã khoanh. Đổi không?</p>`, buttons: [{ label: 'Thôi', value: false }, { label: 'Đổi', primary: true, value: true }] })) { hcSync(); return; }
+  const old = HC; HC = null;
+  if (!await hcBeginFrom(k)) { HC = old; hcSync(); requestRender(); }
 }
 function hcPickImage() { wizImport = 'hand'; $('#imgFile').click(); }
 // Nhập ảnh → ✂ Tự cắt từng phần: the picture fits 90% of the frame (like the automatic cut) and is lassoed on its own
@@ -216,7 +268,9 @@ function hcSync() {
   bar.querySelectorAll('[data-hcr]').forEach(b => { const k = b.dataset.hcr, done = k !== 'other' && !!hcReg(k); b.classList.toggle('on', HC.role === k); b.classList.toggle('done', done); b.textContent = (done ? '✓ ' : '') + (k === 'other' ? '＋ Mảnh khác' : PP_ROLES[k]); });
   $('#hcUndo').disabled = !HC.regs.length; $('#hcDone').disabled = !HC.regs.length;
   $('#hcRound').classList.toggle('on', HC.round);
-  $('#hcFromBtn').hidden = HC.img || !lyrRoots().some(r => !r.lh); $('#hcFollow').hidden = !HC.from; $('#hcFollow').classList.toggle('on', !!HC.follow);
+  $('#hcFromBtn').hidden = HC.img || !lyrRoots().some(r => !r.lh && lyrParts(r.id).length > 1);
+  const ss = $('#hcSrcRow'); ss.hidden = HC.srcs.length < 2;
+  if (!ss.hidden) { const sel = $('#hcSrc'), sig = HC.srcs.map(o => o[0] + o[1]).join('|'); if (sel.dataset.sig !== sig) { sel.dataset.sig = sig; sel.innerHTML = HC.srcs.map(([k, t]) => `<option value="${k}">${t.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</option>`).join(''); } sel.value = HC.sk; } $('#hcFollow').hidden = !HC.from; $('#hcFollow').classList.toggle('on', !!HC.follow);
   $('#hcHint').textContent = `Khoanh: ${HC.role === 'other' ? 'mảnh khác' : PP_ROLES[HC.role]} · đã có ${HC.regs.length} vùng`;
   // the piece picked last (or tapped in the list): hook it to another piece, in front of / behind it, or drop it
   $('#hcRegs').innerHTML = HC.regs.length ? '<span class="lbl">Mảnh:</span>' + HC.regs.map((q, i) => `<button class="chip small${q === HC.sel ? ' on' : ''}" data-hci="${i}" style="border-color:${HC_COL[q.role] || '#ffd60a'}">${hcName(q)}</button>`).join('') : '';
@@ -364,7 +418,7 @@ function hcParts() {   // the loops → cut-out pieces (each piece = the drawing
 }
 async function hcFinish() {
   if (!HC || !HC.regs.length) return;
-  const f = HC.img ? curFrame() : HC.f; if (f !== curFrame()) { toast('Quay lại frame đang cắt để xong'); return; }
+  const f = HC.img && !HC.lyr ? curFrame() : HC.f; if (f !== curFrame()) { toast('Quay lại frame đang cắt để xong'); return; }
   const from = HC.from && HC.follow && ppPart(HC.from.rid) ? HC.from : null, regs = HC.regs;
   const pm = progress('Đang tạo nhân vật…'); await new Promise(r => setTimeout(r, 30));
   try {
@@ -379,9 +433,10 @@ async function hcFinish() {
       x.save(); x.globalCompositeOperation = 'destination-out'; x.fillStyle = '#000'; for (const r of all) { if (r.mc) x.drawImage(r.mc, r.b[0], r.b[1]); else { polyPath(x, r.poly); x.fill(); } } x.restore();
       ents.push(pixEntry(f, rect, before, x.getImageData(...rect), col));
     };
-    if (!HC.img && S.showChar) clear(f.canvas, false);
-    if (!HC.img && S.showCol && f.col) { clear(f.col, true); f.colVer++; }
-    if (!HC.img && S.showVec && f.vec && f.vec.length) {
+    const sk = HC.sk || 'frame', cut = k => !HC.img && (sk === k || (sk === 'frame' && S[HC_SHOW[k]]));   // only the layer(s) the drawing came from
+    if (cut('char')) clear(f.canvas, false);
+    if (cut('col') && f.col) { clear(f.col, true); f.colVer++; }
+    if (cut('vec') && f.vec && f.vec.length) {
       const vb = cloneVec(f.vec), inside = st => { let n = 0; for (const q of st.pts) if (all.some(r => hcIn(r, q))) n++; return st.pts.length && n / st.pts.length >= 0.6; };
       f.vec = f.vec.filter(st => !inside(st)); if (f.vec.length !== vb.length) ents.push(vecEntry(f, vb, cloneVec(f.vec)));
     }
@@ -431,7 +486,7 @@ function hcTracedChar() {
   if (!HC || HC.img || !S.pp || !S.pp.parts.length) return null;
   const f = HC.f, pose = hcPoseOf(f), M = ppMats(pose), c = makeCanvas(), x = c.getContext('2d'); let best = null, bn = 0;
   for (const r of lyrRoots()) {
-    if (r.lh) continue; hcDrawChar(x, r.id, pose, M);
+    if (r.lh || lyrParts(r.id).length < 2) continue; hcDrawChar(x, r.id, pose, M);
     const d = x.getImageData(0, 0, W, H).data; let a = 0, n = 0;
     for (let i = 3; i < d.length; i += 16) if (d[i] > 20) { a++; if (HC.ink[i] > 20) n++; }
     if (a > 20 && n > 0.04 * a && n > bn) { bn = n; best = r.id; }
@@ -528,6 +583,7 @@ async function hcTraceCut() {
   const f = curFrame(); if (!f) return;
   if (playing) stopPlay(); commitFloating(); await ensureLoaded(f);
   if (!hcOpen(f, hcSource(f))) { toast('Frame này chưa có hình vẽ: đồ nét lên nhân vật mờ trước'); return; }
+  HC.srcs = hcSrcList(f);
   const rid = hcTracedChar(); if (!rid || !hcFromChar(rid)) toast('Hình vẽ không nằm trên nhân vật mờ nào: khoanh từng bộ phận bằng tay (Thân trước)', 4500);
 }
 // 📖 Mẹo cắt: which picture to pick and how to lasso, with a sample drawn in code (A-pose with loops past the joints vs arms glued)
@@ -582,6 +638,7 @@ $('#hcBack').addEventListener('click', () => { const r = HC && HC.sel; if (r) { 
 $('#hcDel').addEventListener('click', () => { const r = HC && HC.sel; if (r) { hcRemove(r); hcSync(); requestRender(); } });
 $('#hcRegs').addEventListener('click', e => { const b = e.target.closest('[data-hci]'); if (!b || !HC) return; HC.sel = HC.regs[+b.dataset.hci] || null; hcSync(); requestRender(); });
 $('#hcCancel').addEventListener('click', hcCancel);
+$('#hcSrc').addEventListener('change', e => hcSwitchSrc(e.target.value));
 $('#hcDone').addEventListener('click', hcFinish);
 $('#hcFromBtn').addEventListener('click', () => { if (!HC) return; const rid = hcTracedChar(); if (!rid || !hcFromChar(rid)) toast('Hình vẽ ở frame này không nằm trên nhân vật ghép nào đang hiện', 3500); });
 $('#hcFollow').addEventListener('click', () => { if (!HC || !HC.from) return; HC.follow = !HC.follow; hcSync(); toast(HC.follow ? '🔁 Nhân vật mới thay nhân vật gốc: đi theo dáng của nó ở mọi frame, nhân vật gốc ẩn đi' : 'Nhân vật mới đứng riêng từ frame này, nhân vật gốc giữ nguyên', 3500); });
