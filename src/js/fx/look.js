@@ -130,7 +130,7 @@ function drawFrameBase(ctx, f, bg, live) {
   if (S.showVec) drawVec(ctx, f.vec);
 }
 // what goes over the cached frame picture when the puppet moves smoothly: the in-between pose, then the vector lines
-const ppLiveOver = (i, tIn, wrap) => ctx => { const f = S.frames[i]; drawPuppet(ctx, ppPoseAt(i, tIn, wrap), ppLipAt(i, tIn)); if (S.showVec && f.vec && f.vec.length) drawVec(ctx, f.vec); };
+const ppLiveOver = (i, tIn, wrap) => ctx => { const f = S.frames[i]; jgClock = (f.lip && f.lip.jg) ? jgTime(f.lip) + tIn : null; try { drawPuppet(ctx, ppPoseAt(i, tIn, wrap), ppLipAt(i, tIn)); } finally { jgClock = null; } if (S.showVec && f.vec && f.vec.length) drawVec(ctx, f.vec); };
 function drawFrameFx(ctx, i, baseImg, tsec, tInFrame, vid, over) {
   if (!trSkip && S.frames.some(f => f.tr || f.tre) && trRender(ctx, i, baseImg, tsec, tInFrame, vid, over, frameStartTimes())) return;
   drawFrameFx0(ctx, i, baseImg, tsec, tInFrame, vid, over);

@@ -468,7 +468,7 @@ async function fxLipSync() {
   }
   S.frames.forEach((f, i) => {
     const old = JSON.stringify(f.lip || null), m = {}; for (const [id, arr] of byMouth) if (arr[i] != null) m[id] = arr[i];
-    const l = {}; if (f.lip && f.lip.eb) l.eb = f.lip.eb; if (f.lip && f.lip.mv) l.mv = f.lip.mv; if (f.lip && f.lip.off) l.off = f.lip.off; if (Object.keys(m).length) l.m = m;
+    const l = {}; if (f.lip && f.lip.eb) l.eb = f.lip.eb; if (f.lip && f.lip.mv) l.mv = f.lip.mv; if (f.lip && f.lip.off) l.off = f.lip.off; if (f.lip && f.lip.jg) l.jg = f.lip.jg; if (Object.keys(m).length) l.m = m;
     f.lip = Object.keys(l).length ? l : null; if (JSON.stringify(f.lip) !== old) { f.ver++; queueThumbFor(f); }
   });
   scheduleSave(); requestRender(); fxSyncBar();
