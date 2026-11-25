@@ -402,6 +402,7 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
 #mailBtn .mbadge{position:absolute;top:2px;right:4px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#e53935;color:#fff;font-size:11px;line-height:18px;text-align:center}
 #mailBtn .mbadge[hidden]{display:none}
 body:not(.gon) .gon-only{display:none !important}
+body:not(.gon) #mailBtn.hasMail{display:flex !important}
 body.gon #rail [data-tool=lasso], body.gon #rail [data-tool=vedit], body.gon #rail [data-tool=fx], body.gon #camToolBtn, body.gon #lyrBtn,
 body.gon #safeBtn, body.gon #onionBtn, body.gon #bgMenuBtn, body.gon #bgHold, body.gon #refGrp, body.gon #layerBg, body.gon #wizBtn,
 body.gon #aiFxBtn, body.gon #aiCharBtn, body.gon #assetBtn, body.gon #autoColBtn, body.gon #tl, body.gon #flipNav, body.gon #lg, body.gon #atl,

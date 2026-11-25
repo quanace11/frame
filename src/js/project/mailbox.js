@@ -123,57 +123,77 @@ async function fscReceive(u8, name, opt = {}) {
 }
 const frameNumHtml = id => `<label class="lbl">Frame số <input type="number" id="${id}" min="1" max="${S.frames.length}" value="${S.cur + 1}" style="width:70px;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:16px"> / ${S.frames.length}</label>`;
 const frameNumGet = id => clamp((+($('#' + id) || {}).value || S.cur + 1) - 1, 0, S.frames.length - 1);
+// a received character is kept in 🧍 Kho nhân vật as soon as it arrives (image + bones + the pose it was sent in), so whatever
+// is chosen below — or if the dialog is closed — it can be pulled out later in any project (🧩 Ghép → 🧍 Kho nhân vật)
+const fscRxKey = j => [j.t || 0, j.from || '', j.name || '', j.parts.length].join('|');
 async function fscCharDialog(j, u8, opt) {
+  const name = j.name || 'Nhân vật';
+  const rec = { w: j.w, h: j.h, pose: j.pose || null, parts: j.parts.map(q => ({ ...q, png: b64u8(q.png), alts: (q.alts || []).map(a => ({ png: b64u8(a.png), dx: a.dx || 0, dy: a.dy || 0 })) })) };
+  const kho = await fscToKho(rec, name, u8, fscRxKey(j));
   const url = URL.createObjectURL(new Blob([u8], { type: 'image/png' }));
   const sel = 'padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:15px';
   let at = S.cur, show = 'from', lyr = 'char';
   const read = () => { at = frameNumGet('fscAt'); show = $('#fscShow').value; lyr = $('#fscLyr').value; };
-  const v = await modal({ title: `📮 Nhân vật "${j.name || 'Nhân vật'}"`,
+  const v = await modal({ title: `📮 Nhân vật "${escHtml(name)}"`,
     html: `<div style="display:flex;gap:12px;align-items:flex-start"><img alt="" src="${url}" style="width:110px;height:150px;object-fit:contain;background:#fff;border-radius:10px;flex:none">
-      <div style="flex:1;display:flex;flex-direction:column;gap:10px"><span class="lbl">${j.parts.length} mảnh · gửi từ ${MBOX_KIND_VN[j.from] || 'máy khác'}</span>
+      <div style="flex:1;display:flex;flex-direction:column;gap:10px"><span class="lbl">${j.parts.length} mảnh có xương + khớp · gửi từ ${MBOX_KIND_VN[j.from] || 'máy khác'}</span>
+      ${kho ? '<span id="fscKhoOk" style="color:var(--ok,#43a047);font-weight:600">✓ Đã lưu vào 🧍 Kho nhân vật (cả hình, xương và dáng)</span>' : ''}
       ${frameNumHtml('fscAt')}
-      <label class="lbl">🧍 Layer hiện ở <select id="fscShow" style="${sel}"><option value="from">từ frame này trở đi</option><option value="all">mọi frame</option><option value="only">chỉ frame này</option></select></label>
-      <label class="lbl">🖼 Ảnh đặt vào lớp <select id="fscLyr" style="${sel}"><option value="char">Nhân vật</option><option value="bg">Nền</option></select></label></div></div>
-      <p class="lbl" style="margin-bottom:0"><b>Thành layer</b>: còn xương, tạo dáng tiếp được. <b>Thành ảnh</b>: hình phẳng theo dáng đã tạo, kéo/đổi cỡ rồi bấm Xong.</p>`,
-    buttons: [{ label: opt.mailbox ? 'Để sau' : 'Huỷ', value: null }, ...(opt.mailbox ? [{ label: '🗑 Bỏ', value: 'drop', cls: 'danger' }] : []),
-      { label: '💾 Lưu vào kho', value: 'kho', action: read }, { label: '🖼 Thành ảnh', value: 'img', action: read }, { label: '🧍 Thành layer', value: 'layer', primary: true, action: read }] });
+      <label class="lbl">🧍 Hiện ở <select id="fscShow" style="${sel}"><option value="from">từ frame này trở đi</option><option value="all">mọi frame</option><option value="only">chỉ frame này</option></select></label>
+      <label class="lbl">🖼 Ảnh phẳng đặt vào lớp <select id="fscLyr" style="${sel}"><option value="char">Nhân vật</option><option value="bg">Nền</option></select></label></div></div>
+      <p class="lbl" style="margin-bottom:0"><b>🧍 Thêm vào frame</b>: thành layer mới, còn xương, tạo dáng tiếp được (bảng 🧩 Ghép).<br><b>🖼 Thành ảnh phẳng</b>: chỉ là hình theo dáng đã tạo, không còn xương.<br>
+      ${kho ? 'Để sau thì lấy lại bất cứ lúc nào: 🧩 Ghép → 🧍 Kho nhân vật (hoặc Menu → 📮 Hộp thư → 🧍 Kho nhân vật).' : ''}</p>`,
+    buttons: [{ label: opt.mailbox ? 'Để sau' : 'Đóng', value: null }, ...(opt.mailbox ? [{ label: '🗑 Bỏ', value: 'drop', cls: 'danger' }] : []),
+      ...(kho ? [] : [{ label: '💾 Lưu vào kho', value: 'kho', action: read }]),
+      { label: '🖼 Thành ảnh phẳng', value: 'img', action: read }, { label: '🧍 Thêm vào frame (còn xương)', value: 'layer', primary: true, action: read }] });
   URL.revokeObjectURL(url);
-  if (!v) return false;
-  if (v === 'drop') return true;
-  const rec = { w: j.w, h: j.h, parts: j.parts.map(q => ({ ...q, png: b64u8(q.png), alts: (q.alts || []).map(a => ({ png: b64u8(a.png), dx: a.dx || 0, dy: a.dy || 0 })) })) };
-  if (v === 'kho') return fscToKho(rec, j.name || 'Nhân vật', u8);
+  if (v === 'drop') { if (kho && !kho.had) await charLibRemove(kho.id); return true; }
+  if (!v) {
+    if (kho) toast(`🧍 "${name}" nằm trong Kho nhân vật — mở 🧩 Ghép → 🧍 Kho nhân vật để thêm vào frame`, 4500);
+    return !!kho && !opt.mailbox;
+  }
+  if (v === 'kho') return !!(await fscToKho(rec, name, u8, fscRxKey(j), true));
   if (at !== S.cur) await selectFrame(at);
   if (v === 'img') {
     let bmp; try { bmp = await createImageBitmap(new Blob([u8], { type: 'image/png' })); } catch (e) { toast('Không đọc được hình nhân vật'); return false; }
     const sx = j.w && j.w !== W ? (W - j.w) / 2 : 0, sy = j.h && j.h !== H ? H - j.h : 0, fl = j.flat || { x: (W - bmp.width) / 2, y: (H - bmp.height) / 2 };
     setLayer(lyr); floatFromImage(bmp);
     if (floating) { Object.assign(floating, { cx: fl.x + sx + bmp.width / 2, cy: fl.y + sy + bmp.height / 2, scale: 1, rot: 0 }); floatXbSync(); requestRender(); }
-    toast(`🖼 Đã đặt "${j.name}" vào frame ${S.cur + 1} — kéo để dời, 8 chấm để đổi cỡ, rồi bấm Xong`, 4500);
+    toast(`🖼 Đã đặt "${name}" vào frame ${S.cur + 1} — kéo để dời, 8 chấm để đổi cỡ, rồi bấm Xong`, 4500);
     return true;
   }
-  const idMap = await charAddRec(rec); if (!idMap) return false;
-  // the pose made on the tablet, on the frames where the new layer shows
-  for (let i = 0; i < S.frames.length; i++) {
-    if (show !== 'all' && i < S.cur) continue;
-    const f = S.frames[i]; f.pp = f.pp || {};
-    for (const q of j.parts) { const nid = idMap[q.id]; if (nid) f.pp[nid] = { ...(j.pose && j.pose[q.id] || {}) }; }
-  }
+  if (S.layer === 'bg') setLayer('char');
+  const idMap = await charAddRec(rec); if (!idMap) return false;   // the pose made on the other device, from this frame on
   const rid = idMap[j.root] || idMap[(j.parts.find(q => !q.parent) || j.parts[0]).id];
-  if (rid) ppSel = rid;
+  if (rid) {
+    // where it shows: one change with the add (a single ↶ takes the whole layer away)
+    S.frames.forEach((f, i) => {
+      if (show === 'all' && i < S.cur) { f.pp = f.pp || {}; for (const q of j.parts) if (j.pose && j.pose[q.id]) f.pp[idMap[q.id]] = { ...j.pose[q.id] }; ppOffEdit(f, o => { delete o[rid]; }); }
+      if (show === 'only' && i > S.cur) ppOffEdit(f, o => { o[rid] = 1; });
+    });
+    if (S.tool !== 'puppet') setTool('puppet');
+    ppSel = rid; ppDrag = 'box'; ppSyncBar(); lyrSync(true); lgSync(true);
+  }
   S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); scheduleSave(); requestRender();
-  if (show === 'only' && rid && S.frames.length > 1) ppShowRange(rid, 'only');
+  toast(`🧍 Đã thêm "${name}" (còn xương) vào frame ${S.cur + 1} — đang chọn: kéo để dời, chạm 2 lần 1 mảnh để tạo dáng. Bản gốc vẫn ở 🧍 Kho nhân vật`, 6000);
   return true;
 }
-async function fscToKho(rec, name, u8) {
+// → 🧍 Kho nhân vật. rx = key of a received file: the same file received twice is kept once. Returns {id, had} or null.
+async function fscToKho(rec, name, u8, rx, say) {
   try {
+    const L = await charLib(), old = rx && L.find(e => e.rx === rx);
+    if (old) { if (say) toast(`💾 "${name}" đã có trong 🧍 Kho nhân vật`, 3000); return { id: old.id, had: true }; }
     const id = 'ch' + Date.now().toString(36);
     await idbPut('char:' + id, rec);
-    const L = await charLib(); L.unshift({ id, name, t: Date.now(), n: rec.parts.length, thumb: new Blob([u8], { type: 'image/png' }) });
-    for (const old of L.splice(CHAR_LIB_MAX)) { try { await idbDel('char:' + old.id); } catch (e) {} }
+    L.unshift({ id, name, t: Date.now(), n: rec.parts.length, thumb: new Blob([u8], { type: 'image/png' }), ...(rx ? { rx } : {}) });
+    for (const o of L.splice(CHAR_LIB_MAX)) { try { await idbDel('char:' + o.id); } catch (e) {} }
     await idbPut(CHAR_LIB_KEY, L);
-  } catch (e) { toast('Chưa lưu được vào kho (bộ nhớ máy đầy?)'); return false; }
-  toast(`💾 Đã lưu "${name}" vào 🧍 Kho nhân vật`, 3000);
-  return true;
+    if (say) toast(`💾 Đã lưu "${name}" vào 🧍 Kho nhân vật`, 3000);
+    return { id, had: false };
+  } catch (e) { toast('Chưa lưu được vào kho (bộ nhớ máy đầy?)'); return null; }
+}
+async function charLibRemove(id) {
+  try { await idbPut(CHAR_LIB_KEY, (await charLib()).filter(e => e.id !== id)); await idbDel('char:' + id); } catch (e) {}
 }
 async function fscImageDialog(bmp, name, opt) {
   const c = makeCanvas(bmp.width, bmp.height); c.getContext('2d').drawImage(bmp, 0, 0);
@@ -264,6 +284,7 @@ setTimeout(() => mboxPoll(), 2500);
 function mboxSync() {
   const n = mboxItems.length, b = $('#mailBadge');
   if (b) { b.textContent = n; b.hidden = !n; }
+  $('#mailBtn').classList.toggle('hasMail', n > 0);   // shown outside 📱 chế độ gọn too while letters wait
   const fresh = mboxItems.filter(it => !mboxSeen.has(it.path));
   const ban = $('#mboxBanner');
   if (!fresh.length || document.querySelector('.ov')) { if (!n) ban.hidden = true; return; }
@@ -305,7 +326,7 @@ async function mboxDialog() {
   modal({ title: '📮 Hộp thư: gửi / nhận nhân vật, ảnh',
     html: `${cfg ? '' : '<p>📮 Hộp thư dùng chung repo GitHub của ☁. Nối ☁ trên cả 2 máy trước (dán cùng mã phiên <code>FS1-…</code>). Chưa nối thì vẫn gửi được bằng file: 📤 Chia sẻ / lưu file → máy kia 📥 Nhập file (hoặc kéo thả vào cửa sổ).</p><div class="mrow"><button class="btn" id="mbSync">☁ Nối máy này</button></div>'}
       <div id="mbList" style="display:flex;flex-direction:column;gap:6px;margin:8px 0">${cfg ? (mboxItems.length ? mboxItems.map(row).join('') : '<span class="lbl">Hộp thư trống.</span>') : ''}</div>
-      <div class="mrow" style="flex-wrap:wrap;gap:6px"><button class="btn primary" id="mbSendChar">📤 Gửi nhân vật đang chọn</button>${cfg ? '<button class="btn" id="mbSendImg">🖼 Gửi ảnh sang máy kia</button>' : ''}<button class="btn" id="mbImport">📥 Nhập file từ máy này</button></div>
+      <div class="mrow" style="flex-wrap:wrap;gap:6px"><button class="btn primary" id="mbSendChar">📤 Gửi nhân vật đang chọn</button>${cfg ? '<button class="btn" id="mbSendImg">🖼 Gửi ảnh sang máy kia</button>' : ''}<button class="btn" id="mbImport">📥 Nhập file từ máy này</button><button class="btn" id="mbKho" title="Nhân vật đã nhận (cả hình + xương) nằm ở đây">🧍 Kho nhân vật</button></div>
       ${cfg ? `<label class="set-row"><span>Nhận thư trên máy này</span><input type="checkbox" id="mbOn" ${mboxOn() ? 'checked' : ''}></label>
       <label class="set-row"><span title="Máy chỉ dùng để cắt nhân vật thì tắt cho nhanh: chỉ gửi/nhận qua Hộp thư, không gửi cả dự án">☁ Tự đồng bộ cả dự án trên máy này</span><input type="checkbox" id="mbAuto" ${syncAuto() ? 'checked' : ''}></label>` : ''}`,
     buttons: [{ label: 'Đóng', value: null }],
@@ -315,6 +336,7 @@ async function mboxDialog() {
       ov.querySelectorAll('[data-md]').forEach(b => b.addEventListener('click', async () => { const it = mboxItems.find(x => x.path === b.dataset.md); if (!it) return; b.closest('.mrow').remove(); await mboxDelete(it); }));
       q('#mbSendChar').addEventListener('click', () => { close(null); fscSendDialog(); });
       q('#mbImport').addEventListener('click', () => { close(null); fscPickFiles(); });
+      q('#mbKho').addEventListener('click', () => { close(null); charLibDialog(); });
       q('#mbSendImg') && q('#mbSendImg').addEventListener('click', () => { close(null); mboxSendImages(); });
       q('#mbSync') && q('#mbSync').addEventListener('click', () => { close(null); syncDialog(); });
       q('#mbOn') && q('#mbOn').addEventListener('change', e => { lsSet(MBOX_ON_LS, e.target.checked ? '' : 'off'); if (e.target.checked) mboxPoll(true); else { mboxItems = []; mboxSync(); } });
