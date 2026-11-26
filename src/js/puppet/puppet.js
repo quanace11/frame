@@ -538,7 +538,7 @@ function ppLabSyncBar() {
 }
 // what is saved of a cut-out piece: ONE place for IndexedDB (saveProject), ZIP export and 🧍 Kho nhân vật (all three read
 // it back with { ...q }). A new piece field only needs adding here.
-function ppPartMeta(p) { return { id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null, lname: p.lname || null, lh: p.lh || null, lk: p.lk || null, hard: p.hard || null }; }
+function ppPartMeta(p) { return { id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null, lname: p.lname || null, lh: p.lh || null, lk: p.lk || null, hard: p.hard || null, kit: p.kit || null }; }
 // a new character appears from the frame being edited on: frames before it keep showing only what they had
 // (hidden with 🙈 lip.off of its layer, like every other "where does it show" choice, so 📍 Hiện ở… / 👁 can show it there again)
 function ppHideBefore(parts) {
@@ -990,7 +990,7 @@ function updPanelPill() {
 }
 function hidePanel(t) { panelHidden[t] = true; saveSettings(); updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
 function showPanel() { panelHidden[S.tool] = false; saveSettings(); updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
-function ppSyncBar() { lyrSync(); lgSync(); ppScopeSync(); ppBlinkInfo(); ppCycSync(); { const a = $('#ppSoftChk'), b = $('#ppSmoothChk'); if (a) a.checked = !!S.ppSoft; if (b) b.checked = !!S.ppSmooth; }
+function ppSyncBar() { lyrSync(); kitViewSync(); lgSync(); ppScopeSync(); ppBlinkInfo(); ppCycSync(); { const a = $('#ppSoftChk'), b = $('#ppSmoothChk'); if (a) a.checked = !!S.ppSoft; if (b) b.checked = !!S.ppSmooth; }
   const bar = $('#ppbar'), show = S.tool === 'puppet' && (!panelHidden.puppet || !!ppSetup);
   bar.hidden = !show; updPanelPill(); if (!show) return;
   $('#ppSetupSec').hidden = !ppSetup; $('#ppPoseSec').hidden = !!ppSetup || !S.pp;
