@@ -354,7 +354,8 @@ const SFX = {
   ting: { label: 'Ting', dur: 1.3 }, whistle: { label: 'Còi trọng tài', dur: 1.3 }, drum: { label: 'Trống', dur: 0.5 }, crowd: { label: 'Khán giả ồ', dur: 2.2 },
   bonk: { label: 'Cốp', dur: 0.3 }, slap: { label: 'Bốp', dur: 0.25 }, bang: { label: 'Bùm', dur: 0.6 }, boom: { label: 'Nổ', dur: 1.2 }, crash: { label: 'Loảng xoảng', dur: 1.3 }, zap: { label: 'Điện giật', dur: 0.45 },
   splat: { label: 'Bẹp', dur: 0.35 }, poof: { label: 'Phụt khói', dur: 0.5 }, slide: { label: 'Huýt trượt', dur: 0.8 }, swirl: { label: 'Choáng vòng vòng', dur: 1.2 }, tweet: { label: 'Chim kêu', dur: 1.2 }, scuffle: { label: 'Đánh túi bụi', dur: 1.6 }, kick: { label: 'Sút bóng', dur: 0.3 },
-  tvoff: { label: 'Tắt TV', dur: 0.9 }, tvon: { label: 'Bật TV', dur: 0.9 }, glitch: { label: 'Nhiễu rè', dur: 0.6 }, roar: { label: 'Hét giận', dur: 1.5 }
+  tvoff: { label: 'Tắt TV', dur: 0.9 }, tvon: { label: 'Bật TV', dur: 0.9 }, glitch: { label: 'Nhiễu rè', dur: 0.6 }, roar: { label: 'Hét giận', dur: 1.5 },
+  shutter: { label: 'Chụp ảnh', dur: 0.5 }, snaps: { label: 'Chụp liên tục', dur: 1.4 }
 };
 const sfxCache = {};
 async function sfxBuffer(kind) {
@@ -404,6 +405,10 @@ async function sfxBuffer(kind) {
     g.gain.setValueAtTime(0.0001, 0); g.gain.exponentialRampToValueAtTime(0.9, 0.08); g.gain.setValueAtTime(0.9, 0.95); g.gain.exponentialRampToValueAtTime(0.0001, d);
     mix.connect(g).connect(out); o.start(); v.start();
   }
+  // camera shutter: mirror up click, a softer mirror down click, then the flash charging whine (snaps = several cameras at once)
+  const shutter = (s, pk) => { hiss(s, 0.012, 'highpass', 3500, 0.9 * pk, 0.001); thump(s, 1400, 500, 0.35 * pk, 0.025); hiss(s + 0.06, 0.01, 'highpass', 2800, 0.5 * pk, 0.001); thump(s + 0.06, 900, 350, 0.2 * pk, 0.02); };
+  if (kind === 'shutter') { shutter(0, 1); const o = osc('sine', 2200, 7000, 0.35), g = oc.createGain(); envAt(g, 0.1, 0.02, 0.04, 0.3); o.connect(g).connect(out); o.start(0.1); }
+  if (kind === 'snaps') { for (let i = 0; i < 8; i++) shutter(i * 0.15 + Math.random() * 0.08, 0.45 + Math.random() * 0.5); }
   const buf = await oc.startRendering(); sfxCache[kind] = buf; return buf;
 }
 async function sfxPreview(kind) { try { const ac = new (window.AudioContext || window.webkitAudioContext)(); const b = await sfxBuffer(kind); const s = ac.createBufferSource(); s.buffer = b; s.connect(ac.destination); s.start(); setTimeout(() => ac.close(), (SFX[kind].dur + 0.3) * 1000); } catch (e) {} }
