@@ -409,3 +409,21 @@ body.gon #aiFxBtn, body.gon #aiCharBtn, body.gon #assetBtn, body.gon #autoColBtn
 body.gon #lyrPanel, body.gon #ppbar [data-t=frames], body.gon #ppbar [data-tab=frames], body.gon #fxbar{display:none !important}
 /* panels on the drawing area scroll with a finger (input.js lets touchmove through when the panel can scroll) */
 #ppbar,#fxbar,#rigbar,#motionbar,#vecbar,#selbar,#lyrList,#lgBody{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+/* 👕 Áo đấu (kit-maker.js) */
+.dlg.kmDlg{max-width:860px;width:calc(100vw - 24px)}
+.km{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start}
+.kmLeft{flex:none;width:260px;display:flex;flex-direction:column;align-items:center;gap:6px;margin:0 auto}
+#kmPrev{width:260px;height:300px;background:repeating-conic-gradient(#eee 0 25%,#fff 0 50%) 0 0/20px 20px;border-radius:12px;touch-action:none}
+#kmFull{width:120px;height:120px;background:#fff;border-radius:10px}
+.kmViews{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
+.kmHint{margin:0;text-align:center;font-size:12px}
+.kmRight{flex:1;min-width:260px;display:flex;flex-direction:column;gap:10px}
+.kmRight .chip.small{margin:2px 0}
+.kmDot{display:inline-block;width:18px;height:18px;border-radius:50%;border:2px solid #0006;vertical-align:middle}
+.kmSlots,.kmSw,.kmLib{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-top:4px}
+.kmSwb{width:38px;height:38px;border-radius:50%;border:2px solid #0005;cursor:pointer;padding:0}
+#kmCustom{width:44px;height:40px;border:none;background:none;padding:0;cursor:pointer}
+.kmIn{height:40px;font-size:17px;text-align:center;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+.kmLogo{padding:3px 6px} .kmLogo img{height:30px;max-width:60px;object-fit:contain;vertical-align:middle;background:#fff8;border-radius:4px}
+.kmKit{display:inline-flex;align-items:center;gap:6px;min-height:42px} .kmKit canvas{width:30px;height:30px}
+.kmDel{border:none;background:none;color:var(--text);opacity:.6;font-size:14px;min-width:30px;min-height:30px;cursor:pointer}
