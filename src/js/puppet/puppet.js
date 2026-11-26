@@ -158,7 +158,8 @@ function drawPuppet(ctx, pose, lip) {
   if (foc) { order.splice(order.indexOf(foc), 1); order.push(foc); }   // ✎ Vẽ lại mảnh: the part being redrawn on top, the others faded
   for (const p of order) {
     const q = pose && pose[p.id]; if ((q && q.h) || !p.c || (off && off.has(p.id)) || (ppOnlyRoot && (ppCharOf(p) || p.id) !== ppOnlyRoot)) continue;
-    let im = ppImg(p, q); if (lip && lip.jg) im = jgWarp(p, im, lip.jg, lip) || im;   // 🫨 Rung 1 chỗ
+    let im = ppImg(p, q); if (boClock != null || boPrev) im = boWarp(p, im) || im;   // 〰 Nét sôi
+    if (lip && lip.jg) im = jgWarp(p, im, lip.jg, lip) || im;   // 🫨 Rung 1 chỗ
     if (foc) ctx.globalAlpha = p === foc ? 1 : 0.35;
     if (S.ppSoft && !p.hard && p.role && (PP_SOFT1[p.role] || PP_SOFT2[p.role])) { const js = ppSoftJoints(p, byId); if (js.length) { ppDrawSoft(ctx, p, im, M, js); continue; } }
     ctx.save(); ctx.transform(...M[p.id]); ctx.drawImage(im.c, im.x, im.y); ctx.restore();
@@ -538,7 +539,7 @@ function ppLabSyncBar() {
 }
 // what is saved of a cut-out piece: ONE place for IndexedDB (saveProject), ZIP export and 🧍 Kho nhân vật (all three read
 // it back with { ...q }). A new piece field only needs adding here.
-function ppPartMeta(p) { return { id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null, lname: p.lname || null, lh: p.lh || null, lk: p.lk || null, hard: p.hard || null, kit: p.kit || null }; }
+function ppPartMeta(p) { return { id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null, lname: p.lname || null, lh: p.lh || null, lk: p.lk || null, hard: p.hard || null, kit: p.kit || null, bo: p.bo || null }; }
 // a new character appears from the frame being edited on: frames before it keep showing only what they had
 // (hidden with 🙈 lip.off of its layer, like every other "where does it show" choice, so 📍 Hiện ở… / 👁 can show it there again)
 function ppHideBefore(parts) {
@@ -990,7 +991,7 @@ function updPanelPill() {
 }
 function hidePanel(t) { panelHidden[t] = true; saveSettings(); updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
 function showPanel() { panelHidden[S.tool] = false; saveSettings(); updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
-function ppSyncBar() { lyrSync(); kitViewSync(); lgSync(); ppScopeSync(); ppBlinkInfo(); ppCycSync(); { const a = $('#ppSoftChk'), b = $('#ppSmoothChk'); if (a) a.checked = !!S.ppSoft; if (b) b.checked = !!S.ppSmooth; }
+function ppSyncBar() { lyrSync(); boSync(); kitViewSync(); lgSync(); ppScopeSync(); ppBlinkInfo(); ppCycSync(); { const a = $('#ppSoftChk'), b = $('#ppSmoothChk'); if (a) a.checked = !!S.ppSoft; if (b) b.checked = !!S.ppSmooth; }
   const bar = $('#ppbar'), show = S.tool === 'puppet' && (!panelHidden.puppet || !!ppSetup);
   bar.hidden = !show; updPanelPill(); if (!show) return;
   $('#ppSetupSec').hidden = !ppSetup; $('#ppPoseSec').hidden = !!ppSetup || !S.pp;
