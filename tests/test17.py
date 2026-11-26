@@ -26,7 +26,7 @@ async def main():
         print('video time at frame 6', await pg.evaluate('bgVid.el.currentTime.toFixed(2)'))
         await pg.screenshot(path='v_edit.png')
         await pg.click('#playBtn'); await pg.wait_for_timeout(900); print('vid playing', await pg.evaluate('!bgVid.el.paused')); await pg.screenshot(path='v_play.png'); await pg.click('#playBtn')
-        await pg.click('#videoBtn'); await pg.wait_for_selector('text=Video đã xong', timeout=120000)
+        await pg.click('#videoBtn'); await pg.click('.dlg .btns >> text=🎬 Xuất video'); await pg.wait_for_selector('text=Video đã xong', timeout=120000)
         async with pg.expect_download() as dl: await pg.click('text=Lưu video')
         d=await dl.value; await d.save_as('bgout.mp4')
         await pg.wait_for_timeout(2200); await pg.reload(); await pg.wait_for_timeout(2500)

@@ -252,7 +252,7 @@ $('#bgVidFile').addEventListener('change', async e => {
   bgVideoSetup(); markAllFrames(); scheduleSave();
   toast('Đã đặt nền video — bấm Phát để xem. Lớp Nền chỗ nào trống sẽ thấy video', 4000);
 });
-$('#fxExport2').addEventListener('click', exportVideo);
+$('#fxExport2').addEventListener('click', exportVideoAsk);
 $('#ppLayerBtn').addEventListener('click', () => setTool('puppet'));
 $('#ppNew').addEventListener('click', () => { $('#imgFile').click(); });
 $('#ppMini').addEventListener('click', () => { const mb = $('#ppbar'); mb.classList.toggle('mini'); $('#ppMini').textContent = mb.classList.contains('mini') ? '▴ Mở rộng' : '▾ Thu gọn'; });
