@@ -152,6 +152,7 @@ function drawPuppet(ctx, pose, lip) {
   if (lip && lip.m) for (const id in lip.m) if (id !== lip.pid) lipOpen(id, lip.m[id]);
   if (lip && lip.mv) pose = ppApplyMv(pose, lip.mv);
   if (lip && lip.off) pose = ppApplyOff(pose, lip.off);
+  if (lip && lip.sh) { const t = boTime(); if (t != null) pose = shApply(pose, lip.sh, t); }   // 😂 Rung cả người
   const M = ppMats(pose), byId = {}; S.pp.parts.forEach(p => byId[p.id] = p);
   const off = lyrOff('lh');
   const order = [...S.pp.parts].sort((a, b) => a.z - b.z), foc = ppPaintFocus && order.find(p => p.id === ppPaintFocus);

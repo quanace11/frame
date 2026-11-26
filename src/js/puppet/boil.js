@@ -79,7 +79,7 @@ function boSync() {
 function boTick() { if (!boPrev) return; if (!playing) requestRender(); setTimeout(() => requestAnimationFrame(boTick), 1000 / 24); }
 function boPreview(on) {
   boPrev = on == null ? !boPrev : on; boSync(); requestRender();
-  if (boPrev) { if (!boAny()) toast('Chưa có layer nào bật nét sôi. Bấm 〰 Nét sôi… trước'); boTick(); }
+  if (boPrev) { if (!boAny() && !S.frames.some(f => f.lip && f.lip.sh)) toast('Chưa có layer nào bật nét sôi / rung cả người'); boTick(); }
 }
 async function boDialog() {
   const roots = lyrRoots(); if (!roots.length) { toast('Chưa có nhân vật / hình. Nhập ảnh (thành layer) hoặc cắt nhân vật trước'); return; }
