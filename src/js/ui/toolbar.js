@@ -232,6 +232,18 @@ $('#fxbar').addEventListener('click', e => {
   else if (d.flt !== undefined) lookSet('flt', d.flt ? { k: d.flt } : null, '🎨 Màu phim');
   else if (d.rps !== undefined) { S.lookOpt = { ...S.lookOpt, rs: +d.rps }; saveSettings(); lookSync(); }
 });
+$('#pzN').innerHTML = PZ_DENS.map(([v, l]) => `<button class="chip small" data-pzn="${v}" title="Khoảng ${v} lần chớp mỗi giây">${l}</button>`).join('');
+$('#pzD').innerHTML = PZ_SECS.map(v => `<button class="chip small" data-pzd="${v}" title="Chớp trong ${v} giây từ frame này">${v} giây</button>`).join('');
+$('#pzOn').addEventListener('click', () => pzSet(true));
+$('#pzOff').addEventListener('click', () => pzSet(false));
+$('#pzN').addEventListener('click', e => {
+  const b = e.target.closest('[data-pzn]'); if (!b) return; const n = +b.dataset.pzn; S.lookOpt = { ...S.lookOpt, pn: n }; saveSettings();
+  const f = curFrame(); if (f.pz) { let a = S.cur, z = S.cur; while (a > 0 && S.frames[a - 1].pz) a--; while (z + 1 < S.frames.length && S.frames[z + 1].pz) z++; for (let i = a; i <= z; i++) { const g = S.frames[i]; g.pz = { ...g.pz, n }; g.ver++; g.playKey = ''; } scheduleSave(); requestRender(); }
+  lookSync();
+});
+$('#pzD').addEventListener('click', e => { const b = e.target.closest('[data-pzd]'); if (!b) return; S.lookOpt = { ...S.lookOpt, pd: +b.dataset.pzd }; saveSettings(); lookSync(); });
+$('#pzG').addEventListener('change', e => { S.lookOpt = { ...S.lookOpt, pg: e.target.checked ? 1 : 0 }; saveSettings(); });
+$('#pzS').addEventListener('change', e => { S.lookOpt = { ...S.lookOpt, ps: e.target.checked ? 1 : 0 }; saveSettings(); });
 $('#rpGo').addEventListener('click', replayMake);
 $('#lkPrev').addEventListener('click', () => { if (playing) stopPlay(); startPlay(); });
 $('#ghBtn').addEventListener('click', () => { const on = !curFrame().ghost, idx = ghIdx(); ghostSet(on, idx); toast(on ? `👻 Bóng mờ lướt ở ${idx.length} frame — thấy rõ khi nhân vật di chuyển nhanh` : 'Đã tắt bóng mờ', 2200); });

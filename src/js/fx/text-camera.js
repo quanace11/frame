@@ -354,7 +354,7 @@ const SFX = {
   ting: { label: 'Ting', dur: 1.3 }, whistle: { label: 'Còi trọng tài', dur: 1.3 }, drum: { label: 'Trống', dur: 0.5 }, crowd: { label: 'Khán giả ồ', dur: 2.2 },
   bonk: { label: 'Cốp', dur: 0.3 }, slap: { label: 'Bốp', dur: 0.25 }, bang: { label: 'Bùm', dur: 0.6 }, boom: { label: 'Nổ', dur: 1.2 }, crash: { label: 'Loảng xoảng', dur: 1.3 }, zap: { label: 'Điện giật', dur: 0.45 },
   splat: { label: 'Bẹp', dur: 0.35 }, poof: { label: 'Phụt khói', dur: 0.5 }, slide: { label: 'Huýt trượt', dur: 0.8 }, swirl: { label: 'Choáng vòng vòng', dur: 1.2 }, tweet: { label: 'Chim kêu', dur: 1.2 }, scuffle: { label: 'Đánh túi bụi', dur: 1.6 }, kick: { label: 'Sút bóng', dur: 0.3 },
-  tvoff: { label: 'Tắt TV', dur: 0.9 }, tvon: { label: 'Bật TV', dur: 0.9 }, glitch: { label: 'Nhiễu rè', dur: 0.6 }, roar: { label: 'Hét giận', dur: 1.5 }
+  tvoff: { label: 'Tắt TV', dur: 0.9 }, tvon: { label: 'Bật TV', dur: 0.9 }, glitch: { label: 'Nhiễu rè', dur: 0.6 }, roar: { label: 'Hét giận', dur: 1.5 }, shutter: { label: 'Máy ảnh tách', dur: 0.18 }
 };
 const sfxCache = {};
 async function sfxBuffer(kind) {
@@ -392,6 +392,8 @@ async function sfxBuffer(kind) {
   if (kind === 'tvoff') { hiss(0, 0.035, 'highpass', 2500, 0.9, 0.001); thump(0, 180, 70, 0.5, 0.08); const o = osc('sine', 1500, 55, 0.5), lp = oc.createBiquadFilter(), g = oc.createGain(); lp.type = 'lowpass'; lp.frequency.value = 2500; envAt(g, 0.01, 0.01, 0.3, 0.55); o.connect(lp).connect(g).connect(out); o.start(0.01); o.stop(0.7); hiss(0.02, 0.5, 'bandpass', 4200, 0.12, 0.01); for (let i = 0; i < 6; i++) hiss(0.05 + Math.random() * 0.45, 0.012, 'highpass', 3000, 0.35, 0.001); }
   if (kind === 'tvon') { hiss(0, 0.03, 'highpass', 2500, 0.8, 0.001); const o = osc('sine', 60, 900, 0.35), g = oc.createGain(); g.gain.setValueAtTime(0.0001, 0.02); g.gain.exponentialRampToValueAtTime(0.28, 0.25); g.gain.exponentialRampToValueAtTime(0.0001, 0.75); o.connect(g).connect(out); o.start(0.02); o.stop(0.8); const n = noise(0.8), bp = oc.createBiquadFilter(), g2 = oc.createGain(); bp.type = 'bandpass'; bp.frequency.value = 3800; g2.gain.setValueAtTime(0.0001, 0.05); g2.gain.exponentialRampToValueAtTime(0.25, 0.3); g2.gain.exponentialRampToValueAtTime(0.0001, 0.85); n.connect(bp).connect(g2).connect(out); n.start(0.05); }
   if (kind === 'glitch') { for (let i = 0; i < 9; i++) { const s0 = i * 0.06 + Math.random() * 0.02, o = oc.createOscillator(), g = oc.createGain(); o.type = 'square'; o.frequency.setValueAtTime(200 + Math.random() * 1800, s0); envAt(g, s0, 0.002, 0.18, 0.04); o.connect(g).connect(out); o.start(s0); o.stop(s0 + 0.06); hiss(s0, 0.04, 'highpass', 1500 + Math.random() * 4000, 0.3); } }
+  // 📸 camera shutter: a sharp click (curtain opens), a short metal ring, a softer second click (curtain closes)
+  if (kind === 'shutter') { hiss(0, 0.012, 'highpass', 3500, 0.9, 0.0005); thump(0, 900, 300, 0.25, 0.02); const o = osc('square', 3100), bp = oc.createBiquadFilter(), g = oc.createGain(); bp.type = 'bandpass'; bp.frequency.value = 3100; bp.Q.value = 6; envAt(g, 0.002, 0.001, 0.08, 0.03); o.connect(bp).connect(g).connect(out); o.start(0); o.stop(0.05); hiss(0.055, 0.016, 'highpass', 2500, 0.55, 0.0005); thump(0.055, 600, 200, 0.18, 0.025); }
   // an angry "AAARGH!": buzzy voice-like tone (sawtooth + vibrato) through two vowel formants, rough breath noise, pitch up then sagging
   if (kind === 'roar') {
     const o = oc.createOscillator(), v = oc.createOscillator(), vg = oc.createGain(), mix = oc.createGain(), g = oc.createGain(), ws = oc.createWaveShaper();
@@ -438,6 +440,11 @@ async function scheduleAudio(ac, dest, offsetSec, totalSec, lead = 0.05) {
   });
   // transition sounds (📺 click, whoosh…) start with the transition itself, which can begin inside an earlier frame
   await each(trList(T), async x => { const kk = TR_KINDS[x.k].sfx; if (!x.snd || !kk || !SFX[kk]) return; const st = Math.max(0, x.k === 'tvoff' ? x.t0 + x.d * 0.05 : x.t0); if (st < offsetSec - 0.01 || st > totalSec) return; jobs.push([await sfxBuffer(kk), st - offsetSec, 0, 0.8, null]); });
+  // 📸 paparazzi: one shutter click per flash (louder for near cameras)
+  if (S.frames.some(f => f.pz && f.pz.snd)) await each([0], async () => {
+    const b = await sfxBuffer('shutter');
+    S.frames.forEach((f, i) => { if (!f.pz || !f.pz.snd) return; for (const e of pzEvents(i)) { const st = T[i] + e.t; if (st < offsetSec - 0.01 || st > totalSec) continue; jobs.push([b, st - offsetSec, 0, 0.25 + 0.35 * Math.min(1, e.s), null]); } });
+  });
   const now = ac.currentTime + lead;
   for (const [buf, at, off, vol, dur] of jobs) {
     try { const s = ac.createBufferSource(), g = ac.createGain(); s.buffer = buf; g.gain.value = vol; s.connect(g).connect(dest); if (dur != null) s.start(now + at, off, dur); else s.start(now + at, off); srcs.push(s); } catch (e) { console.error(e); }

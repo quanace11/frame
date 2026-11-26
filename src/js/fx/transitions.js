@@ -215,7 +215,7 @@ async function exportGif(gw) {
   if (exportBusy) return; exportBusy = true;
   const k = Math.min(1, gw / W), w = Math.round(W * k) & ~1, h = Math.round(H * k) & ~1;
   const big = makeCanvas(), bctx = big.getContext('2d'), base = makeCanvas(), small = makeCanvas(w, h), sx = small.getContext('2d', { willReadFrequently: true });
-  const enc = gifEncoder(w, h), pm = progress('Đang tạo GIF…'), T = frameStartTimes(), trs = trList(T), txw = [...txWins(T), ...camWins(T)], ts = trSrcCache(false);
+  const enc = gifEncoder(w, h), pm = progress('Đang tạo GIF…'), T = frameStartTimes(), trs = trList(T), txw = [...txWins(T), ...camWins(T), ...pzWins(T)], ts = trSrcCache(false);
   try {
     for (let i = 0; i < S.frames.length; i++) {
       pm.set(`Đang tạo GIF ${i + 1}/${S.frames.length}…`); await new Promise(r => setTimeout(r, 0));

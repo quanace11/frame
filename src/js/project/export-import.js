@@ -62,7 +62,7 @@ async function exportZip() {
         files.push({ name: linesName, data: new Uint8Array(await (await toBlob(comp)).arrayBuffer()) });
       }
       meta.push({ index: i + 1, file: `frames/frame_${n}.png`, char_layer: `layers/char_${n}.png`, color_layer: colorName, lines_layer: linesName, bg_layer: bgFile.get(f.bgId), duration_ms: f.dur,
-        pp: f.pp || {}, ppKey: f.ppKey, ppK: f.ppK || null, ppE: f.ppE || null, ppEase: f.ppEase, texts: f.texts || [], camera: camAt(i), cam_key: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || null, tr: f.tr || null, tre: f.tre || null, ghost: f.ghost || null, bgs: f.bgs || null, sl: f.sl || null, flt: f.flt || null,
+        pp: f.pp || {}, ppKey: f.ppKey, ppK: f.ppK || null, ppE: f.ppE || null, ppEase: f.ppEase, texts: f.texts || [], camera: camAt(i), cam_key: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || null, tr: f.tr || null, tre: f.tre || null, ghost: f.ghost || null, bgs: f.bgs || null, sl: f.sl || null, flt: f.flt || null, pz: f.pz || null,
         vector: f.vec.map(st => ({ c: st.c, w: +st.w.toFixed(2), a: st.a, pts: st.pts.map(q => [+q.x.toFixed(1), +q.y.toFixed(1)]) })) });
     }
     comp.width = 0;
@@ -109,7 +109,7 @@ async function importZip(file) {
       if (!bgId) { bgId = newId(); bgs.push({ id: bgId, png: null }); }
       const vec = (fr.vector || []).map(st => ({ id: newId(), c: st.c, w: st.w, a: st.a, pts: st.pts.map(([x, y]) => ({ x, y })) }));
       const dc = fr.color_layer && z.get(fr.color_layer);
-      return { id: newId(), dur: fr.duration_ms || 100, bgId, vec, col: dc ? dc.buffer.slice(dc.byteOffset, dc.byteOffset + dc.byteLength) : null, pp: fr.pp || {}, ppKey: fr.ppKey, ppK: fr.ppK || undefined, ppE: fr.ppE || undefined, ppEase: fr.ppEase, texts: fr.texts || [], cam: fr.cam_key || null, shake: fr.shake || 0, flash: !!fr.flash, lip: fr.lip || null, scene: fr.scene || undefined, tr: fr.tr || undefined, tre: fr.tre || undefined, ghost: fr.ghost || undefined, bgs: fr.bgs || undefined, sl: fr.sl || undefined, flt: fr.flt || undefined, png: d ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : null };
+      return { id: newId(), dur: fr.duration_ms || 100, bgId, vec, col: dc ? dc.buffer.slice(dc.byteOffset, dc.byteOffset + dc.byteLength) : null, pp: fr.pp || {}, ppKey: fr.ppKey, ppK: fr.ppK || undefined, ppE: fr.ppE || undefined, ppEase: fr.ppEase, texts: fr.texts || [], cam: fr.cam_key || null, shake: fr.shake || 0, flash: !!fr.flash, lip: fr.lip || null, scene: fr.scene || undefined, tr: fr.tr || undefined, tre: fr.tre || undefined, ghost: fr.ghost || undefined, bgs: fr.bgs || undefined, sl: fr.sl || undefined, flt: fr.flt || undefined, pz: fr.pz || undefined, png: d ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : null };
     });
     if (!frames.length) throw new Error('ZIP không có frame nào');
     pm.set('Đang mở…');
