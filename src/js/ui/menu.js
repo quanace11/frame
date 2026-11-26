@@ -68,6 +68,7 @@ $('#menuBtn').addEventListener('click', () => {
   <button class="btn" data-m="open">📂 Mở dự án từ ZIP</button>
   <button class="btn" data-m="scene">🏞 Nền vẽ sẵn (phòng, lớp học, phố, biển…)</button>
   <button class="btn" data-m="vidframes">🎬 Thêm video (ghép theo video / theo frame)</button>
+  <button class="btn" data-m="logo">🏷 Dán logo lên áo (uốn theo áo, như Photoshop)</button>
   <button class="btn" data-m="img">🖼 Nhập ảnh (đồ theo / tách nhân vật / lấy nét)</button>
   <button class="btn" data-m="aichar">🤖 AI tạo nhân vật từ ảnh</button>
   <button class="btn" data-m="aifx">🪄 AI vẽ đẹp (làm sạch nét, tô màu, frame giữa)</button>
@@ -106,6 +107,7 @@ $('#menuBtn').addEventListener('click', () => {
       else if (m === 'update') checkUpdate();
       else if (m === 'install') installDialog();
       else if (m === 'fullscr') fullscreenToggle();
+      else if (m === 'logo') lwOpen();
       else if (m === 'scene') sceneDialog();
       else if (m === 'vidframes') $('#vidFramesFile').click();
       else if (m === 'video') exportVideo();
