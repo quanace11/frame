@@ -2,7 +2,7 @@
 async function init() {
   loadSettings(); applyBigUi();
   S.ballOpt = { obj: 'ball', n: 8, ease: 'even', size: 1, hit: true, trail: true, sound: true, tobj: 'remote', crack: true, ...(S.ballOpt || {}) }; ballWire(); ballSyncBar();
-  S.size = clamp(Math.round(S.size) || 8, 1, SIZE_MAX);
+  S.size = clamp(Math.round(S.size) || 8, 1, SIZE_MAX); S.eSize = clamp(Math.round(S.eSize) || ERASER_SIZE0, 1, SIZE_MAX);
   if (!S.brushOp || typeof S.brushOp !== 'object') S.brushOp = {};
   if (S.opacity < 1 && !Object.keys(S.brushOp).length) S.brushOp[BRUSHES[S.brush] ? S.brush : 'pen'] = S.opacity;   // old single setting
   syncSizeOp();

@@ -59,6 +59,16 @@ input[type=range]{width:110px;accent-color:var(--accent);height:28px}
 #pickLoupe{position:fixed;z-index:9999;width:76px;height:76px;margin:-130px 0 0 -38px;border-radius:50%;border:4px solid #fff;box-shadow:0 0 0 2px #000a,0 6px 16px #0008;
   pointer-events:none;display:flex;align-items:flex-end;justify-content:center;font:600 11px/1 system-ui,sans-serif;padding-bottom:12px;box-sizing:border-box}
 #pickLoupe[hidden]{display:none}
+/* brush size ring (brush-cursor.js) */
+#brushCur{position:fixed;z-index:44;transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;box-sizing:border-box;
+  border:1.5px solid #fff;box-shadow:0 0 0 1px #000b,inset 0 0 0 1px #000b}
+#brushCur.er{border-style:dashed;background:#ffffff26}
+#brushCur[hidden]{display:none}
+#brushCur b{display:none}
+#brushCur.prev{border-width:2px;box-shadow:0 0 0 1.5px #000c,0 4px 14px #0007}
+#brushCur.prev.er{background:#80808055}
+#brushCur.prev b{display:block;position:absolute;left:50%;top:100%;transform:translate(-50%,8px);font:700 14px/1 system-ui,sans-serif;color:#fff;
+  background:#000c;border-radius:8px;padding:4px 8px;white-space:nowrap}
 #brushBtn{min-height:36px;min-width:92px}
 /* Popovers: colour picker & brush picker */
 .pop{position:fixed;z-index:45;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 40px #000c;padding:12px;

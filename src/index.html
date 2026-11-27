@@ -66,7 +66,7 @@
 
   <header id="top">
     <div class="grp">
-      <span class="lbl">Cỡ</span><button class="stp" data-stp="size" data-d="-1" title="Nhỏ hơn (giữ để giảm liên tục)" aria-label="Giảm cỡ">−</button><input type="range" id="sizeIn" class="sizeR" min="0" max="1000" step="1" title="Cỡ nét: kéo sang trái để chỉnh nét nhỏ thật mịn"><button class="stp" data-stp="size" data-d="1" title="To hơn (giữ để tăng liên tục)" aria-label="Tăng cỡ">+</button><button class="val sizeV stpv" id="sizeVal" data-pop="size" title="Bấm để chọn nhanh cỡ nét"></button>
+      <span class="lbl sizeL" title="Bút và tẩy nhớ cỡ riêng: đổi cỡ tẩy không làm đổi cỡ bút">Cỡ bút</span><button class="stp" data-stp="size" data-d="-1" title="Nhỏ hơn (giữ để giảm liên tục)" aria-label="Giảm cỡ">−</button><input type="range" id="sizeIn" class="sizeR" min="0" max="1000" step="1" title="Cỡ nét: kéo sang trái để chỉnh nét nhỏ thật mịn"><button class="stp" data-stp="size" data-d="1" title="To hơn (giữ để tăng liên tục)" aria-label="Tăng cỡ">+</button><button class="val sizeV stpv" id="sizeVal" data-pop="size" title="Bấm để chọn nhanh cỡ nét"></button>
     </div>
     <div class="grp">
       <span class="lbl" title="Độ đậm của loại bút / kiểu tẩy đang chọn. Mỗi loại bút nhớ độ đậm riêng">Độ đậm</span><button class="stp" data-stp="op" data-d="-1" title="Nhạt hơn 5%" aria-label="Giảm độ đậm">−</button><input type="range" id="opIn" class="opR" min="5" max="100" step="1"><button class="stp" data-stp="op" data-d="1" title="Đậm hơn 5%" aria-label="Tăng độ đậm">+</button><button class="val opV stpv" id="opVal" data-pop="op" title="Bấm để chọn nhanh độ đậm"></button>
@@ -449,6 +449,7 @@
 <script src="js/core/view.js"></script>
 <script src="js/render/render.js"></script>
 <script src="js/draw/strokes.js"></script>
+<script src="js/draw/brush-cursor.js"></script>
 <script src="js/draw/fill.js"></script>
 <script src="js/draw/auto-colour.js"></script>
 <script src="js/select/lasso.js"></script>
