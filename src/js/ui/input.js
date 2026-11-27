@@ -203,6 +203,7 @@ function fingerActs(e) {
     if (ppCutMode || ppPatchMode) return false;
     if (ppJEOn()) return !!ppJEHit(p, f) || !!ppHit(p, ppPoseFor(f));
     const sel = ppDrag === 'box' && ppPart(ppSel), b = sel && ppBoxOf(f, ppCharOf(sel) || sel.id);
+    if (ppDrag === 'bone') { const lk = ppLeanKnob(f); if (lk && Math.hypot(lk.x - p.x, lk.y - p.y) <= 24 * DPR / vs) return true; }
     return !!(b && xbHit(b, p, true)) || !!ppHit(p, ppPoseFor(f));
   }
   return false;

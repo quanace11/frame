@@ -808,6 +808,11 @@ function ppStart(p, base) {
   if (ppJEOn()) { ppJEStart(p, base, f); return; }
   if (ppDrag === 'box') { ppBoxStart(p, base, f); return; }
   if (ppDrag === 'bone') {   // 🦴 like Animate's bone tool: drag an arm/leg = it turns round its joint, drag the root = the whole character moves
+    const lk = ppLeanKnob(f);   // ⟳ beside the hips: the whole character leans round its root joint
+    if (lk && Math.hypot(lk.x - p.x, lk.y - p.y) <= 24 * DPR / vs) {
+      const q = ppQ(f, lk.root.id);
+      action = { ...base, kind: 'pprot', before: ppState(f), part: lk.root, last: p, a0: Math.atan2(p.y - lk.w.y, p.x - lk.w.x), r0: q.r || 0, wp: lk.w }; requestRender(); return;
+    }
     const hit = ppHit(p, ppPoseFor(f), true);
     if (!hit) { ppSel = null; ppSyncBar(); requestRender(); return; }
     if (hit.id !== ppSel) { ppSel = hit.id; ppSyncBar(); }
@@ -1022,7 +1027,7 @@ function ppSyncBar() { lyrSync(); kitViewSync(); lgSync(); ppScopeSync(); ppBlin
   $('#ppRot').value = Math.round(((q.r || 0) % 360 + 540) % 360 - 180); $('#ppScale').value = Math.round((q.sx == null ? 1 : q.sx) * 100);
   $('#ppHide').textContent = q.h ? 'Hiện mảnh' : 'Ẩn mảnh';
   { const rid = sel ? (ppCharOf(sel) || sel.id) : null, off = !!rid && ppOffAt(curFrame(), rid), b = $('#ppOffBtn'); b.disabled = !sel; $('#ppShowBtn').disabled = !sel || S.frames.length < 2; const nm = mselOn && msel.size; b.textContent = nm ? `🙈 Ẩn/hiện ở ${msel.size} frame đã chọn` : off ? '👁 Hiện ở frame này' : '🙈 Ẩn ở frame này'; b.classList.toggle('on', off); }
-  document.querySelectorAll('[data-ppd]').forEach(b => b.classList.toggle('on', b.dataset.ppd === ppDrag));
+  document.querySelectorAll('[data-ppd]').forEach(b => b.classList.toggle('on', b.dataset.ppd === ppDrag && !ppJE));
   { const vs2 = $('#ppVars'); vs2.innerHTML = '';
     if (sel) { const q2 = curFrame().pp && curFrame().pp[sel.id], cv = q2 && q2.v ? q2.v : 0;
       [sel.c, ...(sel.alts || []).map(a => a.c)].forEach((cc, i) => { const t = makeCanvas(36, 36), tx = t.getContext('2d'); const k2 = Math.min(34 / cc.width, 34 / cc.height); tx.drawImage(cc, (36 - cc.width * k2) / 2, (36 - cc.height * k2) / 2, cc.width * k2, cc.height * k2); t.className = 'vthumb' + (i === cv ? ' on' : ''); t.title = i ? 'Hình ' + (i + 1) : 'Hình gốc'; t.addEventListener('click', () => ppEdit(q => { if (i) q.v = i; else delete q.v; })); vs2.append(t); }); }
@@ -1048,7 +1053,7 @@ function renderPP(c, f, px) {
   if (S.tool !== 'puppet' || !S.pp) return;
   if (ppJEOn() && !ppPaint) { ppJEDraw(c, f, px); ppPrevDraw(c, f, px); return; }
   if (ppDrag === 'box' && !ppPaint) { const sel0 = ppPart(ppSel); if (sel0) xbDraw(c, ppBoxOf(f, ppCharOf(sel0)), px); return; }
-  if (ppDrag === 'bone' && !ppPaint) { ppDrawBones(c, f, px); return; }
+  if (ppDrag === 'bone' && !ppPaint) { ppDrawBones(c, f, px); ppLeanDraw(c, f, px); return; }
   const sel = ppPart(ppSel); if (!sel || !sel.c) return;
   const M = ppMats(ppPoseFor(f)), im = ppImg(sel, f.pp && f.pp[sel.id]); c.save(); c.transform(...M[sel.id]);
   c.lineWidth = 2 * px / Math.max(0.2, Math.hypot(M[sel.id][0], M[sel.id][1])); c.setLineDash([8 * px, 6 * px]); c.strokeStyle = ppPaint ? '#2f7bff' : '#ff3b9a';
@@ -1057,9 +1062,28 @@ function renderPP(c, f, px) {
   if (!ppPaint) { c.save(); c.beginPath(); c.arc(wp.x, wp.y, (ppDrag === 'pivot' ? 11 : 8) * px, 0, Math.PI * 2); c.fillStyle = '#ff3b9a'; c.fill(); c.lineWidth = 2 * px; c.strokeStyle = '#fff'; c.stroke(); c.restore(); }
   ppPrevDraw(c, f, px);
 }
+// 🦴 Tạo dáng: a ⟳ knob beside the selected character's root joint (the hips) turns the whole character round it (lean)
+function ppLeanKnob(f) {
+  const sel = ppPart(ppSel), root = sel && ppPart(ppCharOf(sel) || sel.id); if (!root || !root.c) return null;
+  const P = ppPoseFor(f); if (P && P[root.id] && P[root.id].h) return null;
+  const off = lyrOff('lh', 'lk'); if (off && off.has(root.id)) return null;
+  const b = ppBoxOf(f, root.id); if (!b) return null;
+  const M = ppMats(P)[root.id], w = mApply(M, root.px, root.py), k = Math.hypot(M[0], M[1]) || 1;
+  const half = Math.max(Math.abs(b.x1 - root.px), Math.abs(root.px - b.x0)) * k, d = half + 34 * DPR / vs;
+  const t = mApply(M, root.px, root.py - 10), ux = t.x - w.x, uy = t.y - w.y, l = Math.hypot(ux, uy) || 1;   // up the body, on screen
+  return { root, w, x: w.x - uy / l * d, y: w.y + ux / l * d };
+}
+function ppLeanDraw(c, f, px) {
+  const k = ppLeanKnob(f); if (!k) return;
+  c.save(); c.lineCap = 'round'; c.setLineDash([6 * px, 5 * px]); c.strokeStyle = 'rgba(255,178,30,.9)'; c.lineWidth = 2.5 * px;
+  c.beginPath(); c.moveTo(k.w.x, k.w.y); c.lineTo(k.x, k.y); c.stroke(); c.setLineDash([]);
+  c.beginPath(); c.arc(k.x, k.y, 14 * px, 0, Math.PI * 2); c.fillStyle = '#ffb21e'; c.fill(); c.lineWidth = 2.5 * px; c.strokeStyle = '#fff'; c.stroke();
+  c.fillStyle = '#fff'; c.font = `bold ${16 * px}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('⟳', k.x, k.y + px); c.restore();
+}
 function ppDrawBones(c, f, px) {   // 🦴 bones of the selected character (or every character): joint → child joint, the touched piece in pink
-  const sel = ppPart(ppSel), rid = sel && (ppCharOf(sel) || sel.id), M = ppMats(ppPoseFor(f)), byId = {}; S.pp.parts.forEach(p => byId[p.id] = p);
-  const parts = S.pp.parts.filter(p => p.c && (!rid || (ppCharOf(p) || p.id) === rid) && !(f.pp && f.pp[p.id] && f.pp[p.id].h));
+  const sel = ppPart(ppSel), rid = sel && (ppCharOf(sel) || sel.id), P = ppPoseFor(f), M = ppMats(P), off = lyrOff('lh');
+  // not the bones of a character hidden on this frame (🙈, 📍) or of a hidden layer (👁)
+  const parts = S.pp.parts.filter(p => p.c && (!rid || (ppCharOf(p) || p.id) === rid) && !(P && P[p.id] && P[p.id].h) && !(off && off.has(p.id)));
   c.save(); c.lineCap = 'round';
   for (const p of parts) {
     const a = mApply(M[p.id], p.px, p.py), kids = parts.filter(k => k.parent === p.id), ends = kids.length ? kids.map(k => mApply(M[k.id], k.px, k.py)) : p.tip ? [mApply(M[p.id], p.tip.x, p.tip.y)] : [];
