@@ -31,7 +31,8 @@ async function playAudioFrom(i) { playStopAudio(); playStopAudio = () => {}; if 
 const PLAY_BUDGET = (navigator.deviceMemory && navigator.deviceMemory <= 4 ? 120 : 260) * 1e6;
 let playFreeT = null;
 function freePlayCache(except) { for (const f of S.frames) if (f.play && f !== except) { f.play.width = 0; f.play.height = 0; f.play = null; f.playKey = ''; } }
-function playCacheSize(n) { let ph = Math.min(900, Math.max(320, Math.round(H * vs))); const perPx = 4 * n * W / H; if (ph * ph * perPx > PLAY_BUDGET) ph = Math.max(200, Math.floor(Math.sqrt(PLAY_BUDGET / perPx))); return ph; }
+// play cache as sharp as the frame on screen (a 900 px cap made playback look blurry on 2× tablet screens); memory budget still wins
+function playCacheSize(n) { let ph = Math.min(H, Math.max(320, Math.round(H * vs))); const perPx = 4 * n * W / H; if (ph * ph * perPx > PLAY_BUDGET) ph = Math.max(200, Math.floor(Math.sqrt(PLAY_BUDGET / perPx))); return ph; }
 async function buildPlayCache() {
   clearTimeout(playFreeT);
   const ph = playCacheSize(S.frames.length), k = ph / H, pw = Math.round(W * k);
