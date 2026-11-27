@@ -66,7 +66,7 @@ async def main():
         check('reload keeps 2 voice clips', await pg.evaluate("voiceClips().length===2 && voiceClips().every(c=>c.buf && c.buf.byteLength>1000) && voiceClips()[1].mouth==='mouth2'"))
         # ⚡ fast export (WebCodecs + MP4 writer) with sound
         await pg.evaluate("S.frames[2].texts=[{id:'t1',str:'GOAL!',x:W/2,y:H/3,size:120,color:'#ffe14d',style:'comic',rot:0}]")
-        t0=time.time(); await pg.click('#videoBtn')
+        t0=time.time(); await pg.click('#videoBtn'); await pg.click('.dlg .btns >> text=🎬 Xuất video')
         await pg.wait_for_selector('text=Video đã xong', timeout=120000); secs = round(time.time()-t0,1); body = await pg.inner_text('.dlg .body')
         check('fast export used', 'xuất nhanh' in body, f'{secs}s · {body}')
         async with pg.expect_download() as dl: await pg.click('text=Lưu video')

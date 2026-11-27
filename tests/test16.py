@@ -29,7 +29,7 @@ async def main():
         await pg.fill('#fxTxtIn','SIUUU'); await pg.click('.dlg .btns >> text=Xong'); await pg.wait_for_timeout(300)
         await pg.screenshot(path='d3.png')
         await pg.click('#wizBtn'); await pg.wait_for_timeout(300); await pg.screenshot(path='d4.png')
-        await pg.click('[data-wz=video]'); await pg.wait_for_selector('text=Video đã xong', timeout=120000)
+        await pg.click('[data-wz=video]'); await pg.click('.dlg .btns >> text=🎬 Xuất video'); await pg.wait_for_selector('text=Video đã xong', timeout=120000)
         print('video ok', await pg.inner_text('.dlg .body'))
         print('ERR', errs); await b.close()
 asyncio.run(main()); srv.kill()

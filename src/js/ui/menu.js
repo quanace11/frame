@@ -108,7 +108,7 @@ $('#menuBtn').addEventListener('click', () => {
       else if (m === 'fullscr') fullscreenToggle();
       else if (m === 'scene') sceneDialog();
       else if (m === 'vidframes') $('#vidFramesFile').click();
-      else if (m === 'video') exportVideo();
+      else if (m === 'video') exportVideoAsk();
       else if (m === 'gif') exportImagesDialog();
       else if (m === 'cover') coverDialog();
       else if (m === 'scenes') shotsDialog();
