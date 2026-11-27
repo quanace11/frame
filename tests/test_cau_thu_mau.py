@@ -34,6 +34,7 @@ async def main():
         print('gesture', g)
         if not g[2] or g[1] < 2: errs.append('gesture did nothing: %s' % g)
         await pg.evaluate("selectFrame(0)"); await pg.wait_for_timeout(300)
+        await pg.wait_for_timeout(600); await pg.wait_for_function('!histT', timeout=5000)   # slow CI: let the add/gesture undo steps settle first, or the head swap gets folded into them
         await pg.screenshot(path='cau_thu.png')
         # swap the head: a picture on white paper (a red face) → white edges become transparent, bottom stays on the neck
         before = await pg.evaluate("(()=>{ const h=S.pp.parts.find(q=>q.role==='head'); ppSel=h.id; return {w:h.c.width,h:h.c.height,ox:h.ox,oy:h.oy,px:h.px,py:h.py,bot:h.oy+h.c.height} })()")
