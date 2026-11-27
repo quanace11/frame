@@ -427,3 +427,11 @@ body.gon #lyrPanel, body.gon #ppbar [data-t=frames], body.gon #ppbar [data-tab=f
 .kmLogo{padding:3px 6px} .kmLogo img{height:30px;max-width:60px;object-fit:contain;vertical-align:middle;background:#fff8;border-radius:4px}
 .kmKit{display:inline-flex;align-items:center;gap:6px;min-height:42px} .kmKit canvas{width:30px;height:30px}
 .kmDel{border:none;background:none;color:var(--text);opacity:.6;font-size:14px;min-width:30px;min-height:30px;cursor:pointer}
+/* 🏷 Dán logo lên áo (logo-wrap.js): full-screen editor */
+#lwOv{position:fixed;inset:0;z-index:49;background:#121218;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;padding:0;color:var(--text)}
+#lwOv .lwBar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+#lwOv .lwBar:last-child{border-bottom:none;border-top:1px solid var(--line)}
+#lwOv .chip.small{min-height:42px} #lwOv .btn{min-height:44px}
+#lwOv .lwR{display:inline-flex;align-items:center;gap:6px;font-size:13px} #lwOv .lwR input{width:120px}
+.lwStage{position:relative;flex:1;min-height:0} #lwCv{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.lwEmpty{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);max-width:420px;text-align:center;background:#000a;padding:16px 18px;border-radius:14px;pointer-events:none;line-height:1.5}

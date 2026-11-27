@@ -258,6 +258,52 @@ async function gagThrow(p) {
   if (!side && ch == null) toast('Chưa có nhân vật ghép nên vật bay từ dưới khung lên — muốn nhân vật vung tay: Nhập ảnh → Nhân vật ghép', 4500);
   return r;
 }
+/* --- 📸 Paparazzi: many small camera flashes pop at random spots around the character over N frames (star bursts with a
+   soft glow, each lives 2 frames: peak then fading), optional full-screen white flash, shutter clicks. One undo step (gagApply). --- */
+const PAP0 = { n: 12, k: 2, white: false, snd: true };
+const papOpt = () => (S.ballOpt.pap = { ...PAP0, ...(S.ballOpt.pap || {}) });
+// one camera flash at (cx, cy), size r; t = 0 peak, 1 fading afterglow; rot turns the long spikes a little
+function aFlashPop(x, cx, cy, r, t = 0, rot = 0) {
+  const k = t ? 0.6 : 1, R = r * k;
+  x.save(); x.globalAlpha = t ? 0.6 : 1;
+  // warm core, blue rim: reads on white paper as well as on a dark background
+  const g = x.createRadialGradient(cx, cy, 0, cx, cy, R * 1.6);
+  g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.22, 'rgba(255,246,190,.95)'); g.addColorStop(0.5, 'rgba(255,214,90,.55)'); g.addColorStop(0.75, 'rgba(120,190,255,.3)'); g.addColorStop(1, 'rgba(120,190,255,0)');
+  x.fillStyle = g; x.beginPath(); x.arc(cx, cy, R * 1.6, 0, Math.PI * 2); x.fill();
+  // lens star: 4 long + 4 short tapered spikes, white with a thin ink outline
+  x.translate(cx, cy); x.rotate(rot); x.beginPath();
+  for (let i = 0; i < 16; i++) { const an = i * Math.PI / 8, L = i % 2 ? R * 0.2 : i % 4 ? R * 1.15 : R * 2.5; x.lineTo(Math.cos(an) * L, Math.sin(an) * L); }
+  x.closePath(); x.fillStyle = '#fff'; x.fill(); x.lineJoin = 'round'; x.lineWidth = Math.max(1.5, R * 0.05); x.strokeStyle = 'rgba(40,70,120,.85)'; x.stroke();
+  x.beginPath(); x.arc(0, 0, R * 0.22, 0, Math.PI * 2); x.fillStyle = '#fff'; x.fill();
+  x.restore();
+}
+// where the flashes go: a ring around the character (or around the tapped spot), mostly just outside its outline
+function papSpots(box, n, k, seed) {
+  const R = aRnd(seed), cx = (box.x0 + box.x1) / 2, cy = (box.y0 + box.y1) / 2, rx = (box.x1 - box.x0) / 2 + W * 0.1, ry = (box.y1 - box.y0) / 2 + W * 0.08;
+  const per = [[1, 2], [2, 4], [3, 6]][clamp(k | 0, 1, 3) - 1], out = [];
+  for (let j = 0; j < n; j++) {
+    const m = per[0] + Math.floor(R() * (per[1] - per[0] + 1));
+    for (let i = 0; i < m; i++) {
+      const a = R() * Math.PI * 2, d = 0.8 + R() * 0.4;
+      out.push({ j, x: clamp(cx + Math.cos(a) * rx * d, W * 0.04, W * 0.96), y: clamp(cy + Math.sin(a) * ry * d, H * 0.03, H * 0.97), r: W * (0.03 + R() * 0.04), rot: R() * 0.8 });
+    }
+  }
+  return out;
+}
+async function gagPaparazzi(p) {
+  const o = papOpt(), i0 = S.cur, n = clamp(o.n | 0, 2, 60), seed = (Math.random() * 1e9) | 0;
+  let box = await camSubject(S.frames[i0]);
+  if (!box || p.x < box.x0 - W * 0.1 || p.x > box.x1 + W * 0.1 || p.y < box.y0 - W * 0.1 || p.y > box.y1 + W * 0.1) box = { x0: p.x - W * 0.18, x1: p.x + W * 0.18, y0: p.y - W * 0.3, y1: p.y + W * 0.3 };
+  const spots = papSpots(box, n, o.k, seed);
+  // a burst of clicks about every second (frames that don't exist yet will be copies of the last one: same length)
+  const durAt = j => (S.frames[i0 + j] || S.frames[S.frames.length - 1]).dur, sfx = [];
+  if (o.snd) { let t = 0, next = 0; for (let j = 0; j < n; j++) { if (t >= next) { if (!j) sfx.push([j, 'shutter']); sfx.push([j, 'snaps']); next += 1000; } t += durAt(j); } }
+  return gagApply(i0, { n,
+    pix: j => spots.filter(s => s.j === j || s.j === j - 1).map(s => ({ rect: rectAround(s.x, s.y, s.r * 2.5), draw: x => aFlashPop(x, s.x, s.y, s.r, s.j === j ? 0 : 1, s.rot) })),
+    fx: (j, f) => { if (!o.white || j % 4) return false; f.flash = true; },
+    sfx });
+}
+GAGS.paparazzi = { label: '📸 Paparazzi', hint: 'Chạm vào nhân vật được chụp ảnh — đèn flash sẽ nháy quanh người', run: p => gagPaparazzi(p) };
 GAGS.throw = { label: '🎯 Ném vật', hint: 'Chạm vào chỗ muốn ném trúng (vd. màn hình TV)', run: p => gagThrow(p) };
 async function gagRun(key, p) {
   const G = GAGS[key]; if (!G) return;
@@ -274,6 +320,7 @@ function ballSyncBar() {
   $('#ballHit').classList.toggle('on', !!o.hit); $('#ballTrail').classList.toggle('on', !!o.trail); $('#ballSnd').classList.toggle('on', !!o.sound); $('#ballSize').value = o.size;
   document.querySelectorAll('[data-gag]').forEach(b => b.classList.toggle('active', b.dataset.gag === gagMode));
   document.querySelectorAll('[data-tobj]').forEach(b => b.classList.toggle('on', b.dataset.tobj === (o.tobj || 'remote'))); $('#thrCrack').classList.toggle('on', o.crack !== false);
+  const pp = papOpt(); if ($('#papN')) { $('#papN').value = pp.n; document.querySelectorAll('[data-papk]').forEach(b => b.classList.toggle('on', +b.dataset.papk === pp.k)); $('#papWhite').classList.toggle('on', !!pp.white); $('#papSnd').classList.toggle('on', !!pp.snd); }
 }
 function renderBallPath(c, px) {
   if (!ballMode || !ballMode.pts || ballMode.pts.length < 2) return;
@@ -293,5 +340,8 @@ function ballWire() {
   document.querySelectorAll('[data-gag]').forEach(b => b.addEventListener('click', () => gagModeSet(b.dataset.gag)));
   document.querySelectorAll('[data-tobj]').forEach(b => b.addEventListener('click', () => { S.ballOpt.tobj = b.dataset.tobj; saveSettings(); ballSyncBar(); }));
   $('#thrCrack').addEventListener('click', () => { S.ballOpt.crack = !S.ballOpt.crack; saveSettings(); ballSyncBar(); });
+  $('#papN').addEventListener('change', e => { papOpt().n = clamp(Math.round(+e.target.value || 12), 2, 60); saveSettings(); ballSyncBar(); });
+  document.querySelectorAll('[data-papk]').forEach(b => b.addEventListener('click', () => { papOpt().k = +b.dataset.papk; saveSettings(); ballSyncBar(); }));
+  for (const [id, k] of [['#papWhite', 'white'], ['#papSnd', 'snd']]) $(id).addEventListener('click', () => { const q = papOpt(); q[k] = !q[k]; saveSettings(); ballSyncBar(); });
 }
 

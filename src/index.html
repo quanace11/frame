@@ -238,7 +238,7 @@
         <div class="mrow" data-tab="parts"><select id="ppList" class="chip small"></select><button class="chip small" id="ppRename">Đổi tên</button>
           <select id="ppRole" class="chip small"></select><select id="ppParent" class="chip small"></select>
           <button class="chip small" id="ppUp" title="Đưa lên trên">▲</button><button class="chip small" id="ppDown" title="Đưa xuống dưới">▼</button><button class="chip small" id="ppCharTop" title="Đưa cả nhân vật (hoặc cả hình) chứa mảnh này lên trước mọi nhân vật khác">⏫ Cả nhân vật lên trước</button><button class="chip small" id="ppCharBot" title="Đưa cả nhân vật (hoặc cả hình) chứa mảnh này ra sau mọi nhân vật khác">⏬ Ra sau</button><button class="chip small" id="ppDel" style="color:var(--danger)">Xoá mảnh</button><button class="chip small" id="ppDelChar" style="color:var(--danger)">Xoá cả nhân vật</button></div>
-        <div class="mrow" data-tab="parts"><span class="lbl"><b>🧍 Kho nhân vật</b> (dùng lại ở mọi dự án):</span><button class="chip small on" id="ppLibSave" title="Lưu nhân vật chứa mảnh đang chọn (mảnh, khớp, vai trò, hình mắt/miệng) để dùng lại ở dự án khác">💾 Lưu nhân vật này</button><button class="chip small" id="ppLibBtn" title="Thêm nhân vật đã lưu vào dự án này">🧍 Mở kho</button><button class="chip small" id="ppSendBtn" title="Gửi nhân vật này sang máy khác (tablet ↔ máy tính) qua 📮 Hộp thư hoặc file">📤 Gửi sang máy khác</button><button class="chip small" id="kitBtn" title="Thêm cầu thủ vẽ sẵn (đã cắt mảnh, có khớp)">⚽ Cầu thủ mẫu</button><button class="chip small" id="kitMakerBtn" title="Đổi áo đấu cho nhân vật đang chọn: màu thân/sọc/cổ (giữ nếp gấp, bóng), logo của bạn dán lên ngực, số áo + tên. Lưu bộ áo để mặc cho nhân vật khác">👕 Áo đấu</button></div>
+        <div class="mrow" data-tab="parts"><span class="lbl"><b>🧍 Kho nhân vật</b> (dùng lại ở mọi dự án):</span><button class="chip small on" id="ppLibSave" title="Lưu nhân vật chứa mảnh đang chọn (mảnh, khớp, vai trò, hình mắt/miệng) để dùng lại ở dự án khác">💾 Lưu nhân vật này</button><button class="chip small" id="ppLibBtn" title="Thêm nhân vật đã lưu vào dự án này">🧍 Mở kho</button><button class="chip small" id="ppSendBtn" title="Gửi nhân vật này sang máy khác (tablet ↔ máy tính) qua 📮 Hộp thư hoặc file">📤 Gửi sang máy khác</button><button class="chip small" id="kitBtn" title="Thêm cầu thủ vẽ sẵn (đã cắt mảnh, có khớp)">⚽ Cầu thủ mẫu</button><button class="chip small" id="kitMakerBtn" title="Đổi áo đấu cho nhân vật đang chọn: màu thân/sọc/cổ (giữ nếp gấp, bóng), logo của bạn dán lên ngực, số áo + tên. Lưu bộ áo để mặc cho nhân vật khác">👕 Áo đấu</button><button class="chip small on" id="lwBtn" title="Như Photoshop: kéo ảnh logo vào, tự xoá phông, kéo 4 góc / uốn lưới cho logo ôm theo áo, ăn theo nếp gấp và bóng. Logo dính vào mảnh nên đi theo nhân vật ở mọi frame">🏷 Dán logo lên áo</button></div>
         <div class="mrow" data-tab="parts"><span class="lbl"><b>Hình của mảnh</b> (đổi theo frame):</span><span id="ppVars" class="mrow"></span>
           <button class="chip small" id="ppSwapBtn" title="Thay hình của mảnh đang chọn bằng ảnh khác (vd. đầu biếm hoạ), giữ khớp và tư thế">🔄 Đổi hình mảnh</button><button class="chip small" id="ppVarAdd" title="Nhập hình khác cho mảnh này, vd. miệng há, mắt nhắm, tay nắm">＋ Nhập hình</button><button class="chip small" id="ppVarDup" title="Nhân bản hình đang dùng để sửa thành hình mới">⧉ Nhân bản</button><button class="chip small" id="ppVarDel">🗑</button>
           <button class="chip small" id="ppPaintBtn" title="Vẽ lại hình mảnh (giày, chân, tay…) bằng bút, tẩy, đổ màu. Sửa 1 lần là mọi frame đều đổi, mảnh vẫn cử động theo khớp">✎ Vẽ lại mảnh</button><button class="chip small" id="ppEraseBtn">⌫ Tẩy mảnh</button><button class="chip small" id="ppJointBtn2" title="Dời khớp, thử cử động, bo tròn hoặc vẽ lại chỗ khớp để tay chân xoay không bị hở">🔧 Sửa khớp</button></div>
@@ -325,6 +325,10 @@
       <div class="mrow" data-tab="gag"><span class="lbl"><b>🎯 Ném vật</b> (chọn rồi chạm chỗ muốn ném trúng, vd. màn hình TV):</span><button class="chip small" data-gag="throw" title="Nhân vật đang chọn vung tay ném, vật bay vòng cung tới chỗ chạm, đập vỡ + rung + tiếng">🎯 Ném vào…</button>
         <button class="chip small" data-tobj="remote">📱 Điều khiển</button><button class="chip small" data-tobj="can">🥫 Lon</button><button class="chip small" data-tobj="boot">👟 Giày</button><button class="chip small" data-tobj="ball">⚽ Bóng</button>
         <button class="chip small" id="thrCrack" title="Chỗ trúng bị nứt vỡ (giữ lại tới hết cảnh ném)">💥 Vỡ màn hình</button></div>
+      <div class="mrow" data-tab="gag"><span class="lbl"><b>📸 Paparazzi</b> (chọn rồi chạm vào nhân vật):</span><button class="chip small" data-gag="paparazzi" title="Đèn flash máy ảnh nháy lia lịa quanh nhân vật + tiếng chụp ảnh">📸 Chụp ảnh lia lịa</button>
+        <span class="lbl">Số frame</span><input type="number" id="papN" min="2" max="60" value="12" style="width:56px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px">
+        <span class="lbl">Đèn flash</span><button class="chip small" data-papk="1" title="1–2 đèn mỗi frame">Ít</button><button class="chip small" data-papk="2" title="2–4 đèn mỗi frame">Vừa</button><button class="chip small" data-papk="3" title="3–6 đèn mỗi frame">Dày</button>
+        <button class="chip small" id="papWhite" title="Cứ 4 frame thì chớp trắng cả màn hình một lần">⚡ Chớp cả màn</button><button class="chip small" id="papSnd" title="Tiếng máy ảnh chụp liên tục">🔊 Tiếng máy ảnh</button></div>
       <div class="mrow" data-tab="trans"><span class="lbl"><b>Đặt ở:</b></span><button class="chip small" data-trat="in" title="Chuyển cảnh ở chỗ nối giữa frame trước và frame này (ở frame 1 = mở đầu phim)">⏮ Đầu frame này</button><button class="chip small" data-trat="out" title="Chuyển cảnh ở chỗ nối giữa frame này và frame sau (ở frame cuối = kết thúc phim)">Sau frame này ⏭</button>
         <span class="lbl">Dài</span><input type="range" id="trD" min="0.2" max="3" step="0.1" style="width:100px"><span class="val" id="trDVal"></span><button class="chip small" id="trSnd" title="Tự thêm tiếng cho chuyển cảnh (tiếng tách tắt TV, vút, rè…)">🔊 Tiếng</button></div>
       <div class="mrow" data-tab="trans" style="flex-wrap:wrap;gap:4px"><span class="lbl"><b>Chạm 1 kiểu để thêm:</b></span><span id="trKinds" class="mrow" style="flex-wrap:wrap;gap:4px"></span></div>
@@ -471,6 +475,7 @@
 <script src="js/puppet/char-lib.js"></script>
 <script src="js/puppet/kit.js"></script>
 <script src="js/puppet/kit-maker.js"></script>
+<script src="js/puppet/logo-wrap.js"></script>
 <script src="js/assets/asset-lib.js"></script>
 <script src="js/assets/anim-fx.js"></script>
 <script src="js/puppet/gestures.js"></script>
@@ -493,6 +498,7 @@
 <script src="js/fx/transitions.js"></script>
 <script src="js/export/video-fast.js"></script>
 <script src="js/export/cover.js"></script>
+<script src="js/export/logo.js"></script>
 <script src="js/fx/ball-gags.js"></script>
 <script src="js/vector/trace.js"></script>
 <script src="js/vector/snap.js"></script>

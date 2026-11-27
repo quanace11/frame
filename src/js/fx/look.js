@@ -132,8 +132,8 @@ function drawFrameBase(ctx, f, bg, live) {
 // what goes over the cached frame picture when the puppet moves smoothly: the in-between pose, then the vector lines
 const ppLiveOver = (i, tIn, wrap) => ctx => { const f = S.frames[i]; jgClock = (f.lip && f.lip.jg) ? jgTime(f.lip) + tIn : null; boClock = boFrameT0(i) + tIn; try { drawPuppet(ctx, ppPoseAt(i, tIn, wrap), ppLipAt(i, tIn)); } finally { jgClock = null; boClock = null; } if (S.showVec && f.vec && f.vec.length) drawVec(ctx, f.vec); };
 function drawFrameFx(ctx, i, baseImg, tsec, tInFrame, vid, over) {
-  if (!trSkip && S.frames.some(f => f.tr || f.tre) && trRender(ctx, i, baseImg, tsec, tInFrame, vid, over, frameStartTimes())) return;
-  drawFrameFx0(ctx, i, baseImg, tsec, tInFrame, vid, over);
+  if (!(!trSkip && S.frames.some(f => f.tr || f.tre) && trRender(ctx, i, baseImg, tsec, tInFrame, vid, over, frameStartTimes()))) drawFrameFx0(ctx, i, baseImg, tsec, tInFrame, vid, over);
+  drawLogo(ctx);   // 🏷 Logo kênh on top of everything
 }
 function drawFrameFx0(ctx, i, baseImg, tsec, tInFrame, vid, over) {
   const f = S.frames[i], cam = camAt(i, tInFrame || 0), cf = camFx(i, tInFrame || 0);
