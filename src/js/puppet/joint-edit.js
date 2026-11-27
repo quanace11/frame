@@ -21,9 +21,14 @@ function ppJEJoints(f) {
   const sel = ppPart(ppSel), rid = sel && (ppCharOf(sel) || sel.id), P = ppPoseFor(f);
   return S.pp.parts.filter(p => p.parent && p.c && ppPart(p.parent) && !(P[p.id] && P[p.id].h) && (!rid || ppCharOf(p) === rid));
 }
+// the root's joint (the hips: the point the whole character turns round), of the selected character (or every one)
+function ppJERoots(f) {
+  const sel = ppPart(ppSel), rid = sel && (ppCharOf(sel) || sel.id), P = ppPoseFor(f), off = lyrOff('lh', 'lk');
+  return S.pp.parts.filter(p => !p.parent && p.c && !(P[p.id] && P[p.id].h) && !(off && off.has(p.id)) && (!rid || p.id === rid) && S.pp.parts.some(q => q.parent === p.id));
+}
 function ppJEHit(pt, f) {
   const M = ppMats(ppPoseFor(f)), tol = 24 * DPR / vs; let best = null, bd = tol;
-  for (const p of ppJEJoints(f)) { const w = mApply(M[p.id], p.px, p.py), d = Math.hypot(w.x - pt.x, w.y - pt.y); if (d <= bd) { bd = d; best = p; } }
+  for (const p of [...ppJEJoints(f), ...ppJERoots(f)]) { const w = mApply(M[p.id], p.px, p.py), d = Math.hypot(w.x - pt.x, w.y - pt.y); if (d <= bd) { bd = d; best = p; } }
   return best;
 }
 function ppJEGo() {
@@ -44,14 +49,26 @@ function ppJEStart(p, base, f) {
   }
   const hit = ppHit(p, ppPoseFor(f), true);
   ppSel = hit ? hit.id : null; ppSyncBar(); requestRender();
-  if (hit && !hit.parent) toast('Đây là mảnh gốc. Chạm chấm xanh ở khớp để dời khớp', 2200);
+  if (hit && !hit.parent) toast('Đây là mảnh gốc. Kéo chấm vàng = dời điểm xoay cả người, chấm xanh = dời khớp', 2600);
 }
 function ppJEMove(a, p, f) {
   const sel = a.part; if (!ppPart(sel.id)) return;
   const Mi = mInv(ppMats(ppPoseFor(f))[sel.id]), o = mApply(Mi, a.last.x, a.last.y), n = mApply(Mi, p.x, p.y), dx = n.x - o.x, dy = n.y - o.y;
   sel.px += dx; sel.py += dy; a.last = p; a.moved = true;
+  if (!sel.parent) ppJERootKeep(sel, dx, dy);
   if (a.tipPar) { const par = ppPart(sel.parent); if (par && par.tip) par.tip = { x: par.tip.x + dx, y: par.tip.y + dy }; }
   f.ver++; requestRender();
+}
+// the root's joint moved by (dx, dy): every frame keeps the character exactly where it was (its turn / size / flip now
+// work round the new point), so only the point the character turns round changes
+function ppJERootKeep(p, dx, dy) {
+  for (const fr of S.frames) {
+    const q = fr.pp && fr.pp[p.id]; if (!q) continue;
+    const r = (q.r || 0) * DEG, sx = (q.sx == null ? 1 : q.sx) * (q.fl ? -1 : 1), sy = q.sy == null ? 1 : q.sy, c = Math.cos(r), s = Math.sin(r);
+    const ax = c * sx * dx - s * sy * dy, ay = s * sx * dx + c * sy * dy;   // A·Δ, A = R(r)·S(sx, sy)
+    if (Math.abs(ax - dx) < 1e-9 && Math.abs(ay - dy) < 1e-9) continue;
+    q.dx = (q.dx || 0) + ax - dx; q.dy = (q.dy || 0) + ay - dy;
+  }
 }
 function ppJEEnd(a) { if (a.moved) { S.frames.forEach(fr => { fr.ver++; queueThumbFor(fr); }); scheduleSave(); } ppSyncBar(); requestRender(); }
 /* --- ◯ round joint --- */
@@ -138,7 +155,7 @@ function ppJESync() {
   const sel = ppPart(ppSel);
   $('#ppJEWig').classList.toggle('on', !!ppJE.wig);
   $('#ppJERound').disabled = !(sel && sel.parent);
-  $('#ppJEName').textContent = sel && sel.parent ? 'Khớp: ' + sel.name : '';
+  $('#ppJEName').textContent = sel && sel.parent ? 'Khớp: ' + sel.name : sel ? 'Điểm xoay cả người: ' + sel.name : '';
 }
 function ppJEDraw(c, f, px) {
   ppDrawBones(c, f, px);

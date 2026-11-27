@@ -473,7 +473,7 @@ function rsDown(e) {
   if (touchPan) { RS.act = { k: 'pan', s0: { x: e.clientX, y: e.clientY }, v0: RS.vw.slice() }; return; }
   if (RS.mode === 'arrange') {
     if (RS.cut) { if (!sel) { const h = rsHit(pt); if (h) { RS.sel = h.id; rsSync(); } } RS.act = { k: 'lasso', pts: [pt] }; rsDraw(); return; }
-    if (sel) { const kb = rsKnob(sel, M[sel.id]); if (Math.hypot(pt.sx - kb.x, pt.sy - kb.y) < 30 * DPR) { rsPush(); const c = { x: sel.x, y: sel.y }; RS.act = { k: 'knob', p: sel, c, a0: Math.atan2(pt.y - c.y, pt.x - c.x), d0: Math.hypot(pt.x - c.x, pt.y - c.y) || 1, s0: sel.s, r0: sel.r, snap: RS.undo[RS.undo.length - 1] }; return; } }
+    if (sel) { const kb = rsKnob(sel, M[sel.id]); if (Math.hypot(pt.sx - kb.x, pt.sy - kb.y) < 30 * DPR) { rsPush(); const c = { x: sel.x, y: sel.y }; RS.act = { k: 'knob', p: sel, c, a0: Math.atan2(pt.y - c.y, pt.x - c.x), d0: Math.hypot(pt.x - c.x, pt.y - c.y) || 1, s0: sel.s, r0: sel.r, snap: RS.undo[RS.undo.length - 1], grp: (RS.kids ? rsDesc(sel.id) : []).map(q => [q, q.x, q.y, q.s, q.r]) }; return; } }
     const h = rsHit(pt);
     if (h) { rsPush(); RS.sel = h.id; const grp = [h, ...(RS.kids ? rsDesc(h.id) : [])]; RS.act = { k: 'move', p0: pt, grp: grp.map(q => [q, q.x, q.y]), snap: RS.undo[RS.undo.length - 1], moved: 0 }; rsSync(); rsDraw(); return; }
   } else if (RS.mode === 'bone') {
@@ -504,7 +504,13 @@ function rsMove(e) {
   if (a.k === 'pan') { RS.zoomed = true; RS.vw = [a.v0[0], 0, 0, a.v0[3], a.v0[4] + (e.clientX - a.s0.x) * DPR, a.v0[5] + (e.clientY - a.s0.y) * DPR]; rsDraw(); return; }
   const pt = rsDoc(e);
   if (a.k === 'move') { const dx = pt.x - a.p0.x, dy = pt.y - a.p0.y; a.moved = Math.max(a.moved, Math.hypot(pt.sx - a.p0.sx, pt.sy - a.p0.sy)); for (const [q, x0, y0] of a.grp) { q.x = x0 + dx; q.y = y0 + dy; } rsDraw(); return; }
-  if (a.k === 'knob') { const p = a.p, an = Math.atan2(pt.y - a.c.y, pt.x - a.c.x), d = Math.hypot(pt.x - a.c.x, pt.y - a.c.y); p.s = clamp(a.s0 * d / a.d0, 0.03, 20); p.r = a.r0 + (an - a.a0) / DEG; rsDraw(); return; }
+  if (a.k === 'knob') {
+    const p = a.p, an = Math.atan2(pt.y - a.c.y, pt.x - a.c.x), d = Math.hypot(pt.x - a.c.x, pt.y - a.c.y); p.s = clamp(a.s0 * d / a.d0, 0.03, 20); p.r = a.r0 + (an - a.a0) / DEG;
+    // the attached pieces turn + grow with it round the same centre, so every joint stays on its parent
+    const g = p.s / a.s0, dr = p.r - a.r0, co = Math.cos(dr * DEG) * g, si = Math.sin(dr * DEG) * g;
+    for (const [q, x0, y0, s0, r0] of a.grp) { const vx = x0 - a.c.x, vy = y0 - a.c.y; q.x = a.c.x + co * vx - si * vy; q.y = a.c.y + si * vx + co * vy; q.s = s0 * g; q.r = r0 + dr; }
+    rsDraw(); return;
+  }
   if (a.k === 'joint') { const l = mApply(mInv(rsA(a.p)), pt.x, pt.y); a.p.jx = l.x; a.p.jy = l.y; a.moved = 1; rsDraw(); return; }
   if (a.k === 'link') { a.cur = pt; rsDraw(); return; }
   if (a.k === 'rot') { const an = Math.atan2(pt.y - a.J.y, pt.x - a.J.x); RS.pose[a.p.id] = a.b0 + (an - a.a0) / DEG; rsDraw(); return; }
@@ -606,6 +612,15 @@ function rsZ(top) {
   const p = rsPc(RS.sel); if (!p) return; rsPush();
   const o = [...RS.pcs].sort((a, b) => a.z - b.z), i = o.indexOf(p); o.splice(i, 1); o.splice(clamp(i + (top ? 1 : -1), 0, o.length), 0, p); o.forEach((q, k) => { q.z = k; }); rsChanged();
 }
+// the pieces attached to p (☑ kéo cả mảnh đã gắn) follow the change p just had (A0 = its matrix before): turn, size, flip
+function rsCarry(p, A0) {
+  if (!RS.kids) return;
+  const D = mMul(rsA(p), mInv(A0));
+  for (const q of rsDesc(p.id)) {
+    const c = mApply(D, q.x, q.y), L = mMul(D, mMul(mR(q.r * DEG), mS(q.s * (q.fl ? -1 : 1), q.s)));
+    q.x = c.x; q.y = c.y; q.r = Math.atan2(-L[2], L[3]) / DEG; q.s = Math.hypot(L[2], L[3]); q.fl = L[0] * L[3] - L[1] * L[2] < 0;
+  }
+}
 function rsEdit(fn) { const p = rsPc(RS.sel); if (!p) { toast('Chạm chọn một mảnh trước'); return; } rsPush(); fn(p); rsChanged(); }
 function rsMode(m) {
   if (!RS) return; RS.mode = m; RS.cut = false; RS.act = null;
@@ -688,7 +703,7 @@ async function rsBtn(k) {
     return;
   }
   const f = { flip: p => { p.fl = !p.fl; }, rl: p => { p.r -= 15; }, rr: p => { p.r += 15; }, sm: p => { p.s = Math.max(0.03, p.s / 1.1); }, bg: p => { p.s = Math.min(20, p.s * 1.1); } }[k];
-  if (f) rsEdit(f);
+  if (f) rsEdit(p => { const A0 = rsA(p); f(p); rsCarry(p, A0); });
 }
 function rsAct(k) {
   if (k === 'cut') { if (!RS.sel) { toast('Chạm chọn mảnh cần tách trước'); return; } RS.cut = !RS.cut; rsSync(); rsDraw(); return; }
