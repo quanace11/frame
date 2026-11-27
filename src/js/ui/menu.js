@@ -70,6 +70,7 @@ $('#menuBtn').addEventListener('click', () => {
   <button class="btn" data-m="vidframes">🎬 Thêm video (ghép theo video / theo frame)</button>
   <button class="btn" data-m="logo">🏷 Dán logo lên áo (uốn theo áo, như Photoshop)</button>
   <button class="btn" data-m="img">🖼 Nhập ảnh (đồ theo / tách nhân vật / lấy nét)</button>
+  <button class="btn" data-m="rigstudio">🦴 Xưởng ghép xương (ghép mảnh, gắn xương, vẽ lại mảnh)</button>
   <button class="btn" data-m="aichar">🤖 AI tạo nhân vật từ ảnh</button>
   <button class="btn" data-m="aifx">🪄 AI vẽ đẹp (làm sạch nét, tô màu, frame giữa)</button>
   <button class="btn" data-m="aikey">🔑 Key Gemini (AI)</button>
@@ -122,6 +123,7 @@ $('#menuBtn').addEventListener('click', () => {
       else if (m === 'export') exportZip();
       else if (m === 'open') $('#zipFile').click();
       else if (m === 'img') $('#imgFile').click();
+      else if (m === 'rigstudio') rsOpen();
       else if (m === 'aichar') aiCharDialog();
       else if (m === 'aifx') aiFxDialog();
       else if (m === 'aikey') aiKeyDialog();

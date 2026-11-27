@@ -16,7 +16,7 @@ PEN='''async ([pts])=>{const v=document.getElementById('view');const r=v.getBoun
   const mk=(t,x,y)=>new PointerEvent(t,{pointerId:7,pointerType:'pen',clientX:r.left+x,clientY:r.top+y,pressure:0.6,buttons:1,bubbles:true,cancelable:true});
   v.dispatchEvent(mk('pointerdown',pts[0][0],pts[0][1])); for(const [x,y] of pts.slice(1)){v.dispatchEvent(mk('pointermove',x,y)); await new Promise(r=>setTimeout(r,4));}
   v.dispatchEvent(mk('pointerup',pts.at(-1)[0],pts.at(-1)[1]));}'''
-CLOSE_ALL = "(()=>{let n=0; while(document.querySelector('.ov')&&n<6){document.querySelector('.ov').remove(); n++;} document.querySelectorAll('.pop').forEach(p=>p.classList.remove('open')); return n;})()"
+CLOSE_ALL = "(()=>{if(typeof RS!=='undefined'&&RS) rsClose(true); let n=0; while(document.querySelector('.ov')&&n<6){document.querySelector('.ov').remove(); n++;} document.querySelectorAll('.pop').forEach(p=>p.classList.remove('open')); return n;})()"
 # Menu items that only open a native file picker / start a download or a long export: checked for existence only
 SKIP_M = {'vidframes', 'open', 'img', 'export', 'video', 'update'}
 async def main():
