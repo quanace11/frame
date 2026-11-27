@@ -66,7 +66,7 @@ function jgEdit(f, fn) {
 /* --- ⭕ Khoanh chỗ rung: lasso on the canvas (Ghép tool), then the dialog --- */
 function jgToggle(on) {
   if (!S.pp || !S.pp.parts.length) { toast('Chưa có nhân vật / hình. Nhập ảnh (thành layer) hoặc cắt nhân vật trước'); return; }
-  jgMode = on == null ? !jgMode : on; if (jgMode) { ppPathMode = ppCutMode = ppPatchMode = false; ppPaint = null; }
+  jgMode = on == null ? !jgMode : on; if (jgMode) { ppPathMode = ppCutMode = ppPatchMode = false; ppPaint = null; if (bwMode) { bwMode = false; bwSync(); } }
   jgSync(); if (typeof ppSyncBar === 'function') ppSyncBar(); requestRender();
   if (jgMode) { toast('Khoanh quanh chỗ muốn rung (ngực, bụng, bắp tay…) trên nhân vật', 3500); jgTick(); }
 }
