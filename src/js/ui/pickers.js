@@ -252,7 +252,7 @@ function brushPop() {
     <div class="cp-lbl">Kiểu tẩy</div>
     <div class="br-grid">${Object.entries(ERASERS).map(([k, o]) => card(k, o, 'e')).join('')}</div>
     <div class="br-tip"></div>
-    <div class="set-row"><span>Cỡ nét</span><span class="stpw"><button class="stp" data-stp="size" data-d="-1" aria-label="Giảm cỡ">−</button><input type="range" class="sizeR" min="0" max="1000" step="1"><button class="stp" data-stp="size" data-d="1" aria-label="Tăng cỡ">+</button><span class="val sizeV"></span></span></div>
+    <div class="set-row"><span class="sizeL" title="Bút và tẩy nhớ cỡ riêng">Cỡ bút</span><span class="stpw"><button class="stp" data-stp="size" data-d="-1" aria-label="Giảm cỡ">−</button><input type="range" class="sizeR" min="0" max="1000" step="1"><button class="stp" data-stp="size" data-d="1" aria-label="Tăng cỡ">+</button><span class="val sizeV"></span></span></div>
     <div class="set-row"><span title="Mỗi loại bút / kiểu tẩy nhớ độ đậm riêng. Với tẩy: độ đậm thấp thì xoá nhạt">Độ đậm <small class="bp-opfor"></small></span><span class="stpw"><button class="stp" data-stp="op" data-d="-1" aria-label="Giảm độ đậm">−</button><input type="range" class="opR" min="5" max="100" step="1"><button class="stp" data-stp="op" data-d="1" aria-label="Tăng độ đậm">+</button><span class="val opV"></span></span></div>
     <div class="set-row"><span title="Kéo lên cao để nét thẳng và mượt hơn khi tay run (nét đi chậm hơn bút một chút)">Chống run tay</span><input type="range" class="bp-smooth" min="0" max="90" step="1"><span class="val bp-smoothv"></span></div>
     <label class="set-row"><span title="Nét to nhỏ theo lực nhấn bút">Nét theo lực nhấn bút</span><input type="checkbox" class="bp-press"></label>

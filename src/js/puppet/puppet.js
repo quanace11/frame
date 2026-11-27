@@ -1010,7 +1010,7 @@ function updPanelPill() {
 }
 function hidePanel(t) { panelHidden[t] = true; saveSettings(); updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
 function showPanel() { panelHidden[S.tool] = false; saveSettings(); updVecBar(); ppSyncBar(); fxSyncBar(); updPanelPill(); }
-function ppSyncBar() { lyrSync(); kitViewSync(); lgSync(); ppScopeSync(); ppBlinkInfo(); ppCycSync(); { const a = $('#ppSoftChk'), b = $('#ppSmoothChk'); if (a) a.checked = !!S.ppSoft; if (b) b.checked = !!S.ppSmooth; }
+function ppSyncBar() { syncSizeOp(); lyrSync(); kitViewSync(); lgSync(); ppScopeSync(); ppBlinkInfo(); ppCycSync(); { const a = $('#ppSoftChk'), b = $('#ppSmoothChk'); if (a) a.checked = !!S.ppSoft; if (b) b.checked = !!S.ppSmooth; }
   const bar = $('#ppbar'), show = S.tool === 'puppet' && (!panelHidden.puppet || !!ppSetup);
   bar.hidden = !show; updPanelPill(); if (!show) return;
   $('#ppSetupSec').hidden = !ppSetup; $('#ppPoseSec').hidden = !!ppSetup || !S.pp;

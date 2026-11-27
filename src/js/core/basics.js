@@ -6,7 +6,7 @@ let W = 1080, H = 1920;
 const PALETTE = ['#111111','#ffffff','#e53935','#fb8c00','#fdd835','#43a047','#1e88e5','#8e24aa','#f6c7a8','#8d6e63','#9e9e9e','#00acc1'];
 const S = {
   frames: [], bgs: [], cur: 0, layer: 'char', tool: 'brush',
-  color: '#111111', size: 8, opacity: 1, pressure: true, brush: 'pen', eraserType: 'hard', recentColors: [], brushOp: {}, sizeScreen: true,
+  color: '#111111', size: 8, opacity: 1, pressure: true, brush: 'pen', eraserType: 'hard', eSize: 30, recentColors: [], brushOp: {}, sizeScreen: true,
   onion: true, onionAlpha: 0.3, showBg: true, showChar: true, showCol: true, showVec: true, showPP: true, bendR: 160, mbendR: 0, vdm: 'point', snap: false, snapR: 24,
   fingerDraw: false, smooth: 0.3, defaultDur: 0.1, loop: true, fillTol: 120,
   uiHide: { rail: false, top: false, tl: false }, tlScale: 1
@@ -32,7 +32,7 @@ let toastT;
 function toast(msg, ms = 1800) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
 
 /* ========= Settings ========= */
-const SETTINGS_KEYS = ['color','size','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','lineLayer','uiHide','panelHidden','brush','eraserType','recentColors','favColors','brushOp','sizeScreen','bigUi','fastVideo','selMode','warpSoft','atlOpen','tlScale'];
+const SETTINGS_KEYS = ['color','size','eSize','opacity','pressure','onion','onionAlpha','fingerDraw','smooth','defaultDur','loop','snap','snapR','tlCollapsed','rotGesture','vdm','mbendR','lineLayer','uiHide','panelHidden','brush','eraserType','recentColors','favColors','brushOp','sizeScreen','bigUi','fastVideo','selMode','warpSoft','atlOpen','tlScale'];
 function loadSettings() { try { const o = JSON.parse(localStorage.getItem('fs-settings') || '{}'); for (const k of SETTINGS_KEYS) if (k in o) { if (k === 'panelHidden') Object.assign(panelHidden, o[k]); else S[k] = o[k]; } } catch (e) {}
   S.uiHide = Object.assign({ rail: false, top: false, tl: false }, S.uiHide); }
 function applyBigUi() { document.body.classList.toggle('bigui', !!S.bigUi); }

@@ -22,7 +22,9 @@ const ERASERS = {
 // The slider value IS the stroke opacity, so 100% always means fully dark (marker, airbrush included).
 // Dab brushes (soft, air, water; op0 = default): below op0 the whole stroke gets lighter, above it the dabs build up faster
 // so 100% can reach full darkness. At op0 they look exactly as designed.
-function opKey() { return S.tool === 'eraser' ? 'e:' + (ERASERS[S.eraserType] ? S.eraserType : 'hard') : (BRUSHES[S.brush] ? S.brush : 'pen'); }
+// erasing right now? Tẩy tool, or 🧽 Tẩy while ✎ Vẽ lại mảnh. The eraser has its own size (S.eSize) and opacity.
+function isErasing() { return S.tool === 'eraser' || (S.tool === 'puppet' && ppPaint === 'erase'); }
+function opKey() { return isErasing() ? 'e:' + (ERASERS[S.eraserType] ? S.eraserType : 'hard') : (BRUSHES[S.brush] ? S.brush : 'pen'); }
 function opDefault(k) { return k.startsWith('e:') ? 1 : (BRUSHES[k].op0 || BRUSHES[k].alpha || 1); }
 function curOp() { const k = opKey(), v = (S.brushOp || {})[k]; return clamp(v != null ? v : opDefault(k), 0.05, 1); }
 function setOp(v) { S.brushOp = S.brushOp || {}; S.brushOp[opKey()] = clamp(Math.round(v * 100) / 100, 0.05, 1); syncSizeOp(); saveSettings(); }
@@ -32,13 +34,18 @@ const posToSize = v => Math.max(1, Math.round(1 + (SIZE_MAX - 1) * Math.pow(v / 
 function sizeStep(s, d) { const k = d > 0 ? s : s - 1, st = k < 10 ? 1 : k < 30 ? 2 : k < 60 ? 5 : 10; return clamp(d > 0 ? Math.floor(s / st) * st + st : Math.ceil(s / st) * st - st, 1, SIZE_MAX); }
 // brush size in document pixels. With "Giữ cỡ khi phóng to" (S.sizeScreen, default on) the number means the size at the
 // fitted view (100%), so zooming in draws finer lines and the brush looks the same on screen at any zoom.
-function bsz() { return S.sizeScreen === false || !fitS || !vs ? S.size : Math.max(0.25, S.size * fitS / vs); }
-function setSize(v) { S.size = clamp(Math.round(v), 1, SIZE_MAX); syncSizeOp(); saveSettings(); }
+// The brush and the eraser each remember their own size: S.size = Bút (often changes), S.eSize = Tẩy (usually big).
+const ERASER_SIZE0 = 30;
+function curSize() { return isErasing() ? (S.eSize || ERASER_SIZE0) : S.size; }
+function bsz() { const z = curSize(); return S.sizeScreen === false || !fitS || !vs ? z : Math.max(0.25, z * fitS / vs); }
+function setSize(v) { v = clamp(Math.round(v), 1, SIZE_MAX); if (isErasing()) S.eSize = v; else S.size = v; syncSizeOp(); saveSettings(); bcPreview(); }
 // refresh every size / opacity control (top bar + Bút ▾ menu)
 function syncSizeOp() {
   const op = Math.round(curOp() * 100);
-  document.querySelectorAll('input.sizeR').forEach(e => { e.value = sizeToPos(S.size); });
-  document.querySelectorAll('.sizeV').forEach(e => { e.textContent = S.size; });
+  const z = curSize();
+  document.querySelectorAll('input.sizeR').forEach(e => { e.value = sizeToPos(z); });
+  document.querySelectorAll('.sizeV').forEach(e => { e.textContent = z; });
+  document.querySelectorAll('.sizeL').forEach(e => { e.textContent = isErasing() ? 'Cỡ tẩy' : 'Cỡ bút'; });
   document.querySelectorAll('input.opR').forEach(e => { e.value = op; });
   document.querySelectorAll('.opV').forEach(e => { e.textContent = op + '%'; });
 }
@@ -47,7 +54,7 @@ function wireSizeOp(root) {
   root.querySelectorAll('input.sizeR').forEach(e => e.addEventListener('input', () => setSize(posToSize(+e.value))));
   root.querySelectorAll('input.opR').forEach(e => e.addEventListener('input', () => setOp(e.value / 100)));
   root.querySelectorAll('.stp').forEach(b => {
-    const d = +b.dataset.d, step = () => b.dataset.stp === 'size' ? setSize(sizeStep(S.size, d)) : setOp(Math.round(curOp() * 20 + d) / 20);
+    const d = +b.dataset.d, step = () => b.dataset.stp === 'size' ? setSize(sizeStep(curSize(), d)) : setOp(Math.round(curOp() * 20 + d) / 20);
     let t1 = 0, t2 = 0; const stop = () => { clearTimeout(t1); clearInterval(t2); };
     b.addEventListener('pointerdown', e => { e.preventDefault(); stop(); step(); t1 = setTimeout(() => { t2 = setInterval(step, 90); }, 420); });
     ['pointerup', 'pointerleave', 'pointercancel'].forEach(n => b.addEventListener(n, stop));
@@ -60,10 +67,10 @@ function sizeOpPop(btn) {
   if (popEl && popEl._anchor === btn) { closePop(); return; }
   const isS = btn.dataset.pop === 'size', k = isS ? 'size' : 'op';
   const pre = isS ? [1, 2, 3, 5, 8, 12, 20, 35, 60, 100, 150] : [10, 20, 30, 50, 70, 85, 100];
-  const d = openPop(btn, `<div class="cp-lbl">${isS ? 'Cỡ nét' : 'Độ đậm <small>(' + (S.tool === 'eraser' ? (ERASERS[S.eraserType] || ERASERS.hard).name : (BRUSHES[S.brush] || BRUSHES.pen).name).toLowerCase() + ')</small>'}</div>
+  const d = openPop(btn, `<div class="cp-lbl">${isS ? (isErasing() ? 'Cỡ tẩy <small>(tẩy nhớ cỡ riêng, bút không đổi)</small>' : 'Cỡ bút <small>(tẩy nhớ cỡ riêng)</small>') : 'Độ đậm <small>(' + (S.tool === 'eraser' ? (ERASERS[S.eraserType] || ERASERS.hard).name : (BRUSHES[S.brush] || BRUSHES.pen).name).toLowerCase() + ')</small>'}</div>
     <div class="stpw" style="display:flex;align-items:center;gap:6px"><button class="stp" data-stp="${k}" data-d="-1" aria-label="Giảm">−</button>${isS ? '<input type="range" class="sizeR" min="0" max="1000" step="1">' : '<input type="range" class="opR" min="5" max="100" step="1">'}<button class="stp" data-stp="${k}" data-d="1" aria-label="Tăng">+</button><span class="val ${isS ? 'sizeV' : 'opV'}" style="min-width:40px"></span></div>
     <div class="qs-row">${pre.map(v => `<button class="chip small" data-qv="${v}">${v}${isS ? '' : '%'}</button>`).join('')}</div>`);
-  const mark = () => d.querySelectorAll('[data-qv]').forEach(b => b.classList.toggle('on', +b.dataset.qv === (isS ? S.size : Math.round(curOp() * 100))));
+  const mark = () => d.querySelectorAll('[data-qv]').forEach(b => b.classList.toggle('on', +b.dataset.qv === (isS ? curSize() : Math.round(curOp() * 100))));
   wireSizeOp(d);
   d.querySelectorAll('[data-qv]').forEach(b => b.addEventListener('click', () => { isS ? setSize(+b.dataset.qv) : setOp(b.dataset.qv / 100); mark(); }));
   d.addEventListener('input', mark); d.addEventListener('pointerup', () => setTimeout(mark, 0));
