@@ -147,6 +147,7 @@ function render() {
   if (S.showVec) renderVec(c, rig && rig.pv ? { vec: rig.pv } : rig ? { vec: f.vec } : motion && motion.pv ? { vec: motion.pv } : f, px);
   if (rig) renderRig(c, px);
   if (HC) hcDraw(c, px); else renderPP(c, f, px);
+  bwDrawPins(c, f, px);
   if (S.tool === 'fx' && TABS.fx === 'look') { c.save(); c.beginPath(); c.rect(0, 0, W, H); c.clip(); drawFocusLines(c, f, S.cur, 0); drawFilter(c, f); c.restore(); }
   if (f.texts && f.texts.length) drawTexts(c, f, S.tool === 'fx' ? fxSel : null);
   if (S.safe) drawSafeZone(c, px);
