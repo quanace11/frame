@@ -197,6 +197,7 @@ function fingerActs(e) {
   }
   if (S.tool === 'puppet' && S.pp && !rig && !motion) {
     if (ppPathMode || jgMode) return true;
+    if (bwMode) return bwHitPin(p, f) || !!ppHit(p, ppPoseFor(f));
     if ((ppPaint || ppJEOn()) && ppPrevHit(p, f)) return true;
     if (ppPaint) return ppPaint === 'sel' || ppPaint === 'fill' || ppPaint === 'pick';   // taps work with a finger; brush/eraser strokes need the pen (or 'Ngón tay cũng vẽ')
     if (ppCutMode || ppPatchMode) return false;

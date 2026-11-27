@@ -156,12 +156,24 @@ function drawPuppet(ctx, pose, lip) {
   const off = lyrOff('lh');
   const order = [...S.pp.parts].sort((a, b) => a.z - b.z), foc = ppPaintFocus && order.find(p => p.id === ppPaintFocus);
   if (foc) { order.splice(order.indexOf(foc), 1); order.push(foc); }   // ✎ Vẽ lại mảnh: the part being redrawn on top, the others faded
+  const shown = p => { const q = pose && pose[p.id]; return !((q && q.h) || !p.c || (off && off.has(p.id)) || (ppOnlyRoot && (ppCharOf(p) || p.id) !== ppOnlyRoot)); };
+  const drawOne = (cx, p) => {
+    const q = pose && pose[p.id]; let im = ppImg(p, q); if (lip && lip.jg) im = jgWarp(p, im, lip.jg, lip) || im;   // 🫨 Rung 1 chỗ
+    if (foc) cx.globalAlpha = p === foc ? 1 : 0.35;
+    if (S.ppSoft && !p.hard && p.role && (PP_SOFT1[p.role] || PP_SOFT2[p.role])) { const js = ppSoftJoints(p, byId); if (js.length) { ppDrawSoft(cx, p, im, M, js); return; } }
+    cx.save(); cx.transform(...M[p.id]); cx.drawImage(im.c, im.x, im.y); cx.restore();
+  };
+  const bwDone = new Set();
   for (const p of order) {
-    const q = pose && pose[p.id]; if ((q && q.h) || !p.c || (off && off.has(p.id)) || (ppOnlyRoot && (ppCharOf(p) || p.id) !== ppOnlyRoot)) continue;
-    let im = ppImg(p, q); if (lip && lip.jg) im = jgWarp(p, im, lip.jg, lip) || im;   // 🫨 Rung 1 chỗ
-    if (foc) ctx.globalAlpha = p === foc ? 1 : 0.35;
-    if (S.ppSoft && !p.hard && p.role && (PP_SOFT1[p.role] || PP_SOFT2[p.role])) { const js = ppSoftJoints(p, byId); if (js.length) { ppDrawSoft(ctx, p, im, M, js); continue; } }
-    ctx.save(); ctx.transform(...M[p.id]); ctx.drawImage(im.c, im.x, im.y); ctx.restore();
+    if (!shown(p)) continue;
+    const rid = lip && lip.bw ? ppCharOf(p) || p.id : null, bo = rid && lip.bw[rid];
+    if (bo && bo.p && bo.p.length) {   // 🫠 Uốn mềm cả người: the whole character at once, through the pin warp
+      if (bwDone.has(rid)) continue; bwDone.add(rid);
+      const mine = order.filter(x => shown(x) && (ppCharOf(x) || x.id) === rid);
+      if (!bwDraw(ctx, rid, mine, pose, M, drawOne, bo)) mine.forEach(x => drawOne(ctx, x));
+      continue;
+    }
+    drawOne(ctx, p);
   }
   if (foc) ctx.globalAlpha = 1;
 }
@@ -789,6 +801,7 @@ function ppStart(p, base) {
   const f = curFrame();
   if (ppPathMode) { lasso = [p]; lassoOpen = true; action = { ...base, kind: 'pppath' }; return; }
   if (jgMode) { lasso = [p]; lassoOpen = false; action = { ...base, kind: 'ppjg' }; return; }
+  if (bwMode) { bwStart(p, base, f); return; }
   if (ppCutMode || ppPatchMode) { lasso = [p]; action = { ...base, kind: ppPatchMode ? 'pppatch' : 'ppcut' }; return; }
   if ((ppPaint || ppJEOn()) && ppPrevStart(p, base, f)) return;
   if (ppPaint) { ppPaintStart(p, base, f); return; }
@@ -818,6 +831,7 @@ function ppMove(p) {
   const a = action, f = curFrame();
   if (a.kind === 'ppcut' || a.kind === 'pppatch' || a.kind === 'pppath' || a.kind === 'ppjg') { const l = lasso[lasso.length - 1]; if (Math.hypot(p.x - l.x, p.y - l.y) > 3 / vs) { lasso.push(p); requestRender(); } return; }
   if (a.kind === 'pppaint') { ppPaintMove(a, p); return; }
+  if (a.kind === 'bwpin') { bwMove(a, p); return; }
   if (a.kind === 'ppjedit') { ppJEMove(a, p, f); return; }
   if (a.kind === 'ppprevrot') { ppPrevMove(a, p); return; }
   if (a.kind === 'ppprevdot') { ppPrevDotMove(a, p); return; }
@@ -841,6 +855,7 @@ function ppEnd() {
   if (a.kind === 'pppath') { const poly = lasso; lasso = null; lassoOpen = false; ppPathMode = false; ppSyncBar(); if (poly && poly.length > 2) ppApplyPath(poly); requestRender(); return; }
   if (a.kind === 'ppjg') { const poly = lasso; lasso = null; requestRender(); if (poly && poly.length > 2) jgLassoDone(poly); return; }
   if (a.kind === 'pppaint') { ppPaintEnd(a); return; }
+  if (a.kind === 'bwpin') { bwEnd(a); return; }
   if (a.kind === 'ppjedit') { ppJEEnd(a); return; }
   if (a.kind === 'ppprevrot') { ppSyncBar(); requestRender(); return; }
   if (a.kind === 'ppprevdot') { ppPrevDotEnd(a); return; }
