@@ -109,7 +109,7 @@ async function exportVideo() {
     const hasAudio = !!(S.audio && (musicClips().length || voiceClips().length || (S.audio.sfx || []).length)) || !!(vid && S.bgVideo.audio) || vtHasAudio();
     if (vid && S.bgVideo.audio) { try { const src = ac.createMediaElementSource(vid), g = ac.createGain(); g.gain.value = S.bgVideo.vol ?? 0.7; src.connect(g).connect(dest); } catch (e) { console.error(e); } }
     if (hasAudio) dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
-    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8e6 }), chunks = [];
+    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: VX_BITRATE }), chunks = [];
     rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
     const done = new Promise(r => rec.onstop = r);
     const rts = trSrcCache(live); await rts.prep(0, T);

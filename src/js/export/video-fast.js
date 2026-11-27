@@ -1,10 +1,10 @@
 /* ===== ⚡ fast video export: WebCodecs encodes the frames as fast as the device draws them (no real-time wait),
    the sound is mixed offline, and both are packed into an MP4 file right here (no library, works offline) ===== */
-const VX_FPS = 30;
+const VX_FPS = 30, VX_BITRATE = 16e6;   // 8 Mbps made real video footage (🎬 Video → frame) look soft at 1080×1920
 async function fastVideoCfg(w, h) {
   if (typeof VideoEncoder === 'undefined' || typeof VideoFrame === 'undefined') return null;
   for (const codec of ['avc1.640028', 'avc1.4d0028', 'avc1.42e028', 'avc1.640033', 'avc1.4d0033', 'avc1.42e033']) {
-    const c = { codec, width: w, height: h, bitrate: 8e6, framerate: VX_FPS, avc: { format: 'avc' } };
+    const c = { codec, width: w, height: h, bitrate: VX_BITRATE, framerate: VX_FPS, avc: { format: 'avc' } };
     try { if ((await VideoEncoder.isConfigSupported(c)).supported) return c; } catch (e) {}
   }
   return null;
