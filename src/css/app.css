@@ -427,3 +427,34 @@ body.gon #lyrPanel, body.gon #ppbar [data-t=frames], body.gon #ppbar [data-tab=f
 .kmLogo{padding:3px 6px} .kmLogo img{height:30px;max-width:60px;object-fit:contain;vertical-align:middle;background:#fff8;border-radius:4px}
 .kmKit{display:inline-flex;align-items:center;gap:6px;min-height:42px} .kmKit canvas{width:30px;height:30px}
 .kmDel{border:none;background:none;color:var(--text);opacity:.6;font-size:14px;min-width:30px;min-height:30px;cursor:pointer}
+/* 🦴 Xưởng ghép xương (rig-studio.js): full screen of its own, canvas + side panel (right in landscape, below in portrait) */
+#rsWrap{position:fixed;inset:0;z-index:40;background:var(--bg);display:grid;grid-template-columns:1fr minmax(300px,360px);grid-template-rows:auto 1fr;
+  grid-template-areas:"top top" "main side"}
+#rsWrap .rs-top{grid-area:top;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;background:var(--panel);border-bottom:1px solid var(--line)}
+#rsWrap .rs-top .chip{min-height:42px;min-width:42px;font-size:14px}
+#rsWrap .rs-title{font-size:15px;margin-right:6px}
+#rsWrap .rs-modes{display:flex;gap:4px;flex-wrap:wrap}
+#rsWrap .rs-gap{flex:1}
+#rsWrap .rs-main{grid-area:main;position:relative;min-height:0;min-width:0}
+#rsCv{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
+#rsWrap .rs-zoom{position:absolute;left:8px;bottom:8px;display:flex;gap:4px}
+#rsWrap .rs-zoom .chip{min-width:44px;min-height:44px}
+#rsWrap .rs-side{grid-area:side;overflow:auto;-webkit-overflow-scrolling:touch;background:var(--panel);border-left:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:10px;min-height:0}
+#rsWrap .rs-hint{font-size:12.5px;color:var(--muted);line-height:1.4}
+#rsWrap .rs-tools,#rsWrap .rs-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#rsWrap .rs-props{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:8px}
+#rsWrap .rs-tools .chip,#rsWrap .rs-props .chip{min-height:42px;min-width:42px}
+#rsWrap select{min-height:40px;max-width:150px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px}
+#rsWrap .rs-name{font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#rsWrap .rs-col input{width:44px;height:40px;border:0;background:none;padding:0;vertical-align:middle}
+#rsWrap .rs-strip{display:flex;flex-wrap:wrap;gap:6px;border-top:1px solid var(--line);padding-top:8px}
+#rsWrap .rs-pc{width:76px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px;border-radius:10px;border:1px solid var(--line);background:#fff1;cursor:pointer}
+#rsWrap .rs-pc canvas{width:56px;height:56px;background:#fff;border-radius:6px}
+#rsWrap .rs-pc span{font-size:11px;max-width:68px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#rsWrap .rs-pc.on{border-color:#ff3b9a;box-shadow:0 0 0 2px #ff3b9a}
+@media (orientation:portrait),(max-width:760px){
+  #rsWrap{grid-template-columns:1fr;grid-template-rows:auto 1fr auto;grid-template-areas:"top" "main" "side"}
+  #rsWrap .rs-side{border-left:0;border-top:1px solid var(--line);max-height:42vh}
+  #rsWrap .rs-strip{flex-wrap:nowrap;overflow-x:auto}
+  #rsWrap .rs-pc{flex:0 0 auto}
+}

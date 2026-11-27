@@ -86,8 +86,14 @@ function ppPaintPick(c, x, y) {
 }
 // flood fill one area of the part's picture; a transparent hole only when a line closes it (not the outside)
 function ppPaintFill(sel, C, x, y) {
-  const c = C.im.c, w = c.width, h = c.height;
-  if (x < 0 || y < 0 || x >= w || y >= h) { toast('Chạm vào bên trong mảnh để đổ màu'); return; }
+  const o = ppFillCanvas(C.im.c, x, y); if (!o) return;
+  const st0 = ppHolderGet(sel, C.vi);
+  ppPaintCommit(sel, C.vi, st0, { c: o, png: null, alpha: null, padded: st0.padded, x: st0.x, y: st0.y }); addRecentColor(S.color);
+}
+// the filled copy of picture c (a new canvas, the old one is kept for undo); null = nothing to fill there (a toast says why)
+function ppFillCanvas(c, x, y) {
+  const w = c.width, h = c.height;
+  if (x < 0 || y < 0 || x >= w || y >= h) { toast('Chạm vào bên trong mảnh để đổ màu'); return null; }
   const id = c.getContext('2d').getImageData(0, 0, w, h), d = id.data, i0 = (y * w + x) * 4, r0 = d[i0], g0 = d[i0 + 1], b0 = d[i0 + 2], hole = d[i0 + 3] < 40;
   const same = k => hole ? d[k * 4 + 3] < 40 : d[k * 4 + 3] >= 40 && Math.abs(d[k * 4] - r0) <= 64 && Math.abs(d[k * 4 + 1] - g0) <= 64 && Math.abs(d[k * 4 + 2] - b0) <= 64;
   const m = new Uint8Array(w * h), stack = [y * w + x]; m[stack[0]] = 1; let edge = false;
@@ -99,7 +105,7 @@ function ppPaintFill(sel, C, x, y) {
     if (yy > 0 && !m[j - w] && same(j - w)) { m[j - w] = 1; stack.push(j - w); }
     if (yy < h - 1 && !m[j + w] && same(j + w)) { m[j + w] = 1; stack.push(j + w); }
   }
-  if (hole && edge) { toast('Chỗ này nằm ngoài hình — chạm vào bên trong 1 vùng có viền bao quanh', 3000); return; }
+  if (hole && edge) { toast('Chỗ này nằm ngoài hình — chạm vào bên trong 1 vùng có viền bao quanh', 3000); return null; }
   const [R, G, Bc] = hexToRgb(S.color);
   for (let j = 0; j < w * h; j++) {
     if (m[j]) { d[j * 4] = R; d[j * 4 + 1] = G; d[j * 4 + 2] = Bc; d[j * 4 + 3] = 255; continue; }
@@ -108,8 +114,7 @@ function ppPaintFill(sel, C, x, y) {
       const s = d[j * 4 + 3] / 255; d[j * 4] = d[j * 4] * s + R * (1 - s); d[j * 4 + 1] = d[j * 4 + 1] * s + G * (1 - s); d[j * 4 + 2] = d[j * 4 + 2] * s + Bc * (1 - s); d[j * 4 + 3] = 255;
     }
   }
-  const st0 = ppHolderGet(sel, C.vi), o = makeCanvas(w, h); o.getContext('2d').putImageData(id, 0, 0);
-  ppPaintCommit(sel, C.vi, st0, { c: o, png: null, alpha: null, padded: st0.padded, x: st0.x, y: st0.y }); addRecentColor(S.color);
+  const o = makeCanvas(w, h); o.getContext('2d').putImageData(id, 0, 0); return o;
 }
 function ppPaintSync(sel) {
   const bar = $('#ppPaintBar'); bar.hidden = !ppPaint;

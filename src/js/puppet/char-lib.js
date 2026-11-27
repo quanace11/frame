@@ -21,6 +21,10 @@ async function charLibSave() {
   const v = await modal({ title: '💾 Lưu vào Kho nhân vật', html: `<p>Lưu <b>${parts.length} mảnh</b> (khớp, vai trò, hình mắt/miệng) để thêm vào dự án khác chỉ bằng 1 chạm.</p><label class="lbl">Tên nhân vật<br><input id="chName" maxlength="40" value="${escHtml(name || 'Nhân vật ' + ((await charLib()).length + 1))}" style="width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:16px"></label>`,
     buttons: [{ label: 'Huỷ', value: null }, { label: '💾 Lưu', primary: true, action: () => { name = $('#chName').value.trim() || 'Nhân vật'; } , value: true }] });
   if (!v) return;
+  await charLibStore(parts, name);
+}
+// save the pieces of one character into the kho under this name (true = saved)
+async function charLibStore(parts, name) {
   const ids = new Set(parts.map(q => q.id));
   for (const q of parts) { if (!q.png) await encodePart(q); for (const a of (q.alts || [])) if (!a.png) await encodeHolder(a); }
   const rec = { w: W, h: H, parts: parts.map(q => ({ ...ppPartMeta(q), name: charBaseName(q.name), parent: ids.has(q.parent) ? q.parent : null, png: q.png, alts: (q.alts || []).map(a => ({ png: a.png, dx: a.dx || 0, dy: a.dy || 0 })) })) };
@@ -30,8 +34,9 @@ async function charLibSave() {
     const L = await charLib(); L.unshift({ id, name, t: Date.now(), n: parts.length, thumb });
     for (const old of L.splice(CHAR_LIB_MAX)) { try { await idbDel('char:' + old.id); } catch (e) {} }
     await idbPut(CHAR_LIB_KEY, L);
-  } catch (e) { console.error(e); toast('Chưa lưu được vào kho (bộ nhớ máy đầy?)'); return; }
+  } catch (e) { console.error(e); toast('Chưa lưu được vào kho (bộ nhớ máy đầy?)'); return false; }
   toast(`Đã lưu "${name}" vào 🧍 Kho nhân vật — mở dự án khác rồi bấm 🧍 Kho nhân vật để thêm`, 4000);
+  return true;
 }
 async function charLibAdd(id) {
   let rec = null; try { rec = await idbGet('char:' + id); } catch (e) {}
