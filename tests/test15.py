@@ -57,7 +57,7 @@ async def main():
         # play briefly
         await pg.click('#playBtn'); await pg.wait_for_timeout(1200); await pg.screenshot(path='c2.png'); await pg.click('#playBtn')
         # export video
-        t0=time.time(); await pg.click('#videoBtn')
+        t0=time.time(); await pg.click('#videoBtn'); await pg.click('.dlg .btns >> text=🎬 Xuất video')
         await pg.wait_for_selector('text=Video đã xong', timeout=120000); print('video secs', round(time.time()-t0,1), await pg.inner_text('.dlg .body'))
         async with pg.expect_download() as dl: await pg.click('text=Lưu video')
         d=await dl.value; path='out_video.'+d.suggested_filename.split('.')[-1]; await d.save_as(path); print('saved', path)

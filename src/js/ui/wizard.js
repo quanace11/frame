@@ -33,7 +33,7 @@ async function wizard() {
       else if (k === 'gag') { setTool('fx'); openTab('fx', 'gag'); toast('Chọn 1 combo (😱 Sốc, 🤕 Bóng vào mặt, 🥅 VÀO!…) rồi chạm lên khung', 3500); }
       else if (k === 'sfx') { setTool('fx'); openTab('fx', 'audio'); toast('Chạm một âm thanh để gắn vào frame đang xem', 3000); }
       else if (k === 'play') startPlay();
-      else if (k === 'video') exportVideo();
+      else if (k === 'video') exportVideoAsk();
     }));
   } });
 }

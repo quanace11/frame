@@ -2,7 +2,7 @@
    (JPEG bytes kept in bg.png, canvas loaded only when shown and freed again: loadedBg / MAX_BG), so you draw over it in
    the Nhân vật / Nét layers. The clip's sound can come along as a sound clip that starts at the first new frame.
    One undo step (automatic undo: frame list, backgrounds and sounds are in the snapshot). ===== */
-const VF = { fps: 12, fit: '', fade: 0, audio: true, max: 300 };
+const VF = { fps: 12, fit: '', fade: 0, audio: true, max: 300, q: 0.92 };   // q = JPEG quality of each frame's picture (0.86 looked soft on real footage)
 $('#vidFramesBtn').addEventListener('click', () => $('#vidFramesFile').click());
 $('#vidFramesFile').addEventListener('change', e => { const file = e.target.files[0]; e.target.value = ''; if (file) vidAddChoose(file); });
 $('#vtFile').addEventListener('change', e => { const file = e.target.files[0]; e.target.value = ''; if (file) vtAddFile(file); });
@@ -38,10 +38,17 @@ function vfSeek(v, t) {
     try { v.currentTime = t; } catch (e) { fin(); }
   });
 }
+// a clip smaller than the frame is blown up (e.g. a landscape 1080p clip on "Lấp đầy" = ×1,8): say so, it cannot stay sharp
+function vfUpNote(vw, vh, fit) {
+  if (!vw || !vh) return '';
+  const k = (fit === 'contain' ? Math.min : Math.max)(W / vw, H / vh);
+  return k > 1.2 ? ` · ⚠ Video nhỏ hơn khung nên bị phóng to ×${k.toFixed(1).replace('.', ',')}, hình sẽ mờ hơn${fit === 'contain' ? '' : ' (chọn Vừa khung để đỡ mờ)'}` : '';
+}
 function vfDraw(ctx, v, fit, fade) {
   ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
   const vw = v.videoWidth, vh = v.videoHeight; if (!vw || !vh) return;
   const k = (fit === 'contain' ? Math.min : Math.max)(W / vw, H / vh), w = vw * k, h = vh * k;
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';   // a 4K clip shrunk with the default (low) filter came out blurry/jagged
   ctx.drawImage(v, (W - w) / 2, (H - h) / 2, w, h);
   if (fade > 0) { ctx.fillStyle = `rgba(255,255,255,${fade})`; ctx.fillRect(0, 0, W, H); }
 }
@@ -63,7 +70,7 @@ async function vidFramesDialog(file) {
   if (playing) stopPlay();
   const url = URL.createObjectURL(file); let v;
   try { v = await vfOpenVideo(url); } catch (e) { URL.revokeObjectURL(url); toast('Không mở được video này (thử file MP4)', 4000); return; }
-  const dur = v.duration || 0; v.remove();
+  const dur = v.duration || 0, vw = v.videoWidth, vh = v.videoHeight; v.remove();
   if (!(dur > 0)) { URL.revokeObjectURL(url); toast('Video không có độ dài — thử file khác', 4000); return; }
   const st = { a: 0, b: Math.min(dur, 10), fps: VF.fps, fit: VF.fit || (v.videoWidth > v.videoHeight ? 'contain' : 'cover'), fade: VF.fade, audio: VF.audio };
   const chips = (k, list) => list.map(([val, lbl]) => `<button class="chip small" data-vf${k}="${val}">${lbl}</button>`).join('');
@@ -90,7 +97,8 @@ async function vidFramesDialog(file) {
         ov.querySelector('#vfAud').checked = st.audio;
         const n = vfTimes(st.a, st.b, st.fps).length, rep = vfBlank(curFrame());
         ov.querySelector('#vfInfo').textContent = n > VF.max ? `→ ${n} frame: nhiều quá (tối đa ${VF.max}). Chọn đoạn ngắn hơn hoặc ít khung mỗi giây hơn.`
-          : `→ ${n} frame · ${fr(st.b - st.a)} giây · ${rep ? 'thay frame trống hiện có' : `thêm vào sau frame ${S.cur + 1}`}`;
+          : `→ ${n} frame · ${fr(st.b - st.a)} giây · ${rep ? 'thay frame trống hiện có' : `thêm vào sau frame ${S.cur + 1}`}`
+            + vfUpNote(vw, vh, st.fit);
       };
       const setA = t => { st.a = clamp(+t || 0, 0, Math.max(0, dur - 0.1)); if (st.b <= st.a) st.b = Math.min(dur, st.a + 1); sync(); };
       const setB = t => { st.b = clamp(+t || 0, 0, dur); if (st.b <= st.a) st.a = Math.max(0, st.b - 1); sync(); };
@@ -126,7 +134,7 @@ async function vidFramesMake(file, url, o) {
       msg(`Frame ${k + 1}/${n}`);
       await vfSeek(v, Math.min(times[k], v.duration - 0.01));
       vfDraw(bx, v, o.fit, o.fade);
-      const blob = await new Promise(r => big.toBlob(r, 'image/jpeg', 0.86));
+      const blob = await new Promise(r => big.toBlob(r, 'image/jpeg', VF.q));
       const b = { kind: 'bg', id: newId(), ver: 0, png: await blob.arrayBuffer(), pngVer: 0, canvas: null };
       const f = newFrameObj(b.id); f.canvas.width = 0; f.canvas = null; f.dur = vfDur(k, o.fps);
       f.thumb = makeCanvas(tw, th); f.thumb.getContext('2d').drawImage(big, 0, 0, tw, th);

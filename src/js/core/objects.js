@@ -17,7 +17,10 @@ async function decodePng(buf) { return await createImageBitmap(new Blob([buf], {
 function ensureLoaded(o) {
   if (o.canvas) { if (o.kind === 'char') touchLRU(o); else if (loadedBg.includes(o)) touchBg(o); return Promise.resolve(o.canvas); }
   if (o.loading) return o.loading;
-  o.loading = (async () => {
+  // a frame with nothing saved yet (no png, e.g. a 🎬 video frame never drawn on) runs this without any await: it finishes
+  // before the assignment below, so `o.loading` must not keep that settled promise — after the frame is freed again it
+  // would be returned forever and the frame never got a canvas back (the pen stopped drawing on it until F5)
+  const p = (async () => {
     const c = makeCanvas();
     if (o.png) { try { const bmp = await decodePng(o.png); c.getContext('2d').drawImage(bmp, 0, 0); bmp.close && bmp.close(); } catch (e) { console.error(e); } }
     if (o.colPng && !o.col) { try { const bmp = await decodePng(o.colPng), cc = makeCanvas(); cc.getContext('2d').drawImage(bmp, 0, 0); bmp.close && bmp.close(); o.col = cc; } catch (e) { console.error(e); } }
@@ -25,7 +28,8 @@ function ensureLoaded(o) {
     if (o.kind === 'char') { touchLRU(o); evictSoon(); } else { touchBg(o); evictSoon(); }
     return c;
   })();
-  return o.loading;
+  o.loading = o.canvas ? null : p;
+  return p;
 }
 let evicting = false;
 async function evictSoon() {
