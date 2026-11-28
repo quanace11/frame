@@ -184,7 +184,8 @@ async function panoEdit(P, img) {
   if (playing) stopPlay(); if (stroke) strokeEnd(); commitFloating(); histFlush();
   if (P) await panoReady();
   PE = { src: P || null, name: P ? P.name : 'Nền dài ' + (S.panos.length + 1), w: P ? P.w : W * 3, layers: [], sel: 0, tool: 'brush', size: 24, white: true,
-    undo: [], redo: [], ub: 0, vw: null, prev: false, act: null, pens: false, dirty: false };
+    undo: [], redo: [], ub: 0, vw: null, prev: false, act: null, pens: false, dirty: false,
+    gd: P && P.gd ? P.gd.slice() : [], grid: false, snap: true };
   if (P) PE.layers = P.layers.map(L => pnLayer(L.name, panoKOf(L), panoCv(L) || makeCanvas(P.w, H), L.id));
   if (img) {
     const k = H / img.height, iw = Math.round(img.width * k), w = clamp(Math.max(iw, Math.round(W * 1.5)), W, panoMaxW());
@@ -218,13 +219,14 @@ async function pnFinish() {
       const id = newId(), png = await (await toBlob(l.c)).arrayBuffer(); PN_CV.set(id, l.c); layers.push({ id, name: l.name, k: l.k, png });
     }
     const P = { id: old ? old.id : newId(), name: PE.name, w: PE.w, layers };
+    if (PE.gd.length) P.gd = PE.gd.slice();   // 📐 guide lines (editor only)
     S.panos = old ? S.panos.map(p => p === old ? P : p) : [...S.panos, P];
     pm.close(); await pnClose(true); scheduleSave(); histFlush(); panoRefresh(P.id);   // its own undo step, before the apply dialog
     if (!old) panoDialog(P.id); else toast('Đã lưu nền dài (↶ để quay lại bản cũ)', 2500);
   } catch (e) { pm.close(); console.error(e); toast('Không lưu được: ' + e.message, 4000); }
 }
 /* --- editor undo: {px: uid, x, y, before, after} pixel patches, {ls: layers list} snapshots (canvases are replaced, never changed) --- */
-const pnSnapL = () => ({ ls: PE.layers.map(l => ({ ...l })), w: PE.w, sel: PE.sel });
+const pnSnapL = () => ({ ls: PE.layers.map(l => ({ ...l })), w: PE.w, sel: PE.sel, gd: PE.gd.slice() });
 function pnPush(e) {
   e.bytes = e.px ? e.before.data.length + e.after.data.length : 2000;
   PE.undo.push(e); PE.ub += e.bytes; PE.redo.length = 0; PE.dirty = true;
@@ -232,7 +234,7 @@ function pnPush(e) {
 }
 function pnApplyE(e, key) {
   if (e.px) { const l = PE.layers.find(q => q.uid === e.px); if (l) l.c.getContext('2d').putImageData(e[key], e.x, e.y); return null; }
-  const cur = pnSnapL(); PE.layers = e.ls.map(l => ({ ...l })); PE.w = e.w; PE.sel = clamp(e.sel, 0, PE.layers.length - 1); return { ...e, ls: cur.ls, w: cur.w, sel: cur.sel };
+  const cur = pnSnapL(); PE.layers = e.ls.map(l => ({ ...l })); PE.w = e.w; PE.sel = clamp(e.sel, 0, PE.layers.length - 1); PE.gd = (e.gd || []).slice(); return { ...e, ls: cur.ls, w: cur.w, sel: cur.sel, gd: cur.gd };
 }
 function pnHist(from, to, key) {
   const e = from.pop(); if (!e) { toast(key === 'before' ? 'Không còn gì để hoàn tác' : 'Không còn gì để làm lại'); return; }
@@ -242,7 +244,7 @@ const pnUndo = () => pnHist(PE.undo, PE.redo, 'before'), pnRedo = () => pnHist(P
 // a layer canvas still shared with the saved pano is copied before its first change
 function pnOwn(l) { if (l.lid && PN_CV.get(l.lid) === l.c) { const c = makeCanvas(l.c.width, l.c.height); c.getContext('2d').drawImage(l.c, 0, 0); l.c = c; } return l.c; }
 /* --- UI --- */
-const PN_TOOLS = [['brush', '🖌 Bút'], ['erase', '⌫ Tẩy'], ['fill', '🪣 Đổ màu'], ['pick', '💧 Hút màu'], ['hand', '✋ Kéo xem']];
+const PN_TOOLS = [['brush', '🖌 Bút'], ['line', '📏 Nét thẳng'], ['rect', '▭ Chữ nhật'], ['erase', '⌫ Tẩy'], ['fill', '🪣 Đổ màu'], ['pick', '💧 Hút màu'], ['guide', '📐 Thước'], ['hand', '✋ Kéo xem']];
 function pnBuild() {
   const el = document.createElement('div'); el.id = 'pnWrap';
   el.innerHTML = `<div class="rs-top"><b class="rs-title">🌄 Nền dài</b>
@@ -276,7 +278,10 @@ function pnKey(e) {
   else if ((e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); pnRedo(); }
   else if (k === 'escape') { e.preventDefault(); if (PE.prev) pnPreview(); else pnClose(false); }
 }
-const PN_HINT = { brush: 'Vẽ lên lớp đang chọn. 2 ngón = phóng to / kéo xem, chạm 2 ngón = hoàn tác. Đường đứt = chỗ nối từng khung.', erase: 'Tẩy trên lớp đang chọn (lớp trước tẩy đi thì thấy lớp sau).', fill: 'Chạm vào 1 vùng để đổ màu (vùng trống cũng đổ được, vd. cả bầu trời).', pick: 'Chạm để lấy màu.', hand: 'Kéo để xem chỗ khác trên nền dài.' };
+const PN_HINT = { brush: 'Vẽ lên lớp đang chọn. 2 ngón = phóng to / kéo xem, chạm 2 ngón = hoàn tác. Đường đứt = chỗ nối từng khung.', erase: 'Tẩy trên lớp đang chọn (lớp trước tẩy đi thì thấy lớp sau).', fill: 'Chạm vào 1 vùng để đổ màu (vùng trống cũng đổ được, vd. cả bầu trời).', pick: 'Chạm để lấy màu.', hand: 'Kéo để xem chỗ khác trên nền dài.',
+  line: 'Kéo để vẽ nét thẳng (mặt đường, mái nhà, cột điện). Gần ngang / dọc / chéo thì tự thẳng hẳn. 🧲 Hút: đầu nét bám vào thước, lưới và chỗ nối khung.',
+  rect: 'Kéo để vẽ hình chữ nhật (nhà, cửa sổ, bảng). Góc bám vào thước và lưới khi bật 🧲 Hút.',
+  guide: 'Chạm để thêm thước ngang (đường chân trời, mặt đất) chạy suốt nền dài. Kéo thước để dời, kéo ra ngoài nền để bỏ. Nét thẳng và chữ nhật bám vào thước.' };
 function pnSync() {
   if (!PE || !PE.el) return; const el = PE.el, L = pnSel();
   el.querySelectorAll('[data-pnt]').forEach(b => b.classList.toggle('on', b.dataset.pnt === PE.tool && !PE.prev));
@@ -285,10 +290,16 @@ function pnSync() {
   el.querySelector('#pnHint').textContent = PE.prev ? 'Đang xem thử: khung 9:16 trượt qua nền, lớp xa chạy chậm, lớp gần chạy nhanh.' : PN_HINT[PE.tool];
   const fav = favList().slice(0, 14).map(c => `<button class="chip small" data-pnc="${c}" style="background:${c};min-width:34px" title="${c}"></button>`).join('');
   el.querySelector('#pnTools').innerHTML = `<label class="lbl rs-col">Màu <input type="color" id="pnCol" value="${/^#[0-9a-f]{6}$/i.test(S.color) ? S.color : '#000000'}"></label>${fav}
-    <label class="lbl">Cỡ <input type="range" id="pnSize" min="2" max="240" value="${PE.size}"></label><span class="lbl" id="pnSzL">${PE.size}</span>`;
+    <label class="lbl">Cỡ <input type="range" id="pnSize" min="2" max="240" value="${PE.size}"></label><span class="lbl" id="pnSzL">${PE.size}</span>
+    <button class="chip small${PE.grid ? ' on' : ''}" id="pnGrid" title="Hiện lưới ô vuông để vẽ cho đều">▦ Lưới</button><button class="chip small${PE.snap ? ' on' : ''}" id="pnSnap" title="Nét thẳng / chữ nhật bám vào thước, lưới, chỗ nối khung">🧲 Hút</button>
+    ${PE.tool === 'guide' ? `<button class="chip small" id="pnGdAdd" title="Thêm thước ngang ở giữa chỗ đang xem">＋ Thước ngang</button><button class="chip small" id="pnGdClr"${PE.gd.length ? '' : ' disabled'}>🗑 Bỏ hết thước</button>` : ''}`;
   const t = el.querySelector('#pnTools');
   t.querySelector('#pnCol').addEventListener('input', e => { setColor(e.target.value); });
-  t.querySelectorAll('[data-pnc]').forEach(b => b.addEventListener('click', () => { setColor(b.dataset.pnc); if (PE.tool !== 'fill') PE.tool = 'brush'; pnSync(); }));
+  t.querySelectorAll('[data-pnc]').forEach(b => b.addEventListener('click', () => { setColor(b.dataset.pnc); if (!['fill', 'line', 'rect'].includes(PE.tool)) PE.tool = 'brush'; pnSync(); }));
+  t.querySelector('#pnGrid').addEventListener('click', () => { PE.grid = !PE.grid; pnSync(); pnDraw(); });
+  t.querySelector('#pnSnap').addEventListener('click', () => { PE.snap = !PE.snap; pnSync(); });
+  const ga = t.querySelector('#pnGdAdd'); if (ga) ga.addEventListener('click', () => { const y = Math.round(clamp(mApply(mInv(PE.vw), 0, PE.cv.height / 2).y, 0, H)); pnPush(pnSnapL()); PE.gd.push(y); pnSync(); pnDraw(); });
+  const gc = t.querySelector('#pnGdClr'); if (gc) gc.addEventListener('click', () => { pnPush(pnSnapL()); PE.gd = []; pnSync(); pnDraw(); toast('Đã bỏ hết thước (↶ để lấy lại)', 1800); });
   t.querySelector('#pnSize').addEventListener('input', e => { PE.size = +e.target.value; t.querySelector('#pnSzL').textContent = PE.size; });
   const pr = el.querySelector('#pnProps'), mw = panoMaxW();
   const ws = [1.5, 2, 3, 4, 5, 6, 8].filter(k => W * k <= mw);
@@ -373,11 +384,69 @@ function pnDraw() {
   x.save(); x.globalAlpha = 0.3; x.fillStyle = '#fff'; x.fillRect(w, 0, W * 0.6, H); for (const l of PE.layers) x.drawImage(l.c, 0, 0, W * 0.6, H, w, 0, W * 0.6, H); x.restore();
   x.lineWidth = 2 * px; x.setLineDash([10 * px, 8 * px]); x.strokeStyle = 'rgba(47,123,255,.75)';
   for (let k = W; k < w; k += W) { x.beginPath(); x.moveTo(k, 0); x.lineTo(k, H); x.stroke(); }
+  pnDrawAids(x, px);
   x.setLineDash([]); x.strokeStyle = '#ff3b9a'; x.lineWidth = 3 * px; x.strokeRect(0, 0, W, H);
   x.strokeStyle = 'rgba(255,255,255,.6)'; x.lineWidth = 2 * px; x.strokeRect(0, 0, w, H);
   x.fillStyle = '#ff3b9a'; x.font = `bold ${15 * px}px system-ui`; x.textBaseline = 'top'; x.fillText('Khung đầu', 8 * px, 8 * px);
   x.fillStyle = 'rgba(255,255,255,.8)'; x.fillText('↻ đầu nền (khi lặp)', w + 8 * px, 8 * px);
   x.setTransform(1, 0, 0, 1, 0, 0);
+}
+/* --- drawing aids: ▦ grid, 📐 horizontal guides (horizon / ground), live 📏 / ▭ preview --- */
+const pnGridStep = () => Math.round(H / 12);
+function pnDrawAids(x, px) {
+  const w = PE.w;
+  if (PE.grid) {
+    const s = pnGridStep(); x.lineWidth = 1 * px; x.setLineDash([]); x.strokeStyle = 'rgba(80,90,120,.22)'; x.beginPath();
+    for (let k = s; k < w; k += s) { x.moveTo(k, 0); x.lineTo(k, H); }
+    for (let k = s; k < H; k += s) { x.moveTo(0, k); x.lineTo(w, k); }
+    x.stroke();
+  }
+  x.lineWidth = 2 * px; x.setLineDash([14 * px, 7 * px]); x.strokeStyle = 'rgba(0,190,220,.95)'; x.fillStyle = 'rgba(0,150,180,.95)'; x.font = `bold ${13 * px}px system-ui`; x.textBaseline = 'bottom';
+  PE.gd.forEach(g => { x.beginPath(); x.moveTo(0, g); x.lineTo(w, g); x.stroke(); });
+  if (PE.tool === 'guide') PE.gd.forEach((g, i) => { for (let k = 0; k < w; k += W) x.fillText('📐 ' + (i + 1), k + 8 * px, g - 3 * px); });
+  x.setLineDash([]);
+  const a = PE.act; if (!a || a.k !== 'shape') return;
+  x.save(); x.globalAlpha = 0.75; x.strokeStyle = S.color; x.lineWidth = PE.size; x.lineCap = 'round'; x.lineJoin = 'round'; x.beginPath();
+  pnShapePts(a).forEach((p, i) => i ? x.lineTo(p.x, p.y) : x.moveTo(p.x, p.y)); x.stroke(); x.restore();
+  for (const p of [a.p0, a.p1]) { x.beginPath(); x.arc(p.x, p.y, 6 * px, 0, 7); x.fillStyle = a.hit ? '#00bedc' : '#ff3b9a'; x.fill(); }
+}
+// 🧲 the nearest guide / grid line / frame join within ~14 screen px; sx / sy = which axis may move
+function pnSnapPt(pt, sx, sy) {
+  const q = { x: pt.x, y: pt.y, p: pt.p }; if (!PE.snap) return q;
+  const tol = 14 * DPR / PE.vw[0], s = pnGridStep(), near = (v, cs) => { let b = null, d = tol; for (const c of cs) if (Math.abs(c - v) < d) { d = Math.abs(c - v); b = c; } return b; };
+  let hit = false;
+  if (sy) { const g = near(q.y, [...PE.gd, 0, H, ...(PE.grid ? [Math.round(q.y / s) * s] : [])]); if (g != null) { q.y = g; hit = true; } }
+  if (sx) { const xs = [0, PE.w]; for (let k = W; k < PE.w; k += W) xs.push(k); if (PE.grid) xs.push(Math.round(q.x / s) * s); const g = near(q.x, xs); if (g != null) { q.x = g; hit = true; } }
+  q.hit = hit; return q;
+}
+// 📏 end point: nearly flat / upright / 45° → exactly so; then snap only along the free axis
+function pnShapeEnd(a, pt) {
+  if (a.kind === 'rect') return pnSnapPt(pt, true, true);
+  const dx = pt.x - a.p0.x, dy = pt.y - a.p0.y, len = Math.hypot(dx, dy); if (len < 1) return { x: pt.x, y: pt.y };
+  const ang = Math.atan2(dy, dx), st = Math.PI / 4, sn = Math.round(ang / st) * st;
+  if (Math.abs(ang - sn) > 0.15) return pnSnapPt(pt, true, true);   // ~8.5°: a free slope
+  const k = Math.round(sn / st) & 3;   // 0 flat, 2 upright, 1 / 3 diagonal
+  if (k === 0) return { ...pnSnapPt({ x: pt.x, y: a.p0.y }, true, false), y: a.p0.y };
+  if (k === 2) return { ...pnSnapPt({ x: a.p0.x, y: pt.y }, false, true), x: a.p0.x };
+  const l = dx * Math.cos(sn) + dy * Math.sin(sn); return { x: a.p0.x + l * Math.cos(sn), y: a.p0.y + l * Math.sin(sn) };
+}
+const pnShapePts = a => a.kind === 'rect' ? [a.p0, { x: a.p1.x, y: a.p0.y }, a.p1, { x: a.p0.x, y: a.p1.y }, a.p0] : [a.p0, a.p1];
+// the shape goes through the real brush (same look as a hand stroke), one undo step
+function pnStrokePath(L, pts) {
+  const seq = []; for (let i = 0; i < pts.length; i++) {
+    if (!i) { seq.push(pts[0]); continue; } const a = pts[i - 1], b = pts[i], n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 4));
+    for (let j = 1; j <= n; j++) seq.push({ x: a.x + (b.x - a.x) * j / n, y: a.y + (b.y - a.y) * j / n });
+  }
+  const t0 = performance.now(); pnPaintStart(L, { ...seq[0], p: 1 }, { erase: false, pressure: false, smooth: 0, t: t0 });
+  const act = PE.act; seq.slice(1).forEach((p, i) => act.eng.add({ x: p.x, y: p.y, p: 1 }, t0 + (i + 1) * 4));
+  PE.act = null; pnPaintEnd(act);
+}
+function pnGuideStart(pt) {
+  const tol = 16 * DPR / PE.vw[0]; let i = -1, d = tol;
+  PE.gd.forEach((g, j) => { if (Math.abs(g - pt.y) < d) { d = Math.abs(g - pt.y); i = j; } });
+  pnPush(pnSnapL());
+  if (i < 0) { PE.gd.push(Math.round(pt.y)); i = PE.gd.length - 1; }
+  PE.act = { k: 'guide', i, y0: pt.y }; pnSync(); pnDraw();
 }
 /* --- ▶ Xem thử: the 9:16 window slides back and forth, layers at their own speed --- */
 function pnPreview() {
@@ -399,6 +468,7 @@ function pnDown(e) {
   if (e.pointerType === 'pen') PE.pens = true;
   if (PE.pts.size >= 2) {
     if (PE.act && PE.act.k === 'paint') pnPaintCancel(PE.act);
+    if (PE.act && PE.act.k === 'guide') { const u = PE.undo.pop(); PE.ub -= u.bytes; PE.gd = u.gd.slice(); }   // 2nd finger: back to before this guide drag
     const [p1, p2] = [...PE.pts.values()];
     PE.act = { k: 'pinch', d0: Math.hypot(p1.x - p2.x, p1.y - p2.y) || 1, m0: { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 }, v0: PE.vw.slice(), t0: performance.now(), moved: 0 };
     return;
@@ -410,6 +480,8 @@ function pnDown(e) {
   }
   if (PE.tool === 'pick') { pnPick(pt); return; }
   if (PE.tool === 'fill') { pnFill(L, pt); return; }
+  if (PE.tool === 'guide') { pnGuideStart(pt); return; }
+  if (PE.tool === 'line' || PE.tool === 'rect') { const p0 = pnSnapPt(pt, true, true); PE.act = { k: 'shape', kind: PE.tool, L, p0, p1: p0, hit: p0.hit }; pnDraw(); return; }
   pnPaintStart(L, pt);
 }
 function pnMove(e) {
@@ -423,6 +495,8 @@ function pnMove(e) {
     PE.zoomed = true; PE.vw = [k, 0, 0, k, cx - (cx - a.v0[4]) * g + (m.x - a.m0.x) * DPR, cy - (cy - a.v0[5]) * g + (m.y - a.m0.y) * DPR]; pnDraw(); return;
   }
   if (a.k === 'pan') { PE.zoomed = true; PE.vw = [a.v0[0], 0, 0, a.v0[3], a.v0[4] + (e.clientX - a.s0.x) * DPR, a.v0[5] + (e.clientY - a.s0.y) * DPR]; pnDraw(); return; }
+  if (a.k === 'shape') { a.p1 = pnShapeEnd(a, pnDoc(e)); a.hit = a.p1.hit; pnDraw(); return; }
+  if (a.k === 'guide') { const y = pnDoc(e).y, s = pnGridStep(); PE.gd[a.i] = Math.round(PE.grid && PE.snap && Math.abs(y - Math.round(y / s) * s) < 10 * DPR / PE.vw[0] ? Math.round(y / s) * s : y); pnDraw(); return; }
   if (a.k === 'paint') { const pt = pnDoc(e); a.eng.add({ x: pt.x, y: pt.y, p: pt.p }, performance.now()); pnCompose(a); pnDraw(); }
 }
 function pnUp(e) {
@@ -432,18 +506,20 @@ function pnUp(e) {
   if (PE.pts.size) return;
   PE.act = null;
   if (a.k === 'paint') pnPaintEnd(a);
+  if (a.k === 'shape') { if (Math.hypot(a.p1.x - a.p0.x, a.p1.y - a.p0.y) >= 2) pnStrokePath(a.L, pnShapePts(a)); else pnDraw(); }
+  if (a.k === 'guide') { const g = PE.gd[a.i]; if (g < 0 || g > H) { PE.gd.splice(a.i, 1); toast('Đã bỏ thước', 1200); } pnSync(); pnDraw(); }
 }
 /* --- painting: ink on its own canvas, laid over a copy of the layer in the changed rectangle only --- */
-function pnPaintStart(L, pt) {
-  const c = pnOwn(L), w = c.width, erase = PE.tool === 'erase', B = brushOf(erase ? 'eraser' : 'brush');
+function pnPaintStart(L, pt, o = {}) {
+  const c = pnOwn(L), w = c.width, erase = o.erase != null ? o.erase : PE.tool === 'erase', B = brushOf(erase ? 'eraser' : 'brush');
   if (!PE.ink || PE.ink.width !== w) { PE.ink = makeCanvas(w, H); PE.bc = makeCanvas(w, H); }
   const ix = PE.ink.getContext('2d'); ix.setTransform(1, 0, 0, 1, 0, 0); ix.globalAlpha = 1; ix.globalCompositeOperation = 'source-over'; ix.clearRect(0, 0, w, H);
   const bx = PE.bc.getContext('2d'); bx.globalCompositeOperation = 'copy'; bx.drawImage(c, 0, 0); bx.globalCompositeOperation = 'source-over';
   const R = [Infinity, Infinity, -Infinity, -Infinity];
   const dirty = (x, y, r) => { R[0] = Math.min(R[0], x - r); R[1] = Math.min(R[1], y - r); R[2] = Math.max(R[2], x + r); R[3] = Math.max(R[3], y + r); };
-  const eng = makeBrushEngine(ix, { brush: B, color: S.color, size: PE.size, pressure: S.pressure, flowK: B.kind === 'dab' && !erase ? Math.max(1, ppPaintOp(false, { kind: 'line' }) / (B.op0 || 1)) : 1, smooth: S.smooth, erase, dirty });
+  const eng = makeBrushEngine(ix, { brush: B, color: S.color, size: PE.size, pressure: o.pressure != null ? o.pressure : S.pressure, flowK: B.kind === 'dab' && !erase ? Math.max(1, ppPaintOp(false, { kind: 'line' }) / (B.op0 || 1)) : 1, smooth: o.smooth != null ? o.smooth : S.smooth, erase, dirty });
   PE.act = { k: 'paint', L, c, eng, R, erase, op: ppPaintOp(erase, B), done: [0, 0, 0, 0] };
-  eng.add({ x: pt.x, y: pt.y, p: pt.p }, performance.now()); pnCompose(PE.act); pnDraw();
+  eng.add({ x: pt.x, y: pt.y, p: pt.p }, o.t || performance.now()); pnCompose(PE.act); pnDraw();
   if (!erase) addRecentColor(S.color);
 }
 function pnRect(R, w) { const x0 = clamp(Math.floor(R[0]) - 2, 0, w), y0 = clamp(Math.floor(R[1]) - 2, 0, H), x1 = clamp(Math.ceil(R[2]) + 2, 0, w), y1 = clamp(Math.ceil(R[3]) + 2, 0, H); return x1 > x0 && y1 > y0 ? [x0, y0, x1 - x0, y1 - y0] : null; }

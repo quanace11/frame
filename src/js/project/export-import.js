@@ -77,7 +77,7 @@ async function exportZip() {
         ppMeta.parts.push({ ...ppPartMeta(pt), file: name, alts });
       }
     }
-    const panos = (S.panos || []).map(P => ({ id: P.id, name: P.name, w: P.w, layers: P.layers.map(L => { const file = `pano/${P.id}_${L.id}.png`; files.push({ name: file, data: new Uint8Array(L.png) }); return { id: L.id, name: L.name, k: L.k, file }; }) }));
+    const panos = (S.panos || []).map(P => ({ id: P.id, name: P.name, w: P.w, gd: P.gd, layers: P.layers.map(L => { const file = `pano/${P.id}_${L.id}.png`; files.push({ name: file, data: new Uint8Array(L.png) }); return { id: L.id, name: L.name, k: L.k, file }; }) }));
     const timing = { app: 'frame-studio', version: 1, width: W, height: H, total_ms: total, frames: meta, backgrounds: bgOrder.map(id => bgFile.get(id)), puppet: ppMeta, panos };
     const enc = new TextEncoder();
     files.unshift({ name: 'timing.json', data: enc.encode(JSON.stringify(timing, null, 2)) });
@@ -118,7 +118,7 @@ async function importZip(file) {
     let ppData = null;
     const zbuf = f2 => { const d = z.get(f2); return d ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : null; };
     if (t.puppet && t.puppet.parts) ppData = { parts: t.puppet.parts.map(q => ({ ...q, png: zbuf(q.file), alts: (q.alts || []).map(a => ({ png: zbuf(a.file), ...ppAltMeta(a) })).filter(a => a.png) })).filter(q => q.png) };
-    const panos = (t.panos || []).map(P => ({ id: P.id, name: P.name, w: P.w, layers: (P.layers || []).map(L => ({ id: L.id, name: L.name, k: L.k, png: zbuf(L.file) })).filter(L => L.png) }));
+    const panos = (t.panos || []).map(P => ({ id: P.id, name: P.name, w: P.w, gd: P.gd, layers: (P.layers || []).map(L => ({ id: L.id, name: L.name, k: L.k, png: zbuf(L.file) })).filter(L => L.png) }));
     await loadProjectData({ W: t.width, H: t.height, cur: 0, bgs, frames, pp: ppData, panos });
     S.frames.forEach(f => f.pngVer = 0); S.bgs.forEach(b => b.pngVer = 0);
     pm.close(); toast('Đã mở dự án'); scheduleSave();
