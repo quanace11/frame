@@ -42,7 +42,7 @@ function startAction(e, isTouch) {
     fxSel = null; fxSyncBar(); requestRender(); return;
   }
   if (S.tool === 'puppet' && HC) { hcStart(p, base); return; }
-  if (S.tool === 'puppet') { if (S.pp) ppStart(p, base); else toast('Nhập ảnh → chọn "Nhân vật ghép" để bắt đầu'); return; }
+  if (S.tool === 'puppet') { if (plPin) { plPinAt(p); return; } if (S.pp) ppStart(p, base); else toast('Nhập ảnh → chọn "Nhân vật ghép" để bắt đầu'); return; }
   if (rig) { rigPointer(p, base); return; }
   if (motion) { if (motion.type === 'swing') { motion.pivot = { x: p.x, y: p.y }; motion.pv = motionVec(f.vec, motion.k, motion); requestRender(); } return; }
   if (refEdit) { action = { ...base, kind: 'refmove', last: p }; return; }
@@ -189,6 +189,7 @@ function fingerActs(e) {
   // the 8 handles + rotate knob of a ⬚ box stick out past the picture: a finger on them works the box instead of panning
   if (floating) { const k = floating.c && xbHit(floatXbox(), p, true); return !!k && k !== 'in'; }
   if (HC && S.tool === 'puppet') return !!hcHitJoint(p);
+  if (plPin && S.tool === 'puppet') return true;   // 📍 Kho bộ phận: a finger tap places the part
   if (ppSetup) { if (ppSetup.stage === 'paint') return false; const tol = 24 * DPR / vs; return RJ.some(j => Math.hypot(ppSetup.J[j].x - p.x, ppSetup.J[j].y - p.y) <= tol); }
   if (S.tool === 'fx') {
     if (ballMode || gagMode || camPresetMode || fxCamPick || fxHit(f, p)) return true;
