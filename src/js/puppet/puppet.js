@@ -556,7 +556,7 @@ function ppLabSyncBar() {
 // the fields of an alternative picture (alts[]) that are saved (project, ZIP, 🧍 Kho nhân vật, 📮): offset, joints of the pieces
 // hung on it (j = {childRole: {x, y}}, 🧩 Kho bộ phận: a leaning torso moves the shoulders), hk = hide the loose eyes/mouth, lib = library item
 function ppAltMeta(a) { const o = { dx: a.dx || 0, dy: a.dy || 0 }; if (a.j) o.j = a.j; if (a.hk) o.hk = 1; if (a.lib) o.lib = a.lib; return o; }
-function ppPartMeta(p) { return { id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null, lname: p.lname || null, lh: p.lh || null, lk: p.lk || null, hard: p.hard || null, kit: p.kit || null }; }
+function ppPartMeta(p) { return { id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null, lname: p.lname || null, lh: p.lh || null, lk: p.lk || null, hard: p.hard || null, kit: p.kit || null, pinr: p.pinr || null }; }
 // a new character appears from the frame being edited on: frames before it keep showing only what they had
 // (hidden with 🙈 lip.off of its layer, like every other "where does it show" choice, so 📍 Hiện ở… / 👁 can show it there again)
 function ppHideBefore(parts) {
