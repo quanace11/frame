@@ -223,6 +223,7 @@ function plThick(c, j, dir) {
   }
   out.sort((p, q) => p - q); return out.length ? out[out.length >> 1] : 0;
 }
+function plTopY(c) { const w = c.width, h = c.height, al = rsAlpha(c); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (al[y * w + x] > 40) return y; return 0; }
 function plWidth(c) { const w = c.width, h = c.height, al = rsAlpha(c); let x0 = w, x1 = -1; for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x++) if (al[y * w + x] > 40) { if (x < x0) x0 = x; if (x > x1) x1 = x; } return Math.max(1, x1 - x0 + 1); }
 // the matrix item pixels → the part's rest coordinates
 function plFitMat(P, rec) {
@@ -248,6 +249,9 @@ function plFitMat(P, rec) {
     ang = Math.atan2(tdir.y, tdir.x) - Math.atan2(idir.y, idir.x);
     const ti = plThick(P.c, { x: P.px - P.ox, y: P.py - P.oy }, tdir), ii = plThick(rec.c, rec.j, idir);
     sc = ti && ii ? ti / ii : Math.hypot(tdir.x, tdir.y) / Math.hypot(idir.x, idir.y);
+  } else if (P.role === 'head') {   // a head: the neck → top-of-head height matches the old head (hair, ears or a wide chin don't change the size)
+    const ht = P.py - (P.oy + plTopY(P.c)), hi = rec.j.y - plTopY(rec.c);
+    sc = ht > 4 && hi > 4 ? ht / hi : plWidth(P.c) / plWidth(rec.c);
   } else sc = plWidth(P.c) / plWidth(rec.c);
   sc = clamp(sc * (rec.s || 1), 0.2, 5);
   const anchor = P.role === 'torso' ? { x: P.ox + P.c.width / 2, y: P.oy + P.c.height / 2 } : { x: P.px, y: P.py };
