@@ -12,7 +12,7 @@ time.sleep(1)
 SHEET = """(async (kind) => {   // a fake AI picture on white paper: 3 heads, or one fist arm hanging down
   const c = document.createElement('canvas'); c.width = 600; c.height = 300; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 600, 300);
   if (kind === 'head') for (let i = 0; i < 3; i++) { const cx = 100 + i * 200; x.fillStyle = '#f2c79a'; x.strokeStyle = '#222'; x.lineWidth = 4;
-    x.beginPath(); x.ellipse(cx, 130, 60, 75, 0, 0, 7); x.fill(); x.stroke(); x.fillRect(cx - 18, 200, 36, 40); x.fillStyle = '#222';
+    x.beginPath(); x.ellipse(cx, 130, 60 + i * 15, 75, 0, 0, 7); x.fill(); x.stroke(); x.fillRect(cx - 18, 200, 36, 40); x.fillStyle = '#222';
     x.beginPath(); x.arc(cx - 20, 115, 7, 0, 7); x.arc(cx + 20, 115, 7, 0, 7); x.fill(); x.beginPath(); x.arc(cx, 160, 10 + i * 8, 0, Math.PI); x.fill(); }
   else { x.fillStyle = '#d33'; x.fillRect(285, 20, 30, 170); x.fillStyle = '#f2c79a'; x.beginPath(); x.arc(300, 215, 32, 0, 7); x.fill(); }
   const b = await new Promise(r => c.toBlob(r, 'image/png')); return new File([b], kind + '.png', { type: 'image/png' });
@@ -36,17 +36,20 @@ async def main():
         print('sheet split', len(heads) == 3)
         fj = await pg.evaluate(f"plLoad('{fist}').then(r=>[r.j.y < r.c.height*0.15, r.t && r.t.y > r.c.height*0.85])")
         print('fist joints guessed', fj == [True, True])
-        # 3. swap the head on frame 2 only: fitted on the neck, same width, undo puts it back
+        # 3. swap the head on frame 2 only: fitted on the neck, same neck → top-of-head height, undo puts it back
         await pg.evaluate("S.cur=1; updateFrameUI(); ppSel=ppByRole('head').id; ppSyncBar()")
         na = await pg.evaluate("(ppByRole('head').alts||[]).length")
         await pg.evaluate(f"plApply('{heads[1]}','one')"); await pg.wait_for_timeout(300)
-        r = await pg.evaluate("(()=>{const h=ppByRole('head'), a=h.alts[h.alts.length-1], v=S.frames[1].pp[h.id].v; return [h.alts.length, v===h.alts.length, !(S.frames[0].pp[h.id]||{}).v, Math.abs(plWidth(a.c)/plWidth(h.c)-1)<0.08, a.lib]})()")
+        r = await pg.evaluate("(()=>{const h=ppByRole('head'), a=h.alts[h.alts.length-1], v=S.frames[1].pp[h.id].v; return [h.alts.length, v===h.alts.length, !(S.frames[0].pp[h.id]||{}).v, Math.abs((h.py-(h.oy+a.dy+plTopY(a.c)))/(h.py-(h.oy+plTopY(h.c)))-1)<0.04, a.lib]})()")
         print('head swapped on this frame', r[:4] == [na + 1, True, True, True] and r[4] == heads[1])
         # the neck of the new picture sits on the joint (bottom-middle of the picture ≈ the head's pivot)
         nk = await pg.evaluate("(()=>{const h=ppByRole('head'), a=h.alts[h.alts.length-1]; const bx=h.ox+a.dx+a.c.width/2, by=h.oy+a.dy+a.c.height; return [Math.abs(bx-h.px)<a.c.width*0.1, Math.abs(by-h.py)<a.c.height*0.2]})()")
         print('neck on the joint', nk == [True, True])
         await pg.evaluate(f"plApply('{heads[2]}','one')"); await pg.wait_for_timeout(300)
         print('second head, one more picture', await pg.evaluate(f"ppByRole('head').alts.length==={na + 2}"))
+        # a wider head (big hair / ears) still gets the same neck → top height, not a smaller head
+        wh = await pg.evaluate("(()=>{const h=ppByRole('head'), a=h.alts[h.alts.length-1]; return [Math.abs((h.py-(h.oy+a.dy+plTopY(a.c)))/(h.py-(h.oy+plTopY(h.c)))-1)<0.04, Math.abs(plWidth(a.c)/plWidth(h.alts[h.alts.length-2].c)-1)>0.1, plWidth(a.c)/plWidth(h.alts[h.alts.length-2].c)]})()")
+        print('wide head keeps the height', wh[:2] == [True, True], wh)
         await pg.evaluate(f"plApply('{heads[1]}','one')"); await pg.wait_for_timeout(300)
         print('same item reused', await pg.evaluate(f"ppByRole('head').alts.length==={na + 2} && ppByRole('head').alts[S.frames[1].pp[ppByRole('head').id].v-1].lib==='{heads[1]}'"))
         await pg.wait_for_timeout(300); await pg.evaluate("undo()"); await pg.wait_for_timeout(400)
