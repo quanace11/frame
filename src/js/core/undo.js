@@ -96,7 +96,7 @@ const histTok = new WeakMap(); let histTokN = 0;
 const histId = o => { if (!histTok.has(o)) histTok.set(o, ++histTokN); return '#' + histTok.get(o); };
 const histBig = x => x && typeof x === 'object' && (x instanceof ArrayBuffer || ArrayBuffer.isView(x) || typeof x.getContext === 'function' || (typeof ImageBitmap !== 'undefined' && x instanceof ImageBitmap) || (typeof ImageData !== 'undefined' && x instanceof ImageData));
 const histJSON = v => JSON.stringify(v, (k, x) => histBig(x) ? histId(x) : x);
-const H_FKEYS = ['dur', 'bgId', 'pp', 'ppKey', 'ppK', 'ppE', 'ppEase', 'texts', 'cam', 'shake', 'flash', 'lip', 'scene', 'tr', 'tre', 'ghost', 'bgs', 'sl', 'flt', 'gl'];
+const H_FKEYS = ['dur', 'bgId', 'pp', 'ppKey', 'ppK', 'ppE', 'ppEase', 'texts', 'cam', 'shake', 'flash', 'lip', 'scene', 'tr', 'tre', 'ghost', 'bgs', 'sl', 'flt', 'gl', 'pan'];
 const histFrameStr = f => JSON.stringify(H_FKEYS.map(k => f[k] === undefined ? null : f[k]));
 const histPartCopy = p => ({ ...p, alts: (p.alts || []).map(a => ({ ...a })) });
 const audioCopy = A => A ? { ...A, music: A.music ? { ...A.music } : A.music, musics: (A.musics || []).map(x => ({ ...x })), voice: A.voice ? { ...A.voice } : A.voice, voices: (A.voices || []).map(x => ({ ...x })), sfx: (A.sfx || []).map(x => ({ ...x })) } : null;
@@ -107,9 +107,9 @@ function histSnap() {
     pp: S.pp ? { parts: S.pp.parts.slice(), meta: S.pp.parts.map(histPartCopy) } : null,
     rig: S.rig ? JSON.stringify(S.rig) : null,
     audio: audioCopy(A),
-    bgVideo: vidCopy(S.bgVideo), ref: { ...REF }, poses: (S.poses || []).slice()
+    bgVideo: vidCopy(S.bgVideo), ref: { ...REF }, poses: (S.poses || []).slice(), panos: (S.panos || []).slice()
   };
-  g.sig = histJSON([g.frames.map(f => f.id), g.bgs.map(b => b.id), g.pp && g.pp.meta, g.rig, g.audio, g.bgVideo, g.ref, g.poses]);
+  g.sig = histJSON([g.frames.map(f => f.id), g.bgs.map(b => b.id), g.pp && g.pp.meta, g.rig, g.audio, g.bgVideo, g.ref, g.poses, g.panos]);
   g.fm = new Map(g.frames.map(f => [f, histFrameStr(f)]));
   return g;
 }
@@ -169,6 +169,7 @@ async function histApply(sn, key) {
   S.bgVideo = vidCopy(G.bgVideo); if (vidChanged) bgVideoSetup();
   Object.assign(REF, G.ref); updateRefUI();
   S.poses = G.poses.slice();
+  S.panos = (G.panos || []).slice(); panoGc(); S.frames.forEach(f => { if (f.pan) f.playKey = ''; });
   S.cur = clamp(S.frames.includes(G.frames[G.cur]) ? S.frames.indexOf(G.frames[G.cur]) : G.cur, 0, S.frames.length - 1);
   tintCache.clear(); buildStrip(); await selectFrame(S.cur); ppSyncBar(); fxSyncBar(); updateWaves(); requestRender(); scheduleSave();
 }

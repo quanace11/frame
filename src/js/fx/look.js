@@ -21,7 +21,7 @@ function bgsOff(i) {   // [x, y] shift of the background on frame i (doc pixels)
   }
   return [Math.round(ox), Math.round(oy)];
 }
-const lookKey = i => { const f = S.frames[i], o = bgsOff(i); return glKey(i) + (o ? 'b' + o.join(',') : '') + (f.sl && f.sl.k !== 'focus' ? 's' + f.sl.k + f.sl.c : '') + ':'; };
+const lookKey = i => { const f = S.frames[i], o = bgsOff(i); return glKey(i) + (o ? 'b' + o.join(',') : '') + panoKey(f) + (f.sl && f.sl.k !== 'focus' ? 's' + f.sl.k + f.sl.c : '') + ':'; };
 function drawBgImg(ctx, i, img, w, h) {
   const o = bgsOff(i); if (!o || (!o[0] && !o[1])) { if (w) ctx.drawImage(img, 0, 0, w, h); else ctx.drawImage(img, 0, 0); return; }
   const tw = w || W, th = h || H, ox = o[0] * tw / W, oy = o[1] * th / H, kx0 = Math.floor(-ox / tw), ky0 = Math.floor(-oy / th);
@@ -88,7 +88,8 @@ function lookSync() {
   const c = f.sl ? f.sl.c : S.lookOpt.c; document.querySelectorAll('[data-slc]').forEach(b => b.classList.toggle('on', b.dataset.slc === c));
   document.querySelectorAll('[data-flt]').forEach(b => b.classList.toggle('on', f.flt === b.dataset.flt));
   document.querySelectorAll('[data-rps]').forEach(b => b.classList.toggle('on', +b.dataset.rps === S.lookOpt.rs));
-  const on = [f.bgs && `🏃 nền chạy ${BGS_DIRS[f.bgs.d][3].toLowerCase()}`, f.sl && `${SL_KINDS[f.sl.k][0]} đường ${SL_KINDS[f.sl.k][1].toLowerCase()}`, f.flt && `${FLT_KINDS[f.flt][0]} ${FLT_KINDS[f.flt][1].toLowerCase()}`].filter(Boolean);
+  if ($('#pnStat')) $('#pnStat').textContent = f.pan && panoOf(f) ? `Frame ${S.cur + 1}: ${panoOf(f).name}` : '';
+  const on = [f.pan && panoOf(f) && '🌄 nền dài', f.bgs && `🏃 nền chạy ${BGS_DIRS[f.bgs.d][3].toLowerCase()}`, f.sl && `${SL_KINDS[f.sl.k][0]} đường ${SL_KINDS[f.sl.k][1].toLowerCase()}`, f.flt && `${FLT_KINDS[f.flt][0]} ${FLT_KINDS[f.flt][1].toLowerCase()}`].filter(Boolean);
   const sel = msel && msel.size > 1;
   glSync();
   $('#lkStat').textContent = `Frame ${S.cur + 1}: ${on.length ? on.join(', ') : 'chưa có hiệu ứng'} · Bấm nút = áp cho ${sel ? msel.size + ' frame đang chọn' : S.lookOpt.n + ' frame từ frame này'}`;
@@ -122,6 +123,7 @@ async function replayMake() {
 function drawFrameBase(ctx, f, bg, live) {
   if (S.bgVideo) ctx.clearRect(0, 0, W, H); else { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); }
   const fi = S.frames.indexOf(f);
+  if (S.showBg) drawPano(ctx, f);
   if (bg && bg.canvas && S.showBg) drawBgImg(ctx, fi, bg.canvas);
   drawSpeedLines(ctx, f, fi); drawGlowBack(ctx, f, fi);
   drawCol(ctx, f); drawGhosts(ctx, f);

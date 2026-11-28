@@ -107,6 +107,7 @@ function render() {
   const bg = bgOf(f);
   if (S.bgVideo && bgVid.ready && S.showBg) drawVideoCover(c, bgVid.el);
   if (stroke) buildWork();
+  if (S.showBg) drawPano(c, f);   // 🌄 Nền dài: under the frame's own Nền layer
   if (floating && floatPlace() === 'bottom') { if (floating.bc) drawFloating(c, floating.bc); if (floating.cc) drawFloating(c, floating.cc); drawFloating(c); }
   else if (S.showBg && bg && bg.canvas) { if (floating || (S.layer === 'bg' && S.tool !== 'fx')) c.drawImage(stroke && stroke.t.type === 'bg' ? work : bg.canvas, 0, 0); else drawBgImg(c, S.cur, bg.canvas); }
   drawSpeedLines(c, f, S.cur);

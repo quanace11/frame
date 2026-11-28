@@ -34,7 +34,7 @@ function freePlayCache(except) { for (const f of S.frames) if (f.play && f !== e
 // play cache as sharp as the frame on screen (a 900 px cap made playback look blurry on 2× tablet screens); memory budget still wins
 function playCacheSize(n) { let ph = Math.min(H, Math.max(320, Math.round(H * vs))); const perPx = 4 * n * W / H; if (ph * ph * perPx > PLAY_BUDGET) ph = Math.max(200, Math.floor(Math.sqrt(PLAY_BUDGET / perPx))); return ph; }
 async function buildPlayCache() {
-  clearTimeout(playFreeT);
+  clearTimeout(playFreeT); await panoReady();
   const ph = playCacheSize(S.frames.length), k = ph / H, pw = Math.round(W * k);
   for (let i = 0; i < S.frames.length; i++) {
     const f = S.frames[i], bg = bgOf(f);
@@ -44,6 +44,7 @@ async function buildPlayCache() {
     if (!f.play) f.play = makeCanvas(pw, ph); else { f.play.width = pw; f.play.height = ph; }
     const x = f.play.getContext('2d');
     if (S.bgVideo) x.clearRect(0, 0, pw, ph); else { x.fillStyle = '#fff'; x.fillRect(0, 0, pw, ph); }
+    if (S.showBg) drawPano(x, f, pw, ph);
     if (bg && bg.canvas) drawBgImg(x, i, bg.canvas, pw, ph);
     drawSpeedLines(x, f, i, pw, ph); drawGlowBack(x, f, i, pw, ph);
     drawCol(x, f, pw, ph); drawGhosts(x, f, pw, ph); if (f.canvas) x.drawImage(f.canvas, 0, 0, pw, ph);

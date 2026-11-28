@@ -308,6 +308,7 @@
         <button class="chip small" id="camHit" title="Camera rung mạnh lúc tới nơi rồi tắt dần (như cú va chạm)">💥 Rung khi tới</button><button class="chip small" id="camHand" title="Camera hơi lắc lư như quay cầm tay, tới camera key sau">📷 Cầm tay</button><button class="chip small" id="camPrev" title="Phát từ frame này để xem camera chạy">▶ Xem thử</button></div>
       <div class="mrow" data-tab="cam"><span class="lbl" id="camStat" style="flex-basis:100%;color:#ffb21e"></span></div>
       <div class="mrow" data-tab="cam"><span class="lbl" style="font-size:11px">Kéo trên khung để vẽ khung camera (vd. quanh người + TV) · kéo trong khung để dời · kéo chấm góc để to/nhỏ (góc đối diện đứng yên). Camera chạy mượt có 2 khung: ▶ Khung đầu và ⏹ Khung cuối, chọn khung nào thì kéo khung đó.</span></div>
+      <div class="mrow" data-tab="look" style="flex-wrap:wrap"><span class="lbl" title="Nền rộng hơn khung (cả con phố, cả sân), khung nhìn trượt dần qua các frame; nhiều lớp chạy nhanh chậm khác nhau"><b>🌄 Nền dài:</b></span><button class="chip small" id="pnOpen">🌄 Nền dài chạy dần…</button><span class="lbl" id="pnStat"></span></div>
       <div class="mrow" data-tab="look" style="flex-wrap:wrap"><span class="lbl" title="Nền trượt liên tục qua các frame: nhân vật chạy tại chỗ mà như đang lao trên sân. Ảnh nền nối tiếp kiểu soi gương nên không thấy đường nối"><b>🏃 Nền chạy:</b></span><span id="lkBgsD"></span><button class="chip small" data-bgsd="">Tắt</button>
         <span class="lbl">Tốc độ</span><span id="lkBgsV"></span></div>
       <div class="mrow" data-tab="look" style="flex-wrap:wrap"><span class="lbl" title="Đường tốc độ kiểu anime / truyện tranh, mỗi frame vẽ lại khác nhau nên trông như đang chạy"><b>💨 Đường tốc độ:</b></span><span id="lkSlK"></span><button class="chip small" data-slk="">Tắt</button>
@@ -502,6 +503,7 @@
 <script src="js/fx/text-camera.js"></script>
 <script src="js/fx/ghost.js"></script>
 <script src="js/fx/look.js"></script>
+<script src="js/fx/pano.js"></script>
 <script src="js/fx/glow.js"></script>
 <script src="js/fx/transitions.js"></script>
 <script src="js/export/video-fast.js"></script>

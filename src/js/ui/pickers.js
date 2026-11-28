@@ -295,12 +295,14 @@ function bgMenuPop() {
     <div class="bgm-row" data-k="splitBgBtn"><span>Sửa nền ở frame này mà không đổi các frame khác</span></div>
     <div class="bgm-row" data-k="bgVidBtn"><span>Dùng một đoạn video làm nền phía sau nhân vật</span></div>
     <div class="bgm-row" data-k="vidFramesBtn"><span>Ghép theo video (cắt, nối như dựng phim, vẽ đè lên) hoặc tách thành từng frame để đồ theo</span></div>
+    <div class="bgm-row"><button class="chip small on bgm-pano">🌄 Nền dài</button><span>Nền rộng hơn khung (cả con phố), chạy dần qua các frame khi nhân vật đi</span></div>
     <div class="bgm-row"><button class="chip small on bgm-scene">🏞 Nền vẽ sẵn</button><span>Phòng, lớp học, phố, công viên, biển… chạm là có cảnh</span></div>`, 'bgm');
   const hold = $('#bgHold'), info = $('#bgInfo');
   d.querySelector('.bgm-info').textContent = info.textContent;
   d.querySelectorAll('.bgm-row[data-k]').forEach(r => r.prepend($('#' + r.dataset.k)));
   d.querySelector('.bgm-scene').addEventListener('click', () => { closePop(); sceneDialog(); });
   d.querySelector('.bgm-img').addEventListener('click', () => { closePop(); bgImagePick(); });
+  d.querySelector('.bgm-pano').addEventListener('click', () => { closePop(); panoDialog(); });
   d._onClose = () => d.querySelectorAll('.bgm-row[data-k] > button').forEach(b => hold.insertBefore(b, info));
   d.addEventListener('click', e => { if (e.target.closest('.bgm-row > button')) setTimeout(closePop, 0); });
 }

@@ -13,6 +13,7 @@ async function drawThumb(f) {
   const t = f.thumb, x = t.getContext('2d');
   x.fillStyle = '#fff'; x.fillRect(0, 0, t.width, t.height);
   const bg = bgOf(f);
+  if (f.pan) drawPano(x, f, t.width, t.height);
   if (bg && bg.canvas) x.drawImage(bg.canvas, 0, 0, t.width, t.height);
   else if (bg && bg.png) { try { const b = await decodePng(bg.png); x.drawImage(b, 0, 0, t.width, t.height); b.close && b.close(); } catch (e) {} }
   if (f.canvas) { drawCol(x, f, t.width, t.height); x.drawImage(f.canvas, 0, 0, t.width, t.height); }
