@@ -45,7 +45,7 @@ async function buildPlayCache() {
     const x = f.play.getContext('2d');
     if (S.bgVideo) x.clearRect(0, 0, pw, ph); else { x.fillStyle = '#fff'; x.fillRect(0, 0, pw, ph); }
     if (bg && bg.canvas) drawBgImg(x, i, bg.canvas, pw, ph);
-    drawSpeedLines(x, f, i, pw, ph);
+    drawSpeedLines(x, f, i, pw, ph); drawGlowBack(x, f, i, pw, ph);
     drawCol(x, f, pw, ph); drawGhosts(x, f, pw, ph); if (f.canvas) x.drawImage(f.canvas, 0, 0, pw, ph);
     if (!live && S.pp && S.showPP) { x.save(); x.scale(pw / W, ph / H); drawPuppet(x, f.pp, f.lip); x.restore(); }
     if (!live && f.vec && f.vec.length) { x.save(); x.scale(pw / W, ph / H); drawVec(x, f.vec); x.restore(); }
