@@ -29,6 +29,7 @@ function startAction(e, isTouch) {
   if (S.tool === 'fx') {
     const t = fxHit(f, p);
     if (t) { fxSel = t.id; action = { ...base, kind: 'fxmove', t, last: p, before: fxState(f) }; fxSyncBar(); requestRender(); return; }
+    if (glOn() && glStart(p, base)) return;   // ✨ Lóe sáng: mark / move / resize the glowing opening
     if (camPresetMode) { camPresetApply(p); return; }
     if (fxCamPick) { fxEdit(fr => { const c0 = camEditBox(S.cur); camSetBox(fr, { z: Math.max(c0.z, 1.5), x: p.x, y: p.y }); }); return; }
     if (TABS.fx === 'cam' && !panelHidden.fx) {   // Camera tab: drag the box to move it, a corner to zoom, or outside it to draw a new shot
@@ -91,6 +92,7 @@ function moveAction(e) {
     else if (action.kind === 'camsize') camSetBox(f, camCornerBox(b, action.corner, p));
     else { action.r = [Math.min(action.p0.x, p.x), Math.min(action.p0.y, p.y), Math.max(action.p0.x, p.x), Math.max(action.p0.y, p.y)]; if (Math.max(action.r[2] - action.r[0], action.r[3] - action.r[1]) > 40) camSetBox(f, camFromRect(...action.r)); }
     requestRender();
+  } else if (action.kind.startsWith('gl')) { glMove(toDoc(e, action.rect));
   } else if (action.kind === 'fxmove') {
     const p = toDoc(e, action.rect); action.t.x += p.x - action.last.x; action.t.y += p.y - action.last.y; action.last = p; requestRender();
   } else if (action.kind === 'labpaint') {
@@ -119,6 +121,7 @@ function endAction() {
   $('#selbar').classList.remove('peek');
   if (action.kind === 'fxtap') { const a = action; action = null; if (!a.moved) startAction({ clientX: 0, clientY: 0, pointerType: 'touch', pointerId: a.id, tapAt: a.p }, false); action = null; return; }
   if (action.kind === 'pick') { const p = action.p; action = null; doPick(p); return; }
+  if (action.kind.startsWith('gl')) { glEnd(); return; }
   if (action.kind === 'stroke') strokeEnd();
   else if (action.kind === 'refmove') scheduleSave();
   else if (action.kind === 'rjoint') { scheduleSave(); rigPreview(); }
@@ -146,6 +149,7 @@ function abortAction() {
   if (action.kind === 'pick') pickLoupe(null);
   if (action.kind === 'lasso' || action.kind === 'vlasso') { lasso = null; requestRender(); }
   if (action.kind === 'warp') warpEnd(true);
+  glAbort();
   if (action.kind === 'ballpath' && ballMode) { ballMode.pts = null; requestRender(); }
   if (action.kind === 'vbend' || action.kind === 'vmove' || action.kind === 'verase' || action.kind === 'vmulti' || action.kind === 'vxform') { if (action.col) colLiftAbort(curFrame(), action.col); curFrame().vec = action.before; if (action.kind === 'vmulti' && action.polyBase) vpoly = action.polyBase; requestRender(); }
   if (action.kind === 'pprot' || action.kind === 'ppmove' || action.kind === 'ppik') { ppSetState(curFrame(), action.before); requestRender(); }
@@ -193,6 +197,7 @@ function fingerActs(e) {
   if (ppSetup) { if (ppSetup.stage === 'paint') return false; const tol = 24 * DPR / vs; return RJ.some(j => Math.hypot(ppSetup.J[j].x - p.x, ppSetup.J[j].y - p.y) <= tol); }
   if (S.tool === 'fx') {
     if (ballMode || gagMode || camPresetMode || fxCamPick || fxHit(f, p)) return true;
+    if (glOn() && (glPick || glHit(f, p))) return true;
     if (TABS.fx === 'cam' && !panelHidden.fx) { const b = camBox(camEditBox(S.cur)), tol = 30 * DPR / vs; return [[-1, -1], [1, -1], [-1, 1], [1, 1]].some(([sx, sy]) => Math.hypot(p.x - (b.cx + sx * b.hw), p.y - (b.cy + sy * b.hh)) <= tol) || (b.z > 1.001 && Math.abs(p.x - b.cx) < b.hw && Math.abs(p.y - b.cy) < b.hh); }
     return false;
   }
