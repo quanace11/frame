@@ -154,12 +154,12 @@ function drawPuppet(ctx, pose, lip) {
   if (lip && lip.off) pose = ppApplyOff(pose, lip.off);
   const M = ppMats(pose), byId = {}; S.pp.parts.forEach(p => byId[p.id] = p);
   const off = lyrOff('lh');
-  const order = [...S.pp.parts].sort((a, b) => a.z - b.z), foc = ppPaintFocus && order.find(p => p.id === ppPaintFocus);
+  const order = [...S.pp.parts].sort((a, b) => a.z - b.z), fset = ppPaintFocus instanceof Set ? ppPaintFocus : null, foc = !fset && ppPaintFocus && order.find(p => p.id === ppPaintFocus);
   if (foc) { order.splice(order.indexOf(foc), 1); order.push(foc); }   // ✎ Vẽ lại mảnh: the part being redrawn on top, the others faded
   const shown = p => { const q = pose && pose[p.id]; return !((q && q.h) || !p.c || (off && off.has(p.id)) || (ppOnlyRoot && (ppCharOf(p) || p.id) !== ppOnlyRoot)); };
   const drawOne = (cx, p) => {
     const q = pose && pose[p.id]; let im = ppImg(p, q); if (lip && lip.jg) im = jgWarp(p, im, lip.jg, lip) || im;   // 🫨 Rung 1 chỗ
-    if (foc) cx.globalAlpha = p === foc ? 1 : 0.35;
+    if (foc) cx.globalAlpha = p === foc ? 1 : 0.35; else if (fset) cx.globalAlpha = fset.has(p.id) ? 1 : 0.35;
     if (S.ppSoft && !p.hard && p.role && (PP_SOFT1[p.role] || PP_SOFT2[p.role])) { const js = ppSoftJoints(p, byId); if (js.length) { ppDrawSoft(cx, p, im, M, js); return; } }
     cx.save(); cx.transform(...M[p.id]); cx.drawImage(im.c, im.x, im.y); cx.restore();
   };
@@ -224,7 +224,8 @@ function ppFitJoints(src, pts) {
         // also holds the shirt would put the elbow inside the body when the arm touches it)
         const outerRun = (y, sgn) => { y = Math.round(y); let x = sgn < 0 ? 0 : W - 1; while (x >= 0 && x < W && !op(x, y)) x -= sgn; if (x < 0 || x >= W) return null; const a = x; while (op(x - sgn, y)) x -= sgn; return [Math.min(a, x), Math.max(a, x)]; };
         for (const sd of ['L', 'R']) {
-          const sgn = sd === 'L' ? -1 : 1, sh = J['sh' + sd], ha = J['ha' + sd];
+          const sgn = sd === 'L' ? -1 : 1, sh = J['sh' + sd];
+          const ha = J['ha' + sd];
           for (const [jt, y] of [['ha' + sd, ha.y], ['el' + sd, (sh.y + ha.y) / 2]]) {
             const r = outerRun(y, sgn); if (!r) continue;
             const x = r[1] - r[0] < 0.07 * H0 ? (r[0] + r[1]) / 2 : (sgn < 0 ? r[0] + 0.022 * H0 : r[1] - 0.022 * H0);
@@ -295,7 +296,12 @@ function ppFinishJoints(src, J, op, hgt, top, cx, armsDown, headFit) {
     const K = Object.fromEntries(keep);
     for (const sd of ['L', 'R']) {
       if (J['ha' + sd].y < K['el' + sd].y) continue;
+      // the arm found as its own colour patch beside the body (ppFitArmByOutline) knows where the hand really ends; the
+      // arms-down guess takes the generic hand height, which lands on the thigh for short-armed cartoon characters
+      // (then the shorts were cut out as the forearm and tore away when walking)
+      const ha = J._out && J._out[sd] ? J['ha' + sd] : null, el = J['el' + sd];
       for (const k of ['sh', 'el', 'ha']) J[k + sd] = K[k + sd];
+      if (ha && ha.y > K['sh' + sd].y && Math.hypot(ha.x - K['ha' + sd].x, ha.y - K['ha' + sd].y) > 0.03 * hgt) { J['ha' + sd] = ha; J['el' + sd] = el; }
       skip[sd] = true; if (J._out) delete J._out[sd];
     }
   }
@@ -452,9 +458,16 @@ function ppFitLimbs(src, J) {
   // hands: tips left / right of the body, not the head, not the feet
   for (const sd of ['L', 'R']) {
     const sgn = sd === 'L' ? -1 : 1, sh = J['sh' + sd], gs = gAt(sh);
-    const c = ext.filter(e => !used.has(e) && (e.x - cx) * sgn > 0.06 * hgt && e.y < J.root.y + 0.3 * hgt && !(Math.abs(e.x - cx) < 0.12 * hgt && e.y < J.chest.y)).sort((a, b) => b.g - a.g)[0];
-    if (!c || gs == null || c.g - gs < 0.12 * hc) { ppFitArmByOutline(sd); continue; } used.add(c);
-    const pts = pathTo(c, gs, sh); J['ha' + sd] = along(pts, 0.1); J['el' + sd] = along(pts, 0.55);
+    // a real hand's walk back goes up the arm to the shoulder; the corner of the shorts beside a hanging arm (the gap between
+    // them filled in by the cut-out) walks back to the hips instead: skip it, or the shorts become the forearm
+    let c = null, pts = null;
+    for (const e of ext.filter(e => !used.has(e) && (e.x - cx) * sgn > 0.06 * hgt && e.y < J.root.y + 0.3 * hgt && !(Math.abs(e.x - cx) < 0.12 * hgt && e.y < J.chest.y)).sort((a, b) => b.g - a.g)) {
+      if (gs == null || e.g - gs < 0.12 * hc) break;
+      const w = pathTo(e, gs, sh), end = w[w.length - 1];
+      if (Math.hypot(end.x - sh.x, end.y - sh.y) < 0.1 * hgt) { c = e; pts = w; break; }
+    }
+    if (!c) { ppFitArmByOutline(sd); continue; } used.add(c);
+    J['ha' + sd] = along(pts, 0.1); J['el' + sd] = along(pts, 0.55);
   }
 }
 let ppLabTool = 'brush', ppLabSize = 26, ppLabPick = 6, ppLastCut = null;
@@ -572,6 +585,66 @@ function ppPushChar(parts) {
 }
 // …then show it: puppet on, tab Tư thế, every thumbnail redrawn, saved (undo: automatic snapshot)
 function ppShowAdded() { S.showPP = true; updateToggles(); openTab('pp', 'pose'); ppSyncBar(); S.frames.forEach(f => { f.ver++; queueThumbFor(f); }); scheduleSave(); requestRender(); }
+/* tidy the regions before cutting: thin strips (an outline running down the next piece) and loose crumbs of one region
+   (bits of the shorts given to a hanging forearm) go to the region they touch most, so a swinging limb never drags torn
+   slivers of another piece with it. Opening (erode + dilate by r) per region, keep its big connected parts, then every
+   dropped pixel takes the label of the nearest kept pixel reached through the drawing (geodesic). */
+function ppLabelTidy(label, bin, ng, x0, y0, x1, y1, r, bones, limb, hand) {
+  if (x1 < x0 || y1 < y0) return;
+  // a margin round the drawing: the distance transform treats the crop's edge as 'outside', which would keep an edge strip
+  const pad = r + 3; x0 -= pad; y0 -= pad; x1 += pad; y1 += pad;
+  const cw = x1 - x0 + 1, ch = y1 - y0 + 1, n = cw * ch;
+  const lab = new Int8Array(n).fill(-1), inb = new Uint8Array(n), mine = new Uint8Array(n);
+  for (let k = 0; k < n; k++) { const x = x0 + k % cw, y = y0 + ((k / cw) | 0); if (x >= 0 && y >= 0 && x < W && y < H) { const i = y * W + x; lab[k] = label[i]; inb[k] = bin[i]; if (hand && hand[i] >= 0) mine[k] = 1; } }
+  const out = lab.slice(), m = new Uint8Array(n), comp = new Int32Array(n), stack = new Int32Array(n);
+  for (let gi = 0; gi < ng; gi++) {
+    let cnt = 0; for (let k = 0; k < n; k++) { m[k] = lab[k] === gi ? 1 : 0; cnt += m[k]; }
+    if (cnt < 30) continue;
+    const d1 = chamferDT(m, cw, ch), er = new Uint8Array(n); let ce = 0; for (let k = 0; k < n; k++) if (d1[k] > r) { er[k] = 1; ce++; }
+    let keep = m;
+    if (ce) {
+      const inv = new Uint8Array(n); for (let k = 0; k < n; k++) inv[k] = er[k] ? 0 : 1;
+      const d2 = chamferDT(inv, cw, ch), op = new Uint8Array(n); let co = 0; for (let k = 0; k < n; k++) if (m[k] && d2[k] <= r + 0.5) { op[k] = 1; co++; }
+      if (co > cnt * 0.6) keep = op;   // a piece that is mostly thin (a stick-figure arm) is left as it is
+    }
+    // connected parts (4-neighbour): keep the big ones
+    comp.fill(0); const sizes = [0];
+    for (let k = 0; k < n; k++) if (keep[k] && !comp[k]) {
+      const id = sizes.length; let sp = 0, sz = 0; stack[sp++] = k; comp[k] = id;
+      while (sp) { const q = stack[--sp]; sz++; const x = q % cw; for (const nb of [x > 0 ? q - 1 : -1, x < cw - 1 ? q + 1 : -1, q - cw, q + cw]) if (nb >= 0 && nb < n && keep[nb] && !comp[nb]) { comp[nb] = id; stack[sp++] = nb; } }
+      sizes.push(sz);
+    }
+    // the parts the piece's own bone runs through (a big wedge of the shorts handed to a hanging forearm does not touch
+    // the forearm's bone); none touched = keep the biggest
+    const hit = new Set(), seg = bones && bones[gi];
+    if (seg) for (let t = 0; t <= 1.0001; t += 0.02) {
+      const bx = Math.round(seg[0].x + (seg[1].x - seg[0].x) * t) - x0, by = Math.round(seg[0].y + (seg[1].y - seg[0].y) * t) - y0;
+      for (let oy = -r; oy <= r; oy += 2) for (let ox = -r; ox <= r; ox += 2) { const X = bx + ox, Y = by + oy; if (X >= 0 && Y >= 0 && X < cw && Y < ch && comp[Y * cw + X]) hit.add(comp[Y * cw + X]); }
+    }
+    (window.__dbg = window.__dbg || []).push([gi, seg ? [Math.round(seg[0].x - x0), Math.round(seg[0].y - y0), Math.round(seg[1].x - x0), Math.round(seg[1].y - y0)] : null, [...hit], sizes.length, limb && limb[gi]]);
+    const big = Math.max(...sizes), ok = c => hit.size ? hit.has(c) : sizes[c] >= big * 0.3;
+    for (let k = 0; k < n; k++) if (m[k] && !(keep[k] && comp[k] && ok(comp[k]))) out[k] = -2;
+    // an arm / leg: nothing much farther from its own bone than its width (the user's own painting is left alone)
+    if (seg && limb && limb[gi]) {
+      const ax = seg[0].x - x0, ay = seg[0].y - y0, vx = seg[1].x - seg[0].x, vy = seg[1].y - seg[0].y, vv = vx * vx + vy * vy || 1, hs = [];
+      for (let t = 0.2; t <= 0.81; t += 0.05) { const X = Math.round(ax + vx * t), Y = Math.round(ay + vy * t); if (X >= 0 && Y >= 0 && X < cw && Y < ch && m[Y * cw + X]) hs.push(d1[Y * cw + X]); }
+      if (hs.length >= 3) {
+        hs.sort((a, b) => a - b); const hw = hs[hs.length >> 1], T = Math.max(2.4 * hw, hw + 5 * r);
+        for (let k = 0; k < n; k++) if (m[k] && !mine[k] && out[k] === gi) {
+          const px = k % cw - ax, py = ((k / cw) | 0) - ay, t = Math.max(0, Math.min(1, (px * vx + py * vy) / vv));
+          if (Math.hypot(px - vx * t, py - vy * t) > T) out[k] = -2;
+        }
+      }
+    }
+  }
+  // dropped pixels: nearest kept label through the drawing
+  const q = new Int32Array(n); let qh = 0, qt = 0;
+  for (let k = 0; k < n; k++) if (out[k] >= 0 && inb[k]) q[qt++] = k;
+  while (qh < qt) { const k = q[qh++], x = k % cw; for (const nb of [x > 0 ? k - 1 : -1, x < cw - 1 ? k + 1 : -1, k - cw, k + cw]) if (nb >= 0 && nb < n && out[nb] === -2) { out[nb] = out[k]; q[qt++] = nb; } }
+  window.__tidy = { cw, ch, dbg: window.__dbg };
+  for (let k = 0; k < n; k++) if (out[k] === -2) out[k] = lab[k];
+  for (let k = 0; k < n; k++) { const x = x0 + k % cw, y = y0 + ((k / cw) | 0); if (x >= 0 && y >= 0 && x < W && y < H) label[y * W + x] = out[k]; }
+}
 async function ppAutoCut(whole) {
   const st = ppSetup; if (!st) return;
   let addMode = false;
@@ -595,6 +668,7 @@ async function ppAutoCut(whole) {
   const hgt0 = Math.max(80, by1 - by0);
   const gIndex = {}; groups.forEach((g, gi) => gIndex[g.role] = gi);
   for (let i = 0; i < n; i++) if (bin[i]) { if (whole) label[i] = 0; else { const gi = gIndex[PP_R10[ppRoleMap(eff[i], st.split)]]; label[i] = gi == null ? 0 : gi; } }
+  if (!whole) ppLabelTidy(label, bin, groups.length, bx0, by0, bx1, by1, Math.max(2, Math.round(0.007 * hgt0)), groups.map(g => g.tip && J[g.pivot] && J[g.tip] ? [J[g.pivot], J[g.tip]] : null), groups.map(g => !!g.parent && g.role !== 'head'), st.hand);
   // when a region was painted away from its joint, put the pivot where the piece really meets its parent (centre of the seam)
   if (!whole) for (let gi = 0; gi < groups.length; gi++) {
     const g = groups[gi]; if (!g.parent) continue; const par = gIndex[g.parent];
@@ -685,7 +759,10 @@ async function ppAutoCut(whole) {
       let amn = rMn[y], amx = rMx[y];
       for (let k = Math.max(by0, y - vr); k <= Math.min(by1, y + vr); k++) if (rMx[k] >= 0) { amn = Math.min(amn, rMn[k]); amx = Math.max(amx, rMx[k]); }
       const mn = rMn[y], mx = rMx[y];
-      for (let xx = Math.max(bx0, amn - shR); xx <= Math.min(bx1, amx + shR); xx++) { const i = y * W + xx, l = label[i]; if (bin[i] && !extra[tor].has(i) && ((front.has(l) && ((xx > amn && xx < amx) || nearSh(xx, y))) || (legG.has(l) && xx > mn && xx < mx))) { hole.push(i); if (xx < hx0) hx0 = xx; if (xx > hx1) hx1 = xx; if (y < hy0) hy0 = y; if (y > hy1) hy1 = y; } }
+      // behind the thighs: the body's width a few rows up too, so the outer corner of the shorts (handed to the thigh)
+      // is filled in on the body and no white notch opens at the hem when a leg swings
+      let lmn = mn, lmx = mx; for (let k = Math.max(by0, y - (vr >> 1)); k < y; k++) if (rMx[k] >= 0) { lmn = Math.min(lmn, rMn[k]); lmx = Math.max(lmx, rMx[k]); }
+      for (let xx = Math.max(bx0, amn - shR); xx <= Math.min(bx1, amx + shR); xx++) { const i = y * W + xx, l = label[i]; if (bin[i] && !extra[tor].has(i) && ((front.has(l) && ((xx > amn && xx < amx) || nearSh(xx, y))) || (legG.has(l) && xx > lmn && xx < lmx))) { hole.push(i); if (xx < hx0) hx0 = xx; if (xx > hx1) hx1 = xx; if (y < hy0) hy0 = y; if (y > hy1) hy1 = y; } }
     }
     if (hole.length) {
       const P = 12; hx0 = Math.max(0, hx0 - P); hy0 = Math.max(0, hy0 - P); hx1 = Math.min(W - 1, hx1 + P); hy1 = Math.min(H - 1, hy1 + P);
@@ -802,6 +879,7 @@ function ppStart(p, base) {
   if (ppPathMode) { lasso = [p]; lassoOpen = true; action = { ...base, kind: 'pppath' }; return; }
   if (jgMode) { lasso = [p]; lassoOpen = false; action = { ...base, kind: 'ppjg' }; return; }
   if (bwMode) { bwStart(p, base, f); return; }
+  if (skMode && !ppPaint && !ppJEOn()) { skStart(p, base); return; }
   if (ppCutMode || ppPatchMode) { lasso = [p]; action = { ...base, kind: ppPatchMode ? 'pppatch' : 'ppcut' }; return; }
   if ((ppPaint || ppJEOn()) && ppPrevStart(p, base, f)) return;
   if (ppPaint) { ppPaintStart(p, base, f); return; }
@@ -835,6 +913,7 @@ function ppStart(p, base) {
 function ppMove(p) {
   const a = action, f = curFrame();
   if (a.kind === 'ppcut' || a.kind === 'pppatch' || a.kind === 'pppath' || a.kind === 'ppjg') { const l = lasso[lasso.length - 1]; if (Math.hypot(p.x - l.x, p.y - l.y) > 3 / vs) { lasso.push(p); requestRender(); } return; }
+  if (a.kind === 'ppsk') { skMove(p); return; }
   if (a.kind === 'pppaint') { ppPaintMove(a, p); return; }
   if (a.kind === 'bwpin') { bwMove(a, p); return; }
   if (a.kind === 'ppjedit') { ppJEMove(a, p, f); return; }
@@ -859,6 +938,7 @@ function ppEnd() {
   if (a.kind === 'ppcut') { const poly = lasso; lasso = null; if (poly && poly.length > 2) ppCutLasso(poly); requestRender(); return; }
   if (a.kind === 'pppath') { const poly = lasso; lasso = null; lassoOpen = false; ppPathMode = false; ppSyncBar(); if (poly && poly.length > 2) ppApplyPath(poly); requestRender(); return; }
   if (a.kind === 'ppjg') { const poly = lasso; lasso = null; requestRender(); if (poly && poly.length > 2) jgLassoDone(poly); return; }
+  if (a.kind === 'ppsk') { skEnd(); return; }
   if (a.kind === 'pppaint') { ppPaintEnd(a); return; }
   if (a.kind === 'bwpin') { bwEnd(a); return; }
   if (a.kind === 'ppjedit') { ppJEEnd(a); return; }
@@ -1051,6 +1131,8 @@ function renderPP(c, f, px) {
     c.restore(); return;
   }
   if (S.tool !== 'puppet' || !S.pp) return;
+  ppPGDraw(c, f);
+  if (skMode && !ppPaint && !ppJEOn()) { skDraw(c, f, px); return; }
   if (ppJEOn() && !ppPaint) { ppJEDraw(c, f, px); ppPrevDraw(c, f, px); return; }
   if (ppDrag === 'box' && !ppPaint) { const sel0 = ppPart(ppSel); if (sel0) xbDraw(c, ppBoxOf(f, ppCharOf(sel0)), px); return; }
   if (ppDrag === 'bone' && !ppPaint) { ppDrawBones(c, f, px); ppLeanDraw(c, f, px); return; }

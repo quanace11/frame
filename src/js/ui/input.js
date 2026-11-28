@@ -196,10 +196,10 @@ function fingerActs(e) {
     return false;
   }
   if (S.tool === 'puppet' && S.pp && !rig && !motion) {
-    if (ppPathMode || jgMode) return true;
+    if (ppPathMode || jgMode || skMode) return true;
     if (bwMode) return bwHitPin(p, f) || !!ppHit(p, ppPoseFor(f));
     if ((ppPaint || ppJEOn()) && ppPrevHit(p, f)) return true;
-    if (ppPaint) return ppPaint === 'sel' || ppPaint === 'fill' || ppPaint === 'pick';   // taps work with a finger; brush/eraser strokes need the pen (or 'Ngón tay cũng vẽ')
+    if (ppPaint) return ppPaint === 'sel' || ppPaint === 'msel' || ppPaint === 'fill' || ppPaint === 'pick';   // taps work with a finger; brush/eraser strokes need the pen (or 'Ngón tay cũng vẽ')
     if (ppCutMode || ppPatchMode) return false;
     if (ppJEOn()) return !!ppJEHit(p, f) || !!ppHit(p, ppPoseFor(f));
     const sel = ppDrag === 'box' && ppPart(ppSel), b = sel && ppBoxOf(f, ppCharOf(sel) || sel.id);

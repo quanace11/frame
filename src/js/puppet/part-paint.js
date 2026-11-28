@@ -4,8 +4,8 @@
    picture (so a longer shoe can be drawn past the old edge), then crops it to what is drawn; the old canvas + position are
    kept in the undo entry (`partpix`). Brush strokes use the real brush engine (pressure, brush type, Độ đậm). */
 let ppPaint = null, ppPaintFocus = null, ppPaintTop = true;
-const PP_PAINT_TOOLS = ['sel', 'brush', 'erase', 'fill', 'pick'];
-const ppPaintFocusId = () => ppPaint && ppPaintTop && S.tool === 'puppet' && !playing && ppPart(ppSel) ? ppSel : null;
+const PP_PAINT_TOOLS = ['sel', 'msel', 'brush', 'erase', 'fill', 'pick'];
+const ppPaintFocusId = () => !(ppPaint && ppPaintTop && S.tool === 'puppet' && !playing) ? null : ppPGActive() ? ppPG : ppPart(ppSel) ? ppSel : null;   // 🧩 a group: a Set
 function ppHolderOf(p, vi) { return vi ? p.alts && p.alts[vi - 1] : p; }
 function ppHolderGet(p, vi) { const h = ppHolderOf(p, vi); ppAlphaH(h); return { c: h.c, png: h.png, alpha: h.alpha, padded: !!h.padded, x: vi ? h.dx || 0 : p.ox, y: vi ? h.dy || 0 : p.oy }; }
 // alt pictures sit at p.ox + a.dx: moving the main picture's origin keeps them where they were
@@ -40,6 +40,8 @@ function ppPaintOp(erase, B) {
   return erase || B.kind !== 'dab' ? op : Math.min(1, op / (B.op0 || 1));
 }
 function ppPaintStart(p, base, f) {
+  if (ppPaint === 'msel') { ppPGTap(p, f); return; }
+  if ((ppPaint === 'brush' || ppPaint === 'erase') && ppPGActive()) { ppPGStart(p, base, f); return; }
   if (ppPaint === 'sel') {
     const hit = ppHit(p, ppPoseFor(f), true); if (!hit) { toast('Chạm vào đúng mảnh cần sửa'); return; }
     ppSel = hit.id; ppPaint = 'brush'; ppSyncBar(); requestRender(); toast('Đang sửa: ' + hit.name + ' — vẽ bằng bút, xong bấm ✓ Xong', 2500); return;
@@ -64,7 +66,7 @@ function ppPaintCompose(a) {
   x.globalCompositeOperation = a.erase ? 'destination-out' : 'source-over'; x.globalAlpha = a.op; x.drawImage(a.ink, 0, 0); x.restore();
   const h = ppHolderOf(a.part, a.vi); if (h) h.alpha = null; requestRender();
 }
-function ppPaintMove(a, p) { const l = mApply(a.inv, p.x, p.y); a.eng.add({ x: l.x - a.ax, y: l.y - a.ay, p: p.p }, performance.now()); ppPaintCompose(a); }
+function ppPaintMove(a, p) { if (a.group) { ppPGMove(a, p); return; } const l = mApply(a.inv, p.x, p.y); a.eng.add({ x: l.x - a.ax, y: l.y - a.ay, p: p.p }, performance.now()); ppPaintCompose(a); }
 // crop to what is drawn (+2 px); an all-erased picture keeps a 1×1 transparent canvas
 function ppPaintTrim(c) {
   const w = c.width, h = c.height, d = c.getContext('2d').getImageData(0, 0, w, h).data;
@@ -75,6 +77,7 @@ function ppPaintTrim(c) {
   const o = makeCanvas(x1 - x0 + 1, y1 - y0 + 1); o.getContext('2d').drawImage(c, -x0, -y0); return { c: o, x: x0, y: y0 };
 }
 function ppPaintEnd(a) {
+  if (a.group) { ppPGEnd(a); return; }
   a.eng.end(); ppPaintCompose(a);
   const t = ppPaintTrim(a.out), sel = a.part, ox = a.ax + t.x, oy = a.ay + t.y;
   ppPaintCommit(sel, a.vi, a.st0, { c: t.c, png: null, alpha: null, padded: false, x: a.vi ? ox - sel.ox : ox, y: a.vi ? oy - sel.oy : oy });
@@ -121,7 +124,8 @@ function ppPaintSync(sel) {
   ['#ppPaintBtn', '#ppPaintBtn2'].forEach(id => $(id).classList.toggle('on', !!ppPaint && ppPaint !== 'erase'));
   $('#ppEraseBtn').classList.toggle('on', ppPaint === 'erase');
   if (!ppPaint) return;
-  bar.querySelectorAll('[data-ppt]').forEach(b => b.classList.toggle('on', b.dataset.ppt === ppPaint));
+  bar.querySelectorAll('[data-ppt]').forEach(b => b.classList.toggle('on', b.dataset.ppt === ppPaint || (b.dataset.ppt === 'msel' && ppPGActive() && ppPaint !== 'sel')));
+  { const b = $('#ppPGBtn'); if (b) b.textContent = ppPG.size ? `🧩 Nhiều mảnh (${ppPG.size})` : '🧩 Nhiều mảnh'; }
   $('#ppPaintTop').checked = ppPaintTop;
   const root = sel && (ppCharOf(sel) || sel.id), parts = S.pp.parts.filter(q => !root || (ppCharOf(q) || q.id) === root).sort((a, b) => b.z - a.z);
   $('#ppPaintPart').innerHTML = (sel ? '' : '<option value="" selected>— chạm chọn mảnh —</option>') + parts.map(q => `<option value="${q.id}" ${q.id === ppSel ? 'selected' : ''}>${q.name.replace(/</g, '&lt;')}</option>`).join('');
@@ -139,9 +143,15 @@ function ppPaintGo(tool) {
 $('#ppPaintBtn').addEventListener('click', () => ppPaintGo('brush'));
 $('#ppPaintBtn2').addEventListener('click', () => ppPaintGo('brush'));
 $('#ppEraseBtn').addEventListener('click', () => ppPaintGo('erase'));
-document.querySelectorAll('[data-ppt]').forEach(b => b.addEventListener('click', () => { if (PP_PAINT_TOOLS.includes(b.dataset.ppt)) { ppPaint = b.dataset.ppt; ppSyncBar(); requestRender(); } }));
+document.querySelectorAll('[data-ppt]').forEach(b => b.addEventListener('click', () => {
+  if (!PP_PAINT_TOOLS.includes(b.dataset.ppt)) return; const was = ppPaint; ppPaint = b.dataset.ppt;
+  if (ppPaint === 'sel') ppPG.clear();   // back to one piece
+  if (ppPaint === 'msel') { if (!ppPG.size && ppPart(ppSel) && /^(brush|erase|fill|pick)$/.test(was || '')) ppPG.add(ppSel);   // the piece being redrawn starts the group
+    toast('Chạm 2–3 mảnh cạnh nhau (chạm lại = bỏ), rồi bấm 🖌 Bút: mỗi nét tự chia cho mảnh nằm dưới', 4000); }
+  ppSyncBar(); requestRender();
+}));
 $('#ppPaintPart').addEventListener('change', e => { if (!e.target.value) return; ppSel = e.target.value; if (ppPaint === 'sel') ppPaint = 'brush'; ppSyncBar(); requestRender(); });
 $('#ppPaintTop').addEventListener('change', e => { ppPaintTop = e.target.checked; requestRender(); });
 $('#ppPaintUndo').addEventListener('click', () => undo());
 $('#ppPaintRedo').addEventListener('click', () => redo());
-$('#ppPaintDone').addEventListener('click', () => { ppPaint = null; ppSyncBar(); requestRender(); });
+$('#ppPaintDone').addEventListener('click', () => { ppPaint = null; ppPG.clear(); ppSyncBar(); requestRender(); });
