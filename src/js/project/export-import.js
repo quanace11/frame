@@ -38,13 +38,14 @@ async function exportZip() {
       const name = `layers/bg_${String(i + 1).padStart(2, '0')}.png`; bgFile.set(b.id, name);
       files.push({ name, data: b.png ? new Uint8Array(b.png) : blankBuf });
     }
-    const comp = makeCanvas(), cx = comp.getContext('2d');
+    await panoReady(); const comp = makeCanvas(), cx = comp.getContext('2d');
     const meta = [];
     for (let i = 0; i < S.frames.length; i++) {
       pm.set(`Frame ${i + 1}/${S.frames.length}`);
       const f = S.frames[i], b = bgOf(f), n = String(i + 1).padStart(3, '0');
       await ensureLoaded(f); await ensurePng(f);
       cx.globalCompositeOperation = 'source-over'; cx.fillStyle = '#fff'; cx.fillRect(0, 0, W, H);
+      drawPano(cx, f);
       if (b && b.canvas) cx.drawImage(b.canvas, 0, 0);
       if (f.col) cx.drawImage(f.col, 0, 0);
       if (f.canvas) cx.drawImage(f.canvas, 0, 0);
@@ -62,7 +63,7 @@ async function exportZip() {
         files.push({ name: linesName, data: new Uint8Array(await (await toBlob(comp)).arrayBuffer()) });
       }
       meta.push({ index: i + 1, file: `frames/frame_${n}.png`, char_layer: `layers/char_${n}.png`, color_layer: colorName, lines_layer: linesName, bg_layer: bgFile.get(f.bgId), duration_ms: f.dur,
-        pp: f.pp || {}, ppKey: f.ppKey, ppK: f.ppK || null, ppE: f.ppE || null, ppEase: f.ppEase, texts: f.texts || [], camera: camAt(i), cam_key: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || null, tr: f.tr || null, tre: f.tre || null, ghost: f.ghost || null, bgs: f.bgs || null, sl: f.sl || null, flt: f.flt || null,
+        pp: f.pp || {}, ppKey: f.ppKey, ppK: f.ppK || null, ppE: f.ppE || null, ppEase: f.ppEase, texts: f.texts || [], camera: camAt(i), cam_key: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || null, tr: f.tr || null, tre: f.tre || null, ghost: f.ghost || null, bgs: f.bgs || null, sl: f.sl || null, flt: f.flt || null, pan: f.pan || null,
         vector: f.vec.map(st => ({ c: st.c, w: +st.w.toFixed(2), a: st.a, pts: st.pts.map(q => [+q.x.toFixed(1), +q.y.toFixed(1)]) })) });
     }
     comp.width = 0;
@@ -76,7 +77,8 @@ async function exportZip() {
         ppMeta.parts.push({ ...ppPartMeta(pt), file: name, alts });
       }
     }
-    const timing = { app: 'frame-studio', version: 1, width: W, height: H, total_ms: total, frames: meta, backgrounds: bgOrder.map(id => bgFile.get(id)), puppet: ppMeta };
+    const panos = (S.panos || []).map(P => ({ id: P.id, name: P.name, w: P.w, layers: P.layers.map(L => { const file = `pano/${P.id}_${L.id}.png`; files.push({ name: file, data: new Uint8Array(L.png) }); return { id: L.id, name: L.name, k: L.k, file }; }) }));
+    const timing = { app: 'frame-studio', version: 1, width: W, height: H, total_ms: total, frames: meta, backgrounds: bgOrder.map(id => bgFile.get(id)), puppet: ppMeta, panos };
     const enc = new TextEncoder();
     files.unshift({ name: 'timing.json', data: enc.encode(JSON.stringify(timing, null, 2)) });
     files.push({ name: 'README.txt', data: enc.encode(
@@ -109,14 +111,15 @@ async function importZip(file) {
       if (!bgId) { bgId = newId(); bgs.push({ id: bgId, png: null }); }
       const vec = (fr.vector || []).map(st => ({ id: newId(), c: st.c, w: st.w, a: st.a, pts: st.pts.map(([x, y]) => ({ x, y })) }));
       const dc = fr.color_layer && z.get(fr.color_layer);
-      return { id: newId(), dur: fr.duration_ms || 100, bgId, vec, col: dc ? dc.buffer.slice(dc.byteOffset, dc.byteOffset + dc.byteLength) : null, pp: fr.pp || {}, ppKey: fr.ppKey, ppK: fr.ppK || undefined, ppE: fr.ppE || undefined, ppEase: fr.ppEase, texts: fr.texts || [], cam: fr.cam_key || null, shake: fr.shake || 0, flash: !!fr.flash, lip: fr.lip || null, scene: fr.scene || undefined, tr: fr.tr || undefined, tre: fr.tre || undefined, ghost: fr.ghost || undefined, bgs: fr.bgs || undefined, sl: fr.sl || undefined, flt: fr.flt || undefined, png: d ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : null };
+      return { id: newId(), dur: fr.duration_ms || 100, bgId, vec, col: dc ? dc.buffer.slice(dc.byteOffset, dc.byteOffset + dc.byteLength) : null, pp: fr.pp || {}, ppKey: fr.ppKey, ppK: fr.ppK || undefined, ppE: fr.ppE || undefined, ppEase: fr.ppEase, texts: fr.texts || [], cam: fr.cam_key || null, shake: fr.shake || 0, flash: !!fr.flash, lip: fr.lip || null, scene: fr.scene || undefined, tr: fr.tr || undefined, tre: fr.tre || undefined, ghost: fr.ghost || undefined, bgs: fr.bgs || undefined, sl: fr.sl || undefined, flt: fr.flt || undefined, pan: fr.pan || undefined, png: d ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : null };
     });
     if (!frames.length) throw new Error('ZIP không có frame nào');
     pm.set('Đang mở…');
     let ppData = null;
     const zbuf = f2 => { const d = z.get(f2); return d ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : null; };
     if (t.puppet && t.puppet.parts) ppData = { parts: t.puppet.parts.map(q => ({ ...q, png: zbuf(q.file), alts: (q.alts || []).map(a => ({ png: zbuf(a.file), ...ppAltMeta(a) })).filter(a => a.png) })).filter(q => q.png) };
-    await loadProjectData({ W: t.width, H: t.height, cur: 0, bgs, frames, pp: ppData });
+    const panos = (t.panos || []).map(P => ({ id: P.id, name: P.name, w: P.w, layers: (P.layers || []).map(L => ({ id: L.id, name: L.name, k: L.k, png: zbuf(L.file) })).filter(L => L.png) }));
+    await loadProjectData({ W: t.width, H: t.height, cur: 0, bgs, frames, pp: ppData, panos });
     S.frames.forEach(f => f.pngVer = 0); S.bgs.forEach(b => b.pngVer = 0);
     pm.close(); toast('Đã mở dự án'); scheduleSave();
   } catch (e) { pm.close(); console.error(e); toast('Không mở được: ' + e.message, 3500); }

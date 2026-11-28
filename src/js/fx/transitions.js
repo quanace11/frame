@@ -239,7 +239,7 @@ async function exportGif(gw) {
   finally { ts.done(); big.width = base.width = small.width = 0; exportBusy = false; }
 }
 // comic text uses the embedded Bangers font: wait for it before drawing frames to export
-const fontsReady = () => (document.fonts && document.fonts.load ? document.fonts.load('100px Bangers').catch(() => {}) : Promise.resolve());
+const fontsReady = () => Promise.all([document.fonts && document.fonts.load ? document.fonts.load('100px Bangers').catch(() => {}) : null, panoReady()]);   // + 🌄 Nền dài pictures decoded
 // PNG bytes kept in memory before one ZIP is made: past this, the ZIP is split into parts so a long film doesn't crash the tablet
 let PNG_ZIP_PART = (navigator.deviceMemory || 4) >= 8 ? 400e6 : 150e6;
 async function exportPngSeq() {

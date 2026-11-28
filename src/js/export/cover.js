@@ -22,6 +22,7 @@ function drawCoverText(ctx, o) {
 async function coverDialog() {
   if (playing) stopPlay(); if (stroke) strokeEnd(); commitFloating();
   try { await document.fonts.load('100px Bangers'); } catch (e) {}
+  await panoReady();
   if (coverOpt.fi == null || coverOpt.fi >= S.frames.length) coverOpt.fi = S.cur;
   if (!coverOpt.text) { const t = S.frames.flatMap(f => f.texts || []).find(t => t.str); coverOpt.text = t ? t.str.slice(0, 40) : (S.projName && S.projName !== 'Dự án' ? S.projName : ''); }
   const full = makeCanvas(), base = makeCanvas(), fx = full.getContext('2d'); let ready = false;
@@ -72,6 +73,7 @@ async function exportVideo() {
   const mime = types.find(t => MediaRecorder.isTypeSupported(t)); if (!mime) { toast('Không có định dạng video hỗ trợ'); return; }
   const ext = mime.startsWith('video/mp4') ? 'mp4' : 'webm';
   try { await document.fonts.load('100px Bangers'); } catch (e) {}
+  await panoReady();
   let cancelled = false;
   const ov = document.createElement('div'); ov.className = 'ov'; ov.innerHTML = '<div class="dlg" style="max-width:360px;text-align:center"><h3>Đang xuất video…</h3><div class="body" id="vxMsg">Chuẩn bị frame…</div><div class="btns" style="justify-content:center"><button class="btn" id="vxCancel">Huỷ</button></div></div>';
   document.body.append(ov); const msg = t => ov.querySelector('#vxMsg').textContent = t; ov.querySelector('#vxCancel').onclick = () => { cancelled = true; };

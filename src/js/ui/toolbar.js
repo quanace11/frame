@@ -360,3 +360,4 @@ document.addEventListener('keydown', e => {
   else if (k === 'r') rotateView90();
 });
 
+$('#pnOpen').addEventListener('click', () => panoDialog());

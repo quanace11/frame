@@ -33,6 +33,7 @@ async function resolveProjectRefs(p, pid) {
   savedBlobs = new Map(); savedBlobsProj = pid;
   for (const b of p.bgs || []) b.png = await resolveRef(b.png);
   for (const f of p.frames || []) { f.png = await resolveRef(f.png); f.col = await resolveRef(f.col); }
+  for (const P of p.panos || []) for (const L of P.layers || []) L.png = await resolveRef(L.png);
   if (p.audio) { for (const k of ['music', 'voice']) if (p.audio[k]) p.audio[k].buf = await resolveRef(p.audio[k].buf); for (const v of [...(p.audio.voices || []), ...(p.audio.musics || [])]) v.buf = await resolveRef(v.buf); }
   if (p.bgVideo) { p.bgVideo.buf = await resolveRef(p.bgVideo.buf); for (const v of p.bgVideo.srcs || []) v.buf = await resolveRef(v.buf); }
   return p;
@@ -62,7 +63,8 @@ async function saveProject() {
       v: 2, W, H, cur: S.cur,
       bgs: S.bgs.map(b => ({ id: b.id, png: ref('b:' + b.id, b.png) })),
       name: S.projName || 'Dự án', poses: S.poses || [],
-      frames: S.frames.map(f => ({ id: f.id, dur: f.dur, bgId: f.bgId, png: ref('f:' + f.id, f.png), col: ref('c:' + f.id, f.colPng), vec: f.vec, pp: f.pp || {}, ppKey: f.ppKey, ppK: f.ppK || null, ppE: f.ppE || null, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || null, tr: f.tr || null, tre: f.tre || null, ghost: f.ghost || null, bgs: f.bgs || null, sl: f.sl || null, flt: f.flt || null })),
+      frames: S.frames.map(f => ({ id: f.id, dur: f.dur, bgId: f.bgId, png: ref('f:' + f.id, f.png), col: ref('c:' + f.id, f.colPng), vec: f.vec, pp: f.pp || {}, ppKey: f.ppKey, ppK: f.ppK || null, ppE: f.ppE || null, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || null, tr: f.tr || null, tre: f.tre || null, ghost: f.ghost || null, bgs: f.bgs || null, sl: f.sl || null, flt: f.flt || null, pan: f.pan || null })),
+      panos: (S.panos || []).map(P => ({ id: P.id, name: P.name, w: P.w, layers: P.layers.map(L => ({ id: L.id, name: L.name, k: L.k, png: ref('n:' + L.id, L.png) })) })),
       audio: A ? { ...A, music: slim(A.music), musics: (A.musics || []).map((v, k) => ({ ...v, buf: aref('m:mu' + (v.id || k), v.buf) })), voice: slim(A.voice), voices: (A.voices || []).map((v, k) => ({ ...v, buf: aref('m:v' + (v.id || k), v.buf) })) } : null,
       bgVideo: S.bgVideo ? { ...S.bgVideo, buf: ref('m:video', S.bgVideo.buf), srcs: S.bgVideo.srcs ? S.bgVideo.srcs.map(v => ({ ...v, buf: ref('m:vs' + v.id, v.buf) })) : undefined } : null,
       pp: S.pp ? { parts: S.pp.parts.map(p => ({ ...ppPartMeta(p), png: p.png, alts: (p.alts || []).map(a => ({ png: a.png, ...ppAltMeta(a) })) })) } : null,
@@ -89,7 +91,8 @@ async function saveProject() {
 async function loadProjectData(p) {
   W = p.W; H = p.H; setupWorkCanvases();
   S.bgs = p.bgs.map(b => ({ kind: 'bg', id: b.id, ver: 0, png: b.png || null, pngVer: 0, canvas: null }));
-  S.frames = p.frames.map(f => ({ kind: 'char', id: f.id, dur: f.dur, bgId: f.bgId, ver: 0, png: f.png || null, pngVer: 0, canvas: null, col: null, colPng: f.col || null, colVer: 0, colPngVer: 0, thumb: null, play: null, playKey: '', vec: f.vec || [], pp: f.pp || {}, ppKey: f.ppKey, ppK: f.ppK || null, ppE: f.ppE || null, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || undefined, tr: f.tr || undefined, tre: f.tre || undefined, ghost: f.ghost || undefined, bgs: f.bgs || undefined, sl: f.sl || undefined, flt: f.flt || undefined }));
+  S.frames = p.frames.map(f => ({ kind: 'char', id: f.id, dur: f.dur, bgId: f.bgId, ver: 0, png: f.png || null, pngVer: 0, canvas: null, col: null, colPng: f.col || null, colVer: 0, colPngVer: 0, thumb: null, play: null, playKey: '', vec: f.vec || [], pp: f.pp || {}, ppKey: f.ppKey, ppK: f.ppK || null, ppE: f.ppE || null, ppEase: f.ppEase, texts: f.texts || [], cam: f.cam || null, shake: f.shake || 0, flash: !!f.flash, lip: f.lip || null, scene: f.scene || undefined, tr: f.tr || undefined, tre: f.tre || undefined, ghost: f.ghost || undefined, bgs: f.bgs || undefined, sl: f.sl || undefined, flt: f.flt || undefined, pan: f.pan || undefined }));
+  S.panos = (p.panos || []).map(P => ({ ...P, layers: (P.layers || []).filter(L => L.png) })); PN_CV.clear(); await panoReady();
   S.audio = p.audio || null; S.bgVideo = p.bgVideo || null; bgVideoSetup();
   S.projName = p.name || S.projName || 'Dự án'; S.poses = p.poses || [];
   loaded.length = 0; loadedBg.length = 0; undoStack.length = 0; redoStack.length = 0; undoBytes = 0;
@@ -125,6 +128,7 @@ function newProject(w, h) {
   const b = newBgObj(); S.bgs = [b];
   const f = newFrameObj(b.id); S.frames = [f]; loaded.push(f);
   clearRef(true); updateRefUI(); S.rig = null; S.pp = null; ppSetup = null; ppSel = null; S.audio = null; S.bgVideo = null; bgVideoSetup();
+  S.panos = []; PN_CV.clear();
   S.cur = 0; setLayer(S.lineLayer === 'vec' ? 'vec' : 'char'); resizeView(); drawThumb(f); buildStrip(); updUndoBtns(); requestRender(); scheduleSave(); histReset();
 }
 
