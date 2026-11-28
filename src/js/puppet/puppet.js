@@ -15,11 +15,13 @@ function ppMats(pose) {
     const ax = q.fl && p.hard && p.parent && ppFlipAxis(p);   // hand-cut pieces flip across their own bone (a raised arm turns its palm, it does not swing to the other side)
     const L = ax ? mMul(mMul(mMul(mMul(mT(p.px + (q.dx || 0), p.py + (q.dy || 0)), mR((q.r || 0) * DEG)), mS(q.sx == null ? 1 : q.sx, q.sy == null ? 1 : q.sy)), ax), mT(-p.px, -p.py))
       : mMul(mMul(mMul(mT(p.px + (q.dx || 0), p.py + (q.dy || 0)), mR((q.r || 0) * DEG)), mS((q.sx == null ? 1 : q.sx) * (q.fl ? -1 : 1), q.sy == null ? 1 : q.sy)), mT(-p.px, -p.py));
-    const par = p.parent && guard < 20 && parts.find(x => x.id === p.parent);
-    M[p.id] = par ? mMul(get(par, guard + 1), L) : L; return M[p.id];
+    const par = p.parent && guard < 20 && parts.find(x => x.id === p.parent), jo = par && p.role && ppAltJoint(par, pose, p.role);
+    M[p.id] = par ? mMul(get(par, guard + 1), jo ? mMul(mT(jo.x, jo.y), L) : L) : L; return M[p.id];
   };
   parts.forEach(p => get(p)); return M;
 }
+// 🧩 the picture shown for part `par` (pose v) may carry where the joint of its child with this role sits: {x, y} offset from the rest joint
+function ppAltJoint(par, pose, role) { const q = pose && pose[par.id], a = q && q.v && par.alts && par.alts[q.v - 1]; return (a && a.j && a.j[role]) || null; }
 function ppFlipAxis(p) {   // mirror across the line pivot → tip
   const t = p.tip; if (!t) return null; const dx = t.x - p.px, dy = t.y - p.py, l = Math.hypot(dx, dy); if (l < 1) return null;
   const ux = dx / l, uy = dy / l, a = ux * ux - uy * uy, b = 2 * ux * uy; return [a, b, b, -a, 0, 0];
@@ -156,7 +158,8 @@ function drawPuppet(ctx, pose, lip) {
   const off = lyrOff('lh');
   const order = [...S.pp.parts].sort((a, b) => a.z - b.z), foc = ppPaintFocus && order.find(p => p.id === ppPaintFocus);
   if (foc) { order.splice(order.indexOf(foc), 1); order.push(foc); }   // ✎ Vẽ lại mảnh: the part being redrawn on top, the others faded
-  const shown = p => { const q = pose && pose[p.id]; return !((q && q.h) || !p.c || (off && off.has(p.id)) || (ppOnlyRoot && (ppCharOf(p) || p.id) !== ppOnlyRoot)); };
+  const faceHid = p => { if (p.role !== 'eyes' && p.role !== 'mouth') return false; const par = p.parent && byId[p.parent], q = par && pose && pose[par.id], a = q && q.v && par.alts && par.alts[q.v - 1]; return !!(a && a.hk); };   // 🧩 a head picture with its own face hides the loose eyes/mouth
+  const shown = p => { const q = pose && pose[p.id]; return !((q && q.h) || faceHid(p) || !p.c || (off && off.has(p.id)) || (ppOnlyRoot && (ppCharOf(p) || p.id) !== ppOnlyRoot)); };
   const drawOne = (cx, p) => {
     const q = pose && pose[p.id]; let im = ppImg(p, q); if (lip && lip.jg) im = jgWarp(p, im, lip.jg, lip) || im;   // 🫨 Rung 1 chỗ
     if (foc) cx.globalAlpha = p === foc ? 1 : 0.35;
@@ -550,6 +553,9 @@ function ppLabSyncBar() {
 }
 // what is saved of a cut-out piece: ONE place for IndexedDB (saveProject), ZIP export and 🧍 Kho nhân vật (all three read
 // it back with { ...q }). A new piece field only needs adding here.
+// the fields of an alternative picture (alts[]) that are saved (project, ZIP, 🧍 Kho nhân vật, 📮): offset, joints of the pieces
+// hung on it (j = {childRole: {x, y}}, 🧩 Kho bộ phận: a leaning torso moves the shoulders), hk = hide the loose eyes/mouth, lib = library item
+function ppAltMeta(a) { const o = { dx: a.dx || 0, dy: a.dy || 0 }; if (a.j) o.j = a.j; if (a.hk) o.hk = 1; if (a.lib) o.lib = a.lib; return o; }
 function ppPartMeta(p) { return { id: p.id, name: p.name, role: p.role, parent: p.parent, z: p.z, ox: p.ox, oy: p.oy, px: p.px, py: p.py, tip: p.tip || null, asset: p.asset || null, lname: p.lname || null, lh: p.lh || null, lk: p.lk || null, hard: p.hard || null, kit: p.kit || null }; }
 // a new character appears from the frame being edited on: frames before it keep showing only what they had
 // (hidden with 🙈 lip.off of its layer, like every other "where does it show" choice, so 📍 Hiện ở… / 👁 can show it there again)
@@ -1032,7 +1038,7 @@ function ppSyncBar() { syncSizeOp(); lyrSync(); kitViewSync(); lgSync(); ppScope
     if (sel) { const q2 = curFrame().pp && curFrame().pp[sel.id], cv = q2 && q2.v ? q2.v : 0;
       [sel.c, ...(sel.alts || []).map(a => a.c)].forEach((cc, i) => { const t = makeCanvas(36, 36), tx = t.getContext('2d'); const k2 = Math.min(34 / cc.width, 34 / cc.height); tx.drawImage(cc, (36 - cc.width * k2) / 2, (36 - cc.height * k2) / 2, cc.width * k2, cc.height * k2); t.className = 'vthumb' + (i === cv ? ' on' : ''); t.title = i ? 'Hình ' + (i + 1) : 'Hình gốc'; t.addEventListener('click', () => ppEdit(q => { if (i) q.v = i; else delete q.v; })); vs2.append(t); }); }
     ['#ppVarAdd', '#ppVarDup', '#ppVarDel', '#ppEraseBtn', '#ppDelChar', '#ppLibSave'].forEach(id => $(id).disabled = !sel);
-    ppPaintSync(sel); ppJESync(); ppPrevSync(); }
+    ppPaintSync(sel); ppJESync(); ppPrevSync(); plStripSync(); }
   { const f = curFrame(), k = ppIsKey(f); const kb = $('#ppKeyBtn'); kb.textContent = k ? '🔑 Keyframe' : '∿ Tự động (bấm để khoá)'; kb.classList.toggle('on', k);
     $('#ppEase').innerHTML = Object.entries(EASE_LABEL).map(([k2, v]) => `<option value="${k2}" ${(lgSelRoot() ? ppLayerEase(f, lgSelRoot()) : f.ppEase || 'inout') === k2 ? 'selected' : ''}>${v}</option>`).join(''); $('#ppEase').disabled = !k;
     const ps = $('#ppPoseSel'), cur = ps.value; ps.innerHTML = ppPoseList().map(o => `<option value="${o.id}">${o.name.replace(/</g, '&lt;')}</option>`).join(''); if (cur) ps.value = cur; }
