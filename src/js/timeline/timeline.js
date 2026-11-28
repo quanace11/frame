@@ -157,7 +157,7 @@ async function addFrame() {
 function lipCopy(f) { return f && f.lip ? JSON.parse(JSON.stringify(f.lip)) : null; }
 const jcopy = o => o == null ? o : JSON.parse(JSON.stringify(o));
 // the 🌈 look of a frame (👻 ghost, 🏃 scrolling bg, 💨 speed lines, film colour) goes on in frames made from it
-function lookCopy(f, src) { for (const k of ['ghost', 'bgs', 'sl', 'flt', 'pan']) if (src && src[k] != null) f[k] = jcopy(src[k]); }
+function lookCopy(f, src) { for (const k of ['ghost', 'bgs', 'sl', 'flt', 'gl', 'pan']) if (src && src[k] != null) f[k] = jcopy(src[k]); }
 // ONE place that copies a frame (Nhân bản frame, Lặp đoạn, Chọn nhiều → Nhân bản, 📺 Phát lại): picture, colour, vector
 // lines, pose, mouth/eyes + 〰 path (lip), texts and the 🌈 look (👻 ghost, 🏃 scrolling bg, 💨 speed lines, film colour).
 // run = copying a whole run of frames: also its keyframes, camera keys, shake and flash (one copied frame alone must

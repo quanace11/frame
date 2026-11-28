@@ -111,6 +111,7 @@ function render() {
   if (floating && floatPlace() === 'bottom') { if (floating.bc) drawFloating(c, floating.bc); if (floating.cc) drawFloating(c, floating.cc); drawFloating(c); }
   else if (S.showBg && bg && bg.canvas) { if (floating || (S.layer === 'bg' && S.tool !== 'fx')) c.drawImage(stroke && stroke.t.type === 'bg' ? work : bg.canvas, 0, 0); else drawBgImg(c, S.cur, bg.canvas); }
   drawSpeedLines(c, f, S.cur);
+  if (f.gl && !(S.layer === 'bg' && S.tool !== 'fx')) glEditBack(c, f);   // ✨ light from a door at full strength, under the character layers (not while drawing on the background)
   if (floating && floating.bc && floatPlace() !== 'bottom') drawFloating(c, floating.bc);
   if (floating && floatPlace() === 'bg') { if (floating.cc) drawFloating(c, floating.cc); drawFloating(c); }
   if (floating && floatPlace() === 'bottom' && S.showBg && bg && bg.canvas) c.drawImage(stroke && stroke.t.type === 'bg' ? work : bg.canvas, 0, 0); // bottom: picture was drawn first (below), background drawing goes over it
@@ -151,6 +152,7 @@ function render() {
   if (rig) renderRig(c, px);
   if (HC) hcDraw(c, px); else renderPP(c, f, px);
   bwDrawPins(c, f, px);
+  if (f.gl) glEditTop(c, f);
   if (S.tool === 'fx' && TABS.fx === 'look') { c.save(); c.beginPath(); c.rect(0, 0, W, H); c.clip(); drawFocusLines(c, f, S.cur, 0); drawFilter(c, f); c.restore(); }
   if (f.texts && f.texts.length) drawTexts(c, f, S.tool === 'fx' ? fxSel : null);
   if (S.safe) drawSafeZone(c, px);
@@ -183,6 +185,7 @@ function render() {
     c.beginPath(); c.moveTo(q.x - 16 * px, q.y); c.lineTo(q.x + 16 * px, q.y); c.moveTo(q.x, q.y - 16 * px); c.lineTo(q.x, q.y + 16 * px); c.stroke(); c.restore();
   }
   if (ballMode) renderBallPath(c, px);
+  renderGlowBox(c, f, px);
   renderWarpSel(c, px);
   if (lasso && lasso.length > 1) {
     c.lineWidth = 2 * px; c.setLineDash([8 * px, 6 * px]);

@@ -21,7 +21,7 @@ function bgsOff(i) {   // [x, y] shift of the background on frame i (doc pixels)
   }
   return [Math.round(ox), Math.round(oy)];
 }
-const lookKey = i => { const f = S.frames[i], o = bgsOff(i); return (o ? 'b' + o.join(',') : '') + panoKey(f) + (f.sl && f.sl.k !== 'focus' ? 's' + f.sl.k + f.sl.c : '') + ':'; };
+const lookKey = i => { const f = S.frames[i], o = bgsOff(i); return glKey(i) + (o ? 'b' + o.join(',') : '') + panoKey(f) + (f.sl && f.sl.k !== 'focus' ? 's' + f.sl.k + f.sl.c : '') + ':'; };
 function drawBgImg(ctx, i, img, w, h) {
   const o = bgsOff(i); if (!o || (!o[0] && !o[1])) { if (w) ctx.drawImage(img, 0, 0, w, h); else ctx.drawImage(img, 0, 0); return; }
   const tw = w || W, th = h || H, ox = o[0] * tw / W, oy = o[1] * th / H, kx0 = Math.floor(-ox / tw), ky0 = Math.floor(-oy / th);
@@ -91,6 +91,7 @@ function lookSync() {
   if ($('#pnStat')) $('#pnStat').textContent = f.pan && panoOf(f) ? `Frame ${S.cur + 1}: ${panoOf(f).name}` : '';
   const on = [f.pan && panoOf(f) && '🌄 nền dài', f.bgs && `🏃 nền chạy ${BGS_DIRS[f.bgs.d][3].toLowerCase()}`, f.sl && `${SL_KINDS[f.sl.k][0]} đường ${SL_KINDS[f.sl.k][1].toLowerCase()}`, f.flt && `${FLT_KINDS[f.flt][0]} ${FLT_KINDS[f.flt][1].toLowerCase()}`].filter(Boolean);
   const sel = msel && msel.size > 1;
+  glSync();
   $('#lkStat').textContent = `Frame ${S.cur + 1}: ${on.length ? on.join(', ') : 'chưa có hiệu ứng'} · Bấm nút = áp cho ${sel ? msel.size + ' frame đang chọn' : S.lookOpt.n + ' frame từ frame này'}`;
 }
 /* 📺 slow-motion replay (như phát lại bàn thắng trên TV): copies of the last N frames (or the multi-selected ones) are put right after them,
@@ -124,7 +125,7 @@ function drawFrameBase(ctx, f, bg, live) {
   const fi = S.frames.indexOf(f);
   if (S.showBg) drawPano(ctx, f);
   if (bg && bg.canvas && S.showBg) drawBgImg(ctx, fi, bg.canvas);
-  drawSpeedLines(ctx, f, fi);
+  drawSpeedLines(ctx, f, fi); drawGlowBack(ctx, f, fi);
   drawCol(ctx, f); drawGhosts(ctx, f);
   if (f.canvas && S.showChar) ctx.drawImage(f.canvas, 0, 0);
   if (live) return;   // puppet + lines are drawn per video frame (smooth motion)
@@ -141,7 +142,7 @@ function drawFrameFx0(ctx, i, baseImg, tsec, tInFrame, vid, over) {
   const f = S.frames[i], cam = camAt(i, tInFrame || 0), cf = camFx(i, tInFrame || 0);
   ctx.save(); camApply(ctx, { z: cam.z, x: cam.x + cf.ox, y: cam.y + cf.oy }, (f.shake || 0) + cf.sh, tsec, i);
   if (S.bgVideo) { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); if (S.showBg) drawVideoCover(ctx, vid || bgVid.el); }
-  ctx.drawImage(baseImg, 0, 0, W, H); if (over) over(ctx); ctx.restore();
+  ctx.drawImage(baseImg, 0, 0, W, H); if (over) over(ctx); drawGlowTop(ctx, f, i, tInFrame); ctx.restore();
   drawFocusLines(ctx, f, i, tInFrame); drawFilter(ctx, f);
   drawTexts(ctx, f, null, i, tInFrame);
   if (f.flash) { const a = Math.max(0, 0.9 * (1 - tInFrame / Math.max(0.05, f.dur / 1000))); ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fillRect(0, 0, W, H); }
