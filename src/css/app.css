@@ -221,6 +221,10 @@ body:not([data-tool=brush]) #shapeBtn,body:not([data-tool=brush]) #clipBtn,body:
 #fxbar.mini > :not(:first-child){display:none!important}
 .vthumb{width:36px;height:36px;border-radius:8px;border:2px solid var(--line);background:#fff;cursor:pointer}
 .vthumb.on{border-color:#ff3b9a}
+.plIt{padding:2px;min-width:46px;height:46px;background:#fff}
+.plIt img{width:40px;height:40px;object-fit:contain;display:block;pointer-events:none}
+.plIt.on{outline:3px solid #ff3b9a;outline-offset:-1px}
+#plStrip{flex-wrap:nowrap;overflow-x:auto;max-width:100%;gap:4px}
 .plist{display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow:auto}
 .prow{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:8px;background:var(--panel2)}
 .prow.on{border-color:var(--accent)}

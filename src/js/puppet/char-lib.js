@@ -27,7 +27,7 @@ async function charLibSave() {
 async function charLibStore(parts, name) {
   const ids = new Set(parts.map(q => q.id));
   for (const q of parts) { if (!q.png) await encodePart(q); for (const a of (q.alts || [])) if (!a.png) await encodeHolder(a); }
-  const rec = { w: W, h: H, parts: parts.map(q => ({ ...ppPartMeta(q), name: charBaseName(q.name), parent: ids.has(q.parent) ? q.parent : null, png: q.png, alts: (q.alts || []).map(a => ({ png: a.png, dx: a.dx || 0, dy: a.dy || 0 })) })) };
+  const rec = { w: W, h: H, parts: parts.map(q => ({ ...ppPartMeta(q), name: charBaseName(q.name), parent: ids.has(q.parent) ? q.parent : null, png: q.png, alts: (q.alts || []).map(a => ({ png: a.png, ...ppAltMeta(a) })) })) };
   const id = 'ch' + Date.now().toString(36), thumb = await toBlob(charThumb(parts));
   try {
     await idbPut('char:' + id, rec);
@@ -57,7 +57,7 @@ async function charAddRec(rec) {
     const zb = S.pp && S.pp.parts.length ? Math.max(...S.pp.parts.map(q => q.z)) + 1 : 0, parts = [];
     for (const q of rec.parts) {
       const c = await dec(q.png), alts = [];
-      for (const a of (q.alts || [])) { try { alts.push({ c: await dec(a.png), png: a.png, dx: a.dx || 0, dy: a.dy || 0 }); } catch (e) {} }
+      for (const a of (q.alts || [])) { try { alts.push({ c: await dec(a.png), png: a.png, ...ppAltMeta(a) }); } catch (e) {} }
       parts.push({ ...q, id: idMap[q.id], parent: q.parent ? idMap[q.parent] || null : null, name: q.name + suf, z: zb + q.z * 0.01, ox: q.ox + sx, oy: q.oy + sy, px: q.px + sx, py: q.py + sy, tip: q.tip ? { x: q.tip.x + sx, y: q.tip.y + sy } : null, asset: q.asset ? JSON.parse(JSON.stringify(q.asset)) : null, c, png: q.png, alts });
     }
     ppPushChar(parts);   // like a freshly cut character: it appears from the frame being edited on

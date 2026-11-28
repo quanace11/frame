@@ -72,7 +72,7 @@ async function exportZip() {
       ppMeta = { parts: [] };
       for (const pt of S.pp.parts) {
         const name = `puppet/part_${pt.id}.png`; files.push({ name, data: new Uint8Array(pt.png) });
-        const alts = (pt.alts || []).map((a, k) => { const an = `puppet/part_${pt.id}_v${k + 1}.png`; files.push({ name: an, data: new Uint8Array(a.png) }); return { file: an, dx: a.dx || 0, dy: a.dy || 0 }; });
+        const alts = (pt.alts || []).map((a, k) => { const an = `puppet/part_${pt.id}_v${k + 1}.png`; files.push({ name: an, data: new Uint8Array(a.png) }); return { file: an, ...ppAltMeta(a) }; });
         ppMeta.parts.push({ ...ppPartMeta(pt), file: name, alts });
       }
     }
@@ -115,7 +115,7 @@ async function importZip(file) {
     pm.set('Đang mở…');
     let ppData = null;
     const zbuf = f2 => { const d = z.get(f2); return d ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : null; };
-    if (t.puppet && t.puppet.parts) ppData = { parts: t.puppet.parts.map(q => ({ ...q, png: zbuf(q.file), alts: (q.alts || []).map(a => ({ png: zbuf(a.file), dx: a.dx, dy: a.dy })).filter(a => a.png) })).filter(q => q.png) };
+    if (t.puppet && t.puppet.parts) ppData = { parts: t.puppet.parts.map(q => ({ ...q, png: zbuf(q.file), alts: (q.alts || []).map(a => ({ png: zbuf(a.file), ...ppAltMeta(a) })).filter(a => a.png) })).filter(q => q.png) };
     await loadProjectData({ W: t.width, H: t.height, cur: 0, bgs, frames, pp: ppData });
     S.frames.forEach(f => f.pngVer = 0); S.bgs.forEach(b => b.pngVer = 0);
     pm.close(); toast('Đã mở dự án'); scheduleSave();

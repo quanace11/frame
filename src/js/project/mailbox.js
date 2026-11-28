@@ -72,7 +72,7 @@ async function fscPack(root, name) {
   const b64 = v => u8b64(asU8(v));
   const j = { fschar: 1, name, w: W, h: H, t: Date.now(), from: mboxKind(), root: root.id, pose, flat: { x: x0, y: y0 },
     parts: parts.map(q => ({ ...ppPartMeta(q), name: charBaseName(q.name), parent: ids.has(q.parent) ? q.parent : null, png: b64(q.png),
-      alts: (q.alts || []).map(al => ({ png: b64(al.png), dx: al.dx || 0, dy: al.dy || 0 })) })) };
+      alts: (q.alts || []).map(al => ({ png: b64(al.png), ...ppAltMeta(al) })) })) };
   const body = strU8(JSON.stringify(j)), z = await fscZip(body, false);
   const data = new Uint8Array(4 + (z || body).length); data.set(strU8(z ? 'FSC1' : 'FSC0')); data.set(z || body, 4);
   const png = new Uint8Array(await (await toBlob(flat)).arrayBuffer());
@@ -128,7 +128,7 @@ const frameNumGet = id => clamp((+($('#' + id) || {}).value || S.cur + 1) - 1, 0
 const fscRxKey = j => [j.t || 0, j.from || '', j.name || '', j.parts.length].join('|');
 async function fscCharDialog(j, u8, opt) {
   const name = j.name || 'Nhân vật';
-  const rec = { w: j.w, h: j.h, pose: j.pose || null, parts: j.parts.map(q => ({ ...q, png: b64u8(q.png), alts: (q.alts || []).map(a => ({ png: b64u8(a.png), dx: a.dx || 0, dy: a.dy || 0 })) })) };
+  const rec = { w: j.w, h: j.h, pose: j.pose || null, parts: j.parts.map(q => ({ ...q, png: b64u8(q.png), alts: (q.alts || []).map(a => ({ png: b64u8(a.png), ...ppAltMeta(a) })) })) };
   const kho = await fscToKho(rec, name, u8, fscRxKey(j));
   const url = URL.createObjectURL(new Blob([u8], { type: 'image/png' }));
   const sel = 'padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:15px';
